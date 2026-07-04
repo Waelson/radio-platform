@@ -1,0 +1,37 @@
+{
+  "name": "radio-player",
+  "version": "0.1.0",
+  "description": "Radio Playout Player",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.waelson.radio-player",
+    "productName": "Radio Player",
+    "mac": {
+      "category": "public.app-category.music",
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "extraResources": [
+      {
+        "from": "../playout/cmd/playout-engine/assets/player.html",
+        "to": "player.html"
+      }
+    ],
+    "files": [
+      "main.js"
+    ]
+  }
+}

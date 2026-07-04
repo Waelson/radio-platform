@@ -7,8 +7,9 @@ library/library-service
 playout/dist/
 */bin/
 
-# Runtime
-*.json
+# Runtime snapshots/state (não package.json, go.work.sum, etc.)
+playout/*.json
+library/*.json
 *.db
 *.db-shm
 *.db-wal
