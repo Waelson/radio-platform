@@ -4,13 +4,12 @@ package apptray
 
 import (
 	"fmt"
-	"os/exec"
-	"runtime"
 	"time"
 
 	getsystray "github.com/getlantern/systray"
 
 	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/engine"
+	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 )
 
 const defaultEnginePort = 8080
@@ -92,7 +91,7 @@ func onSystrayReady() {
 				updateUI()
 
 			case <-mStatus.ClickedCh:
-				openBrowser(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort))
+				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort))
 
 			case <-mQuit.ClickedCh:
 				_ = eng.Stop()
@@ -104,16 +103,3 @@ func onSystrayReady() {
 }
 
 func onSystrayExit() {}
-
-func openBrowser(url string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default:
-		cmd = exec.Command("xdg-open", url)
-	}
-	_ = cmd.Start()
-}

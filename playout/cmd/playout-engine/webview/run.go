@@ -9,7 +9,7 @@ import wv "github.com/webview/webview_go"
 func RunWebview(url string) {
 	w := wv.New(true)
 	defer w.Destroy()
-	w.SetTitle("Playout — Player")
+	w.SetTitle("Playout")
 	w.SetSize(1280, 800, wv.HintNone)
 	w.Navigate(url)
 	w.Dispatch(zoomMainWindow)
