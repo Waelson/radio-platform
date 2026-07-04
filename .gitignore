@@ -1,0 +1,24 @@
+# Binários
+playout/playout-engine
+playout/engine
+library/library-service
+
+# Artefatos de build
+playout/dist/
+*/bin/
+
+# Runtime
+*.json
+*.db
+*.db-shm
+*.db-wal
+
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# Mídia local
+*/media/

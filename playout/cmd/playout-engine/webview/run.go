@@ -1,0 +1,17 @@
+//go:build !cli
+
+package webview
+
+import wv "github.com/webview/webview_go"
+
+// RunWebview opens a native WKWebView window and blocks until it is closed.
+// Must be called from the main goroutine.
+func RunWebview(url string) {
+	w := wv.New(true)
+	defer w.Destroy()
+	w.SetTitle("Playout — Player")
+	w.SetSize(1280, 800, wv.HintNone)
+	w.Navigate(url)
+	w.Dispatch(zoomMainWindow)
+	w.Run()
+}

@@ -1,0 +1,33 @@
+service:
+  id: "library-01"
+
+api:
+  host: "0.0.0.0"
+  port: 8081
+  cors:
+    allowed_origins:
+      - "*"
+
+database:
+  path: "./library.db"
+
+scanner:
+  library_root: "/Users/waelson/Documents/medias"
+  metadata_source: "filename"   # "filename" | "tags"
+  directories:
+    musicas: "MUSIC"
+    vinhetas: "VINHETA"
+    jingles: "JINGLE"
+    spots: "SPOT"
+  extensions:
+    - ".mp3"
+    - ".wav"
+    - ".flac"
+    - ".ogg"
+    - ".aac"
+  ffprobe_path: "ffprobe"
+  watch_enabled: true
+
+logging:
+  level: "info"
+  format: "json"

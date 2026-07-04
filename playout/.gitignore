@@ -1,0 +1,19 @@
+# Compiled binaries
+/playout-engine
+/bin/
+
+# macOS
+.DS_Store
+
+# JetBrains / IntelliJ
+.idea/
+
+# Queue persistence snapshots (runtime state)
+*.json
+
+# Build artifacts
+/dist/
+
+# Local media files (runtime content, not part of source)
+/media/
+

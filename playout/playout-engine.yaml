@@ -1,0 +1,232 @@
+# =============================================================================
+# Configuração do Radio Playout Engine
+# Precedência (maior para menor): flags CLI > variáveis de ambiente > este arquivo > padrões internos
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Identificação do engine
+# -----------------------------------------------------------------------------
+engine:
+  # Identificador único desta instância. Usado no nome do arquivo de snapshot
+  # e no lock de instância para evitar processos duplicados.
+  id: "studio-a-main"
+
+  # Quando true, o engine cria um lock de arquivo ao iniciar e impede que uma
+  # segunda instância com o mesmo ID seja iniciada simultaneamente.
+  instance_lock: true
+
+# -----------------------------------------------------------------------------
+# Servidor HTTP / API REST
+# -----------------------------------------------------------------------------
+api:
+  # Endereço IP em que o servidor HTTP escuta. Use "0.0.0.0" para aceitar
+  # conexões de qualquer interface de rede.
+  host: "127.0.0.1"
+
+  # Porta TCP do servidor HTTP.
+  port: 8080
+
+  cors:
+    # Habilita o cabeçalho CORS (Cross-Origin Resource Sharing).
+    enabled: true
+
+    # Lista de origens permitidas para requisições cross-origin.
+    # Adicione a URL da sua UI de controle aqui.
+    allowed_origins:
+      - "http://localhost:3000"
+      - "http://localhost:3333"
+      - "http://localhost:5173"
+      - "http://localhost:8080"
+
+# -----------------------------------------------------------------------------
+# Pipeline de áudio
+# -----------------------------------------------------------------------------
+audio:
+  # Taxa de amostragem em Hz. 48000 é o padrão para áudio de broadcast.
+  sample_rate: 48000
+
+  # Número de canais. 2 = estéreo.
+  channels: 2
+
+  # Tamanho do buffer de leitura em frames de PCM. Valores menores reduzem
+  # a latência; valores maiores aumentam a estabilidade em sistemas com carga.
+  buffer_frames: 2048
+
+  output:
+    # Driver de saída de áudio.
+    # Opções:
+    #   "null"       — descarta o áudio (útil para testes sem dispositivo físico)
+    #   "file"       — grava o áudio em um arquivo PCM
+    #   "portaudio"  — saída via PortAudio (requer: go build -tags portaudio)
+    #   "coreaudio"  — driver nativo macOS via AudioQueue, sem dependências externas
+    #                  (requer: go build -tags coreaudio; apenas macOS)
+    driver: "coreaudio"
+
+    # Identificador do dispositivo de áudio. "default" usa o dispositivo padrão
+    # do sistema operacional.
+    device_id: "default"
+
+    # Quando true, o engine degrada para NullOutput se o dispositivo de áudio
+    # falhar ao abrir, em vez de encerrar com erro.
+    allow_null_output: false
+
+# -----------------------------------------------------------------------------
+# Comportamento de reprodução
+# -----------------------------------------------------------------------------
+playback:
+  # Duração padrão do crossfade em milissegundos, aplicada automaticamente
+  # em transições MÚSICA → MÚSICA quando nenhuma transição explícita é informada.
+  # 0 desabilita o crossfade automático.
+  default_crossfade_ms: 8000
+
+  # Duração do fade-out ao executar o comando STOP, em milissegundos.
+  default_stop_fade_ms: 300
+
+  # Antecipação em milissegundos para pré-carregar o próximo item da fila
+  # antes do fim do item atual. (reservado para uso futuro)
+  preload_next_ms: 3000
+
+  # Número máximo de falhas consecutivas de itens antes de o engine encerrar
+  # a sessão e entrar em estado de erro.
+  max_consecutive_item_failures: 3
+
+  # Auto crossfade por análise de energia (desabilitado por padrão).
+  # Quando habilitado, o crossfade é disparado assim que a energia do áudio
+  # cair abaixo do threshold por hold_frames buffers consecutivos, dentro da
+  # janela de detecção. O crossfade por tempo permanece ativo como fallback.
+  auto_crossfade_enabled: true
+  auto_crossfade_energy_threshold_dbfs: -18.0
+  auto_crossfade_min_before_end_ms: 2000
+  auto_crossfade_max_before_end_ms: 20000
+  auto_crossfade_hold_frames: 8
+
+# -----------------------------------------------------------------------------
+# Monitoramento de saúde do áudio
+# -----------------------------------------------------------------------------
+health:
+  # Intervalo em milissegundos entre publicações do evento ProgressChanged
+  # (posição atual, percentual e tempo restante do item em reprodução).
+  progress_interval_ms: 500
+
+  # Intervalo em milissegundos entre leituras do monitor de saúde de áudio
+  # (cálculo de RMS, pico e detecção de silêncio).
+  audio_health_interval_ms: 500
+
+  # Nível em dBFS abaixo do qual o áudio é considerado silêncio.
+  # -60 dBFS é um valor conservador; diminua (ex: -80) para maior sensibilidade.
+  silence_threshold_dbfs: -60
+
+  # Duração mínima de silêncio contínuo em milissegundos para disparar o alerta
+  # de silêncio (evento SilenceAlert). O auto-panic dispara com o dobro deste valor.
+  silence_duration_ms: 2000
+
+  # VU Meter avançado (desabilitado por padrão).
+  # Quando habilitado, publica o evento VUMeter via WebSocket a cada
+  # vu_meter_interval_ms milissegundos com RMS, Peak, Peak Hold,
+  # LUFS momentâneo, LUFS integrado e separação L/R.
+  vu_meter_enabled: true
+  vu_meter_interval_ms: 100
+  peak_hold_ms: 3000
+
+# -----------------------------------------------------------------------------
+# Modo Panic (proteção ao ar)
+# -----------------------------------------------------------------------------
+panic:
+  # Habilita o modo panic. Quando ativado, o engine pode entrar em PANIC
+  # via comando ou automaticamente por silêncio detectado.
+  enabled: true
+
+  # Caminho para o arquivo de áudio de "cama de emergência" (panic bed).
+  # Este áudio toca em loop enquanto o engine estiver em modo PANIC.
+  bed_path: "/Users/waelson/Documents/workspace/medias/panic/panic.mp3"
+
+  # Quando true, o engine entra automaticamente em modo PANIC ao detectar
+  # silêncio sustentado por (silence_duration_ms × 2) milissegundos.
+  # Requer que "enabled: true" e que o monitor de saúde esteja ativo.
+  auto_on_silence: false
+
+  # Nível em dBFS usado pelo modo panic para detectar silêncio.
+  # Pode ser diferente do threshold do health monitor acima.
+  silence_threshold_dbfs: -60
+
+  # Duração mínima de silêncio em milissegundos para o panic entrar
+  # automaticamente (usado somente quando auto_on_silence: true).
+  silence_duration_ms: 2000
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+logging:
+  # Nível mínimo de log. Opções: debug | info | warn | error
+  level: "debug"
+
+  # Formato de saída dos logs. Opções:
+  #   "json" — estruturado, ideal para ingestão por ferramentas (Loki, Datadog)
+  #   "text" — legível por humanos, ideal para desenvolvimento
+  format: "text"
+
+# -----------------------------------------------------------------------------
+# Segurança
+# -----------------------------------------------------------------------------
+security:
+  # Lista de diretórios raiz permitidos para caminhos de arquivos de áudio.
+  # Quando não vazia, o engine rejeita qualquer path fora dessas pastas.
+  # Exemplo: ["/var/library", "/mnt/nas/audio"]
+  # Deixe vazio ([]) para desabilitar a restrição (não recomendado em produção).
+  allowed_roots: []
+
+# -----------------------------------------------------------------------------
+# Administração
+# -----------------------------------------------------------------------------
+admin:
+  # Habilita o endpoint POST /v1/admin/shutdown, que permite encerrar o engine
+  # remotamente via API. Mantenha false em ambientes de produção expostos.
+  shutdown_enabled: true
+
+# -----------------------------------------------------------------------------
+# Persistência da fila
+# -----------------------------------------------------------------------------
+queue:
+  persistence:
+    # Habilita a persistência da fila em disco. Quando ativo, o estado da fila
+    # é salvo a cada mutação e restaurado na inicialização, sobrevivendo a
+    # reinicializações e crashes.
+    enabled: true
+
+    # Caminho do arquivo de snapshot da fila.
+    # Padrão (quando vazio): /tmp/playout-<engine-id>-queue.json
+    path: "/Users/waelson/Documents/workspace/radio-playout-engine/playout-studio-a-main-queue.json"
+
+    # Quando true, restaura a fila a partir do snapshot ao iniciar.
+    # Requer persistence.enabled: true.
+    restore_on_start: true
+
+    # Quando true, apaga o snapshot ao encerrar o engine de forma limpa
+    # (SIGTERM / SIGINT). Útil para persistência apenas em caso de crash:
+    # reinicializações normais começam com fila vazia.
+    clear_on_stop: false
+
+# ---------------------------------------------------------------------------
+# Hora Certa
+# ---------------------------------------------------------------------------
+# Configuração do mecanismo de anúncio de hora certa.
+# Quando um item do tipo HORA_CERTA é reproduzido, a engine lê a hora atual
+# e reproduz em sequência o arquivo de hora + o arquivo de minuto.
+hora_certa:
+  # Diretório com os arquivos de hora (HRS00.mp3 … HRS23.mp3).
+  hours_dir: "media/hora_certa/hours_dir"
+
+  # Diretório com os arquivos de minuto (MIN01.mp3 … MIN59.mp3).
+  # Pode ser o mesmo que hours_dir.
+  minutes_dir: "media/hora_certa/minutes_dir"
+
+  # Padrão do nome de arquivo para hora. {HH} = hora com zero à esquerda.
+  hour_pattern: "HRS{HH}.mp3"
+
+  # Padrão do nome de arquivo para minuto. {MM} = minuto com zero à esquerda.
+  # Quando o minuto é 00 e MIN00.mp3 não existe, apenas o arquivo de hora é tocado.
+  minute_pattern: "MIN{MM}.mp3"
+
+  # Ganho padrão em dB aplicado ao áudio de hora certa (0 = unity gain).
+  # Itens individuais na fila podem sobrescrever este valor via gain_db.
+  gain_db: 0.0
