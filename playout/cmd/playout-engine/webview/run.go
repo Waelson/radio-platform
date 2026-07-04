@@ -10,7 +10,7 @@ func RunWebview(url, title string) {
 	w := wv.New(true)
 	defer w.Destroy()
 	w.SetTitle(title)
-	w.SetSize(440, 800, wv.HintFixed)
+	w.SetSize(730, 430, wv.HintFixed)
 	w.Navigate(url)
 	w.Dispatch(zoomMainWindow)
 	w.Run()

@@ -102,7 +102,7 @@ var statusPage = []byte(`<!DOCTYPE html>
       line-height: 1.2;
       word-break: break-all;
     }
-    .hero-spacer { height: 27px; }
+    .hero-spacer { height: 14px; }
     .hero-desc {
       color: var(--muted);
       font-size: 10px;
@@ -151,8 +151,11 @@ var statusPage = []byte(`<!DOCTYPE html>
   <div class="hero">
     <div class="hero-cell">
       <div class="eyebrow">Instância</div>
-      <div class="status-pill"><span id="pulse" class="pulse"></span> Estado</div>
-      <div id="heroState" class="hero-value">—</div>
+      <div class="hero-spacer"></div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <span id="pulse" class="pulse"></span>
+        <div id="heroState" class="hero-value">—</div>
+      </div>
       <div id="heroDesc" class="hero-desc">Conectando…</div>
     </div>
     <div class="hero-cell">
@@ -173,11 +176,10 @@ var statusPage = []byte(`<!DOCTYPE html>
     <div class="card">
       <div class="card-title">Processo</div>
       <div class="card-body">
-        <div class="row"><div class="k">Estado</div><div id="state" class="v">—</div></div>
+        <div class="row"><div class="k">Sistema</div><div id="os" class="v mono">—</div></div>
         <div class="row"><div class="k">Uptime</div><div id="uptime" class="v">—</div></div>
         <div class="row"><div class="k">PID</div><div id="pid" class="v mono">—</div></div>
         <div class="row"><div class="k">Versão</div><div id="version" class="v mono">—</div></div>
-        <div class="row"><div class="k">Último erro</div><div id="lastError" class="v">—</div></div>
       </div>
     </div>
     <div class="card">
@@ -208,7 +210,8 @@ var statusPage = []byte(`<!DOCTYPE html>
 
     function pulseColor(state, online) {
       if (!online) return ['#ff3b30', '0 0 10px rgba(255,59,48,.5)'];
-      if (['PLAYING','PAUSED','ASSIST'].includes(state)) return ['#00ff80','0 0 10px rgba(0,255,128,.6)'];
+      if (['PLAYING','ASSIST'].includes(state)) return ['#00ff80','0 0 10px rgba(0,255,128,.6)'];
+      if (state === 'PAUSED') return ['#ff9500','0 0 10px rgba(255,149,0,.6)'];
       if (['ERROR','PANIC'].includes(state)) return ['#ff3b30','0 0 10px rgba(255,59,48,.5)'];
       return ['#b8bdba','0 0 10px rgba(255,255,255,.12)'];
     }
@@ -231,10 +234,10 @@ var statusPage = []byte(`<!DOCTYPE html>
       const dot = $('pulse');
       dot.style.background = color;
       dot.style.boxShadow = glow;
+      $('heroState').style.color = color;
       if (!online) {
         $('heroState').textContent = 'OFFLINE';
         $('heroDesc').textContent = 'Engine não responde. Reconectando…';
-        $('state').textContent = 'OFFLINE';
       }
     }
 
@@ -245,9 +248,7 @@ var statusPage = []byte(`<!DOCTYPE html>
       $('heroDesc').textContent = stateDesc[state] || '';
       $('heroUptime').textContent = uptime;
       $('heroNow').textContent = now();
-      $('state').textContent = state;
       $('uptime').textContent = uptime;
-      $('lastError').textContent = status.error || 'Nenhum';
     }
 
     async function loadInfo() {
@@ -255,6 +256,7 @@ var statusPage = []byte(`<!DOCTYPE html>
       startTime = new Date(d.start_time);
       $('pid').textContent = d.pid;
       $('version').textContent = d.version;
+      $('os').textContent = d.os || '—';
       $('localIp').textContent = d.local_ip || '—';
       const host = location.host;
       $('port').textContent = location.port || '80';

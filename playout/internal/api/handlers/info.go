@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -14,6 +15,7 @@ type infoResponse struct {
 	Version   string    `json:"version"`
 	StartTime time.Time `json:"start_time"`
 	LocalIP   string    `json:"local_ip"`
+	OS        string    `json:"os"`
 }
 
 // Info returns a handler for GET /v1/info that exposes engine identity,
@@ -25,6 +27,7 @@ func Info(engineID, version string, startTime time.Time) http.HandlerFunc {
 		_ = json.NewEncoder(w).Encode(infoResponse{
 			EngineID:  engineID,
 			PID:       os.Getpid(),
+			OS:        runtime.GOOS + "/" + runtime.GOARCH,
 			Version:   version,
 			StartTime: startTime,
 			LocalIP:   localNetworkIP(),
