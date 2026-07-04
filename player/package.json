@@ -16,7 +16,8 @@
     "productName": "Player",
     "mac": {
       "category": "public.app-category.music",
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "icon.icns"
     },
     "linux": {
       "target": "AppImage"
