@@ -15,7 +15,7 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, 'player.html'))
   win.once('ready-to-show', () => {
-    win.maximize()
+    win.setFullScreen(true)
     win.show()
   })
 }
