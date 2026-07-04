@@ -5,6 +5,7 @@ library/library-service
 
 # Artefatos de build
 playout/dist/
+player/dist/
 */bin/
 
 # Runtime snapshots/state (não package.json, go.work.sum, etc.)
