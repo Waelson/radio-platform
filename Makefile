@@ -1,10 +1,13 @@
-.PHONY: build-playout build-library test-all dist-mac clean
+.PHONY: build-playout build-library build-player test-all dist-mac clean
 
 build-playout:
 	$(MAKE) -C playout build-coreaudio
 
 build-library:
 	$(MAKE) -C library build
+
+build-player:
+	cd player && npm run build
 
 test-all:
 	cd playout  && go test ./...
