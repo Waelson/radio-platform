@@ -5,6 +5,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    show: false,
     title: 'Radio Player',
     webPreferences: {
       nodeIntegration: false,
@@ -13,6 +14,10 @@ function createWindow() {
   })
 
   win.loadFile(path.join(__dirname, 'player.html'))
+  win.once('ready-to-show', () => {
+    win.maximize()
+    win.show()
+  })
 }
 
 app.whenReady().then(() => {
