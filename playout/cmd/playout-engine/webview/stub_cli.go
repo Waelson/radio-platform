@@ -3,5 +3,5 @@
 package webview
 
 // RunWebview and OpenPlayerWindow are no-ops in CLI mode (no UI).
-func RunWebview(url string)      {}
-func OpenPlayerWindow(url string) {}
+func RunWebview(url, title string) {}
+func OpenPlayerWindow(url, title string) {}

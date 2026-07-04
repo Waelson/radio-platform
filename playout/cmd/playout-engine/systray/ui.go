@@ -91,7 +91,7 @@ func onSystrayReady() {
 				updateUI()
 
 			case <-mStatus.ClickedCh:
-				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort))
+				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort), "Playout — Status")
 
 			case <-mQuit.ClickedCh:
 				_ = eng.Stop()

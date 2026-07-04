@@ -41,6 +41,7 @@ func main() {
 	// The flag is stripped from args so config.Load() never sees it.
 	startup := "ui"
 	webviewURL := ""
+	webviewTitle := "Playout"
 	var filteredArgs []string
 	raw := os.Args[1:]
 	for i := 0; i < len(raw); i++ {
@@ -55,6 +56,8 @@ func main() {
 			i++ // skip value
 		case len(a) > 10 && a[:10] == "--webview=":
 			webviewURL = a[10:]
+		case len(a) > 16 && a[:16] == "--webview-title=":
+			webviewTitle = a[16:]
 		default:
 			filteredArgs = append(filteredArgs, a)
 		}
@@ -62,7 +65,7 @@ func main() {
 
 	// Subprocess mode: open a native WKWebView window and exit.
 	if webviewURL != "" {
-		appwebview.RunWebview(webviewURL)
+		appwebview.RunWebview(webviewURL, webviewTitle)
 		return
 	}
 

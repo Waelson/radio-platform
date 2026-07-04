@@ -12,13 +12,13 @@ import (
 
 // OpenPlayerWindow re-launches the current binary with --webview=<url>
 // so that the WKWebView runs in an isolated subprocess (own main thread).
-func OpenPlayerWindow(url string) {
+func OpenPlayerWindow(url, title string) {
 	self, err := os.Executable()
 	if err != nil {
 		openBrowser(url)
 		return
 	}
-	cmd := exec.Command(self, "--webview="+url)
+	cmd := exec.Command(self, "--webview="+url, "--webview-title="+title)
 	cmd.Env = engine.ExpandedEnv()
 	_ = cmd.Start()
 }
