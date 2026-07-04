@@ -23,208 +23,172 @@ var statusPage = []byte(`<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Radio Playout Engine • Status da Engine</title>
+  <title>Status da Engine</title>
   <style>
     :root {
       --bg: #070807;
-      --surface: #101211;
-      --line: rgba(0, 255, 128, .22);
-      --line-strong: rgba(0, 255, 128, .55);
+      --line: rgba(255,255,255,.08);
+      --line-soft: rgba(255,255,255,.055);
       --green: #00ff80;
-      --green-soft: rgba(0, 255, 128, .11);
-      --red: #ff3b30;
       --text: #e8eee9;
       --muted: #8a948d;
-      --muted-2: #5b655e;
-      --shadow: rgba(0, 255, 128, .12);
       --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
       --font: Inter, "Segoe UI", Roboto, Arial, sans-serif;
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
     body {
-      margin: 0;
-      min-height: 100vh;
       background:
-        radial-gradient(circle at 46% 0%, rgba(0, 255, 128, .08), transparent 28%),
-        radial-gradient(circle at 90% 20%, rgba(29, 140, 255, .05), transparent 32%),
-        #070807;
+        radial-gradient(circle at 45% 0%, rgba(0,255,128,.08), transparent 30%),
+        radial-gradient(circle at 90% 18%, rgba(29,140,255,.035), transparent 30%),
+        var(--bg);
       color: var(--text);
       font-family: var(--font);
-      overflow: hidden;
+      padding: 14px;
     }
-    .app { width: 100vw; height: 100vh; display: block; }
-    .main { min-width: 0; min-height: 0; overflow: auto; padding: 18px; }
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 24px;
-      margin-bottom: 18px;
-    }
-    .page-header h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -.02em; }
+    h1 { margin: 0 0 12px; font-size: 20px; font-weight: 900; letter-spacing: -.03em; }
+
+    /* Hero: 3 cards side by side */
     .hero {
-      border: 1px solid var(--line-strong);
-      border-radius: 16px;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(0,255,128,.08), transparent 55%),
-        linear-gradient(180deg, rgba(8,16,11,.96), rgba(8,13,10,.96));
-      box-shadow: 0 0 26px var(--shadow), inset 0 1px 0 rgba(255,255,255,.03);
-      margin-bottom: 18px;
-    }
-    .hero-top {
       display: grid;
-      grid-template-columns: 1.3fr 1fr 0.8fr;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
     }
-    .hero-block { padding: 22px 24px; min-height: 124px; }
-    .hero-block + .hero-block { border-left: 1px solid rgba(255,255,255,.08); }
+    .hero-cell {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(0,255,128,.06), transparent 55%),
+        linear-gradient(180deg, rgba(15,18,16,.96), rgba(8,11,9,.98));
+      box-shadow: 0 0 14px rgba(0,255,128,.06), inset 0 1px 0 rgba(255,255,255,.025);
+    }
     .eyebrow {
       color: var(--muted);
-      font-size: 11px;
-      letter-spacing: .24em;
+      font-size: 9px;
+      letter-spacing: .18em;
       text-transform: uppercase;
-      margin-bottom: 12px;
+      font-weight: 900;
+      margin-bottom: 7px;
     }
-    .hero-value { font-size: 38px; font-weight: 900; letter-spacing: -.03em; margin: 0 0 8px; }
-    .hero-sub { color: var(--muted); font-size: 14px; line-height: 1.45; }
-    .status-line {
+    .status-pill {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      padding: 7px 11px;
+      gap: 6px;
+      padding: 4px 8px;
       border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.08);
-      margin-bottom: 12px;
-      color: var(--text);
-      font-weight: 800;
-      letter-spacing: .09em;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .08em;
       text-transform: uppercase;
-      font-size: 12px;
+      margin-bottom: 7px;
     }
     .pulse {
-      width: 10px;
-      height: 10px;
+      width: 7px; height: 7px;
       border-radius: 50%;
       background: #b8bdba;
-      box-shadow: 0 0 14px rgba(255,255,255,.12);
+      box-shadow: 0 0 8px rgba(255,255,255,.12);
       transition: background .4s, box-shadow .4s;
+      flex-shrink: 0;
     }
-    .refresh-note {
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
+    .hero-value {
+      margin: 0 0 4px;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: -.01em;
+      line-height: 1.2;
+      word-break: break-all;
+    }
+    .hero-spacer { height: 27px; }
+    .hero-desc {
       color: var(--muted);
-      font-size: 13px;
-      background: rgba(255,255,255,.015);
+      font-size: 10px;
+      line-height: 1.3;
     }
-    .grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; }
-    .panel {
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 14px;
-      background: linear-gradient(180deg, rgba(16,18,17,.96), rgba(10,12,11,.96));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+
+    /* Cards: 2 columns */
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
       overflow: hidden;
+      background: linear-gradient(180deg, rgba(15,18,16,.96), rgba(8,11,9,.98));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
     }
-    .panel-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 18px;
-      padding: 16px 18px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-    .panel-title {
-      margin: 0;
-      font-size: 13px;
+    .card-title {
+      padding: 9px 11px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 900;
       letter-spacing: .22em;
       text-transform: uppercase;
-      color: var(--muted);
     }
-    .panel-body { padding: 8px 18px 18px; }
-    .kv {
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      gap: 18px;
-      align-items: center;
-      min-height: 58px;
-      border-bottom: 1px solid rgba(255,255,255,.05);
-      padding: 14px 0;
+    .card-body { padding: 2px 11px 6px; }
+    .row {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--line-soft);
     }
-    .kv:last-child { border-bottom: none; }
-    .k { color: var(--muted); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
-    .v { color: var(--text); font-weight: 800; font-size: 17px; word-break: break-word; }
-    .v.mono { font-family: var(--mono); font-weight: 700; font-size: 15px; }
-    @media (max-width: 1100px) {
-      .hero-top { grid-template-columns: 1fr; }
-      .hero-block + .hero-block { border-left: none; border-top: 1px solid rgba(255,255,255,.08); }
-      .grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 800px) {
-      body { overflow: auto; }
-      .app { display: block; height: auto; }
-    }
+    .row:last-child { border-bottom: none; }
+    .k { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .v { color: var(--text); font-weight: 800; font-size: 12px; word-break: break-all; line-height: 1.3; }
+    .v.mono { font-family: var(--mono); font-size: 11px; }
   </style>
 </head>
 <body>
-  <div class="app">
-    <main class="main">
-      <div class="page-header">
-        <div><h1>Status da Engine</h1></div>
+  <h1>Status da Engine</h1>
+
+  <div class="hero">
+    <div class="hero-cell">
+      <div class="eyebrow">Instância</div>
+      <div class="status-pill"><span id="pulse" class="pulse"></span> Estado</div>
+      <div id="heroState" class="hero-value">—</div>
+      <div id="heroDesc" class="hero-desc">Conectando…</div>
+    </div>
+    <div class="hero-cell">
+      <div class="eyebrow">Em atividade</div>
+      <div class="hero-spacer"></div>
+      <div id="heroUptime" class="hero-value">—</div>
+      <div class="hero-desc">Desde o último início.</div>
+    </div>
+    <div class="hero-cell">
+      <div class="eyebrow">Atualizado em</div>
+      <div class="hero-spacer"></div>
+      <div id="heroNow" class="hero-value">—</div>
+      <div class="hero-desc">Atualiza a cada 5s.</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-title">Processo</div>
+      <div class="card-body">
+        <div class="row"><div class="k">Estado</div><div id="state" class="v">—</div></div>
+        <div class="row"><div class="k">Uptime</div><div id="uptime" class="v">—</div></div>
+        <div class="row"><div class="k">PID</div><div id="pid" class="v mono">—</div></div>
+        <div class="row"><div class="k">Versão</div><div id="version" class="v mono">—</div></div>
+        <div class="row"><div class="k">Último erro</div><div id="lastError" class="v">—</div></div>
       </div>
-
-      <section class="hero">
-        <div class="hero-top">
-          <div class="hero-block">
-            <div class="eyebrow">Instância</div>
-            <div class="status-line"><span id="pulse" class="pulse"></span> Estado da engine</div>
-            <h2 id="heroState" class="hero-value">—</h2>
-            <div id="heroDesc" class="hero-sub">Conectando…</div>
-          </div>
-          <div class="hero-block">
-            <div class="eyebrow">Tempo em atividade</div>
-            <h2 id="heroUptime" class="hero-value">—</h2>
-            <div class="hero-sub">Tempo desde o último início da instância atual.</div>
-          </div>
-          <div class="hero-block">
-            <div class="eyebrow">Última atualização</div>
-            <h2 id="heroNow" class="hero-value">—</h2>
-            <div class="hero-sub">A tela atualiza automaticamente a cada 5 segundos.</div>
-          </div>
-        </div>
-        <div class="refresh-note">
-          <span>Atualiza a cada 5s</span>
-          <span id="refreshNote"></span>
-        </div>
-      </section>
-
-      <div class="grid">
-        <section class="panel">
-          <div class="panel-head"><h2 class="panel-title">Informações do processo</h2></div>
-          <div class="panel-body">
-            <div class="kv"><div class="k">Estado</div><div id="state" class="v">—</div></div>
-            <div class="kv"><div class="k">Uptime</div><div id="uptime" class="v">—</div></div>
-            <div class="kv"><div class="k">PID</div><div id="pid" class="v mono">—</div></div>
-            <div class="kv"><div class="k">Versão</div><div id="version" class="v mono">—</div></div>
-            <div class="kv"><div class="k">Último erro</div><div id="lastError" class="v">—</div></div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-head"><h2 class="panel-title">Conectividade</h2></div>
-          <div class="panel-body">
-            <div class="kv"><div class="k">IP da rede</div><div id="localIp" class="v mono">—</div></div>
-            <div class="kv"><div class="k">Porta</div><div id="port" class="v mono">—</div></div>
-            <div class="kv"><div class="k">API</div><div id="api" class="v mono">—</div></div>
-            <div class="kv"><div class="k">Eventos</div><div id="events" class="v mono">—</div></div>
-          </div>
-        </section>
+    </div>
+    <div class="card">
+      <div class="card-title">Conectividade</div>
+      <div class="card-body">
+        <div class="row"><div class="k">IP da rede</div><div id="localIp" class="v mono">—</div></div>
+        <div class="row"><div class="k">Porta</div><div id="port" class="v mono">—</div></div>
+        <div class="row"><div class="k">API</div><div id="api" class="v mono">—</div></div>
+        <div class="row"><div class="k">Eventos</div><div id="events" class="v mono">—</div></div>
       </div>
-    </main>
+    </div>
   </div>
 
   <script>
@@ -232,21 +196,21 @@ var statusPage = []byte(`<!DOCTYPE html>
     let startTime = null;
 
     const stateDesc = {
-      IDLE:     'A engine está carregada, porém sem reprodução em andamento.',
-      PLAYING:  'A engine está reproduzindo áudio.',
-      PAUSED:   'A reprodução está pausada.',
-      ASSIST:   'Modo assistência ativo — controle manual da fila.',
-      PANIC:    'Modo pânico ativo — cama de emergência em reprodução.',
-      STOPPING: 'A engine está encerrando a reprodução atual.',
-      STARTING: 'A engine está inicializando os subsistemas.',
-      ERROR:    'A engine encontrou um erro crítico.',
+      IDLE:     'Carregada, sem reprodução.',
+      PLAYING:  'Reproduzindo áudio.',
+      PAUSED:   'Reprodução pausada.',
+      ASSIST:   'Modo assistência ativo.',
+      PANIC:    'Modo pânico — emergência.',
+      STOPPING: 'Encerrando reprodução.',
+      STARTING: 'Inicializando subsistemas.',
+      ERROR:    'Erro crítico encontrado.',
     };
 
     function pulseColor(state, online) {
-      if (!online) return ['#ff3b30', '0 0 14px rgba(255,59,48,.5)'];
-      if (['PLAYING','PAUSED','ASSIST'].includes(state)) return ['#00ff80','0 0 14px rgba(0,255,128,.6)'];
-      if (['ERROR','PANIC'].includes(state)) return ['#ff3b30','0 0 14px rgba(255,59,48,.5)'];
-      return ['#b8bdba','0 0 14px rgba(255,255,255,.12)'];
+      if (!online) return ['#ff3b30', '0 0 10px rgba(255,59,48,.5)'];
+      if (['PLAYING','PAUSED','ASSIST'].includes(state)) return ['#00ff80','0 0 10px rgba(0,255,128,.6)'];
+      if (['ERROR','PANIC'].includes(state)) return ['#ff3b30','0 0 10px rgba(255,59,48,.5)'];
+      return ['#b8bdba','0 0 10px rgba(255,255,255,.12)'];
     }
 
     function formatUptime(ms) {
@@ -269,16 +233,14 @@ var statusPage = []byte(`<!DOCTYPE html>
       dot.style.boxShadow = glow;
       if (!online) {
         $('heroState').textContent = 'OFFLINE';
-        $('heroDesc').textContent = 'Engine não está respondendo. Tentando reconectar…';
+        $('heroDesc').textContent = 'Engine não responde. Reconectando…';
         $('state').textContent = 'OFFLINE';
-        $('refreshNote').textContent = 'Última tentativa: ' + now();
       }
     }
 
     function updateUI(status) {
       const state = status.state || '—';
       const uptime = startTime ? formatUptime(Date.now() - startTime.getTime()) : '—';
-
       $('heroState').textContent = state;
       $('heroDesc').textContent = stateDesc[state] || '';
       $('heroUptime').textContent = uptime;
@@ -286,7 +248,6 @@ var statusPage = []byte(`<!DOCTYPE html>
       $('state').textContent = state;
       $('uptime').textContent = uptime;
       $('lastError').textContent = status.error || 'Nenhum';
-      $('refreshNote').textContent = '';
     }
 
     async function loadInfo() {
