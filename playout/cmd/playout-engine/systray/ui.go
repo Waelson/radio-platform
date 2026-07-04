@@ -11,7 +11,6 @@ import (
 	getsystray "github.com/getlantern/systray"
 
 	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/engine"
-	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 )
 
 const defaultEnginePort = 8080
@@ -27,14 +26,13 @@ func onSystrayReady() {
 	getsystray.SetTitle("Playout")
 	getsystray.SetTooltip("Playout Engine — Parado")
 
-	mStart := getsystray.AddMenuItem("▶  Iniciar Engine", "Inicia a engine de áudio")
-	mStop := getsystray.AddMenuItem("■  Parar Engine", "Para a engine de áudio")
-	mRestart := getsystray.AddMenuItem("↺  Reiniciar Engine", "Reinicia a engine de áudio")
+	mStart := getsystray.AddMenuItem("▶  Iniciar         ", "Inicia a engine de áudio")
+	mStop := getsystray.AddMenuItem("■  Parar       ", "Para a engine de áudio")
+	mRestart := getsystray.AddMenuItem("↺  Reiniciar        ", "Reinicia a engine de áudio")
 	getsystray.AddSeparator()
-	mStatus := getsystray.AddMenuItem("📊  Status", "Abre status no browser")
-	mPlayer := getsystray.AddMenuItem("📻  Player", "Abre o player no browser")
+	mStatus := getsystray.AddMenuItem("◉  Status          ", "Abre status no browser")
 	getsystray.AddSeparator()
-	mQuit := getsystray.AddMenuItem("✕  Sair", "Encerra o systray e a engine")
+	mQuit := getsystray.AddMenuItem("✕  Finalizar", "Encerra o systray e a engine")
 
 	mStop.Disable()
 	mRestart.Disable()
@@ -95,9 +93,6 @@ func onSystrayReady() {
 
 			case <-mStatus.ClickedCh:
 				openBrowser(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort))
-
-			case <-mPlayer.ClickedCh:
-				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/player", defaultEnginePort))
 
 			case <-mQuit.ClickedCh:
 				_ = eng.Stop()
