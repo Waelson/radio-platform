@@ -252,7 +252,6 @@ func run(args []string) error {
 		EngineID:       cfg.Engine.ID,
 		Version:        Version,
 		StartTime:      time.Now(),
-		PlayerHTML:     playerHTMLBytes,
 	}
 	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, log)
 

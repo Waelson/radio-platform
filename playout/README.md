@@ -6,7 +6,7 @@
 
 Motor de automação de áudio para rádio FM/AM escrito em Go. Executa como processo independente e se comunica com qualquer UI via **REST** e **WebSocket** — sem acoplamento, sem banco de dados, sem dependência de interface gráfica.
 
-No macOS, distribui como **`Playout.app`**: ícone na barra de menu, engine gerenciado como subprocesso, player HTML embutido em janela nativa WKWebView e setup automático na primeira execução.
+No macOS, distribui como **`Playout.app`**: ícone na barra de menu, engine gerenciado como subprocesso e setup automático na primeira execução.
 
 ---
 
@@ -164,7 +164,7 @@ Endpoints sob o prefixo `/v1` mais rotas de UI:
 | Hot Buttons | `POST /v1/hotbuttons/trigger` |
 | Admin | `POST /v1/admin/shutdown`, `GET /v1/metrics` |
 | WebSocket | `GET /v1/events` |
-| UI | `GET /status` — painel de status (SPA), `GET /player` — player de áudio embutido |
+| UI | `GET /status` — painel de status (SPA) |
 
 CORS configurável com lista de origens permitidas. Todo comando retorna um `command_id` para correlação com eventos.
 
@@ -222,7 +222,6 @@ Aplicativo nativo para macOS com systray e interface gráfica embutida:
 
 - **Ícone na barra de menu** — play-button verde (engine online) ou vermelho (offline)
 - **Menu** — Iniciar / Parar / Reiniciar Engine, Status, Player, Sair
-- **Player** — abre o player HTML em janela nativa WKWebView (sem browser externo)
 - **Status** — painel de diagnóstico SPA com atualização automática a cada 5s e detecção offline
 - **First-run** — cria `~/RadioFlow/` com subdiretórios de mídia e `playout-engine.yaml` na primeira abertura
 - **Logs** — stdout/stderr do subprocesso redirecionados para `~/RadioFlow/logs/engine.log`
@@ -419,7 +418,6 @@ O app:
 - Aparece na barra de menu (sem ícone no Dock)
 - Inicia a engine automaticamente ao abrir
 - Ícone **verde** (online) / **vermelho** (offline) indica o estado da engine
-- Menu **Player** abre o player HTML em janela nativa WKWebView
 - Menu **Status** abre o painel de diagnóstico no browser
 - Cria `~/RadioFlow/` com estrutura de diretórios e config YAML na primeira execução
 
@@ -608,10 +606,7 @@ A especificação completa do sistema está em [`docs/specs/`](docs/specs/):
 ```
 cmd/playout-engine/
 ├── main.go                  — ponto de entrada; roteamento entre CLI, UI e webview
-├── player_data.go           — embute assets/player.html no binário (build !cli)
-├── player_data_cli.go       — stub vazio para builds headless (build cli)
 ├── assets/
-│   ├── player.html          — interface do operador (single-page app)
 │   └── icon.png             — ícone do .app bundle (1024×1024)
 ├── engine/                  — gerenciamento do processo filho + first-run setup
 ├── output/                  — fábrica do driver de saída de áudio (build tags)
@@ -619,7 +614,7 @@ cmd/playout-engine/
 └── webview/                 — janela nativa WKWebView, zoom macOS, stub CLI
 
 internal/
-├── api/                     — HTTP server, handlers REST, handler do /status e /player
+├── api/                     — HTTP server, handlers REST, handler do /status
 ├── audio/
 │   ├── decoder/             — FFmpegDecoder (subprocesso, PCM float32)
 │   ├── mixer/               — crossfade, gain, duck

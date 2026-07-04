@@ -24,14 +24,9 @@
     "win": {
       "target": "nsis"
     },
-    "extraResources": [
-      {
-        "from": "../playout/cmd/playout-engine/assets/player.html",
-        "to": "player.html"
-      }
-    ],
     "files": [
-      "main.js"
+      "main.js",
+      "player.html"
     ]
   }
 }

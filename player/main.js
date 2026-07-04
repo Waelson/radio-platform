@@ -12,13 +12,7 @@ function createWindow() {
     },
   })
 
-  // In production: player.html is bundled as an extra resource.
-  // In development: reference the file directly from the playout project.
-  const htmlPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'player.html')
-    : path.join(__dirname, '..', 'playout', 'cmd', 'playout-engine', 'assets', 'player.html')
-
-  win.loadFile(htmlPath)
+  win.loadFile(path.join(__dirname, 'player.html'))
 }
 
 app.whenReady().then(() => {

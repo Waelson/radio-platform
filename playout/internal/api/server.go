@@ -29,7 +29,6 @@ type Config struct {
 	EngineID       string
 	Version        string
 	StartTime      time.Time // used by the /status SPA and /v1/info
-	PlayerHTML     []byte    // embedded player-v5.html; served at GET /player when non-empty
 }
 
 // Server wraps an http.Server and owns the routing for the Engine's REST API.
@@ -83,9 +82,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/build", handlers.Build(s.cfg.Version))
 	mux.HandleFunc("GET /v1/info", handlers.Info(s.cfg.EngineID, s.cfg.Version, s.cfg.StartTime))
 	mux.HandleFunc("GET /status", handlers.StatusHTML(s.cfg.Port, s.cfg.Version, s.cfg.StartTime, s.stateMgr))
-	if len(s.cfg.PlayerHTML) > 0 {
-		mux.HandleFunc("GET /player", handlers.PlayerHTML(s.cfg.PlayerHTML))
-	}
 
 	// Queue
 	if s.queueMgr != nil {
