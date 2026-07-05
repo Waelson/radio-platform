@@ -3035,7 +3035,7 @@ function setConn(ok) {
 function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen    = () => { setConn(true); };
-  ws.onclose   = () => { setConn(false); setTimeout(connect, 2000); };
+  ws.onclose   = () => { setConn(false); _enginePlaying = false; _assistWaiting = false; setIdle(); updateButtons(''); setTimeout(connect, 2000); };
   ws.onerror   = () => ws.close();
   ws.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)); } catch(err) { console.warn(err); } };
 }
