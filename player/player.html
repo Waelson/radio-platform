@@ -2205,7 +2205,13 @@ function renderQueue() {
   const btnClear = document.getElementById('btnClearQueue');
   if (btnClear) btnClear.disabled = !hasPendingItems;
 
-  const totalMs = queueItems.reduce((sum, i) => sum + ((i && i.duration_ms) || 0), 0);
+  const totalMs = queueItems.reduce((sum, i) => {
+    if (!i) return sum;
+    const st = (i.status || '').toUpperCase();
+    if (st === 'PLAYED' || st === 'SKIPPED' || st === 'FAILED' || st === 'MISSED') return sum;
+    if ((st === 'PLAYING' || st === 'PAUSED') && _lastRemainingMs > 0) return sum + _lastRemainingMs;
+    return sum + (i.duration_ms || 0);
+  }, 0);
   const durEl = document.getElementById('queueDuration');
   durEl.textContent = totalMs > 0 ? '⏱ ' + msToDuration(totalMs) : '';
 
@@ -2831,6 +2837,7 @@ function msToTime2(ms) {
 }
 
 let npDurationMS = 0;
+let _lastRemainingMs = 0;
 
 function onNowPlaying(p) {
   if (!p || !p.title) { setIdle(); return; }
@@ -2873,6 +2880,16 @@ function onProgress(p) {
     npDurationMS = (p.position_ms || 0) + (p.remaining_ms || 0);
     document.getElementById('npTotal').textContent = msToTime2(npDurationMS);
   }
+  _lastRemainingMs = p.remaining_ms || 0;
+  // Dynamic queue total: remaining of current item + sum of pending items
+  const pendingMs = queueItems.reduce((sum, i) => {
+    const st = (i.status || '').toUpperCase();
+    if (st === 'PLAYING' || st === 'PLAYED' || st === 'SKIPPED' || st === 'FAILED' || st === 'MISSED') return sum;
+    return sum + (i.duration_ms || 0);
+  }, 0);
+  const dynTotal = Math.max(0, p.remaining_ms || 0) + pendingMs;
+  const durEl = document.getElementById('queueDuration');
+  if (durEl) durEl.textContent = dynTotal > 0 ? '⏱ ' + msToDuration(dynTotal) : '';
 }
 
 function syncPauseToggle(st) {
@@ -2906,6 +2923,7 @@ function onStateChange(p) {
   const prev = engineState;
   engineState = st;
   if (mo) engineMode = mo;
+  if (st === 'IDLE' || st === 'STOPPING') _lastRemainingMs = 0;
   if (st === 'IDLE') { _enginePlaying = false; _assistWaiting = false; }
   if (st === 'IDLE' && _inAssist) _assistWaiting = true; // IDLE+ASSIST: operador ainda precisa pressionar PLAY
   setStateBadge(st, engineMode);
@@ -3040,7 +3058,7 @@ function setConn(ok) {
 function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen    = () => { setConn(true); };
-  ws.onclose   = () => { setConn(false); _enginePlaying = false; _assistWaiting = false; setIdle(); updateButtons(''); setTimeout(connect, 2000); };
+  ws.onclose   = () => { setConn(false); _enginePlaying = false; _assistWaiting = false; _lastRemainingMs = 0; setIdle(); updateButtons(''); setTimeout(connect, 2000); };
   ws.onerror   = () => ws.close();
   ws.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)); } catch(err) { console.warn(err); } };
 }
