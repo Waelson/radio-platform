@@ -2880,16 +2880,18 @@ function onProgress(p) {
     npDurationMS = (p.position_ms || 0) + (p.remaining_ms || 0);
     document.getElementById('npTotal').textContent = msToTime2(npDurationMS);
   }
-  _lastRemainingMs = p.remaining_ms || 0;
-  // Dynamic queue total: remaining of current item + sum of pending items
-  const pendingMs = queueItems.reduce((sum, i) => {
-    const st = (i.status || '').toUpperCase();
-    if (st === 'PLAYING' || st === 'PLAYED' || st === 'SKIPPED' || st === 'FAILED' || st === 'MISSED') return sum;
-    return sum + (i.duration_ms || 0);
-  }, 0);
-  const dynTotal = Math.max(0, p.remaining_ms || 0) + pendingMs;
-  const durEl = document.getElementById('queueDuration');
-  if (durEl) durEl.textContent = dynTotal > 0 ? '⏱ ' + msToDuration(dynTotal) : '';
+  // Only update dynamic queue total when engine is actively playing
+  if (engineState === 'PLAYING' || engineState === 'ASSIST') {
+    _lastRemainingMs = p.remaining_ms || 0;
+    const pendingMs = queueItems.reduce((sum, i) => {
+      const st = (i.status || '').toUpperCase();
+      if (st === 'PLAYING' || st === 'PLAYED' || st === 'SKIPPED' || st === 'FAILED' || st === 'MISSED') return sum;
+      return sum + (i.duration_ms || 0);
+    }, 0);
+    const dynTotal = Math.max(0, _lastRemainingMs) + pendingMs;
+    const durEl = document.getElementById('queueDuration');
+    if (durEl) durEl.textContent = dynTotal > 0 ? '⏱ ' + msToDuration(dynTotal) : '';
+  }
 }
 
 function syncPauseToggle(st) {
