@@ -1,5 +1,5 @@
 {
-  "name": "radio-player",
+  "name": "radio-flow",
   "version": "0.1.0",
   "description": "Radio Playout Player",
   "main": "main.js",
@@ -12,8 +12,8 @@
     "electron-builder": "^25.0.0"
   },
   "build": {
-    "appId": "com.waelson.radio-player",
-    "productName": "Player",
+    "appId": "com.radioautomation.radio-flow",
+    "productName": "RadioFlow",
     "mac": {
       "category": "public.app-category.music",
       "target": "dmg",
