@@ -4,6 +4,9 @@ package apptray
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	getsystray "github.com/getlantern/systray"
@@ -11,6 +14,9 @@ import (
 	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/engine"
 	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 )
+
+// eng is package-level so onSystrayExit can access it.
+var eng *engine.EngineProc
 
 const defaultEnginePort = 8080
 
@@ -36,13 +42,22 @@ func onSystrayReady() {
 	mStop.Disable()
 	mRestart.Disable()
 
-	eng := engine.NewEngineProc(defaultEnginePort)
+	eng = engine.NewEngineProc(defaultEnginePort)
 
 	configPath, firstRunErr := engine.EnsureFirstRun()
 	var startArgs []string
 	if firstRunErr == nil && configPath != "" {
 		startArgs = []string{"--config=" + configPath}
 	}
+
+	// Stop engine on SIGTERM or SIGINT (e.g. Activity Monitor "Quit", kill command).
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+		<-sigCh
+		_ = eng.Stop()
+		getsystray.Quit()
+	}()
 
 	go func() {
 		if err := eng.Start(startArgs); err != nil {
@@ -102,4 +117,10 @@ func onSystrayReady() {
 	}()
 }
 
-func onSystrayExit() {}
+// onSystrayExit is called by the systray library when the process is exiting
+// for any reason. It ensures the engine child process is always stopped.
+func onSystrayExit() {
+	if eng != nil {
+		_ = eng.Stop()
+	}
+}

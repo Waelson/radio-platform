@@ -109,6 +109,26 @@ func run(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Parent watchdog: if the systray process dies (even via SIGKILL), this
+	// goroutine detects the PPID change and triggers a graceful shutdown so
+	// ffmpeg subprocesses are also cleaned up.
+	go func() {
+		ppid := os.Getppid()
+		t := time.NewTicker(2 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				if os.Getppid() != ppid {
+					stop()
+					return
+				}
+			}
+		}
+	}()
+
 	log.Info("engine starting",
 		"version", Version,
 		"engine_id", cfg.Engine.ID,
