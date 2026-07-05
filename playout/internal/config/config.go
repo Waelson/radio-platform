@@ -15,6 +15,7 @@ type Config struct {
 	Admin     AdminConfig     `yaml:"admin"`
 	Queue     QueueConfig     `yaml:"queue"`
 	HoraCerta HoraCertaConfig `yaml:"hora_certa"`
+	Preview   PreviewConfig  `yaml:"preview"`
 }
 
 // EngineConfig holds process-level settings.
@@ -139,4 +140,24 @@ type HoraCertaConfig struct {
 	// GainDB is the default volume gain applied to hora certa audio.
 	// 0 = unity gain. Individual HORA_CERTA queue items may override this.
 	GainDB float64 `yaml:"gain_db"`
+}
+
+// PreviewConfig configures the audio preview (cue) player.
+// The preview player is completely isolated from the main playback pipeline —
+// it uses a dedicated output device so the presenter can monitor audio
+// without affecting the on-air signal.
+type PreviewConfig struct {
+	// Enabled controls whether the preview feature is available.
+	// When false, all /v1/preview/* endpoints return 503.
+	Enabled bool `yaml:"enabled"`
+
+	// OutputDriver selects the audio backend for preview playback.
+	// Valid values: "null" | "coreaudio" | "portaudio" | "file"
+	// Defaults to "null" (silent — useful for testing without a second device).
+	OutputDriver string `yaml:"output_driver"`
+
+	// OutputDevice is the platform-specific device identifier for preview output.
+	// Leave empty to use the driver's default device.
+	// Examples: "BlackHole 2ch" (macOS), "hw:1,0" (ALSA/Linux).
+	OutputDevice string `yaml:"output_device"`
 }

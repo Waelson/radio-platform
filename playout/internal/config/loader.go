@@ -99,6 +99,11 @@ func defaults() *Config {
 		Admin: AdminConfig{
 			ShutdownEnabled: false,
 		},
+		Preview: PreviewConfig{
+			Enabled:      false,
+			OutputDriver: "null",
+			OutputDevice: "",
+		},
 	}
 }
 
@@ -169,6 +174,15 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("PLAYOUT_PANIC_BED_PATH"); v != "" {
 		cfg.Panic.BedPath = v
+	}
+	if v := os.Getenv("RADIOCORE_PREVIEW_ENABLED"); v != "" {
+		cfg.Preview.Enabled = v == "true" || v == "1"
+	}
+	if v := os.Getenv("RADIOCORE_PREVIEW_OUTPUT_DRIVER"); v != "" {
+		cfg.Preview.OutputDriver = v
+	}
+	if v := os.Getenv("RADIOCORE_PREVIEW_OUTPUT_DEVICE"); v != "" {
+		cfg.Preview.OutputDevice = v
 	}
 }
 

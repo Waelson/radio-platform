@@ -230,3 +230,23 @@ hora_certa:
   # Ganho padrão em dB aplicado ao áudio de hora certa (0 = unity gain).
   # Itens individuais na fila podem sobrescrever este valor via gain_db.
   gain_db: 0.0
+
+# ---------------------------------------------------------------------------
+# Preview de Áudio (Cue)
+# ---------------------------------------------------------------------------
+# O preview permite que o locutor ouça um áudio em um dispositivo separado
+# antes de colocá-lo na fila de reprodução, sem interferir no sinal ao ar.
+preview:
+  # Habilita o recurso de preview. Quando false, os endpoints /v1/preview/*
+  # retornam 503 Service Unavailable.
+  enabled: false
+
+  # Driver de saída para o dispositivo de preview.
+  # Valores: "null" (silencioso), "coreaudio" (macOS), "portaudio" (multiplataforma)
+  # Use "null" para testar sem um segundo dispositivo de áudio.
+  output_driver: "null"
+
+  # Identificador do dispositivo de saída para preview.
+  # Vazio = dispositivo padrão do driver selecionado.
+  # Exemplos: "BlackHole 2ch" (macOS virtual), "hw:1,0" (ALSA/Linux)
+  output_device: ""
