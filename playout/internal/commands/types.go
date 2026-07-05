@@ -33,6 +33,13 @@ const (
 	CmdTriggerHotButton CommandType = "TRIGGER_HOT_BUTTON"
 	CmdReset            CommandType = "RESET"
 	CmdShutdown         CommandType = "SHUTDOWN"
+
+	// Preview (cue) commands — isolated from the main playback pipeline.
+	CmdPreviewPlay   CommandType = "PREVIEW_PLAY"
+	CmdPreviewPause  CommandType = "PREVIEW_PAUSE"
+	CmdPreviewResume CommandType = "PREVIEW_RESUME"
+	CmdPreviewStop   CommandType = "PREVIEW_STOP"
+	CmdPreviewSeek   CommandType = "PREVIEW_SEEK"
 )
 
 // Command is the internal envelope carried through the Command Bus.
@@ -235,3 +242,22 @@ type QueueItemInput struct {
 	Mandatory  bool
 	Metadata   map[string]string
 }
+
+// --- Preview payloads --------------------------------------------------------
+
+// PreviewPlayPayload is the payload for CmdPreviewPlay.
+type PreviewPlayPayload struct {
+	// Path is the absolute path to the audio file to preview.
+	Path string
+	// SeekMS is the playback start position in milliseconds.
+	// Zero means start from the beginning.
+	SeekMS int64
+}
+
+// PreviewSeekPayload is the payload for CmdPreviewSeek.
+// Seek stops the current preview and restarts it from PositionMS.
+type PreviewSeekPayload struct {
+	PositionMS int64
+}
+
+// CmdPreviewPause, CmdPreviewResume and CmdPreviewStop carry no payload.

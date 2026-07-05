@@ -48,6 +48,14 @@ const (
 	EvtAssistEntered EventType = "AssistEntered"
 	EvtAssistExited  EventType = "AssistExited"
 	EvtAssistWaiting EventType = "AssistWaiting"
+
+	// Preview (cue) events — isolated from the main playback pipeline.
+	EvtPreviewStarted  EventType = "PreviewStarted"
+	EvtPreviewPaused   EventType = "PreviewPaused"
+	EvtPreviewResumed  EventType = "PreviewResumed"
+	EvtPreviewStopped  EventType = "PreviewStopped"
+	EvtPreviewProgress EventType = "PreviewProgress"
+	EvtPreviewSeeked   EventType = "PreviewSeeked"
 )
 
 // Priority classifies events for backpressure decisions in the WebSocket hub.
@@ -328,4 +336,45 @@ type AssistWaitingPayload struct {
 	NextTitle string `json:"next_title,omitempty"`
 	NextType  string `json:"next_type,omitempty"`
 	QueueSize int    `json:"queue_size"`
+}
+
+// --- Preview event payloads --------------------------------------------------
+
+// PreviewStartedPayload is published when a preview begins playback.
+type PreviewStartedPayload struct {
+	Path       string `json:"path"`
+	DurationMS int64  `json:"duration_ms"`
+	SeekMS     int64  `json:"seek_ms"`
+}
+
+// PreviewPausedPayload is published when a preview is paused.
+type PreviewPausedPayload struct {
+	PositionMS int64 `json:"position_ms"`
+	DurationMS int64 `json:"duration_ms"`
+}
+
+// PreviewResumedPayload is published when a paused preview resumes.
+type PreviewResumedPayload struct {
+	PositionMS int64 `json:"position_ms"`
+	DurationMS int64 `json:"duration_ms"`
+}
+
+// PreviewStoppedPayload is published when a preview stops for any reason.
+// Reason values: "stop" (explicit), "seek" (restarting at new position),
+// "end" (reached end of file), "error" (decode/output failure).
+type PreviewStoppedPayload struct {
+	Reason     string `json:"reason"`
+	PositionMS int64  `json:"position_ms"`
+}
+
+// PreviewProgressPayload is published periodically (~100ms) during playback.
+type PreviewProgressPayload struct {
+	PositionMS int64 `json:"position_ms"`
+	DurationMS int64 `json:"duration_ms"`
+}
+
+// PreviewSeekedPayload is published after a seek completes and playback restarts.
+type PreviewSeekedPayload struct {
+	PositionMS int64 `json:"position_ms"`
+	DurationMS int64 `json:"duration_ms"`
 }
