@@ -34,15 +34,19 @@ dist-mac: build-coreaudio
 	@cp radiocore "$(APP_BUNDLE)/Contents/MacOS/radiocore"
 	@# Info.plist (substitui {{VERSION}})
 	@sed "s/{{VERSION}}/$(VERSION)/g" "$(PLIST_TMPL)" > "$(APP_BUNDLE)/Contents/Info.plist"
-	@# Ícone .icns (requer sips + iconutil — nativo macOS)
+	@# Ícone .icns — resolução completa (requer sips + iconutil — nativo macOS)
 	@rm -rf /tmp/AppIcon.iconset
 	@mkdir /tmp/AppIcon.iconset
-	@sips -z 16  16  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_16x16.png      2>/dev/null
-	@sips -z 32  32  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_16x16@2x.png   2>/dev/null
-	@sips -z 32  32  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_32x32.png      2>/dev/null
-	@sips -z 64  64  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_32x32@2x.png   2>/dev/null
-	@sips -z 64  64  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_128x128.png    2>/dev/null
-	@sips -z 64  64  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_128x128@2x.png 2>/dev/null
+	@sips -z 16   16   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_16x16.png       2>/dev/null
+	@sips -z 32   32   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_16x16@2x.png    2>/dev/null
+	@sips -z 32   32   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_32x32.png       2>/dev/null
+	@sips -z 64   64   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_32x32@2x.png    2>/dev/null
+	@sips -z 128  128  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_128x128.png     2>/dev/null
+	@sips -z 256  256  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_128x128@2x.png  2>/dev/null
+	@sips -z 256  256  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_256x256.png     2>/dev/null
+	@sips -z 512  512  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_256x256@2x.png  2>/dev/null
+	@sips -z 512  512  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_512x512.png     2>/dev/null
+	@sips -z 1024 1024 "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_512x512@2x.png  2>/dev/null
 	@iconutil -c icns /tmp/AppIcon.iconset -o "$(APP_BUNDLE)/Contents/Resources/AppIcon.icns"
 	@rm -rf /tmp/AppIcon.iconset
 	@echo "✓ Bundle pronto: $(APP_BUNDLE)"
