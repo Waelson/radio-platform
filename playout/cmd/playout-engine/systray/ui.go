@@ -28,7 +28,7 @@ func RunSystray() {
 
 func onSystrayReady() {
 	getsystray.SetIcon(iconFailure)
-	getsystray.SetTitle("RadioCore")
+	getsystray.SetTitle("")
 	getsystray.SetTooltip("RadioCore — Parado")
 
 	mStart := getsystray.AddMenuItem("▶  Iniciar         ", "Inicia a engine de áudio")
