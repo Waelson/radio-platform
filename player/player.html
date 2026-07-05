@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Player — Radio Automation</title>
+<title>RadioFlow Automation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -426,7 +426,7 @@ canvas.vu-canvas { display: block; width: 32px; }
 }
 .np5-remaining-value {
   font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 34px;
+  font-size: 27px;
   font-weight: 700;
   color: var(--cyan);
   letter-spacing: 1px;
@@ -565,8 +565,8 @@ canvas.vu-canvas { display: block; width: 32px; }
 .btn-stop:hover:not(:disabled)    { background: #2a1200; }
 .btn-skip    { background: #001a33; color: var(--blue);   border-color: #003366; }
 .btn-skip:hover:not(:disabled)    { background: #002244; }
-.btn-panic   { background: #2a0000; color: #ff6666;    border-color: #550000; }
-.btn-panic:hover:not(:disabled)   { background: #3a0000; }
+.btn-panic   { background: #3d0000; color: #ff3b30;    border-color: #cc0000; box-shadow: 0 0 10px rgba(255,32,32,.30), inset 0 1px 0 rgba(255,80,80,.15); }
+.btn-panic:hover:not(:disabled)   { background: #550000; border-color: #ff2200; box-shadow: 0 0 18px rgba(255,32,32,.50); }
 .btn-exit-panic { background: #002a11; color: var(--cyan); border-color: #245bff; }
 .btn-exit-panic:hover:not(:disabled) { background: #003a18; }
 .btn-hotbuttons { background: #1a2e1a; color: #b8f0b8; border-color: #305a30; }
@@ -1336,17 +1336,18 @@ canvas.vu-canvas {
 
 /* Mantém Panic como ação crítica/vermelha */
 .controls-bar .btn-panic {
-  background: rgba(42,0,0,.95) !important;
-  color: #ff6666 !important;
-  border-color: #550000 !important;
-  box-shadow: none !important;
+  background: #3d0000 !important;
+  color: #ff3b30 !important;
+  border-color: #cc0000 !important;
+  box-shadow: 0 0 10px rgba(255,32,32,.30), inset 0 1px 0 rgba(255,80,80,.15) !important;
+  font-weight: 900 !important;
 }
 
 .controls-bar .btn-panic:hover:not(:disabled) {
-  background: #3a0000 !important;
-  color: #ff8a84 !important;
-  border-color: #880000 !important;
-  box-shadow: 0 0 12px rgba(255,32,32,.16) !important;
+  background: #550000 !important;
+  color: #ff5a52 !important;
+  border-color: #ff2200 !important;
+  box-shadow: 0 0 18px rgba(255,32,32,.50) !important;
 }
 
 </style>
