@@ -23,7 +23,7 @@ var statusPage = []byte(`<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Status da Engine</title>
+  <title>RadioCore — Status</title>
   <style>
     :root {
       --bg: #070807;
@@ -146,7 +146,7 @@ var statusPage = []byte(`<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h1>Status da Engine</h1>
+  <h1>RadioCore — Status</h1>
 
   <div class="hero">
     <div class="hero-cell">

@@ -3,9 +3,9 @@ CMD        := ./cmd/playout-engine
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS    := -ldflags "-X main.Version=$(VERSION)"
 
-APP_NAME   := Playout
+APP_NAME   := RadioCore
 APP_BUNDLE := dist/$(APP_NAME).app
-ICON_SRC   := cmd/playout-engine/assets/icon.png
+ICON_SRC   := icon.png
 PLIST_TMPL := cmd/playout-engine/Info.plist.tmpl
 
 .PHONY: build build-portaudio build-coreaudio dist-mac test test-race vet clean run run-portaudio help
@@ -20,7 +20,7 @@ build-portaudio:
 
 ## build-coreaudio: compile with CoreAudio (macOS only)
 build-coreaudio:
-	go build -tags coreaudio $(LDFLAGS) -o playout-engine $(CMD)
+	go build -tags coreaudio $(LDFLAGS) -o radiocore $(CMD)
 
 ## dist-mac: build macOS .app bundle in dist/
 ## O binário é o CFBundleExecutable direto (sem shell script wrapper),
@@ -31,7 +31,7 @@ dist-mac: build-coreaudio
 	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
 	@mkdir -p "$(APP_BUNDLE)/Contents/Resources"
 	@# Binário — é o CFBundleExecutable direto
-	@cp playout-engine "$(APP_BUNDLE)/Contents/MacOS/playout-engine"
+	@cp radiocore "$(APP_BUNDLE)/Contents/MacOS/radiocore"
 	@# Info.plist (substitui {{VERSION}})
 	@sed "s/{{VERSION}}/$(VERSION)/g" "$(PLIST_TMPL)" > "$(APP_BUNDLE)/Contents/Info.plist"
 	@# Ícone .icns (requer sips + iconutil — nativo macOS)

@@ -28,8 +28,8 @@ func RunSystray() {
 
 func onSystrayReady() {
 	getsystray.SetIcon(dotRed)
-	getsystray.SetTitle("Playout")
-	getsystray.SetTooltip("Playout Engine — Parado")
+	getsystray.SetTitle("RadioCore")
+	getsystray.SetTooltip("RadioCore — Parado")
 
 	mStart := getsystray.AddMenuItem("▶  Iniciar         ", "Inicia a engine de áudio")
 	mStop := getsystray.AddMenuItem("■  Parar       ", "Para a engine de áudio")
@@ -62,7 +62,7 @@ func onSystrayReady() {
 
 	go func() {
 		if err := eng.Start(startArgs); err != nil {
-			getsystray.SetTooltip("Playout Engine — ERRO ao iniciar: " + err.Error())
+			getsystray.SetTooltip("RadioCore — ERRO ao iniciar: " + err.Error())
 		}
 
 		ticker := time.NewTicker(5 * time.Second)
@@ -71,13 +71,13 @@ func onSystrayReady() {
 		updateUI := func() {
 			if eng.Poll() {
 				getsystray.SetIcon(dotGreen)
-				getsystray.SetTooltip(fmt.Sprintf("Playout Engine — RODANDO %s (PID %d)", eng.Uptime(), eng.Pid()))
+				getsystray.SetTooltip(fmt.Sprintf("RadioCore — RODANDO %s (PID %d)", eng.Uptime(), eng.Pid()))
 				mStart.Disable()
 				mStop.Enable()
 				mRestart.Enable()
 			} else {
 				getsystray.SetIcon(dotRed)
-				getsystray.SetTooltip("Playout Engine — Parado")
+				getsystray.SetTooltip("RadioCore — Parado")
 				mStart.Enable()
 				mStop.Disable()
 				mRestart.Disable()
@@ -107,7 +107,7 @@ func onSystrayReady() {
 				updateUI()
 
 			case <-mStatus.ClickedCh:
-				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort), "Playout — Status")
+				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort), "RadioCore — Status")
 
 			case <-mQuit.ClickedCh:
 				webview.KillAll()
