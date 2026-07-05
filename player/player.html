@@ -1057,8 +1057,8 @@ tr.dnd-drop-zone.dnd-over td {
 
 /* ─── Tema azul/roxo baseado no logo ─────────────────────────── */
 .topbar-logo {
-  color: var(--cyan);
-  text-shadow: 0 0 10px rgba(32,230,255,.22);
+  display: flex;
+  align-items: center;
 }
 
 .topbar-clock {
@@ -1394,8 +1394,9 @@ canvas.vu-canvas {
 
   <!-- ─── Top Bar ─────────────────────────────────────── -->
   <div class="topbar">
-    <div class="topbar-logo">🎙 RADIO PLAYOUT ENGINE</div>
-    <span style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0a0a0a;background:var(--yellow);padding:2px 8px;border-radius:3px;">DEMO</span>
+    <div class="topbar-logo"><img src="logo.svg" alt="Logo" height="38"></div>
+    <img src="radio-flow.png" alt="RadioFlow" style="height:36px;width:auto;">
+
     <div class="topbar-sep"></div>
     <div class="topbar-item">
       <span class="topbar-label">Engine</span>
@@ -1903,11 +1904,22 @@ const DB_MAX  = 3;
 const DB_RANGE = DB_MAX - DB_MIN;
 
 function segColor(db, lit) {
-  if (!lit) return '#0d1f13';
-  if (db >= -3)  return '#ff2020';
-  if (db >= -6)  return '#ff6600';
-  if (db >= -18) return '#ffdd00';
-  return '#20e6ff';
+  if (!lit) return '#0d0d1a';
+  const t = Math.max(0, Math.min(1, (db - DB_MIN) / DB_RANGE));
+  // Same 4-stop gradient as LUFS bar: cyan → blue → purple → purple-2
+  const stops = [
+    [0x20, 0xe6, 0xff],
+    [0x2f, 0x7b, 0xff],
+    [0x7a, 0x4d, 0xff],
+    [0x9b, 0x5c, 0xff],
+  ];
+  const pos = t * (stops.length - 1);
+  const lo = Math.floor(pos), hi = Math.min(stops.length - 1, lo + 1);
+  const f = pos - lo;
+  const r = Math.round(stops[lo][0] + (stops[hi][0] - stops[lo][0]) * f);
+  const g = Math.round(stops[lo][1] + (stops[hi][1] - stops[lo][1]) * f);
+  const b = Math.round(stops[lo][2] + (stops[hi][2] - stops[lo][2]) * f);
+  return `rgb(${r},${g},${b})`;
 }
 function dbToSeg(db) {
   return Math.round(((Math.max(DB_MIN, Math.min(DB_MAX, db)) - DB_MIN) / DB_RANGE) * (SEGS - 1));
