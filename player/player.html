@@ -2941,7 +2941,8 @@ function onSnapshot(p) {
   const engineId = p.EngineID || p.engine_id;
   if (engineId) document.getElementById('tEngineId').textContent = engineId;
   engineState = p.State || p.state || '';
-  setStateBadge(engineState, p.Mode || p.mode);
+  engineMode  = p.Mode || p.mode || engineMode;
+  setStateBadge(engineState, engineMode);
   updateButtons(engineState);
   syncPauseToggle(engineState);
   syncPanicToggle(engineState);
