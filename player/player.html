@@ -911,8 +911,10 @@ canvas.vu-canvas { display: block; width: 32px; }
 .assist-banner-next {
   font-size: 13px; color: var(--text-dim); margin-top: 3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase;
 }
 .assist-banner-next strong { color: var(--text-hi); }
+.assist-banner-next .assist-type-tag { color: var(--purple); }
 
 .assist-actions {
   display: none; flex-shrink: 0; align-items: center; gap: 8px;
@@ -2265,7 +2267,7 @@ function renderQueue() {
     if (nextEl) {
       if (nextItem) {
         const typeTag = nextItem.type ? ` <span style="color:rgba(255,119,0,0.7)">[${escHtml(nextItem.type)}]</span>` : '';
-        nextEl.innerHTML = `A seguir: <strong>${escHtml(nextItem.title || '—')}</strong>${typeTag}`;
+        nextEl.innerHTML = `A seguir: <strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag"> ${typeTag}</span>` : ''}`;
       } else {
         nextEl.textContent = 'Fila vazia';
       }
@@ -2554,7 +2556,7 @@ function enterAssistUI() {
     const nextEl   = document.getElementById('assistBannerNext');
     if (nextItem) {
       const typeTag = nextItem.type ? ` <span style="color:rgba(255,119,0,0.7)">[${escHtml(nextItem.type)}]</span>` : '';
-      nextEl.innerHTML = `A seguir: <strong>${escHtml(nextItem.title || '—')}</strong>${typeTag}`;
+      nextEl.innerHTML = `A seguir: <strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag"> ${typeTag}</span>` : ''}`;
     } else {
       nextEl.textContent = 'Fila vazia';
     }
@@ -2588,8 +2590,8 @@ function onAssistWaiting(p) {
   if (titleEl) titleEl.textContent = 'FILA PAUSADA — PRESSIONE PLAY PARA CONTINUAR';
   banner.classList.add('visible');
   if (p && p.next_title) {
-    const typeTag = p.next_type ? ` <span style="color:rgba(255,119,0,0.7)">[${escHtml(p.next_type)}]</span>` : '';
-    nextEl.innerHTML = `A seguir: <strong>${escHtml(p.next_title)}</strong>${typeTag}`;
+    const typeTag = p.next_type ? `[${escHtml(p.next_type)}]` : '';
+    nextEl.innerHTML = `A seguir: <strong>${escHtml(p.next_title)}</strong>${typeTag ? ` <span class="assist-type-tag">${typeTag}</span>` : ''}`;
   } else {
     nextEl.textContent = 'Fila vazia';
   }
