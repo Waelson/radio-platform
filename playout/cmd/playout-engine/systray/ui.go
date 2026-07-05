@@ -27,7 +27,7 @@ func RunSystray() {
 }
 
 func onSystrayReady() {
-	getsystray.SetIcon(dotRed)
+	getsystray.SetIcon(iconFailure)
 	getsystray.SetTitle("RadioCore")
 	getsystray.SetTooltip("RadioCore — Parado")
 
@@ -70,13 +70,13 @@ func onSystrayReady() {
 
 		updateUI := func() {
 			if eng.Poll() {
-				getsystray.SetIcon(dotGreen)
+				getsystray.SetIcon(iconSuccess)
 				getsystray.SetTooltip(fmt.Sprintf("RadioCore — RODANDO %s (PID %d)", eng.Uptime(), eng.Pid()))
 				mStart.Disable()
 				mStop.Enable()
 				mRestart.Enable()
 			} else {
-				getsystray.SetIcon(dotRed)
+				getsystray.SetIcon(iconFailure)
 				getsystray.SetTooltip("RadioCore — Parado")
 				mStart.Enable()
 				mStop.Disable()

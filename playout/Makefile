@@ -8,7 +8,7 @@ APP_BUNDLE := dist/$(APP_NAME).app
 ICON_SRC   := icon.png
 PLIST_TMPL := cmd/playout-engine/Info.plist.tmpl
 
-.PHONY: build build-portaudio build-coreaudio dist-mac test test-race vet clean run run-portaudio help
+.PHONY: build build-portaudio build-coreaudio dist-mac sync-icons test test-race vet clean run run-portaudio help
 
 ## build: compile without PortAudio (pure Go, no CGO)
 build:
@@ -25,7 +25,7 @@ build-coreaudio:
 ## dist-mac: build macOS .app bundle in dist/
 ## O binário é o CFBundleExecutable direto (sem shell script wrapper),
 ## necessário para que NSApplication/systray inicialize corretamente.
-dist-mac: build-coreaudio
+dist-mac: sync-icons build-coreaudio
 	@echo "→ Criando bundle: $(APP_BUNDLE)"
 	@rm -rf "$(APP_BUNDLE)"
 	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
@@ -51,6 +51,11 @@ dist-mac: build-coreaudio
 	@rm -rf /tmp/AppIcon.iconset
 	@echo "✓ Bundle pronto: $(APP_BUNDLE)"
 	@echo "  Arraste para /Applications ou clique 2x para testar."
+
+## sync-icons: copia icon-success.png e icon-failure.png da raiz para o package systray
+sync-icons:
+	@cp icon-success.png cmd/playout-engine/systray/icon-success.png
+	@cp icon-failure.png cmd/playout-engine/systray/icon-failure.png
 
 ## test: run all unit tests (no CGO required)
 test:
