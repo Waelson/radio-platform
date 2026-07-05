@@ -25,6 +25,7 @@
     "win": {
       "target": "nsis"
     },
+    "asar": false,
     "files": [
       "main.js",
       "player.html",

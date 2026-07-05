@@ -78,9 +78,11 @@ html, body {
   transform: translateX(-50%);
   padding: 4px 12px;
   font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 27px;
+  font-size: 34px;
+  font-weight: 700;
   color: var(--cyan);
-  letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(32,230,255,.12);
+  letter-spacing: 1px;
   line-height: 1;
   margin-left: 12px;
   flex-shrink: 0;
@@ -704,8 +706,9 @@ canvas.vu-canvas { display: block; width: 32px; }
   justify-content: center;
   gap: 6px;
   padding: 14px 8px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
+  background: linear-gradient(#0a0c14, #0a0c14) padding-box,
+              linear-gradient(135deg, var(--cyan), var(--blue), var(--purple)) border-box;
+  border: 1px solid transparent;
   border-radius: 6px;
   color: var(--text);
   font-family: inherit;
@@ -714,14 +717,15 @@ canvas.vu-canvas { display: block; width: 32px; }
   text-transform: uppercase;
   letter-spacing: 0.8px;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+  transition: box-shadow 120ms ease, transform 80ms ease;
   min-height: 72px;
   user-select: none;
   -webkit-user-select: none;
 }
 .hb-btn:hover {
-  background: var(--bg3);
-  border-color: #3a3a3a;
+  background: linear-gradient(#131828, #131828) padding-box,
+              linear-gradient(135deg, var(--cyan), var(--blue), var(--purple)) border-box;
+  box-shadow: 0 0 14px rgba(122,77,255,.25);
 }
 .hb-btn:active {
   transform: scale(0.96);
@@ -733,34 +737,19 @@ canvas.vu-canvas { display: block; width: 32px; }
 }
 .hb-btn .hb-label {
   font-size: 11px;
-  color: var(--text-dim);
+  color: inherit;
   letter-spacing: 1px;
 }
 
 /* color variants */
-.hb-btn.hb-green  { border-color: #245bff; background: #001a0d; color: var(--cyan); }
-.hb-btn.hb-green:hover  { background: #002a14; border-color: #006633; box-shadow: 0 0 8px #00441188; }
-
-.hb-btn.hb-red    { border-color: #550000; background: #1a0000; color: var(--red); }
-.hb-btn.hb-red:hover    { background: #2a0000; border-color: #880000; box-shadow: 0 0 8px #55000088; }
-
-.hb-btn.hb-yellow { border-color: #443300; background: #1a1100; color: var(--yellow); }
-.hb-btn.hb-yellow:hover { background: #2a1800; border-color: #665500; box-shadow: 0 0 8px #44330088; }
-
-.hb-btn.hb-blue   { border-color: #003366; background: #001122; color: var(--blue); }
-.hb-btn.hb-blue:hover   { background: #001a33; border-color: #004488; box-shadow: 0 0 8px #00336688; }
-
-.hb-btn.hb-purple { border-color: #440066; background: #180022; color: var(--purple); }
-.hb-btn.hb-purple:hover { background: #220033; border-color: #660099; box-shadow: 0 0 8px #44006688; }
-
-.hb-btn.hb-cyan   { border-color: #004444; background: #001a1a; color: var(--cyan); }
-.hb-btn.hb-cyan:hover   { background: #002a2a; border-color: #006666; box-shadow: 0 0 8px #00444488; }
-
-.hb-btn.hb-orange { border-color: #552200; background: #1a0a00; color: var(--orange); }
-.hb-btn.hb-orange:hover { background: #2a1000; border-color: #773300; box-shadow: 0 0 8px #55220088; }
-
-.hb-btn.hb-neutral { border-color: #2a2a2a; background: var(--bg2); color: var(--text); }
-.hb-btn.hb-neutral:hover { background: var(--bg3); border-color: #3a3a3a; }
+.hb-btn.hb-green  { color: var(--cyan); }
+.hb-btn.hb-red    { color: var(--red); }
+.hb-btn.hb-yellow { color: var(--blue); }
+.hb-btn.hb-blue   { color: var(--blue); }
+.hb-btn.hb-purple { color: var(--purple); }
+.hb-btn.hb-cyan   { color: var(--cyan); }
+.hb-btn.hb-orange { color: var(--purple-2); }
+.hb-btn.hb-neutral { color: var(--text); }
 
 /* active/lit state */
 .hb-btn.hb-active {
@@ -1227,33 +1216,6 @@ tr.dnd-drop-zone.dnd-over td {
   color: var(--cyan);
 }
 
-.hb-btn.hb-green,
-.hb-btn.hb-blue,
-.hb-btn.hb-cyan {
-  border-color: rgba(32,230,255,.36);
-  background: rgba(32,230,255,.08);
-  color: var(--cyan);
-}
-
-.hb-btn.hb-green:hover,
-.hb-btn.hb-blue:hover,
-.hb-btn.hb-cyan:hover {
-  background: rgba(32,230,255,.14);
-  border-color: rgba(32,230,255,.62);
-  box-shadow: 0 0 10px rgba(32,230,255,.16);
-}
-
-.hb-btn.hb-purple {
-  border-color: rgba(122,77,255,.48);
-  background: rgba(122,77,255,.10);
-  color: #b99cff;
-}
-
-.hb-btn.hb-purple:hover {
-  background: rgba(122,77,255,.18);
-  border-color: rgba(155,92,255,.70);
-  box-shadow: 0 0 10px rgba(122,77,255,.20);
-}
 
 .q-type.MUSIC {
   background: rgba(47,123,255,.16);
@@ -3125,6 +3087,12 @@ async function hotBtn(el, buttonId) {
 }
 
 function toggleDrawer() {
+  // Close library if open
+  const libDrawer = document.getElementById('libDrawer');
+  if (libDrawer.classList.contains('open')) {
+    libDrawer.classList.remove('open');
+    document.getElementById('btnLibrary').classList.remove('active');
+  }
   const drawer = document.getElementById('hotDrawer');
   const btn    = document.getElementById('btnHotButtons');
   const isOpen = drawer.classList.toggle('open');
@@ -3181,6 +3149,12 @@ let _libBreaks    = [];
 let _libTab       = 'tracks';
 
 function toggleLibrary() {
+  // Close hotbuttons drawer if open
+  const hotDrawer = document.getElementById('hotDrawer');
+  if (hotDrawer.classList.contains('open')) {
+    hotDrawer.classList.remove('open');
+    document.getElementById('btnHotButtons').classList.remove('active');
+  }
   const drawer = document.getElementById('libDrawer');
   const btn    = document.getElementById('btnLibrary');
   const isOpen = drawer.classList.toggle('open');
