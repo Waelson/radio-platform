@@ -50,11 +50,12 @@ func onSystrayReady() {
 		startArgs = []string{"--config=" + configPath}
 	}
 
-	// Stop engine on SIGTERM or SIGINT (e.g. Activity Monitor "Quit", kill command).
+	// Stop engine and webviews on SIGTERM or SIGINT (e.g. Activity Monitor "Quit", kill command).
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 		<-sigCh
+		webview.KillAll()
 		_ = eng.Stop()
 		getsystray.Quit()
 	}()
@@ -109,6 +110,7 @@ func onSystrayReady() {
 				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort), "Playout — Status")
 
 			case <-mQuit.ClickedCh:
+				webview.KillAll()
 				_ = eng.Stop()
 				getsystray.Quit()
 				return
@@ -120,6 +122,7 @@ func onSystrayReady() {
 // onSystrayExit is called by the systray library when the process is exiting
 // for any reason. It ensures the engine child process is always stopped.
 func onSystrayExit() {
+	webview.KillAll()
 	if eng != nil {
 		_ = eng.Stop()
 	}
