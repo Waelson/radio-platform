@@ -500,3 +500,152 @@ func TestHandleClear_Success(t *testing.T) {
 		t.Error("expected empty queue after HandleClear")
 	}
 }
+
+// --- InsertBreakNext ---------------------------------------------------------
+
+func breakInput(title string, spots ...string) commands.BreakItemInput {
+	b := commands.BreakItemInput{Title: title}
+	for _, s := range spots {
+		b.Spots = append(b.Spots, commands.QueueItemInput{
+			Path:       "/audio/" + s + ".mp3",
+			Type:       "spots",
+			Title:      s,
+			DurationMS: 30000,
+		})
+	}
+	return b
+}
+
+func TestInsertBreakNext_Order(t *testing.T) {
+	mgr, _ := newManager(t)
+
+	// Pre-existing items in the queue.
+	mgr.Enqueue([]commands.QueueItemInput{itemInput("Existing")})
+
+	open := commands.QueueItemInput{Path: "/open.mp3", Type: "jingles", Title: "Open"}
+	close_ := commands.QueueItemInput{Path: "/close.mp3", Type: "jingles", Title: "Close"}
+	b := commands.BreakItemInput{
+		Title: "Bloco",
+		Open:  &open,
+		Spots: []commands.QueueItemInput{
+			{Path: "/spot1.mp3", Type: "spots", Title: "Spot1", DurationMS: 30000},
+			{Path: "/spot2.mp3", Type: "spots", Title: "Spot2", DurationMS: 30000},
+		},
+		Close: &close_,
+	}
+
+	cmd := commands.Command{
+		Type:    commands.CmdInsertBreakNext,
+		Payload: commands.InsertBreakNextPayload{Break: b},
+	}
+	if err := mgr.HandleInsertBreakNext(context.Background(), cmd); err != nil {
+		t.Fatalf("HandleInsertBreakNext: %v", err)
+	}
+
+	// Queue must be: Open, Spot1, Spot2, Close, Existing
+	list := mgr.List()
+	if len(list) != 5 {
+		t.Fatalf("expected 5 items, got %d", len(list))
+	}
+	wantOrder := []string{"Open", "Spot1", "Spot2", "Close", "Existing"}
+	for i, title := range wantOrder {
+		if list[i].Title != title {
+			t.Errorf("list[%d].Title = %q, want %q", i, list[i].Title, title)
+		}
+	}
+}
+
+func TestInsertBreakNext_SharedBreakID(t *testing.T) {
+	mgr, _ := newManager(t)
+
+	cmd := commands.Command{
+		Type:    commands.CmdInsertBreakNext,
+		Payload: commands.InsertBreakNextPayload{Break: breakInput("Bloco", "Spot1", "Spot2")},
+	}
+	if err := mgr.HandleInsertBreakNext(context.Background(), cmd); err != nil {
+		t.Fatalf("HandleInsertBreakNext: %v", err)
+	}
+
+	list := mgr.List()
+	if len(list) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(list))
+	}
+	if list[0].BreakID == "" {
+		t.Error("BreakID should not be empty")
+	}
+	if list[0].BreakID != list[1].BreakID {
+		t.Errorf("BreakID mismatch: %q != %q", list[0].BreakID, list[1].BreakID)
+	}
+}
+
+func TestInsertBreakNext_BreakRolesAndSeq(t *testing.T) {
+	mgr, _ := newManager(t)
+
+	open := commands.QueueItemInput{Path: "/open.mp3", Type: "jingles", Title: "Open"}
+	close_ := commands.QueueItemInput{Path: "/close.mp3", Type: "jingles", Title: "Close"}
+	b := commands.BreakItemInput{
+		Title: "Bloco",
+		Open:  &open,
+		Spots: []commands.QueueItemInput{{Path: "/spot.mp3", Type: "spots", Title: "Spot"}},
+		Close: &close_,
+	}
+	cmd := commands.Command{
+		Type:    commands.CmdInsertBreakNext,
+		Payload: commands.InsertBreakNextPayload{Break: b},
+	}
+	if err := mgr.HandleInsertBreakNext(context.Background(), cmd); err != nil {
+		t.Fatalf("HandleInsertBreakNext: %v", err)
+	}
+
+	list := mgr.List()
+	if len(list) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(list))
+	}
+
+	wantRoles := []string{"open", "spot", "close"}
+	for i, role := range wantRoles {
+		if list[i].BreakRole != role {
+			t.Errorf("list[%d].BreakRole = %q, want %q", i, list[i].BreakRole, role)
+		}
+		if list[i].BreakSeq != i+1 {
+			t.Errorf("list[%d].BreakSeq = %d, want %d", i, list[i].BreakSeq, i+1)
+		}
+		if list[i].BreakTotal != 3 {
+			t.Errorf("list[%d].BreakTotal = %d, want 3", i, list[i].BreakTotal)
+		}
+	}
+}
+
+func TestInsertBreakNext_NoSpots_ReturnsError(t *testing.T) {
+	mgr, _ := newManager(t)
+
+	cmd := commands.Command{
+		Type: commands.CmdInsertBreakNext,
+		Payload: commands.InsertBreakNextPayload{
+			Break: commands.BreakItemInput{Title: "Empty"},
+		},
+	}
+	if err := mgr.HandleInsertBreakNext(context.Background(), cmd); err == nil {
+		t.Fatal("expected error for break with no spots")
+	}
+}
+
+func TestInsertBreakNext_FirstSpotGetsCrossfadeWhenNoOpen(t *testing.T) {
+	mgr, _ := newManager(t)
+
+	cmd := commands.Command{
+		Type:    commands.CmdInsertBreakNext,
+		Payload: commands.InsertBreakNextPayload{Break: breakInput("Bloco", "Spot1", "Spot2")},
+	}
+	if err := mgr.HandleInsertBreakNext(context.Background(), cmd); err != nil {
+		t.Fatalf("HandleInsertBreakNext: %v", err)
+	}
+
+	list := mgr.List()
+	if list[0].Transition.Type != queue.TransitionCrossfade {
+		t.Errorf("first spot transition = %q, want CROSSFADE", list[0].Transition.Type)
+	}
+	if list[1].Transition.Type != queue.TransitionCut {
+		t.Errorf("second spot transition = %q, want CUT", list[1].Transition.Type)
+	}
+}

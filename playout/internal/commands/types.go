@@ -22,6 +22,7 @@ const (
 	CmdSkip             CommandType = "SKIP"
 	CmdClearQueue       CommandType = "CLEAR_QUEUE"
 	CmdInsertNext       CommandType = "INSERT_NEXT"
+	CmdInsertBreakNext  CommandType = "INSERT_BREAK_NEXT"
 	CmdInsertAfter      CommandType = "INSERT_AFTER"
 	CmdRemoveItem       CommandType = "REMOVE_ITEM"
 	CmdMoveItem         CommandType = "MOVE_ITEM"
@@ -148,6 +149,14 @@ type EnqueueBreakPayload struct {
 // InsertNextPayload carries the payload for CmdInsertNext.
 type InsertNextPayload struct {
 	Item QueueItemInput
+}
+
+// InsertBreakNextPayload carries the payload for CmdInsertBreakNext.
+// The break is expanded and inserted at the front of the pending queue,
+// exactly like CmdInsertNext but for a full commercial break.
+type InsertBreakNextPayload struct {
+	Break   BreakItemInput
+	BreakID string // optional: pre-computed by caller
 }
 
 // InsertAfterPayload carries the payload for CmdInsertAfter.

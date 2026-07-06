@@ -91,15 +91,8 @@ func (m *Manager) HandleInsertAfter(_ context.Context, cmd commands.Command) err
 }
 
 // HandleEnqueueBreak handles CmdEnqueueBreak: expands a BreakItemInput into
-// flat QueueItems with BreakID context and appends them to the pending queue.
-//
-// The expansion rules are:
-//   - Open (if present) → TransitionCrossfade 3s (music → break crossfade)
-//   - If no Open, the first spot also gets TransitionCrossfade 3s
-//   - All other spots and Close → TransitionCut (hard cut within the block)
-//
-// All sub-items share the same BreakID so the API and the playback engine
-// can detect break boundaries without a separate data structure.
+// flat QueueItems with BreakID context and appends them to the END of the
+// pending queue.
 func (m *Manager) HandleEnqueueBreak(_ context.Context, cmd commands.Command) error {
 	p, ok := cmd.Payload.(commands.EnqueueBreakPayload)
 	if !ok {
@@ -108,28 +101,65 @@ func (m *Manager) HandleEnqueueBreak(_ context.Context, cmd commands.Command) er
 	if len(p.Break.Spots) == 0 {
 		return fmt.Errorf("enqueue-break: spots list is empty")
 	}
-
 	breakID := p.BreakID
 	if breakID == "" {
 		breakID = "brk_" + ulid.Make().String()
 	}
+	subItems := expandBreak(p.Break, breakID)
+	m.appendQueueItems(subItems, "enqueue_break")
+	m.log.Info("enqueued break", "break_id", breakID, "title", p.Break.Title, "sub_items", len(subItems))
+	return nil
+}
 
-	// Compute total sub-item count.
-	total := len(p.Break.Spots)
-	if p.Break.Open != nil {
+// HandleInsertBreakNext handles CmdInsertBreakNext: expands a BreakItemInput
+// and inserts the resulting sub-items at the FRONT of the pending queue,
+// preserving break metadata (BreakID, BreakSeq, BreakTotal, BreakRole).
+// This is the scheduler-facing counterpart of HandleEnqueueBreak.
+func (m *Manager) HandleInsertBreakNext(_ context.Context, cmd commands.Command) error {
+	p, ok := cmd.Payload.(commands.InsertBreakNextPayload)
+	if !ok {
+		return fmt.Errorf("insert-break-next: unexpected payload type %T", cmd.Payload)
+	}
+	if len(p.Break.Spots) == 0 {
+		return fmt.Errorf("insert-break-next: spots list is empty")
+	}
+	breakID := p.BreakID
+	if breakID == "" {
+		breakID = "brk_" + ulid.Make().String()
+	}
+	subItems := expandBreak(p.Break, breakID)
+
+	m.mu.Lock()
+	m.pending = append(subItems, m.pending...)
+	m.publishAndUpdateLocked("insert_break_next")
+	m.persist()
+	m.mu.Unlock()
+
+	m.log.Info("inserted break at front", "break_id", breakID, "title", p.Break.Title, "sub_items", len(subItems))
+	return nil
+}
+
+// expandBreak converts a BreakItemInput into ordered flat QueueItems with
+// break metadata set. The expansion rules are:
+//   - Open (if present) → TransitionCrossfade 3s (music → break crossfade)
+//   - If no Open, the first spot also gets TransitionCrossfade 3s
+//   - All other spots and Close → TransitionCut (hard cut within the block)
+func expandBreak(b commands.BreakItemInput, breakID string) []*QueueItem {
+	total := len(b.Spots)
+	if b.Open != nil {
 		total++
 	}
-	if p.Break.Close != nil {
+	if b.Close != nil {
 		total++
 	}
 
 	subItems := make([]*QueueItem, 0, total)
 	seq := 1
 
-	if p.Break.Open != nil {
-		item := newItem(*p.Break.Open)
+	if b.Open != nil {
+		item := newItem(*b.Open)
 		item.BreakID = breakID
-		item.BreakTitle = p.Break.Title
+		item.BreakTitle = b.Title
 		item.BreakSeq = seq
 		item.BreakTotal = total
 		item.BreakRole = "open"
@@ -138,15 +168,14 @@ func (m *Manager) HandleEnqueueBreak(_ context.Context, cmd commands.Command) er
 		seq++
 	}
 
-	for i, s := range p.Break.Spots {
+	for i, s := range b.Spots {
 		item := newItem(s)
 		item.BreakID = breakID
-		item.BreakTitle = p.Break.Title
+		item.BreakTitle = b.Title
 		item.BreakSeq = seq
 		item.BreakTotal = total
 		item.BreakRole = "spot"
-		// First spot without Open gets crossfade; all others get cut.
-		if i == 0 && p.Break.Open == nil {
+		if i == 0 && b.Open == nil {
 			item.Transition = TransitionSpec{Type: TransitionCrossfade, DurationMS: 3000}
 		} else {
 			item.Transition = TransitionSpec{Type: TransitionCut}
@@ -155,10 +184,10 @@ func (m *Manager) HandleEnqueueBreak(_ context.Context, cmd commands.Command) er
 		seq++
 	}
 
-	if p.Break.Close != nil {
-		item := newItem(*p.Break.Close)
+	if b.Close != nil {
+		item := newItem(*b.Close)
 		item.BreakID = breakID
-		item.BreakTitle = p.Break.Title
+		item.BreakTitle = b.Title
 		item.BreakSeq = seq
 		item.BreakTotal = total
 		item.BreakRole = "close"
@@ -166,9 +195,7 @@ func (m *Manager) HandleEnqueueBreak(_ context.Context, cmd commands.Command) er
 		subItems = append(subItems, item)
 	}
 
-	m.appendQueueItems(subItems, "enqueue_break")
-	m.log.Info("enqueued break", "break_id", breakID, "title", p.Break.Title, "sub_items", len(subItems))
-	return nil
+	return subItems
 }
 
 // HandleClear handles CmdClearQueue: removes all pending items.

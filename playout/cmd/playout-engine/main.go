@@ -250,6 +250,7 @@ func run(args []string) error {
 	disp.Handle(commands.CmdEnqueue, queueMgr.HandleEnqueue)
 	disp.Handle(commands.CmdEnqueueBreak, queueMgr.HandleEnqueueBreak)
 	disp.Handle(commands.CmdInsertNext, queueMgr.HandleInsertNext)
+	disp.Handle(commands.CmdInsertBreakNext, queueMgr.HandleInsertBreakNext)
 	disp.Handle(commands.CmdInsertAfter, queueMgr.HandleInsertAfter)
 	disp.Handle(commands.CmdClearQueue, queueMgr.HandleClear)
 	disp.Handle(commands.CmdRemoveItem, queueMgr.HandleRemoveItem)
