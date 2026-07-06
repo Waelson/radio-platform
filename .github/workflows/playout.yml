@@ -1,0 +1,87 @@
+name: Playout Engine CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'playout/**'
+      - '.github/workflows/playout.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'playout/**'
+      - '.github/workflows/playout.yml'
+
+jobs:
+  # ── Testes unitários (pure Go, sem CGO) ─────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: playout
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: playout/go.mod
+          cache-dependency-path: playout/go.sum
+
+      - name: Run tests
+        run: CGO_ENABLED=0 go test ./...
+
+      - name: Vet
+        run: CGO_ENABLED=0 go vet ./...
+
+  # ── Build Windows / WASAPI ──────────────────────────────────────────────────
+  build-windows-wasapi:
+    name: Build (Windows / WASAPI)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: playout
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: playout/go.mod
+          cache-dependency-path: playout/go.sum
+
+      # MinGW-w64 64-bit (gcc) vem pré-instalado no runner via MSYS2.
+      # Adiciona ao PATH para que CGO encontre o compilador.
+      - name: Add MinGW-w64 to PATH
+        shell: pwsh
+        run: |
+          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Build playout-engine.exe (WASAPI + CLI)
+        shell: pwsh
+        env:
+          CGO_ENABLED: "1"
+          CC: gcc
+          GOARCH: amd64
+        # -tags "wasapi cli":
+        #   wasapi -> ativa o driver WASAPI com IDs estaveis (GUIDs)
+        #   cli    -> modo headless (sem systray/webview), adequado para CI
+        run: |
+          go build `
+            -tags "wasapi cli" `
+            -ldflags "-X main.Version=${{ github.sha }}" `
+            -o playout-engine.exe `
+            ./cmd/playout-engine
+
+      - name: Verify binary size
+        shell: pwsh
+        run: |
+          $item = Get-Item playout-engine.exe
+          Write-Host "Binary: playout-engine.exe ($($item.Length) bytes)"
+          if ($item.Length -eq 0) { exit 1 }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: playout-engine-windows-wasapi-${{ github.sha }}
+          path: playout/playout-engine.exe
+          retention-days: 7
