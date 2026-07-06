@@ -547,6 +547,75 @@ func TestManager_RestoresFromStore(t *testing.T) {
 	}
 }
 
+// --- HORA_CERTA tests --------------------------------------------------------
+
+// TestFireHoraCerta confirms that an entry with item.Type="HORA_CERTA" and
+// empty path is accepted by Add and fires a CmdInsertNext with the correct item.
+func TestFireHoraCerta_Add_AcceptsEmptyPath(t *testing.T) {
+	fs := &fakeState{st: state.StateIdle}
+	m, _ := newTestManager(fs, newFakeClock(time.Now()))
+
+	_, err := m.Add(Entry{
+		Name:        "Hora Certa",
+		Enabled:     true,
+		CronExpr:    "0 * * * *",
+		TriggerMode: TriggerInterrupt,
+		Item: commands.QueueItemInput{
+			Type:  "HORA_CERTA",
+			Title: "Hora Certa",
+			// Path intentionally empty — resolved by the playback manager at play time.
+		},
+	})
+	if err != nil {
+		t.Fatalf("Add HORA_CERTA entry: unexpected error: %v", err)
+	}
+}
+
+// TestFireHoraCerta_Fire_SendsInsertNext confirms that firing a HORA_CERTA entry
+// dispatches CmdInsertNext with type=HORA_CERTA and an empty path.
+func TestFireHoraCerta_Fire_SendsInsertNext(t *testing.T) {
+	fs := &fakeState{st: state.StateIdle}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "hc1",
+		Name:        "Hora Certa",
+		Enabled:     true,
+		TriggerMode: TriggerInterrupt,
+		Item: commands.QueueItemInput{
+			Type:  "HORA_CERTA",
+			Title: "Hora Certa",
+		},
+	})
+
+	if !fired {
+		t.Fatal("expected fired=true")
+	}
+
+	cmds := col.drainAll()
+	// INTERRUPT + IDLE → CmdInsertNext + CmdPlay
+	if len(cmds) != 2 {
+		t.Fatalf("expected 2 commands (InsertNext+Play), got %d", len(cmds))
+	}
+
+	insertCmd := cmds[0]
+	if insertCmd.Type != commands.CmdInsertNext {
+		t.Fatalf("cmds[0] = %s, want CmdInsertNext", insertCmd.Type)
+	}
+
+	payload, ok := insertCmd.Payload.(commands.InsertNextPayload)
+	if !ok {
+		t.Fatalf("payload type = %T, want InsertNextPayload", insertCmd.Payload)
+	}
+	if payload.Item.Type != "HORA_CERTA" {
+		t.Errorf("item.Type = %q, want HORA_CERTA", payload.Item.Type)
+	}
+	if payload.Item.Path != "" {
+		t.Errorf("item.Path = %q, want empty (resolved at play time)", payload.Item.Path)
+	}
+}
+
+
 // --- Timezone and Run tests --------------------------------------------------
 
 func TestNew_InvalidTimezone(t *testing.T) {

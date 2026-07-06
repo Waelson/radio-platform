@@ -248,6 +248,45 @@ POST /v1/schedule
 }
 ```
 
+> `path` **deve ser vazio** — o engine resolve os arquivos de hora e minuto automaticamente no momento do disparo usando `hora_certa.hours_dir` e `hora_certa.minutes_dir`. Informar um path neste tipo de item é ignorado.
+
+---
+
+## Hora Certa
+
+O tipo `HORA_CERTA` tem suporte nativo no scheduler. Quando uma entrada desse tipo dispara, o scheduler envia um `CmdInsertNext` com o item para a fila de playback. O playback manager detecta o tipo `HORA_CERTA` e resolve os arquivos de áudio correspondentes à hora e minuto atuais no momento em que o item é efetivamente tocado.
+
+### Regras
+
+- O campo `item.path` deve estar **vazio** — informar um path é um erro semântico (o engine ignora o path e resolve pela hora atual)
+- O campo `item.type` deve ser exatamente `"HORA_CERTA"` (sensível a maiúsculas)
+- A expressão cron `"0 * * * *"` dispara no início de cada hora — é a configuração recomendada
+- O `trigger_mode` recomendado é `INTERRUPT`, para que o anúncio de hora certa interrompa imediatamente o que estiver tocando
+
+### Fluxo de execução
+
+```
+cron "0 * * * *" dispara
+  → scheduler envia CmdInsertNext {type: "HORA_CERTA"}
+  → dispatcher insere item na frente da fila
+  → playback manager inicia o item
+  → openHoraCerta() resolve hora e minuto atuais
+  → toca HRS{HH}.mp3 + MIN{MM}.mp3 em sequência
+  → se MM=00 e MIN00.mp3 não existir, toca apenas HRS{HH}.mp3
+```
+
+### Pré-requisitos
+
+O bloco `hora_certa` deve estar configurado no YAML:
+
+```yaml
+hora_certa:
+  hours_dir:   "/library/horacerta/horas"
+  minutes_dir: "/library/horacerta/minutos"
+```
+
+Os arquivos devem seguir a convenção de nomes `HRS{HH}.mp3` (ex: `HRS10.mp3`) e `MIN{MM}.mp3` (ex: `MIN30.mp3`).
+
 ---
 
 ## Eventos WebSocket relacionados
