@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"syscall"
 )
 
 // BuildInfo is the response for GET /v1/build.
@@ -25,7 +24,12 @@ func Shutdown() http.HandlerFunc {
 			"message": "shutdown initiated",
 		})
 		// Signal after the response is written.
-		go func() { _ = syscall.Kill(os.Getpid(), syscall.SIGTERM) }()
+		// os.FindProcess + Signal is cross-platform (Unix: SIGINT, Windows: Ctrl+C).
+		go func() {
+			if p, err := os.FindProcess(os.Getpid()); err == nil {
+				_ = p.Signal(os.Interrupt)
+			}
+		}()
 	}
 }
 

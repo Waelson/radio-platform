@@ -28,11 +28,13 @@ jobs:
           go-version-file: playout/go.mod
           cache-dependency-path: playout/go.sum
 
+      # Testa apenas internal/ — os pacotes cmd/ dependem de CGO (systray/webview)
+      # e não contêm lógica de negócio própria que precise de testes isolados.
       - name: Run tests
-        run: CGO_ENABLED=0 go test ./...
+        run: CGO_ENABLED=0 go test ./internal/...
 
       - name: Vet
-        run: CGO_ENABLED=0 go vet ./...
+        run: CGO_ENABLED=0 go vet ./internal/...
 
   # ── Build Windows / WASAPI ──────────────────────────────────────────────────
   build-windows-wasapi:
