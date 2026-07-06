@@ -158,8 +158,9 @@ Endpoints sob o prefixo `/v1` mais rotas de UI:
 |---|---|
 | Health | `GET /v1/health`, `GET /v1/ready`, `GET /v1/status`, `GET /v1/build` |
 | Info | `GET /v1/info` — PID, versão, start_time, IP local |
-| Fila | `GET /v1/queue`, `POST /v1/queue/enqueue`, `POST /v1/queue/insert-next`, `POST /v1/queue/insert-after`, `POST /v1/queue/clear` |
-| Playback | `POST /v1/playback/play`, `POST /v1/playback/pause`, `POST /v1/playback/resume`, `POST /v1/playback/stop`, `POST /v1/playback/skip` |
+| Fila | `GET /v1/queue`, `POST /v1/queue/enqueue`, `POST /v1/queue/enqueue-break`, `POST /v1/queue/insert-next`, `POST /v1/queue/insert-after`, `POST /v1/queue/remove-item`, `POST /v1/queue/move-item`, `POST /v1/queue/reorder-item`, `POST /v1/queue/clear` |
+| Playback | `POST /v1/playback/play`, `POST /v1/playback/pause`, `POST /v1/playback/resume`, `POST /v1/playback/stop`, `POST /v1/playback/skip`, `POST /v1/playback/enter-assist`, `POST /v1/playback/return-auto` |
+| Preview (CUE) | `POST /v1/preview/play`, `POST /v1/preview/pause`, `POST /v1/preview/resume`, `POST /v1/preview/stop`, `POST /v1/preview/seek`, `GET /v1/preview/status` |
 | Panic | `POST /v1/panic/enter`, `POST /v1/panic/exit` |
 | Hot Buttons | `POST /v1/hotbuttons/trigger` |
 | Admin | `POST /v1/admin/shutdown`, `GET /v1/metrics` |
