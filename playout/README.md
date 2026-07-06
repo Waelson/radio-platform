@@ -198,6 +198,15 @@ O driver é selecionável em runtime via `audio.output.driver` no YAML, sem reco
 | `PortAudio` | Igual ao `name` — PortAudio não expõe UID interno | Muda se o dispositivo for renomeado no SO |
 | `Null` / `File` | `"null"` / `"file"` (fixo) | Sempre estável |
 
+O campo `host_api` (omitido nos drivers `null` e `file`) indica a host API subjacente e serve como guia de estabilidade no Linux:
+
+| Host API | Estabilidade do `id` no Linux |
+|---|---|
+| `ALSA` | Razoavelmente estável — hardware cards mantêm o nome |
+| `PulseAudio` / `PipeWire` | Parcial — display name pode mudar |
+| `JACK` | Estável — port names são fixos por natureza |
+| `CoreAudio` | Estável — usa UID interno (macOS) |
+
 ### 14. Decodificador FFmpeg
 
 Decodificação de qualquer formato suportado pelo FFmpeg via subprocesso isolado:

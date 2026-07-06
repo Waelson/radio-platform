@@ -226,10 +226,15 @@ func (o *Output) ListDevices() ([]output.DeviceInfo, error) {
 			continue
 		}
 		isDefault := defaultDev != nil && d.Name == defaultDev.Name
+		hostAPI := ""
+		if d.HostApi != nil {
+			hostAPI = d.HostApi.Name
+		}
 		result = append(result, output.DeviceInfo{
 			ID:                d.Name,
 			Name:              d.Name,
 			Driver:            "portaudio",
+			HostAPI:           hostAPI,
 			IsDefault:         isDefault,
 			MaxOutputChannels: d.MaxOutputChannels,
 			DefaultSampleRate: d.DefaultSampleRate,

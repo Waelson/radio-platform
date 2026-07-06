@@ -315,6 +315,7 @@ func run(args []string) error {
 					ID:                d.ID,
 					Name:              d.Name,
 					Driver:            d.Driver,
+					HostAPI:           d.HostAPI,
 					IsDefault:         d.IsDefault,
 					MaxOutputChannels: d.MaxOutputChannels,
 					DefaultSampleRate: d.DefaultSampleRate,

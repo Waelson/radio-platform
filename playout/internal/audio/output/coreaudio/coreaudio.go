@@ -372,6 +372,7 @@ func (o *Output) ListDevices() ([]output.DeviceInfo, error) {
 			ID:                C.GoString(&e.uid[0]),
 			Name:              C.GoString(&e.name[0]),
 			Driver:            "coreaudio",
+			HostAPI:           "CoreAudio",
 			IsDefault:         e.isDefault != 0,
 			MaxOutputChannels: int(e.maxOutputChannels),
 			DefaultSampleRate: float64(e.defaultSampleRate),

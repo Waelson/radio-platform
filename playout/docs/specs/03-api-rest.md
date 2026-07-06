@@ -131,6 +131,7 @@ Resposta:
       "id":                   "AppleHDAEngineOutput:0,1",
       "name":                 "MacBook Pro Speakers",
       "driver":               "coreaudio",
+      "host_api":             "CoreAudio",
       "is_default":           true,
       "max_output_channels":  2,
       "default_sample_rate":  48000.0
@@ -139,12 +140,32 @@ Resposta:
       "id":                   "BlackHole 2ch",
       "name":                 "BlackHole 2ch",
       "driver":               "coreaudio",
+      "host_api":             "CoreAudio",
       "is_default":           false,
       "max_output_channels":  2,
       "default_sample_rate":  44100.0
     }
   ],
   "count": 2
+}
+```
+
+Exemplo (Linux / PortAudio com ALSA):
+
+```json
+{
+  "devices": [
+    {
+      "id":                   "Built-in Audio Analog Stereo",
+      "name":                 "Built-in Audio Analog Stereo",
+      "driver":               "portaudio",
+      "host_api":             "ALSA",
+      "is_default":           true,
+      "max_output_channels":  2,
+      "default_sample_rate":  48000.0
+    }
+  ],
+  "count": 1
 }
 ```
 
@@ -155,6 +176,7 @@ Resposta:
 | `id` | string | Identificador único (semântica varia por driver — ver abaixo) |
 | `name` | string | Nome legível do dispositivo |
 | `driver` | string | Driver em uso: `coreaudio`, `portaudio`, `null` ou `file` |
+| `host_api` | string | Host API subjacente: `"CoreAudio"`, `"ALSA"`, `"PulseAudio"`, `"JACK"` etc. Omitido se vazio (`null`/`file`). |
 | `is_default` | bool | `true` se for o output padrão do sistema |
 | `max_output_channels` | int | Número máximo de canais de saída suportados |
 | `default_sample_rate` | float | Taxa de amostragem padrão reportada pelo SO |

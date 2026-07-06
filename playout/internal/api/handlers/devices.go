@@ -12,6 +12,7 @@ type AudioDevice struct {
 	ID                string  `json:"id"`
 	Name              string  `json:"name"`
 	Driver            string  `json:"driver"`
+	HostAPI           string  `json:"host_api,omitempty"`
 	IsDefault         bool    `json:"is_default"`
 	MaxOutputChannels int     `json:"max_output_channels"`
 	DefaultSampleRate float64 `json:"default_sample_rate"`

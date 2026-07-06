@@ -94,6 +94,7 @@ type DeviceInfo struct {
     ID                string  // identificador único (semântica varia por driver)
     Name              string  // nome legível (ex: "MacBook Pro Speakers")
     Driver            string  // "coreaudio" | "portaudio" | "null" | "file"
+    HostAPI           string  // "ALSA" | "PulseAudio" | "JACK" | "CoreAudio" | "WASAPI" | ""
     IsDefault         bool    // true se for o output padrão do sistema
     MaxOutputChannels int     // número máximo de canais de saída suportados
     DefaultSampleRate float64 // taxa de amostragem padrão reportada pelo SO
@@ -107,6 +108,19 @@ type DeviceInfo struct {
 | `coreaudio` | `kAudioDevicePropertyDeviceUID` — string opaca, ex: `"AppleHDAEngineOutput:0,1"` | Persiste mesmo se o nome do dispositivo for alterado no SO |
 | `portaudio` | Igual ao `Name` — PortAudio não expõe UID interno | Muda se o dispositivo for renomeado no SO |
 | `null` / `file` | `"null"` / `"file"` (fixo) | Sempre estável |
+
+### Campo `HostAPI` — estabilidade no Linux por host API
+
+O campo `host_api` (exposto na API REST como `host_api`, omitido se vazio) indica qual host API está por trás do dispositivo. No Linux, isso é relevante para avaliar a estabilidade do `id`:
+
+| Host API | Estabilidade do ID | Observação |
+|---|---|---|
+| `ALSA` | Razoavelmente estável | Nome PortAudio = nome ALSA; hardware cards costumam manter o nome |
+| `PulseAudio` | Parcialmente estável | Display name pode mudar; sink name interno não é exposto via PortAudio |
+| `PipeWire` | Parcialmente estável | Semelhante ao PulseAudio — display name exposto |
+| `JACK` | Estável | Port names são estáveis por natureza do protocolo |
+| `CoreAudio` | Estável | Usa UID interno (`kAudioDevicePropertyDeviceUID`) |
+| `""` | N/A | Drivers `null` e `file` (pseudo-dispositivos) |
 
 ### Endpoint REST
 

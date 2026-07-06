@@ -12,6 +12,7 @@ type DeviceInfo struct {
 	ID                string  // identificador único (semântica varia por driver — ver acima)
 	Name              string  // nome legível (ex: "MacBook Pro Speakers")
 	Driver            string  // "coreaudio" | "portaudio" | "null" | "file"
+	HostAPI           string  // "ALSA" | "PulseAudio" | "JACK" | "CoreAudio" | "WASAPI" | ""
 	IsDefault         bool    // true se for o output padrão do sistema
 	MaxOutputChannels int     // número máximo de canais de saída suportados
 	DefaultSampleRate float64 // taxa de amostragem padrão reportada pelo SO
