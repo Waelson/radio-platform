@@ -106,6 +106,7 @@ type DeviceInfo struct {
 | Driver | Valor de `ID` | Estabilidade |
 |---|---|---|
 | `coreaudio` | `kAudioDevicePropertyDeviceUID` — string opaca, ex: `"AppleHDAEngineOutput:0,1"` | Persiste mesmo se o nome do dispositivo for alterado no SO |
+| `wasapi` | GUID de `IMMDevice::GetId()` — ex: `"{0.0.0.00000000}.{1a2b3c4d-...}"` | Persiste mesmo se o dispositivo for renomeado em Sound Settings |
 | `portaudio` | Igual ao `Name` — PortAudio não expõe UID interno | Muda se o dispositivo for renomeado no SO |
 | `null` / `file` | `"null"` / `"file"` (fixo) | Sempre estável |
 
@@ -121,6 +122,30 @@ O campo `host_api` (exposto na API REST como `host_api`, omitido se vazio) indic
 | `JACK` | Estável | Port names são estáveis por natureza do protocolo |
 | `CoreAudio` | Estável | Usa UID interno (`kAudioDevicePropertyDeviceUID`) |
 | `""` | N/A | Drivers `null` e `file` (pseudo-dispositivos) |
+
+### Driver WASAPI (Windows)
+
+O pacote `internal/audio/output/wasapi` implementa `OutputDevice` e `DeviceLister` usando WASAPI shared-mode via CGo + COM.
+
+**Características:**
+- `DeviceInfo.ID` = GUID de `IMMDevice::GetId()` — persiste mesmo após renomear o dispositivo
+- `HostAPI` = `"WASAPI"` em todos os dispositivos listados
+- Renderização float32 com `AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM` — WASAPI realiza conversão de formato automaticamente (Windows 8.1+)
+- Buffer compartilhado de 200 ms; polling de 1 ms para disponibilidade de frames
+- Resolução em cascata em `Open()`: GUID → nome amigável → default do sistema
+
+**Build:** `go build -tags wasapi ./...` (apenas Windows; requer MinGW-w64)
+
+**Dependências C:** `ole32`, `oleaut32`, `uuid` (incluídas em toda instalação Windows)
+
+### Tabela de drivers recomendados por plataforma
+
+| Plataforma | Driver recomendado | Build tag | ID estável? |
+|---|---|---|---|
+| macOS | `coreaudio` | `coreaudio` | Sim — UID (`kAudioDevicePropertyDeviceUID`) |
+| Linux | `portaudio` | `portaudio` | Parcial — depende do host API (ALSA > PulseAudio > PipeWire) |
+| Windows | `wasapi` | `wasapi` | Sim — GUID (`IMMDevice::GetId()`) |
+| Testes / CI | `null` | — | Sempre |
 
 ### Endpoint REST
 

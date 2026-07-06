@@ -1,4 +1,4 @@
-//go:build coreaudio
+//go:build coreaudio && !wasapi
 
 package outfactory
 

@@ -187,6 +187,7 @@ A interface `OutputDevice` desacopla completamente o playback do hardware:
 | `FileOutput` | Gravação PCM/WAV | — | nenhuma |
 | `PortAudio` | Multiplataforma (macOS/Linux/Windows) | `portaudio` | libportaudio |
 | `CoreAudio` | Nativo macOS via AudioQueue | `coreaudio` | nenhuma (frameworks do sistema) |
+| `WASAPI` | Nativo Windows com IDs estáveis | `wasapi` | nenhuma (ole32/oleaut32, sistema) |
 
 O driver é selecionável em runtime via `audio.output.driver` no YAML, sem recompilar o código de playback.
 
@@ -195,6 +196,7 @@ O driver é selecionável em runtime via `audio.output.driver` no YAML, sem reco
 | Driver | Campo `id` | Estabilidade |
 |---|---|---|
 | `CoreAudio` | UID do sistema (`kAudioDevicePropertyDeviceUID`) | Persiste mesmo se o nome do dispositivo mudar |
+| `WASAPI` | GUID de `IMMDevice::GetId()` | Persiste mesmo se o dispositivo for renomeado em Sound Settings |
 | `PortAudio` | Igual ao `name` — PortAudio não expõe UID interno | Muda se o dispositivo for renomeado no SO |
 | `Null` / `File` | `"null"` / `"file"` (fixo) | Sempre estável |
 

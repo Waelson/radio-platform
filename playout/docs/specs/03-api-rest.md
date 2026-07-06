@@ -150,6 +150,25 @@ Resposta:
 }
 ```
 
+Exemplo (Windows / WASAPI):
+
+```json
+{
+  "devices": [
+    {
+      "id":                   "{0.0.0.00000000}.{1a2b3c4d-5e6f-7890-abcd-ef1234567890}",
+      "name":                 "Speakers (Realtek Audio)",
+      "driver":               "wasapi",
+      "host_api":             "WASAPI",
+      "is_default":           true,
+      "max_output_channels":  2,
+      "default_sample_rate":  48000.0
+    }
+  ],
+  "count": 1
+}
+```
+
 Exemplo (Linux / PortAudio com ALSA):
 
 ```json

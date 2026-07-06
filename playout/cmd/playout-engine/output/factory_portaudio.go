@@ -1,4 +1,4 @@
-//go:build portaudio
+//go:build portaudio && !wasapi
 
 package outfactory
 

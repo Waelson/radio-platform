@@ -1,4 +1,4 @@
-//go:build !portaudio && !coreaudio
+//go:build !portaudio && !coreaudio && !wasapi
 
 package outfactory
 
@@ -25,6 +25,11 @@ func NewOutputDevice(cfg *config.Config) (output.OutputDevice, error) {
 	case "coreaudio":
 		return nil, fmt.Errorf(
 			"driver %q requires building with -tags coreaudio (macOS only, CGO required)",
+			cfg.Audio.Output.Driver,
+		)
+	case "wasapi":
+		return nil, fmt.Errorf(
+			"driver %q requires building with -tags wasapi (Windows only, CGO required)",
 			cfg.Audio.Output.Driver,
 		)
 	default:
