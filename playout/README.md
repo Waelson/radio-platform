@@ -624,7 +624,7 @@ cmd/playout-engine/
 ├── assets/
 │   └── icon.png             — ícone do .app bundle (1024×1024)
 ├── engine/                  — gerenciamento do processo filho + first-run setup
-├── output/                  — fábrica do driver de saída de áudio (build tags)
+├── output/                  — fábricas do driver de saída de áudio principal e preview (build tags)
 ├── systray/                 — UI do systray, ícones de status, stub CLI
 └── webview/                 — janela nativa WKWebView, zoom macOS, stub CLI
 
@@ -632,7 +632,6 @@ internal/
 ├── api/                     — HTTP server, handlers REST, handler do /status
 ├── audio/
 │   ├── decoder/             — FFmpegDecoder (subprocesso, PCM float32)
-│   ├── mixer/               — crossfade, gain, duck
 │   └── output/              — interface OutputDevice + NullOutput, FileOutput, CoreAudio, PortAudio
 ├── commands/                — tipos de comandos e command bus
 ├── config/                  — carregamento de config (YAML + env + flags)
@@ -643,7 +642,8 @@ internal/
 ├── logging/                 — logger estruturado (slog)
 ├── metrics/                 — contadores de eventos
 ├── platform/                — instance lock (Unix flock / Windows mutex)
-├── playback/                — loop de reprodução, crossfade, modo panic
+├── playback/                — loop de reprodução, crossfade interno, modo panic
+├── preview/                 — CUE player isolado (state machine, device próprio)
 ├── queue/                   — fila em memória com persistência opcional
 └── state/                   — máquina de estados (IDLE, PLAYING, PAUSED…)
 ```
