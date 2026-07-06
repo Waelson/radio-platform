@@ -20,7 +20,6 @@ No macOS, distribui como **`Playout.app`**: ícone na barra de menu, engine gere
 - [Compilação](#compilação)
 - [Configuração rápida](#configuração-rápida)
 - [Uso básico](#uso-básico)
-- [Scripts utilitários](#scripts-utilitários)
 - [Documentação técnica](#documentação-técnica)
 - [Makefile](#makefile)
 - [Estrutura do projeto](#estrutura-do-projeto)
@@ -539,37 +538,6 @@ curl -X POST http://127.0.0.1:8080/v1/panic/exit
 
 ---
 
-## Scripts utilitários
-
-A pasta `scripts/` contém ferramentas para preparar arquivos de áudio antes de enfileirá-los.
-Consulte [`scripts/scripts.md`](scripts/scripts.md) para documentação completa.
-
-### audio-duration.sh
-
-Retorna a duração de um arquivo em milissegundos — valor necessário para o campo `duration_ms` do enqueue:
-
-```bash
-./scripts/audio-duration.sh /library/track01.mp3
-# 214500
-```
-
-### analyze-cues.sh
-
-Detecta automaticamente `cue_in_ms` e `cue_out_ms` eliminando silêncios no início e fim da faixa:
-
-```bash
-./scripts/analyze-cues.sh /library/track01.mp3 --json
-# {
-#   "file": "/library/track01.mp3",
-#   "duration_ms": 214500,
-#   "cue_in_ms": 1150,
-#   "cue_out_ms": 211300
-# }
-```
-
-Ambos os scripts requerem `ffmpeg` e `ffprobe` instalados e disponíveis no PATH.
-
----
 
 ## Documentação técnica
 
