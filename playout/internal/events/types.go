@@ -389,13 +389,17 @@ type PreviewSeekedPayload struct {
 // --- Scheduler event payloads ------------------------------------------------
 
 // ScheduleEntryFiredPayload is published when a scheduler entry fires successfully.
+// For single-item entries, AssetID and Title are populated.
+// For commercial break entries, BreakTitle and SpotCount are populated instead.
 type ScheduleEntryFiredPayload struct {
 	EntryID     string `json:"entry_id"`
 	EntryName   string `json:"entry_name"`
 	TriggerMode string `json:"trigger_mode"`
-	AssetID     string `json:"asset_id,omitempty"`
-	Title       string `json:"title,omitempty"`
-	OneShot     bool   `json:"one_shot"` // true if the entry is auto-disabled after firing
+	AssetID     string `json:"asset_id,omitempty"`    // single-item entry
+	Title       string `json:"title,omitempty"`       // single-item entry
+	BreakTitle  string `json:"break_title,omitempty"` // commercial break entry
+	SpotCount   int    `json:"spot_count,omitempty"`  // commercial break entry
+	OneShot     bool   `json:"one_shot"`              // true if the entry is auto-disabled after firing
 }
 
 // ScheduleEntryMissedPayload is published when a scheduler entry fires but

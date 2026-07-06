@@ -35,6 +35,7 @@ const (
 
 // Entry represents a single scheduled playback event.
 // Exactly one of CronExpr or FireAt must be set.
+// Exactly one of Item or Break must carry the content to play.
 type Entry struct {
 	// ID is the unique identifier for this entry (ulid-prefixed).
 	ID string `json:"id"`
@@ -52,8 +53,13 @@ type Entry struct {
 	FireAt *time.Time `json:"fire_at,omitempty"`
 
 	// Item is the queue item to insert when the entry fires.
-	Item commands.QueueItemInput `json:"item"`
-	// TriggerMode controls how the item is inserted relative to the current playback.
+	// Mutually exclusive with Break.
+	Item commands.QueueItemInput `json:"item,omitempty"`
+	// Break is the commercial break to insert when the entry fires.
+	// Mutually exclusive with Item. When set, CmdInsertBreakNext is used
+	// instead of CmdInsertNext so the full block is placed at the front.
+	Break *commands.BreakItemInput `json:"break,omitempty"`
+	// TriggerMode controls how the item/break is inserted relative to current playback.
 	TriggerMode TriggerMode `json:"trigger_mode"`
 
 	// CreatedAt is the time the entry was first registered.

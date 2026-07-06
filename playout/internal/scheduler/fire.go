@@ -40,7 +40,7 @@ func (m *Manager) fireEntry(e *Entry) bool {
 
 // fireInterrupt: insert next + hard-cut skip immediately.
 func (m *Manager) fireInterrupt(e *Entry, st state.PlayerState) bool {
-	m.insertNext(e)
+	m.dispatchInsert(e)
 	if st == state.StatePlaying || st == state.StatePaused {
 		m.cmdBus.TrySend(commands.New(commands.CmdSkip, commands.SkipPayload{
 			Reason: "scheduler: INTERRUPT entry " + e.ID,
@@ -57,7 +57,7 @@ func (m *Manager) fireInterrupt(e *Entry, st state.PlayerState) bool {
 
 // fireAfterCurrent: insert next, let current item finish naturally.
 func (m *Manager) fireAfterCurrent(e *Entry, st state.PlayerState) bool {
-	m.insertNext(e)
+	m.dispatchInsert(e)
 	if st == state.StateIdle || st == state.StateAssist {
 		// Nothing playing — trigger playback immediately.
 		m.cmdBus.TrySend(commands.New(commands.CmdPlay, commands.PlayPayload{
@@ -70,7 +70,7 @@ func (m *Manager) fireAfterCurrent(e *Entry, st state.PlayerState) bool {
 
 // fireCrossfade: insert next + skip with crossfade.
 func (m *Manager) fireCrossfade(e *Entry, st state.PlayerState) bool {
-	m.insertNext(e)
+	m.dispatchInsert(e)
 	if st == state.StatePlaying {
 		m.cmdBus.TrySend(commands.New(commands.CmdSkip, commands.SkipPayload{
 			Reason: "scheduler: CROSSFADE entry " + e.ID,
@@ -93,7 +93,7 @@ func (m *Manager) fireSkipIfBusy(e *Entry, st state.PlayerState) bool {
 		m.publishMissed(e, "engine is busy (state="+string(st)+")")
 		return false
 	}
-	m.insertNext(e)
+	m.dispatchInsert(e)
 	m.cmdBus.TrySend(commands.New(commands.CmdPlay, commands.PlayPayload{
 		Reason: "scheduler: SKIP_IF_BUSY entry " + e.ID,
 	}))
@@ -101,23 +101,37 @@ func (m *Manager) fireSkipIfBusy(e *Entry, st state.PlayerState) bool {
 	return true
 }
 
-// insertNext sends a CmdInsertNext with the entry's item to the Command Bus.
-func (m *Manager) insertNext(e *Entry) {
-	m.cmdBus.TrySend(commands.New(commands.CmdInsertNext, commands.InsertNextPayload{
-		Item: e.Item,
-	}))
+// dispatchInsert sends the appropriate insert command based on entry type:
+// CmdInsertBreakNext when the entry carries a commercial break,
+// CmdInsertNext otherwise (single item or HORA_CERTA).
+func (m *Manager) dispatchInsert(e *Entry) {
+	if e.Break != nil {
+		m.cmdBus.TrySend(commands.New(commands.CmdInsertBreakNext, commands.InsertBreakNextPayload{
+			Break: *e.Break,
+		}))
+	} else {
+		m.cmdBus.TrySend(commands.New(commands.CmdInsertNext, commands.InsertNextPayload{
+			Item: e.Item,
+		}))
+	}
 }
 
-// publishFired emits EvtScheduleEntryFired.
+// publishFired emits EvtScheduleEntryFired with item or break metadata.
 func (m *Manager) publishFired(e *Entry) {
-	m.evtBus.Publish(events.New(events.EvtScheduleEntryFired, events.ScheduleEntryFiredPayload{
+	payload := events.ScheduleEntryFiredPayload{
 		EntryID:     e.ID,
 		EntryName:   e.Name,
 		TriggerMode: string(e.TriggerMode),
-		AssetID:     e.Item.AssetID,
-		Title:       e.Item.Title,
 		OneShot:     e.FireAt != nil,
-	}))
+	}
+	if e.Break != nil {
+		payload.BreakTitle = e.Break.Title
+		payload.SpotCount = len(e.Break.Spots)
+	} else {
+		payload.AssetID = e.Item.AssetID
+		payload.Title = e.Item.Title
+	}
+	m.evtBus.Publish(events.New(events.EvtScheduleEntryFired, payload))
 	m.log.Info("scheduler: entry fired",
 		"entry_id", e.ID,
 		"name", e.Name,

@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/Waelson/radio-playout-engine/internal/commands"
 	"github.com/Waelson/radio-playout-engine/internal/scheduler"
 )
 
@@ -23,26 +25,37 @@ type ScheduleManager interface {
 
 // --- request / response DTOs -------------------------------------------------
 
+// breakItemInput is the schedule-handler representation of a commercial break.
+// It mirrors commands.BreakItemInput but uses queueItemInput for JSON decoding.
+type breakItemInput struct {
+	Title string           `json:"title"`
+	Open  *queueItemInput  `json:"open,omitempty"`
+	Spots []queueItemInput `json:"spots"`
+	Close *queueItemInput  `json:"close,omitempty"`
+}
+
 type scheduleAddRequest struct {
-	Name        string         `json:"name"`
-	Enabled     bool           `json:"enabled"`
-	CronExpr    string         `json:"cron_expr"`
-	FireAt      *time.Time     `json:"fire_at"`
-	TriggerMode string         `json:"trigger_mode"`
-	Item        queueItemInput `json:"item"`
+	Name        string          `json:"name"`
+	Enabled     bool            `json:"enabled"`
+	CronExpr    string          `json:"cron_expr"`
+	FireAt      *time.Time      `json:"fire_at"`
+	TriggerMode string          `json:"trigger_mode"`
+	Item        *queueItemInput `json:"item,omitempty"`  // mutually exclusive with Break
+	Break       *breakItemInput `json:"break,omitempty"` // mutually exclusive with Item
 }
 
 type scheduleEntryView struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	Enabled     bool           `json:"enabled"`
-	CronExpr    string         `json:"cron_expr,omitempty"`
-	FireAt      *time.Time     `json:"fire_at,omitempty"`
-	TriggerMode string         `json:"trigger_mode"`
-	Item        queueItemInput `json:"item"`
-	CreatedAt   time.Time      `json:"created_at"`
-	LastFiredAt *time.Time     `json:"last_fired_at,omitempty"`
-	NextFireAt  *time.Time     `json:"next_fire_at,omitempty"`
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Enabled     bool            `json:"enabled"`
+	CronExpr    string          `json:"cron_expr,omitempty"`
+	FireAt      *time.Time      `json:"fire_at,omitempty"`
+	TriggerMode string          `json:"trigger_mode"`
+	Item        *queueItemInput `json:"item,omitempty"`
+	Break       *breakItemInput `json:"break,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	LastFiredAt *time.Time      `json:"last_fired_at,omitempty"`
+	NextFireAt  *time.Time      `json:"next_fire_at,omitempty"`
 }
 
 // --- helpers -----------------------------------------------------------------
@@ -61,8 +74,26 @@ func validateScheduleRequest(req scheduleAddRequest) string {
 	if req.CronExpr != "" && req.FireAt != nil {
 		return "cron_expr and fire_at are mutually exclusive"
 	}
-	if req.Item.Path == "" && req.Item.Type != "HORA_CERTA" {
-		return "field item.path is required"
+	if req.Item != nil && req.Break != nil {
+		return "item and break are mutually exclusive"
+	}
+	if req.Item == nil && req.Break == nil {
+		return "exactly one of item or break must be set"
+	}
+	if req.Item != nil {
+		if req.Item.Path == "" && req.Item.Type != "HORA_CERTA" {
+			return "field item.path is required"
+		}
+	}
+	if req.Break != nil {
+		if len(req.Break.Spots) == 0 {
+			return "break.spots must have at least one item"
+		}
+		for i, s := range req.Break.Spots {
+			if s.Path == "" {
+				return fmt.Sprintf("break.spots[%d].path is required", i)
+			}
+		}
 	}
 	if req.TriggerMode != "" && !validTriggerModes[req.TriggerMode] {
 		return "trigger_mode must be one of: INTERRUPT, AFTER_CURRENT, CROSSFADE, SKIP_IF_BUSY"
@@ -70,19 +101,45 @@ func validateScheduleRequest(req scheduleAddRequest) string {
 	return ""
 }
 
+func toCommandBreak(b *breakItemInput) *commands.BreakItemInput {
+	if b == nil {
+		return nil
+	}
+	out := &commands.BreakItemInput{
+		Title: b.Title,
+		Spots: make([]commands.QueueItemInput, len(b.Spots)),
+	}
+	for i, s := range b.Spots {
+		out.Spots[i] = toCommandItem(s)
+	}
+	if b.Open != nil {
+		v := toCommandItem(*b.Open)
+		out.Open = &v
+	}
+	if b.Close != nil {
+		v := toCommandItem(*b.Close)
+		out.Close = &v
+	}
+	return out
+}
+
 func toScheduleEntry(req scheduleAddRequest) scheduler.Entry {
 	mode := scheduler.TriggerMode(req.TriggerMode)
 	if mode == "" {
 		mode = scheduler.TriggerAfterCurrent
 	}
-	return scheduler.Entry{
+	e := scheduler.Entry{
 		Name:        req.Name,
 		Enabled:     req.Enabled,
 		CronExpr:    req.CronExpr,
 		FireAt:      req.FireAt,
 		TriggerMode: mode,
-		Item:        toCommandItem(req.Item),
+		Break:       toCommandBreak(req.Break),
 	}
+	if req.Item != nil {
+		e.Item = toCommandItem(*req.Item)
+	}
+	return e
 }
 
 func toScheduleView(e scheduler.Entry, nextFireAt *time.Time) scheduleEntryView {
@@ -95,31 +152,55 @@ func toScheduleView(e scheduler.Entry, nextFireAt *time.Time) scheduleEntryView 
 		TriggerMode: string(e.TriggerMode),
 		CreatedAt:   e.CreatedAt,
 		NextFireAt:  nextFireAt,
-		Item: queueItemInput{
-			AssetID:    e.Item.AssetID,
-			Path:       e.Item.Path,
-			Type:       e.Item.Type,
-			Title:      e.Item.Title,
-			Artist:     e.Item.Artist,
-			DurationMS: e.Item.DurationMS,
-			CueInMS:    e.Item.CueInMS,
-			CueOutMS:   e.Item.CueOutMS,
-			GainDB:     e.Item.GainDB,
-			Mandatory:  e.Item.Mandatory,
-			Metadata:   e.Item.Metadata,
-		},
 	}
 	if !e.LastFiredAt.IsZero() {
 		t := e.LastFiredAt
 		v.LastFiredAt = &t
 	}
-	if e.Item.Transition != nil {
-		v.Item.Transition = &transitionInput{
-			Type:       e.Item.Transition.Type,
-			DurationMS: e.Item.Transition.DurationMS,
+	if e.Break != nil {
+		bv := &breakItemInput{Title: e.Break.Title}
+		bv.Spots = make([]queueItemInput, len(e.Break.Spots))
+		for i, s := range e.Break.Spots {
+			bv.Spots[i] = fromCommandItem(s)
 		}
+		if e.Break.Open != nil {
+			ov := fromCommandItem(*e.Break.Open)
+			bv.Open = &ov
+		}
+		if e.Break.Close != nil {
+			cv := fromCommandItem(*e.Break.Close)
+			bv.Close = &cv
+		}
+		v.Break = bv
+	} else {
+		item := fromCommandItem(e.Item)
+		v.Item = &item
 	}
 	return v
+}
+
+// fromCommandItem converts a commands.QueueItemInput to the handler-level DTO.
+func fromCommandItem(c commands.QueueItemInput) queueItemInput {
+	out := queueItemInput{
+		AssetID:    c.AssetID,
+		Path:       c.Path,
+		Type:       c.Type,
+		Title:      c.Title,
+		Artist:     c.Artist,
+		DurationMS: c.DurationMS,
+		CueInMS:    c.CueInMS,
+		CueOutMS:   c.CueOutMS,
+		GainDB:     c.GainDB,
+		Mandatory:  c.Mandatory,
+		Metadata:   c.Metadata,
+	}
+	if c.Transition != nil {
+		out.Transition = &transitionInput{
+			Type:       c.Transition.Type,
+			DurationMS: c.Transition.DurationMS,
+		}
+	}
+	return out
 }
 
 // --- handlers ----------------------------------------------------------------
