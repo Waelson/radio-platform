@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -29,6 +30,23 @@ type realClock struct{}
 
 func (realClock) Now() time.Time { return time.Now() }
 
+// Config holds scheduler-specific settings derived from the YAML config.
+type Config struct {
+	// Timezone is an IANA timezone name used to evaluate cron expressions.
+	// Empty string means the local system timezone.
+	Timezone string
+
+	// StorePath is the path to the JSON persistence file.
+	// Empty string disables persistence (entries live in memory only).
+	StorePath string
+
+	// MissedThresholdMS is how many milliseconds late a FireAt entry can be
+	// before it is marked as MISSED instead of fired. This prevents stale
+	// one-shot entries from triggering after an engine restart.
+	// Zero means no threshold (always fire, regardless of delay).
+	MissedThresholdMS int
+}
+
 // Manager owns all scheduled entries and drives their firing logic.
 // It is safe for concurrent use.
 type Manager struct {
@@ -36,6 +54,8 @@ type Manager struct {
 	entries map[string]*Entry
 
 	cr       *cron.Cron
+	store    *FileStore
+	cfg      Config
 	cmdBus   *commands.Bus
 	evtBus   *events.Bus
 	stateMgr stateReader
@@ -43,25 +63,56 @@ type Manager struct {
 	log      *slog.Logger
 }
 
-// New creates a ready-to-use Manager. Call Run(ctx) to start the tick goroutine.
+// New creates a Manager and loads persisted entries from the store (if configured).
+// Returns an error only when the timezone cannot be parsed.
 func New(
+	cfg Config,
 	cmdBus *commands.Bus,
 	evtBus *events.Bus,
 	stateMgr stateReader,
 	log *slog.Logger,
-) *Manager {
-	return &Manager{
+) (*Manager, error) {
+	// Resolve timezone for cron evaluation.
+	loc := time.Local
+	if cfg.Timezone != "" {
+		var err error
+		loc, err = time.LoadLocation(cfg.Timezone)
+		if err != nil {
+			return nil, fmt.Errorf("scheduler: invalid timezone %q: %w", cfg.Timezone, err)
+		}
+	}
+
+	m := &Manager{
 		entries:  make(map[string]*Entry),
-		cr:       cron.New(),
+		cr:       cron.New(cron.WithLocation(loc)),
+		cfg:      cfg,
 		cmdBus:   cmdBus,
 		evtBus:   evtBus,
 		stateMgr: stateMgr,
 		clk:      realClock{},
 		log:      log,
 	}
+
+	// Attach store and restore persisted entries.
+	if cfg.StorePath != "" {
+		m.store = NewFileStore(cfg.StorePath)
+		loaded, err := m.store.Load()
+		if err != nil {
+			log.Warn("scheduler: failed to load persisted entries; starting empty",
+				"path", cfg.StorePath, "error", err)
+		} else if len(loaded) > 0 {
+			for _, e := range loaded {
+				m.restoreEntry(e)
+			}
+			log.Info("scheduler: entries restored from store",
+				"count", len(loaded), "path", cfg.StorePath)
+		}
+	}
+
+	return m, nil
 }
 
-// withClock replaces the clock — used by tests only.
+// withClock replaces the internal clock — used only in tests.
 func (m *Manager) withClock(c clock) { m.clk = c }
 
 // Run starts the cron scheduler and the 1-second FireAt ticker.
@@ -83,57 +134,75 @@ func (m *Manager) Run(ctx context.Context) {
 	}
 }
 
-// tickFireAt evaluates all one-shot (FireAt) entries.
+// tickFireAt evaluates all one-shot (FireAt) entries against the current time.
 func (m *Manager) tickFireAt() {
 	now := m.clk.Now()
+	threshold := time.Duration(m.cfg.MissedThresholdMS) * time.Millisecond
 
 	m.mu.Lock()
 	var toFire []*Entry
+	var toMiss []*Entry
+
 	for _, e := range m.entries {
 		if !e.Enabled || e.FireAt == nil {
 			continue
 		}
-		// Fire if the target time is now or in the past (within this tick window).
-		if !e.FireAt.After(now) && e.lastFiredAt.IsZero() {
+		if !e.LastFiredAt.IsZero() {
+			continue // already processed in a previous tick
+		}
+		if e.FireAt.After(now) {
+			continue // target is in the future
+		}
+
+		delay := now.Sub(*e.FireAt)
+		if threshold > 0 && delay > threshold {
+			toMiss = append(toMiss, e)
+		} else {
 			toFire = append(toFire, e)
 		}
 	}
-	// Mark as fired (disable one-shots) before releasing the lock so
-	// a subsequent tick within the same second doesn't re-trigger.
+
+	// Mark all as processed before releasing the lock so a concurrent tick
+	// (or the next tick within the same second) does not re-trigger.
 	for _, e := range toFire {
-		e.lastFiredAt = now
-		e.Enabled = false // one-shots auto-disable after firing
+		e.LastFiredAt = now
+		e.Enabled = false // one-shots auto-disable
+	}
+	for _, e := range toMiss {
+		e.LastFiredAt = now
+		e.Enabled = false // missed entries are also disabled
 	}
 	m.mu.Unlock()
 
 	for _, e := range toFire {
 		m.fireEntry(e)
 	}
+	for _, e := range toMiss {
+		delay := now.Sub(*e.FireAt)
+		m.publishMissed(e, fmt.Sprintf(
+			"fire_at missed by %dms (threshold=%dms)",
+			delay.Milliseconds(), m.cfg.MissedThresholdMS,
+		))
+	}
+
+	if len(toFire)+len(toMiss) > 0 {
+		m.saveToStore()
+	}
 }
 
 // Add registers a new entry and returns its assigned ID.
-// Returns an error if the entry is invalid or a CronExpr cannot be parsed.
+// Returns an error if the CronExpr cannot be parsed.
 func (m *Manager) Add(e Entry) (string, error) {
 	e.ID = "sched_" + ulid.Make().String()
 	if e.TriggerMode == "" {
 		e.TriggerMode = TriggerAfterCurrent
 	}
+	e.CreatedAt = m.clk.Now()
 
 	if e.CronExpr != "" {
-		jobID, err := m.cr.AddFunc(e.CronExpr, func() {
-			m.mu.RLock()
-			entry, ok := m.entries[e.ID]
-			m.mu.RUnlock()
-			if !ok || !entry.Enabled {
-				return
-			}
-			m.mu.Lock()
-			entry.lastFiredAt = m.clk.Now()
-			m.mu.Unlock()
-			m.fireEntry(entry)
-		})
+		jobID, err := m.cr.AddFunc(e.CronExpr, m.makeCronJob(e.ID))
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("scheduler: invalid cron expression %q: %w", e.CronExpr, err)
 		}
 		e.cronEntryID = jobID
 	}
@@ -149,10 +218,11 @@ func (m *Manager) Add(e Entry) (string, error) {
 		OneShot:  e.FireAt != nil,
 	}))
 	m.log.Info("scheduler: entry added", "entry_id", e.ID, "name", e.Name)
+	m.saveToStore()
 	return e.ID, nil
 }
 
-// Remove deletes an entry. Noop if the ID does not exist.
+// Remove deletes an entry by ID. Noop if the ID does not exist.
 func (m *Manager) Remove(id string) {
 	m.mu.Lock()
 	e, ok := m.entries[id]
@@ -170,14 +240,16 @@ func (m *Manager) Remove(id string) {
 		EntryID: id,
 	}))
 	m.log.Info("scheduler: entry removed", "entry_id", id)
+	m.saveToStore()
 }
 
-// Enable activates an existing entry.
+// Enable activates an existing entry. Returns false if the ID does not exist.
 func (m *Manager) Enable(id string) bool {
 	return m.setEnabled(id, true)
 }
 
-// Disable deactivates an existing entry without removing it.
+// Disable deactivates an existing entry without removing it. Returns false if
+// the ID does not exist.
 func (m *Manager) Disable(id string) bool {
 	return m.setEnabled(id, false)
 }
@@ -196,11 +268,12 @@ func (m *Manager) setEnabled(id string, enabled bool) bool {
 		EntryID: id,
 		Enabled: enabled,
 	}))
+	m.saveToStore()
 	return true
 }
 
-// Get returns a copy of an entry by ID. The second return value is false if
-// the entry does not exist.
+// Get returns a copy of an entry by ID.
+// The second return value is false when the ID does not exist.
 func (m *Manager) Get(id string) (Entry, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -211,7 +284,7 @@ func (m *Manager) Get(id string) (Entry, bool) {
 	return *e, true
 }
 
-// List returns a snapshot of all registered entries.
+// List returns a snapshot of all registered entries (in arbitrary order).
 func (m *Manager) List() []Entry {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -220,4 +293,68 @@ func (m *Manager) List() []Entry {
 		out = append(out, *e)
 	}
 	return out
+}
+
+// --- internal helpers --------------------------------------------------------
+
+// makeCronJob returns the func() registered with robfig/cron for a given entry ID.
+// The closure looks up the live Entry pointer so mutations (Enable/Disable) are
+// respected without re-registering the job.
+func (m *Manager) makeCronJob(entryID string) func() {
+	return func() {
+		m.mu.RLock()
+		e, ok := m.entries[entryID]
+		m.mu.RUnlock()
+		if !ok || !e.Enabled {
+			return
+		}
+		m.mu.Lock()
+		e.LastFiredAt = m.clk.Now()
+		m.mu.Unlock()
+
+		m.fireEntry(e)
+		m.saveToStore()
+	}
+}
+
+// restoreEntry re-registers an entry loaded from the store without publishing
+// events or writing back to the store.
+func (m *Manager) restoreEntry(e Entry) {
+	// One-shot already fired or missed — add to map as disabled, don't re-register cron.
+	if e.FireAt != nil && !e.LastFiredAt.IsZero() {
+		e.Enabled = false
+		m.entries[e.ID] = &e
+		return
+	}
+
+	if e.CronExpr != "" && e.Enabled {
+		jobID, err := m.cr.AddFunc(e.CronExpr, m.makeCronJob(e.ID))
+		if err != nil {
+			m.log.Warn("scheduler: restore: invalid cron, disabling entry",
+				"entry_id", e.ID, "cron", e.CronExpr, "error", err)
+			e.Enabled = false
+		} else {
+			e.cronEntryID = jobID
+		}
+	}
+
+	m.entries[e.ID] = &e
+}
+
+// saveToStore writes the current entries to the FileStore.
+// Logs a warning on error; never returns an error to avoid blocking callers.
+func (m *Manager) saveToStore() {
+	if m.store == nil {
+		return
+	}
+	m.mu.RLock()
+	snap := make([]Entry, 0, len(m.entries))
+	for _, e := range m.entries {
+		snap = append(snap, *e)
+	}
+	m.mu.RUnlock()
+
+	if err := m.store.Save(snap); err != nil {
+		m.log.Warn("scheduler: failed to persist entries", "error", err)
+	}
 }

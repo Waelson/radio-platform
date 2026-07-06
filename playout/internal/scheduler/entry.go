@@ -37,26 +37,31 @@ const (
 // Exactly one of CronExpr or FireAt must be set.
 type Entry struct {
 	// ID is the unique identifier for this entry (ulid-prefixed).
-	ID string
+	ID string `json:"id"`
 	// Name is a human-readable label shown in logs and events.
-	Name string
+	Name string `json:"name"`
 	// Enabled controls whether the entry is active.
-	Enabled bool
+	Enabled bool `json:"enabled"`
 
 	// CronExpr is a 5-field cron expression (minute hour day month weekday).
 	// Mutually exclusive with FireAt.
-	CronExpr string
+	CronExpr string `json:"cron_expr,omitempty"`
 	// FireAt is the exact UTC time for a one-shot firing.
 	// Mutually exclusive with CronExpr. The entry is automatically disabled
-	// after it fires.
-	FireAt *time.Time
+	// after it fires (or is marked as missed when past missed_threshold_ms).
+	FireAt *time.Time `json:"fire_at,omitempty"`
 
 	// Item is the queue item to insert when the entry fires.
-	Item commands.QueueItemInput
+	Item commands.QueueItemInput `json:"item"`
 	// TriggerMode controls how the item is inserted relative to the current playback.
-	TriggerMode TriggerMode
+	TriggerMode TriggerMode `json:"trigger_mode"`
 
-	// internal — not exported; only modified under Manager.mu.
-	cronEntryID cron.EntryID // non-zero when registered with the cron scheduler
-	lastFiredAt time.Time    // zero = never fired
+	// CreatedAt is the time the entry was first registered.
+	CreatedAt time.Time `json:"created_at"`
+	// LastFiredAt records the last successful (or missed) firing time.
+	// Zero value means the entry has never been evaluated.
+	LastFiredAt time.Time `json:"last_fired_at,omitempty"`
+
+	// cronEntryID is the robfig/cron job handle; not persisted.
+	cronEntryID cron.EntryID `json:"-"`
 }

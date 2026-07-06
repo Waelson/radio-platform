@@ -336,9 +336,28 @@ func run(args []string) error {
 		Version:  Version,
 	}))
 
-	// 15. Start goroutines.
-	schedMgr := scheduler.New(cmdBus, evtBus, stateMgr, log)
-	go schedMgr.Run(ctx)
+	// 15. Scheduler — timed playback scheduling.
+	schedStorePath := cfg.Scheduler.StorePath
+	if schedStorePath == "" {
+		schedStorePath = scheduler.DefaultStorePath()
+	}
+	schedMgr, err := scheduler.New(scheduler.Config{
+		Timezone:          cfg.Scheduler.Timezone,
+		StorePath:         schedStorePath,
+		MissedThresholdMS: cfg.Scheduler.MissedThresholdMS,
+	}, cmdBus, evtBus, stateMgr, log)
+	if err != nil {
+		return fmt.Errorf("scheduler: %w", err)
+	}
+	if cfg.Scheduler.Enabled {
+		go schedMgr.Run(ctx)
+		log.Info("scheduler started",
+			"timezone", cfg.Scheduler.Timezone,
+			"store", schedStorePath,
+			"missed_threshold_ms", cfg.Scheduler.MissedThresholdMS,
+		)
+	}
+	_ = schedMgr // will be used by API in Phase C
 
 	go healthMon.Run(ctx)
 	go wsHub.Run(ctx)
