@@ -527,14 +527,59 @@ Request (one-shot via `fire_at`):
 | `name` | string | não | Nome legível da entrada |
 | `enabled` | bool | não | Se `false`, a entrada é criada desabilitada (padrão: `false`) |
 | `cron_expr` | string | exclusivo¹ | Expressão cron de 5 campos (minuto hora dia mês dia-semana) |
-| `fire_at` | string (RFC3339) | exclusivo¹ | Data/hora para disparo único; auto-desabilitada após disparar |
+| `fire_at` | string (RFC3339) | exclusivo¹ | Data/hora para disparo único em formato RFC 3339 — ver detalhes abaixo |
 | `trigger_mode` | string | não | `INTERRUPT` \| `AFTER_CURRENT` \| `CROSSFADE` \| `SKIP_IF_BUSY` (padrão: `AFTER_CURRENT`) |
 | `item` | object | sim | Item de playback a ser enfileirado |
 | `item.path` | string | sim² | Path do arquivo de áudio |
-| `item.type` | string | não | Tipo do item (`musicas`, `jingles`, `spot`, `HORA_CERTA` etc.) |
+| `item.type` | string | não | Tipo do item: `musicas`, `jingles`, `spots`, `HORA_CERTA`, `COMMERCIAL`, `BED`, `EFFECT`, `VOICE` |
 
 ¹ `cron_expr` e `fire_at` são mutuamente exclusivos — exatamente um deve ser informado.
 ² Obrigatório a menos que `item.type == "HORA_CERTA"`.
+
+**`cron_expr` — expressão cron (5 campos):**
+
+```
+┌─── minuto      (0–59)
+│ ┌─── hora       (0–23)
+│ │ ┌─── dia do mês (1–31)
+│ │ │ ┌─── mês       (1–12)
+│ │ │ │ ┌─── dia da semana (0–7, domingo = 0 ou 7)
+│ │ │ │ │
+* * * * *
+```
+
+| Expressão | Significado |
+|---|---|
+| `0 10 * * *` | Todo dia às 10h00 |
+| `30 7 * * 1-5` | Segunda a sexta às 07h30 |
+| `0 */2 * * *` | A cada 2 horas |
+| `0 6,12,18 * * *` | Às 06h, 12h e 18h todos os dias |
+
+As expressões são avaliadas no timezone configurado em `scheduler.timezone` (padrão: timezone do sistema). Entradas cron **nunca são auto-desabilitadas** — disparam indefinidamente enquanto `enabled: true`.
+
+**`fire_at` — disparo único (one-shot):**
+
+O valor deve ser uma string **RFC 3339**. Após o disparo, a entrada é automaticamente desabilitada (`enabled: false`) e não dispara novamente.
+
+| Formato | Exemplo | Observação |
+|---|---|---|
+| Com offset explícito | `2026-07-06T16:31:00-03:00` | Recomendado — sem ambiguidade de fuso |
+| UTC (sufixo Z) | `2026-07-06T19:31:00Z` | Equivalente ao exemplo acima |
+| Sem timezone | `2026-07-06T16:31:00` | Interpretado no `scheduler.timezone` configurado |
+
+Anatomia do valor:
+
+```
+2026-07-06T16:31:00-03:00
+│          │        │
+│          │        └─ offset: -03:00 = Brasília (BRT)
+│          └─ horário local: 16h31min00s
+└─ data: 6 de julho de 2026
+```
+
+Se o engine estava parado quando o horário passou e reiniciar com atraso:
+- Atraso < `missed_threshold_ms` → dispara normalmente
+- Atraso ≥ `missed_threshold_ms` → marca como `MISSED`, não dispara (evita disparos obsoletos após queda)
 
 **Modos de disparo (`trigger_mode`):**
 

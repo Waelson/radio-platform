@@ -241,15 +241,25 @@ Suporte nativo a anúncio de hora certa com arquivos de áudio por hora e minuto
 
 Grade horária para disparo automático de itens em horários pré-definidos:
 
-- **Expressões cron** (5 campos: minuto hora dia mês dia-semana) para entradas recorrentes — ex: `0 10 * * *` para todos os dias às 10h
-- **`fire_at`** para disparos únicos (one-shot): a entrada é auto-desabilitada após disparar
+**Dois modos de agendamento:**
+
+- **`cron_expr`** — expressão cron de 5 campos para entradas recorrentes (ex: `0 10 * * *` = todo dia às 10h). Avaliada no timezone configurado (`scheduler.timezone`). Nunca se auto-desabilita.
+- **`fire_at`** — disparo único em data/hora exata no formato **RFC 3339** (ex: `2026-07-06T16:31:00-03:00`). A entrada é **auto-desabilitada após disparar**. O offset de timezone deve ser incluído no valor para evitar ambiguidade (ex: `-03:00` para Brasília). Os dois campos são mutuamente exclusivos.
+
+**Comportamento ao reiniciar (limiar de atraso):**
+
+Se o engine estava parado quando um `fire_at` passou e reiniciar com atraso, o comportamento depende de `missed_threshold_ms`: se o atraso for menor que o limiar, dispara normalmente; se for maior, marca como `MISSED` e não dispara — evitando que itens obsoletos sejam tocados após quedas prolongadas.
+
+**Outras características:**
+
 - **Timezone configurável** via `scheduler.timezone` (ex: `"America/Sao_Paulo"`) — padrão: timezone do sistema
 - **4 modos de disparo** por entrada: `INTERRUPT`, `AFTER_CURRENT`, `CROSSFADE`, `SKIP_IF_BUSY`
-- **Limiar de atraso** (`missed_threshold_ms`): se o engine reiniciar com um `fire_at` já expirado além do limiar, o item é marcado como MISSED em vez de disparar com atraso
 - **Integração com PANIC**: qualquer disparo durante o estado PANIC é automaticamente marcado como MISSED
-- **Persistência em JSON** (`store_path`): a grade sobrevive a reinicializações; entradas são restauradas ao iniciar
+- **Persistência em JSON** (`store_path`): a grade sobrevive a reinicializações com escrita atômica (`.tmp` + rename)
 - **Gerenciamento via API REST**: 7 endpoints CRUD + enable/disable em `/v1/schedule/*`
 - **Eventos WebSocket**: `ScheduleEntryFired`, `ScheduleEntryMissed`, `ScheduleEntryAdded`, `ScheduleEntryRemoved`, `ScheduleEntryUpdated`
+
+Documentação completa: `docs/specs/17-scheduler.md`
 
 ### 18. Bundle macOS (RadioCore.app)
 
