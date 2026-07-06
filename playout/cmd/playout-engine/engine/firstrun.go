@@ -65,6 +65,7 @@ func EnsureFirstRun() (string, error) {
 
 func defaultConfig(dir string) string {
 	queuePath := filepath.Join(dir, "queue.json")
+	schedulePath := filepath.Join(dir, "schedule.json")
 	hoursDir := filepath.Join(dir, "media", "hora_certa", "hours_dir")
 	minutesDir := filepath.Join(dir, "media", "hora_certa", "minutes_dir")
 	driver := DefaultAudioDriver()
@@ -199,7 +200,28 @@ preview:
   # Vazio = dispositivo padrão do driver selecionado.
   # Exemplos: "BlackHole 2ch" (macOS virtual), "hw:1,0" (ALSA/Linux)
   output_device: ""
-`, driver, queuePath, hoursDir, minutesDir)
+
+# -----------------------------------------------------------------------------
+# Scheduler (programação horária)
+# -----------------------------------------------------------------------------
+scheduler:
+  # Habilita o scheduler. Quando false, nenhuma entrada é avaliada.
+  enabled: true
+
+  # Timezone para avaliação das expressões cron.
+  # Padrão: timezone do sistema operacional.
+  # Exemplos: "America/Sao_Paulo", "America/Manaus", "UTC"
+  timezone: "America/Sao_Paulo"
+
+  # Caminho do arquivo de persistência do schedule.
+  # Vazio = ~/RadioFlow/schedule.json
+  store_path: %q
+
+  # Tolerância de atraso: se um entry deveria ter disparado há mais que
+  # este tempo (ex: engine foi reiniciado), ele é marcado como MISSED
+  # em vez de disparar com atraso.
+  missed_threshold_ms: 5000
+`, driver, queuePath, hoursDir, minutesDir, schedulePath)
 }
 
 // DefaultAudioDriver returns the recommended output driver for the current OS.

@@ -15,7 +15,8 @@ type Config struct {
 	Admin     AdminConfig     `yaml:"admin"`
 	Queue     QueueConfig     `yaml:"queue"`
 	HoraCerta HoraCertaConfig `yaml:"hora_certa"`
-	Preview   PreviewConfig  `yaml:"preview"`
+	Preview   PreviewConfig   `yaml:"preview"`
+	Scheduler SchedulerConfig `yaml:"scheduler"`
 }
 
 // EngineConfig holds process-level settings.
@@ -140,6 +141,28 @@ type HoraCertaConfig struct {
 	// GainDB is the default volume gain applied to hora certa audio.
 	// 0 = unity gain. Individual HORA_CERTA queue items may override this.
 	GainDB float64 `yaml:"gain_db"`
+}
+
+// SchedulerConfig configures the timed playback scheduler.
+type SchedulerConfig struct {
+	// Enabled controls whether the scheduler goroutine is started.
+	// When false, no entries are evaluated even if they are registered.
+	Enabled bool `yaml:"enabled"`
+
+	// Timezone is the IANA timezone name used to evaluate cron expressions.
+	// Leave empty to use the local timezone of the operating system.
+	// Examples: "America/Sao_Paulo", "America/Manaus", "UTC"
+	Timezone string `yaml:"timezone"`
+
+	// StorePath is the path to the JSON file used to persist scheduled entries
+	// across restarts. Leave empty to use ~/RadioFlow/schedule.json.
+	StorePath string `yaml:"store_path"`
+
+	// MissedThresholdMS defines how late (in milliseconds) a FireAt entry can
+	// be before it is considered MISSED instead of fired. This prevents
+	// stale one-shot entries from firing unexpectedly after an engine restart.
+	// Default: 5000 (5 seconds).
+	MissedThresholdMS int `yaml:"missed_threshold_ms"`
 }
 
 // PreviewConfig configures the audio preview (cue) player.

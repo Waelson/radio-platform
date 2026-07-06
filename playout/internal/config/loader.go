@@ -104,6 +104,12 @@ func defaults() *Config {
 			OutputDriver: "null",
 			OutputDevice: "",
 		},
+		Scheduler: SchedulerConfig{
+			Enabled:           true,
+			Timezone:          "",
+			StorePath:         "",
+			MissedThresholdMS: 5000,
+		},
 	}
 }
 
