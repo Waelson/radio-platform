@@ -16,7 +16,9 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/api"
 	"github.com/Waelson/radio-playout-engine/internal/preview"
 	apiws "github.com/Waelson/radio-playout-engine/internal/api/ws"
+	"github.com/Waelson/radio-playout-engine/internal/api/handlers"
 	"github.com/Waelson/radio-playout-engine/internal/audio/decoder"
+	"github.com/Waelson/radio-playout-engine/internal/audio/output"
 	"github.com/Waelson/radio-playout-engine/internal/commands"
 	"github.com/Waelson/radio-playout-engine/internal/config"
 	"github.com/Waelson/radio-playout-engine/internal/dispatcher"
@@ -300,7 +302,29 @@ func run(args []string) error {
 		Version:        Version,
 		StartTime:      time.Now(),
 	}
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, log)
+	devicesDeps := api.DevicesDeps{}
+	if lister, ok := out.(output.DeviceLister); ok {
+		devicesDeps.List = func() ([]handlers.AudioDevice, error) {
+			infos, err := lister.ListDevices()
+			if err != nil {
+				return nil, err
+			}
+			devs := make([]handlers.AudioDevice, len(infos))
+			for i, d := range infos {
+				devs[i] = handlers.AudioDevice{
+					ID:                d.ID,
+					Name:              d.Name,
+					Driver:            d.Driver,
+					IsDefault:         d.IsDefault,
+					MaxOutputChannels: d.MaxOutputChannels,
+					DefaultSampleRate: d.DefaultSampleRate,
+				}
+			}
+			return devs, nil
+		}
+	}
+
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, devicesDeps, log)
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)

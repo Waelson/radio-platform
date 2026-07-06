@@ -106,20 +106,37 @@ func (o *Output) Open(_ context.Context, cfg output.OutputConfig) error {
 	}
 
 	// Route to a specific device when DeviceID is set and not "default".
+	// Resolution order: UID → name → system default.
+	// Using UID is more robust: it survives device renames. Using name is
+	// backward-compatible with existing configs.
 	if cfg.DeviceID != "" && cfg.DeviceID != "default" {
-		cName := C.CString(cfg.DeviceID)
 		var devID C.AudioDeviceID
-		st := C.caFindDeviceByName(cName, &devID)
-		C.free(unsafe.Pointer(cName))
-		if st != 0 {
-			// Device not found: fall back to system default and log available devices.
+		resolved := false
+
+		// 1. Try UID (kAudioDevicePropertyDeviceUID) — stable across renames.
+		cUID := C.CString(cfg.DeviceID)
+		if C.caFindDeviceByUID(cUID, &devID) == 0 {
+			resolved = true
+		}
+		C.free(unsafe.Pointer(cUID))
+
+		// 2. Fall back to name lookup.
+		if !resolved {
+			cName := C.CString(cfg.DeviceID)
+			if C.caFindDeviceByName(cName, &devID) == 0 {
+				resolved = true
+			}
+			C.free(unsafe.Pointer(cName))
+		}
+
+		// 3. Neither UID nor name matched — use system default and warn.
+		if !resolved {
 			var listBuf [4096]C.char
 			C.caListOutputDevices(&listBuf[0], 4096)
-			available := C.GoString(&listBuf[0])
-			_ = available // caller can inspect via log
-			fmt.Printf("coreaudio: device %q not found (OSStatus %d); using system default.\nAvailable output devices:\n%s", cfg.DeviceID, int(st), available)
-		} else if st2 := C.caSetQueueDevice(o.queue, devID); st2 != 0 {
-			fmt.Printf("coreaudio: set device %q failed (OSStatus %d); using system default.\n", cfg.DeviceID, int(st2))
+			fmt.Printf("coreaudio: device %q not found by UID or name; using system default.\nAvailable output devices:\n%s",
+				cfg.DeviceID, C.GoString(&listBuf[0]))
+		} else if st := C.caSetQueueDevice(o.queue, devID); st != 0 {
+			fmt.Printf("coreaudio: set device %q failed (OSStatus %d); using system default.\n", cfg.DeviceID, int(st))
 		}
 	}
 
@@ -335,6 +352,32 @@ func (o *Output) Close() error {
 		<-o.freeBufs
 	}
 	return nil
+}
+
+// ListDevices enumerates all audio output devices available on the system.
+// It does not require the Output to be open — it queries CoreAudio directly.
+// The returned DeviceInfo.ID is the persistent UID from CoreAudio
+// (kAudioDevicePropertyDeviceUID), which survives device renames.
+func (o *Output) ListDevices() ([]output.DeviceInfo, error) {
+	const maxDevices = 64
+	var cEntries [maxDevices]C.CADeviceEntry
+	n := int(C.caEnumOutputDevices(&cEntries[0], C.int(maxDevices)))
+	if n == 0 {
+		return []output.DeviceInfo{}, nil
+	}
+	devs := make([]output.DeviceInfo, n)
+	for i := 0; i < n; i++ {
+		e := &cEntries[i]
+		devs[i] = output.DeviceInfo{
+			ID:                C.GoString(&e.uid[0]),
+			Name:              C.GoString(&e.name[0]),
+			Driver:            "coreaudio",
+			IsDefault:         e.isDefault != 0,
+			MaxOutputChannels: int(e.maxOutputChannels),
+			DefaultSampleRate: float64(e.defaultSampleRate),
+		}
+	}
+	return devs, nil
 }
 
 // Info returns static metadata about this device.

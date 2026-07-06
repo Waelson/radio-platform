@@ -88,6 +88,18 @@ func (n *NullOutput) Info() OutputDeviceInfo {
 	}
 }
 
+// ListDevices returns a single pseudo-device representing the null output.
+func (n *NullOutput) ListDevices() ([]DeviceInfo, error) {
+	return []DeviceInfo{{
+		ID:                "null",
+		Name:              "Null Output",
+		Driver:            "null",
+		IsDefault:         true,
+		MaxOutputChannels: 2,
+		DefaultSampleRate: 48000,
+	}}, nil
+}
+
 // FramesWritten returns the cumulative number of frames written since the last
 // Reset (or creation). Safe to call from any goroutine.
 func (n *NullOutput) FramesWritten() int64 {

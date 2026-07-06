@@ -75,29 +75,58 @@ Implementações futuras podem usar diretamente:
 - ALSA/JACK/PulseAudio no Linux.
 - WASAPI no Windows.
 
-## Seleção de dispositivo
+## DeviceLister
 
-Endpoint futuro:
+Interface opcional implementada por drivers que suportam enumeração de dispositivos:
 
-```text
-GET /v1/audio/devices
-```
-
-Resposta:
-
-```json
-{
-  "devices": [
-    {
-      "id": "default",
-      "name": "Default Output",
-      "driver": "coreaudio",
-      "channels": 2,
-      "sample_rate": 48000
-    }
-  ]
+```go
+type DeviceLister interface {
+    ListDevices() ([]DeviceInfo, error)
 }
 ```
+
+Todos os drivers implementam `DeviceLister`: `NullOutput`, `FileOutput`, `coreaudio.Output` e `portaudio.Output`.
+
+### DeviceInfo
+
+```go
+type DeviceInfo struct {
+    ID                string  // identificador único (semântica varia por driver)
+    Name              string  // nome legível (ex: "MacBook Pro Speakers")
+    Driver            string  // "coreaudio" | "portaudio" | "null" | "file"
+    IsDefault         bool    // true se for o output padrão do sistema
+    MaxOutputChannels int     // número máximo de canais de saída suportados
+    DefaultSampleRate float64 // taxa de amostragem padrão reportada pelo SO
+}
+```
+
+### Semântica do campo `ID` por driver
+
+| Driver | Valor de `ID` | Estabilidade |
+|---|---|---|
+| `coreaudio` | `kAudioDevicePropertyDeviceUID` — string opaca, ex: `"AppleHDAEngineOutput:0,1"` | Persiste mesmo se o nome do dispositivo for alterado no SO |
+| `portaudio` | Igual ao `Name` — PortAudio não expõe UID interno | Muda se o dispositivo for renomeado no SO |
+| `null` / `file` | `"null"` / `"file"` (fixo) | Sempre estável |
+
+### Endpoint REST
+
+```
+GET /v1/devices
+```
+
+Retorna a lista atualizada a cada request — sem cache (`Cache-Control: no-store`). Ver `docs/specs/03-api-rest.md` para contrato completo.
+
+### Wiring
+
+O `OutputDevice` criado em `main.go` é type-assertado para `DeviceLister`. Se o driver implementar a interface, a função de listagem é injetada no servidor HTTP via `api.DevicesDeps`:
+
+```go
+if lister, ok := out.(output.DeviceLister); ok {
+    devicesDeps.List = func() ([]handlers.AudioDevice, error) { ... }
+}
+```
+
+## Seleção de dispositivo
 
 ## Regras
 

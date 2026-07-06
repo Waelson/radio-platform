@@ -118,6 +118,65 @@ Resposta:
 }
 ```
 
+### GET /v1/devices
+
+Lista todos os dispositivos de saída de áudio disponíveis no sistema. A resposta reflete o estado atual do hardware — nenhum cache é aplicado (`Cache-Control: no-store`).
+
+Resposta:
+
+```json
+{
+  "devices": [
+    {
+      "id":                   "AppleHDAEngineOutput:0,1",
+      "name":                 "MacBook Pro Speakers",
+      "driver":               "coreaudio",
+      "is_default":           true,
+      "max_output_channels":  2,
+      "default_sample_rate":  48000.0
+    },
+    {
+      "id":                   "BlackHole 2ch",
+      "name":                 "BlackHole 2ch",
+      "driver":               "coreaudio",
+      "is_default":           false,
+      "max_output_channels":  2,
+      "default_sample_rate":  44100.0
+    }
+  ],
+  "count": 2
+}
+```
+
+**Campos:**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | Identificador único (semântica varia por driver — ver abaixo) |
+| `name` | string | Nome legível do dispositivo |
+| `driver` | string | Driver em uso: `coreaudio`, `portaudio`, `null` ou `file` |
+| `is_default` | bool | `true` se for o output padrão do sistema |
+| `max_output_channels` | int | Número máximo de canais de saída suportados |
+| `default_sample_rate` | float | Taxa de amostragem padrão reportada pelo SO |
+
+**Semântica do campo `id` por driver:**
+
+| Driver | Valor de `id` | Estabilidade |
+|---|---|---|
+| `coreaudio` | UID do sistema (`kAudioDevicePropertyDeviceUID`) | Persiste mesmo se o nome do dispositivo mudar |
+| `portaudio` | Igual ao `name` — PortAudio não expõe UID interno | Muda se o dispositivo for renomeado no SO |
+| `null` / `file` | `"null"` / `"file"` (fixo) | Sempre estável |
+
+Erro (driver não consegue enumerar dispositivos):
+
+```json
+{
+  "ok": false,
+  "error": "device_enumeration_failed",
+  "message": "..."
+}
+```
+
 ## Queue
 
 ### POST /v1/queue/enqueue

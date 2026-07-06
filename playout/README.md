@@ -162,6 +162,7 @@ Endpoints sob o prefixo `/v1` mais rotas de UI:
 | Preview (CUE) | `POST /v1/preview/play`, `POST /v1/preview/pause`, `POST /v1/preview/resume`, `POST /v1/preview/stop`, `POST /v1/preview/seek`, `GET /v1/preview/status` |
 | Panic | `POST /v1/panic/enter`, `POST /v1/panic/exit` |
 | Hot Buttons | `POST /v1/hotbuttons/trigger` |
+| Devices | `GET /v1/devices` — lista dispositivos de áudio disponíveis no sistema em tempo real |
 | Admin | `POST /v1/admin/shutdown`, `GET /v1/metrics` |
 | WebSocket | `GET /v1/events` |
 | UI | `GET /status` — painel de status (SPA) |
@@ -188,6 +189,14 @@ A interface `OutputDevice` desacopla completamente o playback do hardware:
 | `CoreAudio` | Nativo macOS via AudioQueue | `coreaudio` | nenhuma (frameworks do sistema) |
 
 O driver é selecionável em runtime via `audio.output.driver` no YAML, sem recompilar o código de playback.
+
+`GET /v1/devices` lista os dispositivos de saída disponíveis no sistema em tempo real (sem cache). O campo `id` na resposta tem semântica diferente por driver:
+
+| Driver | Campo `id` | Estabilidade |
+|---|---|---|
+| `CoreAudio` | UID do sistema (`kAudioDevicePropertyDeviceUID`) | Persiste mesmo se o nome do dispositivo mudar |
+| `PortAudio` | Igual ao `name` — PortAudio não expõe UID interno | Muda se o dispositivo for renomeado no SO |
+| `Null` / `File` | `"null"` / `"file"` (fixo) | Sempre estável |
 
 ### 14. Decodificador FFmpeg
 

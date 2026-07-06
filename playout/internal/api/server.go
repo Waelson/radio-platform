@@ -38,6 +38,12 @@ type PreviewDeps struct {
 	GetStatus func() any // returns preview.Status as any; nil when disabled
 }
 
+// DevicesDeps carries the device-listing function for GET /v1/devices.
+// When List is nil the endpoint returns an empty list with 200 OK.
+type DevicesDeps struct {
+	List func() ([]handlers.AudioDevice, error)
+}
+
 // Server wraps an http.Server and owns the routing for the Engine's REST API.
 type Server struct {
 	cfg            Config
@@ -48,6 +54,7 @@ type Server struct {
 	metrics        *metrics.Collector
 	previewEnabled bool
 	previewStatus  func() any
+	listDevices    func() ([]handlers.AudioDevice, error)
 	log            *slog.Logger
 	httpSrv        *http.Server
 }
@@ -56,7 +63,8 @@ type Server struct {
 // queueMgr may be nil; queue endpoints will be unavailable until it is set.
 // wsHub may be nil; the /v1/events endpoint will not be registered.
 // col may be nil; the /v1/metrics endpoint will not be registered.
-func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, log *slog.Logger) *Server {
+// devicesDeps.List may be nil; GET /v1/devices will return an empty list.
+func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, devicesDeps DevicesDeps, log *slog.Logger) *Server {
 	s := &Server{
 		cfg:            cfg,
 		stateMgr:       stateMgr,
@@ -66,6 +74,7 @@ func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *qu
 		metrics:        col,
 		previewEnabled: previewDeps.Enabled,
 		previewStatus:  previewDeps.GetStatus,
+		listDevices:    devicesDeps.List,
 		log:            log,
 	}
 
@@ -130,6 +139,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/preview/stop",   handlers.PreviewStop(s.cmdBus, s.previewEnabled))
 	mux.HandleFunc("POST /v1/preview/seek",   handlers.PreviewSeek(s.cmdBus, s.previewEnabled))
 	mux.HandleFunc("GET /v1/preview/status",  handlers.PreviewStatus(s.previewStatus, s.previewEnabled))
+
+	// Devices
+	mux.HandleFunc("GET /v1/devices", handlers.Devices(s.listDevices))
 
 	// Admin
 	mux.HandleFunc("POST /v1/admin/shutdown", handlers.Shutdown())

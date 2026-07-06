@@ -155,6 +155,35 @@ func TestNullOutput_Realtime_ContextCancel(t *testing.T) {
 	}
 }
 
+func TestNullOutput_ListDevices(t *testing.T) {
+	n := &output.NullOutput{}
+
+	devs, err := n.ListDevices()
+	if err != nil {
+		t.Fatalf("ListDevices: %v", err)
+	}
+	if len(devs) != 1 {
+		t.Fatalf("len(devs) = %d, want 1", len(devs))
+	}
+
+	d := devs[0]
+	if d.ID != "null" {
+		t.Errorf("ID = %q, want null", d.ID)
+	}
+	if d.Driver != "null" {
+		t.Errorf("Driver = %q, want null", d.Driver)
+	}
+	if !d.IsDefault {
+		t.Error("IsDefault should be true")
+	}
+	if d.MaxOutputChannels != 2 {
+		t.Errorf("MaxOutputChannels = %d, want 2", d.MaxOutputChannels)
+	}
+	if d.DefaultSampleRate != 48000 {
+		t.Errorf("DefaultSampleRate = %v, want 48000", d.DefaultSampleRate)
+	}
+}
+
 func TestDBToLinear(t *testing.T) {
 	cases := []struct {
 		db   float64

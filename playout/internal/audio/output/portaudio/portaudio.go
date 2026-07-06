@@ -206,6 +206,38 @@ func (o *Output) Info() output.OutputDeviceInfo {
 	}
 }
 
+// ListDevices enumerates all audio output devices available via PortAudio.
+// pa.Initialize() must already have been called (done by New()).
+//
+// Because PortAudio does not expose a persistent device UID, DeviceInfo.ID is
+// set equal to DeviceInfo.Name. If the device is renamed in the OS, the ID
+// changes accordingly — consistent with how resolveDevice selects devices.
+func (o *Output) ListDevices() ([]output.DeviceInfo, error) {
+	defaultDev, _ := pa.DefaultOutputDevice()
+
+	devs, err := pa.Devices()
+	if err != nil {
+		return nil, fmt.Errorf("portaudio: list devices: %w", err)
+	}
+
+	result := make([]output.DeviceInfo, 0, len(devs))
+	for _, d := range devs {
+		if d.MaxOutputChannels <= 0 {
+			continue
+		}
+		isDefault := defaultDev != nil && d.Name == defaultDev.Name
+		result = append(result, output.DeviceInfo{
+			ID:                d.Name,
+			Name:              d.Name,
+			Driver:            "portaudio",
+			IsDefault:         isDefault,
+			MaxOutputChannels: d.MaxOutputChannels,
+			DefaultSampleRate: d.DefaultSampleRate,
+		})
+	}
+	return result, nil
+}
+
 // resolveDevice returns the PortAudio DeviceInfo for the requested device ID.
 func (o *Output) resolveDevice(deviceID string) (*pa.DeviceInfo, error) {
 	if deviceID == "" || deviceID == "default" {

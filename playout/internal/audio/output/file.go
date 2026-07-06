@@ -109,6 +109,18 @@ func (fo *FileOutput) Info() OutputDeviceInfo {
 	}
 }
 
+// ListDevices returns a single pseudo-device representing the file output.
+func (fo *FileOutput) ListDevices() ([]DeviceInfo, error) {
+	return []DeviceInfo{{
+		ID:                "file",
+		Name:              "File Output",
+		Driver:            "file",
+		IsDefault:         true,
+		MaxOutputChannels: 2,
+		DefaultSampleRate: 48000,
+	}}, nil
+}
+
 // FramesWritten returns the number of frames written so far.
 func (fo *FileOutput) FramesWritten() int64 {
 	return fo.framesWrit
