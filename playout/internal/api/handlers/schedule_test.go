@@ -482,6 +482,131 @@ func TestScheduleDisable_NotFound(t *testing.T) {
 	}
 }
 
+// --- Break entries -----------------------------------------------------------
+
+func TestScheduleAdd_Break_Valid(t *testing.T) {
+	mgr := newFakeScheduleMgr()
+	rr := httptest.NewRecorder()
+
+	body := map[string]any{
+		"name":         "Bloco Comercial 10h30",
+		"enabled":      true,
+		"cron_expr":    "30 10 * * *",
+		"trigger_mode": "AFTER_CURRENT",
+		"break": map[string]any{
+			"title": "Bloco das 10h30",
+			"open":  map[string]any{"path": "/lib/open.mp3", "type": "jingle"},
+			"spots": []any{
+				map[string]any{"path": "/lib/spot-a.mp3", "type": "spot", "title": "Spot A"},
+				map[string]any{"path": "/lib/spot-b.mp3", "type": "spot", "title": "Spot B"},
+			},
+			"close": map[string]any{"path": "/lib/close.mp3", "type": "jingle"},
+		},
+	}
+	handlers.ScheduleAdd(mgr).ServeHTTP(rr, schedReq(t, http.MethodPost, "/v1/schedule", body))
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body: %s", rr.Code, rr.Body.String())
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp["ok"] != true {
+		t.Errorf("ok = %v, want true", resp["ok"])
+	}
+	entry := resp["entry"].(map[string]any)
+	if entry["item"] != nil {
+		t.Errorf("break entry should not have 'item' in view, got: %v", entry["item"])
+	}
+	brk, ok := entry["break"].(map[string]any)
+	if !ok || brk == nil {
+		t.Fatalf("entry.break should be present, got: %v", entry["break"])
+	}
+	if brk["title"] != "Bloco das 10h30" {
+		t.Errorf("break.title = %v, want 'Bloco das 10h30'", brk["title"])
+	}
+	spots, _ := brk["spots"].([]any)
+	if len(spots) != 2 {
+		t.Errorf("break.spots len = %d, want 2", len(spots))
+	}
+}
+
+func TestScheduleAdd_ItemAndBreak_Rejected(t *testing.T) {
+	mgr := newFakeScheduleMgr()
+	rr := httptest.NewRecorder()
+
+	body := map[string]any{
+		"name":      "conflict",
+		"cron_expr": "0 * * * *",
+		"item":      map[string]any{"path": "/media/x.mp3"},
+		"break": map[string]any{
+			"title": "Bloco",
+			"spots": []any{map[string]any{"path": "/lib/spot.mp3"}},
+		},
+	}
+	handlers.ScheduleAdd(mgr).ServeHTTP(rr, schedReq(t, http.MethodPost, "/v1/schedule", body))
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestScheduleAdd_Break_NoSpots_Rejected(t *testing.T) {
+	mgr := newFakeScheduleMgr()
+	rr := httptest.NewRecorder()
+
+	body := map[string]any{
+		"name":      "empty break",
+		"cron_expr": "0 * * * *",
+		"break": map[string]any{
+			"title": "Bloco Vazio",
+			"spots": []any{},
+		},
+	}
+	handlers.ScheduleAdd(mgr).ServeHTTP(rr, schedReq(t, http.MethodPost, "/v1/schedule", body))
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestScheduleAdd_Break_SpotMissingPath_Rejected(t *testing.T) {
+	mgr := newFakeScheduleMgr()
+	rr := httptest.NewRecorder()
+
+	body := map[string]any{
+		"name":      "spot no path",
+		"cron_expr": "0 * * * *",
+		"break": map[string]any{
+			"title": "Bloco",
+			"spots": []any{
+				map[string]any{"type": "spot", "title": "No path here"},
+			},
+		},
+	}
+	handlers.ScheduleAdd(mgr).ServeHTTP(rr, schedReq(t, http.MethodPost, "/v1/schedule", body))
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestScheduleAdd_NeitherItemNorBreak_Rejected(t *testing.T) {
+	mgr := newFakeScheduleMgr()
+	rr := httptest.NewRecorder()
+
+	body := map[string]any{
+		"name":      "nothing",
+		"cron_expr": "0 * * * *",
+	}
+	handlers.ScheduleAdd(mgr).ServeHTTP(rr, schedReq(t, http.MethodPost, "/v1/schedule", body))
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+}
+
 // --- Content-Type ------------------------------------------------------------
 
 func TestScheduleHandlers_ContentType(t *testing.T) {

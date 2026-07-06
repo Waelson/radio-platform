@@ -616,6 +616,181 @@ func TestFireHoraCerta_Fire_SendsInsertNext(t *testing.T) {
 }
 
 
+// --- Break entry fire tests --------------------------------------------------
+
+func makeBreak() *commands.BreakItemInput {
+	return &commands.BreakItemInput{
+		Title: "Bloco Teste",
+		Open:  &commands.QueueItemInput{Path: "/open.mp3", Type: "jingle"},
+		Spots: []commands.QueueItemInput{
+			{Path: "/spot-a.mp3", Type: "spot", Title: "Spot A"},
+			{Path: "/spot-b.mp3", Type: "spot", Title: "Spot B"},
+		},
+		Close: &commands.QueueItemInput{Path: "/close.mp3", Type: "jingle"},
+	}
+}
+
+// TestSchedulerBreak_AfterCurrent confirms that a break entry with
+// TriggerAfterCurrent dispatches CmdInsertBreakNext (not CmdInsertNext).
+func TestSchedulerBreak_AfterCurrent(t *testing.T) {
+	fs := &fakeState{st: state.StatePlaying}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "b1",
+		Name:        "bloco",
+		Enabled:     true,
+		TriggerMode: TriggerAfterCurrent,
+		Break:       makeBreak(),
+	})
+	if !fired {
+		t.Fatal("expected fired=true")
+	}
+	cmds := col.drainAll()
+	// AFTER_CURRENT + PLAYING → only InsertBreakNext (no skip, no play)
+	if len(cmds) != 1 {
+		t.Fatalf("expected 1 command, got %d", len(cmds))
+	}
+	if cmds[0].Type != commands.CmdInsertBreakNext {
+		t.Errorf("cmd = %s, want CmdInsertBreakNext", cmds[0].Type)
+	}
+	p, ok := cmds[0].Payload.(commands.InsertBreakNextPayload)
+	if !ok {
+		t.Fatalf("payload type = %T, want InsertBreakNextPayload", cmds[0].Payload)
+	}
+	if p.Break.Title != "Bloco Teste" {
+		t.Errorf("break.Title = %q, want 'Bloco Teste'", p.Break.Title)
+	}
+	if len(p.Break.Spots) != 2 {
+		t.Errorf("break.Spots len = %d, want 2", len(p.Break.Spots))
+	}
+}
+
+// TestSchedulerBreak_Interrupt confirms break + INTERRUPT → CmdInsertBreakNext + CmdSkip.
+func TestSchedulerBreak_Interrupt(t *testing.T) {
+	fs := &fakeState{st: state.StatePlaying}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "b2",
+		Name:        "bloco-interrupt",
+		Enabled:     true,
+		TriggerMode: TriggerInterrupt,
+		Break:       makeBreak(),
+	})
+	if !fired {
+		t.Fatal("expected fired=true")
+	}
+	cmds := col.drainAll()
+	if len(cmds) != 2 {
+		t.Fatalf("expected 2 commands (InsertBreakNext+Skip), got %d", len(cmds))
+	}
+	if cmds[0].Type != commands.CmdInsertBreakNext {
+		t.Errorf("cmds[0] = %s, want CmdInsertBreakNext", cmds[0].Type)
+	}
+	if cmds[1].Type != commands.CmdSkip {
+		t.Errorf("cmds[1] = %s, want CmdSkip", cmds[1].Type)
+	}
+}
+
+// TestSchedulerBreak_Crossfade confirms break + CROSSFADE → CmdInsertBreakNext + CmdSkip{CROSSFADE}.
+func TestSchedulerBreak_Crossfade(t *testing.T) {
+	fs := &fakeState{st: state.StatePlaying}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "b3",
+		Name:        "bloco-crossfade",
+		Enabled:     true,
+		TriggerMode: TriggerCrossfade,
+		Break:       makeBreak(),
+	})
+	if !fired {
+		t.Fatal("expected fired=true")
+	}
+	cmds := col.drainAll()
+	if len(cmds) != 2 {
+		t.Fatalf("expected 2 commands, got %d", len(cmds))
+	}
+	if cmds[0].Type != commands.CmdInsertBreakNext {
+		t.Errorf("cmds[0] = %s, want CmdInsertBreakNext", cmds[0].Type)
+	}
+	skip, ok := cmds[1].Payload.(commands.SkipPayload)
+	if !ok {
+		t.Fatal("cmds[1] should be SkipPayload")
+	}
+	if skip.Transition == nil || skip.Transition.Type != "CROSSFADE" {
+		t.Errorf("expected CROSSFADE transition, got %+v", skip.Transition)
+	}
+}
+
+// TestSchedulerBreak_SkipIfBusy_Missed confirms break + SKIP_IF_BUSY when PLAYING → MISSED.
+func TestSchedulerBreak_SkipIfBusy_Missed(t *testing.T) {
+	fs := &fakeState{st: state.StatePlaying}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "b4",
+		Name:        "bloco-skip",
+		Enabled:     true,
+		TriggerMode: TriggerSkipIfBusy,
+		Break:       makeBreak(),
+	})
+	if fired {
+		t.Fatal("expected fired=false (missed when busy)")
+	}
+	if cmds := col.drainAll(); len(cmds) != 0 {
+		t.Fatalf("expected 0 commands when missed, got %d", len(cmds))
+	}
+}
+
+// TestSchedulerBreak_Persist confirms that an entry with Break persists and
+// restores correctly via FileStore (round-trip through JSON).
+func TestSchedulerBreak_Persist(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/schedule.json"
+
+	fs := &fakeState{st: state.StateIdle}
+	m, _ := newTestManager(fs, newFakeClock(time.Now()), Config{
+		StorePath:         path,
+		MissedThresholdMS: 5000,
+	})
+
+	_, err := m.Add(Entry{
+		Name:        "Bloco Persistido",
+		Enabled:     true,
+		CronExpr:    "30 10 * * *",
+		TriggerMode: TriggerAfterCurrent,
+		Break:       makeBreak(),
+	})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	// Reload from disk via a new Manager.
+	m2, _ := newTestManager(fs, newFakeClock(time.Now()), Config{
+		StorePath:         path,
+		MissedThresholdMS: 5000,
+	})
+	entries := m2.List()
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 restored entry, got %d", len(entries))
+	}
+	e := entries[0]
+	if e.Break == nil {
+		t.Fatal("restored entry should have Break set")
+	}
+	if e.Break.Title != "Bloco Teste" {
+		t.Errorf("Break.Title = %q, want 'Bloco Teste'", e.Break.Title)
+	}
+	if len(e.Break.Spots) != 2 {
+		t.Errorf("Break.Spots len = %d, want 2", len(e.Break.Spots))
+	}
+	if e.Break.Open == nil || e.Break.Close == nil {
+		t.Error("Break.Open and Break.Close should be non-nil after restore")
+	}
+}
+
 // --- Timezone and Run tests --------------------------------------------------
 
 func TestNew_InvalidTimezone(t *testing.T) {
