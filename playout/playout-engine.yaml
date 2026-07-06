@@ -64,7 +64,7 @@ audio:
 
     # Identificador do dispositivo de áudio. "default" usa o dispositivo padrão
     # do sistema operacional.
-    device_id: "default"
+    device_id: "Alto-falantes (MacBook Pro)"
 
     # Quando true, o engine degrada para NullOutput se o dispositivo de áudio
     # falhar ao abrir, em vez de encerrar com erro.
@@ -239,14 +239,14 @@ hora_certa:
 preview:
   # Habilita o recurso de preview. Quando false, os endpoints /v1/preview/*
   # retornam 503 Service Unavailable.
-  enabled: false
+  enabled: true
 
   # Driver de saída para o dispositivo de preview.
   # Valores: "null" (silencioso), "coreaudio" (macOS), "portaudio" (multiplataforma)
   # Use "null" para testar sem um segundo dispositivo de áudio.
-  output_driver: "null"
+  output_driver: "coreaudio"
 
   # Identificador do dispositivo de saída para preview.
   # Vazio = dispositivo padrão do driver selecionado.
   # Exemplos: "BlackHole 2ch" (macOS virtual), "hw:1,0" (ALSA/Linux)
-  output_device: ""
+  output_device: "AirPods Pro 2 2025"

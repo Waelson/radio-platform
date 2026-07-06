@@ -31,31 +31,42 @@ type Config struct {
 	StartTime      time.Time // used by the /status SPA and /v1/info
 }
 
+// PreviewDeps carries optional preview player dependencies for the API server.
+// When Enabled is false all /v1/preview/* endpoints return 503.
+type PreviewDeps struct {
+	Enabled   bool
+	GetStatus func() any // returns preview.Status as any; nil when disabled
+}
+
 // Server wraps an http.Server and owns the routing for the Engine's REST API.
 type Server struct {
-	cfg      Config
-	stateMgr *state.Manager
-	cmdBus   *commands.Bus
-	queueMgr *queue.Manager
-	wsHub    *ws.Hub
-	metrics  *metrics.Collector
-	log      *slog.Logger
-	httpSrv  *http.Server
+	cfg            Config
+	stateMgr       *state.Manager
+	cmdBus         *commands.Bus
+	queueMgr       *queue.Manager
+	wsHub          *ws.Hub
+	metrics        *metrics.Collector
+	previewEnabled bool
+	previewStatus  func() any
+	log            *slog.Logger
+	httpSrv        *http.Server
 }
 
 // New creates a Server wired to stateMgr for reads and cmdBus for writes.
 // queueMgr may be nil; queue endpoints will be unavailable until it is set.
 // wsHub may be nil; the /v1/events endpoint will not be registered.
 // col may be nil; the /v1/metrics endpoint will not be registered.
-func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, log *slog.Logger) *Server {
+func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, log *slog.Logger) *Server {
 	s := &Server{
-		cfg:      cfg,
-		stateMgr: stateMgr,
-		cmdBus:   cmdBus,
-		queueMgr: queueMgr,
-		wsHub:    wsHub,
-		metrics:  col,
-		log:      log,
+		cfg:            cfg,
+		stateMgr:       stateMgr,
+		cmdBus:         cmdBus,
+		queueMgr:       queueMgr,
+		wsHub:          wsHub,
+		metrics:        col,
+		previewEnabled: previewDeps.Enabled,
+		previewStatus:  previewDeps.GetStatus,
+		log:            log,
 	}
 
 	mux := http.NewServeMux()
@@ -111,6 +122,14 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Hot buttons
 	mux.HandleFunc("POST /v1/hotbuttons/trigger", handlers.TriggerHotButton(s.cmdBus))
+
+	// Preview (cue) player — always registered; returns 503 when disabled.
+	mux.HandleFunc("POST /v1/preview/play",   handlers.PreviewPlay(s.cmdBus, s.previewEnabled))
+	mux.HandleFunc("POST /v1/preview/pause",  handlers.PreviewPause(s.cmdBus, s.previewEnabled))
+	mux.HandleFunc("POST /v1/preview/resume", handlers.PreviewResume(s.cmdBus, s.previewEnabled))
+	mux.HandleFunc("POST /v1/preview/stop",   handlers.PreviewStop(s.cmdBus, s.previewEnabled))
+	mux.HandleFunc("POST /v1/preview/seek",   handlers.PreviewSeek(s.cmdBus, s.previewEnabled))
+	mux.HandleFunc("GET /v1/preview/status",  handlers.PreviewStatus(s.previewStatus, s.previewEnabled))
 
 	// Admin
 	mux.HandleFunc("POST /v1/admin/shutdown", handlers.Shutdown())

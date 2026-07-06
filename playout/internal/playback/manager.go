@@ -33,6 +33,8 @@ import (
 
 // Config holds playback-specific configuration.
 type Config struct {
+	// DeviceID is the audio output device name. "default" uses the OS default.
+	DeviceID string
 	// BufferFrames is the PCM read-buffer size in frames. Default: 2048.
 	BufferFrames int
 	// ProgressIntervalMS controls how often ProgressChanged events fire. Default: 500.
@@ -622,7 +624,7 @@ func (m *Manager) panicBedLoop(ctx context.Context, bed commands.PanicBedInput, 
 	defer close(done)
 
 	outCfg := output.OutputConfig{
-		DeviceID:     "default",
+		DeviceID:     m.cfg.DeviceID,
 		SampleRate:   audio.DefaultFormat.SampleRate,
 		Channels:     audio.DefaultFormat.Channels,
 		BufferFrames: m.cfg.BufferFrames,
@@ -869,7 +871,7 @@ func (m *Manager) hotButtonInterrupt(ctx context.Context, p commands.TriggerHotB
 
 	// Play the hot button synchronously (blocks until done or ctx cancelled).
 	outCfg := output.OutputConfig{
-		DeviceID:     "default",
+		DeviceID:     m.cfg.DeviceID,
 		SampleRate:   audio.DefaultFormat.SampleRate,
 		Channels:     audio.DefaultFormat.Channels,
 		BufferFrames: m.cfg.BufferFrames,
@@ -956,7 +958,7 @@ func (m *Manager) sessionLoop(ctx context.Context, cancel context.CancelFunc, do
 
 	// Open output device.
 	outCfg := output.OutputConfig{
-		DeviceID:     "default",
+		DeviceID:     m.cfg.DeviceID,
 		SampleRate:   audio.DefaultFormat.SampleRate,
 		Channels:     audio.DefaultFormat.Channels,
 		BufferFrames: m.cfg.BufferFrames,

@@ -6,7 +6,7 @@
 package coreaudio
 
 /*
-#cgo LDFLAGS: -framework AudioToolbox -framework CoreFoundation
+#cgo LDFLAGS: -framework AudioToolbox -framework CoreFoundation -framework CoreAudio
 #include "bridge.h"
 */
 import "C"
@@ -103,6 +103,24 @@ func (o *Output) Open(_ context.Context, cfg output.OutputConfig) error {
 	if status != 0 {
 		o.handle.Delete()
 		return fmt.Errorf("coreaudio: AudioQueueNewOutput: OSStatus %d", int(status))
+	}
+
+	// Route to a specific device when DeviceID is set and not "default".
+	if cfg.DeviceID != "" && cfg.DeviceID != "default" {
+		cName := C.CString(cfg.DeviceID)
+		var devID C.AudioDeviceID
+		st := C.caFindDeviceByName(cName, &devID)
+		C.free(unsafe.Pointer(cName))
+		if st != 0 {
+			// Device not found: fall back to system default and log available devices.
+			var listBuf [4096]C.char
+			C.caListOutputDevices(&listBuf[0], 4096)
+			available := C.GoString(&listBuf[0])
+			_ = available // caller can inspect via log
+			fmt.Printf("coreaudio: device %q not found (OSStatus %d); using system default.\nAvailable output devices:\n%s", cfg.DeviceID, int(st), available)
+		} else if st2 := C.caSetQueueDevice(o.queue, devID); st2 != 0 {
+			fmt.Printf("coreaudio: set device %q failed (OSStatus %d); using system default.\n", cfg.DeviceID, int(st2))
+		}
 	}
 
 	// Allocate the buffer pool and pre-fill freeBufs.

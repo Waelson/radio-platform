@@ -639,6 +639,34 @@ canvas.vu-canvas { display: block; width: 32px; }
 .lib-item-dur { font-size: 10px; color: var(--text-dim); width: 36px; text-align: right; flex-shrink: 0; }
 .lib-enqueue-btn { background: none; border: 1px solid var(--cyan); color: var(--cyan); padding: 2px 7px; border-radius: 3px; font-size: 10px; cursor: pointer; flex-shrink: 0; transition: background 0.12s, color 0.12s; }
 .lib-enqueue-btn:hover { background: var(--cyan); color: #000; }
+.lib-cue-btn { background: none; border: 1px solid #4a2a6a; color: #9b5cff; padding: 2px 7px; border-radius: 3px; font-size: 10px; cursor: pointer; flex-shrink: 0; transition: background 0.12s, color 0.12s; }
+.lib-cue-btn:hover  { background: #7a4dff; color: #fff; border-color: #7a4dff; }
+.lib-cue-btn.active { background: #7a4dff; color: #fff; border-color: #7a4dff; }
+.lib-preview-panel {
+  background: #241a3a; border-bottom: 2px solid #7a4dff;
+  padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+}
+.lib-preview-label {
+  font-size: 11px; color: var(--text-dim); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 150px; flex-shrink: 0;
+}
+.lib-preview-controls { display: flex; gap: 5px; flex-shrink: 0; }
+.lib-prev-btn {
+  background: #1a1228; border: 1px solid #7a4dff; color: #9b5cff;
+  width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s; padding: 0;
+}
+.lib-prev-btn:hover:not(:disabled) { background: #7a4dff; color: #fff; }
+.lib-prev-btn:disabled { opacity: 0.28; cursor: default; }
+.lib-prev-progress { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 60px; }
+.lib-prev-track {
+  height: 6px; background: #1a1228; border-radius: 3px;
+  position: relative; cursor: pointer; border: 1px solid #2a1a3a;
+}
+.lib-prev-fill { height: 100%; background: #7a4dff; border-radius: 3px; pointer-events: none; transition: width 0.1s linear; position: relative; }
+.lib-prev-thumb { position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; background: #fff; border-radius: 50%; box-shadow: 0 0 3px rgba(0,0,0,0.5); pointer-events: none; }
+.lib-prev-time { font-family: 'Courier New', monospace; font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between; }
 .lib-status { padding: 16px 12px; font-size: 11px; color: var(--text-dim); text-align: center; }
 
 /* ─── Hot Buttons Drawer ─────────────────────────────────────── */
@@ -996,6 +1024,60 @@ td.q-action-col { display: none; }
 .q-btn.q-btn-up:hover   { color: var(--blue); border-color: #003366; }
 .q-btn.q-btn-down:hover { color: var(--blue); border-color: #003366; }
 .q-btn.q-btn-del:hover  { color: var(--red);  border-color: #550000; background: #1a0000; }
+
+/* ─── Preview (CUE) ──────────────────────────────────────────── */
+td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
+.preview-btn {
+  background: none; border: 1px solid #4a2a6a; color: #9b5cff;
+  padding: 2px 6px; border-radius: 3px; font-size: 13px; cursor: pointer;
+  line-height: 1.2; transition: background 0.12s, color 0.12s;
+  font-family: inherit;
+}
+.preview-btn:hover  { background: #4a2a6a; color: #fff; }
+.preview-btn.active { background: #7a4dff; color: #fff; border-color: #7a4dff; }
+
+.preview-row td {
+  background: #0d0a18; border-bottom: 2px solid #7a4dff;
+  padding: 10px 16px;
+}
+.preview-panel {
+  display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;
+}
+.preview-label {
+  font-size: 11px; color: var(--text-dim); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 180px; flex-shrink: 0;
+}
+.preview-controls { display: flex; gap: 5px; flex-shrink: 0; }
+.prev-ctrl-btn {
+  background: #1a1228; border: 1px solid #7a4dff; color: #9b5cff;
+  width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, color 0.12s; padding: 0;
+}
+.prev-ctrl-btn:hover:not(:disabled) { background: #7a4dff; color: #fff; }
+.prev-ctrl-btn:disabled { opacity: 0.28; cursor: default; }
+.preview-progress-wrap {
+  flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 80px;
+}
+.prev-bar-track {
+  height: 6px; background: #1a1228; border-radius: 3px;
+  position: relative; cursor: pointer; border: 1px solid #2a1a3a;
+}
+.prev-bar-fill {
+  height: 100%; background: #7a4dff; border-radius: 3px;
+  pointer-events: none; transition: width 0.1s linear;
+}
+.prev-time {
+  font-family: 'Courier New', monospace; font-size: 11px; color: var(--text-dim);
+  display: flex; justify-content: space-between;
+}
+.prev-state-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 2px; background: #1a1228; color: #7a4dff;
+  flex-shrink: 0;
+}
+.prev-state-badge.playing { color: #20e6ff; background: #001a2a; }
+.prev-state-badge.paused  { color: #ffdd00; background: #1a1600; }
 
 /* ─── Drag-and-drop ──────────────────────────────────────────── */
 .drag-handle {
@@ -2766,6 +2848,145 @@ async function submitBreak() {
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Preview (CUE) Player — painel inline na Biblioteca
+   ═══════════════════════════════════════════════════════════════ */
+const _preview = { state: 'idle', path: '', positionMS: 0, durationMS: 0, trackIdx: null };
+
+// Abre/fecha painel inline abaixo do item da biblioteca.
+function libTogglePreview(idx) {
+  const existing = document.getElementById('lib-preview-panel');
+  if (existing) {
+    const same = _preview.trackIdx === idx;
+    _libClosePreviewPanel();
+    previewStop();
+    if (same) return; // mesmo item → só fecha
+  }
+  _preview.trackIdx = idx;
+  _libOpenPreviewPanel(idx);
+}
+
+function _libOpenPreviewPanel(idx) {
+  const t = _libTracks[idx];
+  if (!t) return;
+  const anchor = document.getElementById(`lib-track-item-${idx}`);
+  if (!anchor) return;
+
+  _libUpdateCueBtn(idx, true);
+  _preview.path = t.path || '';
+  _preview.positionMS = 0;
+  _preview.durationMS = t.duration_ms || 0;
+
+  const panel = document.createElement('div');
+  panel.id = 'lib-preview-panel';
+  panel.className = 'lib-preview-panel';
+  panel.innerHTML = `
+    <div class="lib-preview-controls">
+      <button class="lib-prev-btn" id="libPrevPlay"   title="Play"   onclick="previewPlayOrResume()">▶</button>
+      <button class="lib-prev-btn" id="libPrevPause"  title="Pausar" onclick="previewPause()" disabled>⏸</button>
+      <button class="lib-prev-btn" id="libPrevStop"   title="Stop"   onclick="previewStop()" disabled>■</button>
+    </div>
+    <div class="lib-prev-progress">
+      <div class="lib-prev-track" id="libPrevTrack" onclick="previewSeekClick(event)">
+        <div class="lib-prev-fill" id="libPrevFill" style="width:0%"><div class="lib-prev-thumb"></div></div>
+      </div>
+      <div class="lib-prev-time">
+        <span id="libPrevPos">0:00</span>
+        <span id="libPrevDur">${_preview.durationMS > 0 ? msToTime(_preview.durationMS) : '--:--'}</span>
+      </div>
+    </div>`;
+  anchor.after(panel);
+}
+
+function _libClosePreviewPanel() {
+  const panel = document.getElementById('lib-preview-panel');
+  if (panel) panel.remove();
+  if (_preview.trackIdx !== null) _libUpdateCueBtn(_preview.trackIdx, false);
+  _preview.trackIdx = null;
+  _preview.state = 'idle';
+}
+
+function _libUpdateCueBtn(idx, active) {
+  const btn = document.querySelector(`#lib-track-item-${idx} .lib-cue-btn`);
+  if (btn) btn.classList.toggle('active', active);
+}
+
+function _renderPreviewPanel() {
+  const s = _preview;
+  const playing = s.state === 'playing';
+  const paused  = s.state === 'paused';
+  const active  = playing || paused;
+
+  const btnPlay  = document.getElementById('libPrevPlay');
+  const btnPause = document.getElementById('libPrevPause');
+  const btnStop  = document.getElementById('libPrevStop');
+  const fill     = document.getElementById('libPrevFill');
+  const pos      = document.getElementById('libPrevPos');
+  const dur      = document.getElementById('libPrevDur');
+  if (!btnPlay) return;
+
+  btnPlay.disabled  = playing;
+  btnPause.disabled = !playing;
+  btnStop.disabled  = !active;
+
+  const pct = s.durationMS > 0 ? Math.min(100, (s.positionMS / s.durationMS) * 100) : 0;
+  fill.style.width = pct + '%';
+  pos.textContent  = msToTime(s.positionMS);
+  dur.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
+}
+
+async function previewPlayOrResume() {
+  if (_preview.state === 'paused') return previewResume();
+  return previewPlay();
+}
+
+async function previewPlay() {
+  if (!_preview.path) return;
+  try {
+    await fetch(API_URL + '/v1/preview/play', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ path: _preview.path, seek_ms: 0 }),
+    });
+  } catch(e) { console.warn('[preview] play error', e); }
+}
+
+function previewPauseResume() {
+  if (_preview.state === 'paused') previewResume();
+  else previewPause();
+}
+
+async function previewPause() {
+  try { await fetch(API_URL + '/v1/preview/pause', { method: 'POST' }); }
+  catch(e) { console.warn('[preview] pause error', e); }
+}
+
+async function previewResume() {
+  try { await fetch(API_URL + '/v1/preview/resume', { method: 'POST' }); }
+  catch(e) { console.warn('[preview] resume error', e); }
+}
+
+async function previewStop() {
+  try { await fetch(API_URL + '/v1/preview/stop', { method: 'POST' }); }
+  catch(e) { console.warn('[preview] stop error', e); }
+}
+
+async function previewSeekClick(event) {
+  if (_preview.durationMS <= 0 || _preview.state === 'idle') return;
+  const rect  = event.currentTarget.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  const posMS = Math.round(ratio * _preview.durationMS);
+  try {
+    await fetch(API_URL + '/v1/preview/seek', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ position_ms: posMS }),
+    });
+  } catch(e) { console.warn('[preview] seek error', e); }
+}
+
+function _basename(p) { return (p || '').split('/').pop() || p; }
+
 function handleEvent({ type, payload }) {
   switch (type) {
     case 'VUMeter':            applyVU(payload); break;
@@ -2787,6 +3008,36 @@ function handleEvent({ type, payload }) {
     case 'AssistEntered':      enterAssistUI(); break;
     case 'AssistExited':       exitAssistUI();  break;
     case 'AssistWaiting':      onAssistWaiting(payload); break;
+    // Preview (CUE)
+    case 'PreviewStarted':
+      _preview.state = 'playing';
+      _preview.path  = payload.path || _prevPath;
+      _preview.positionMS = payload.seek_ms || 0;
+      _preview.durationMS = payload.duration_ms || 0;
+      _prevPath = _preview.path;
+      _renderPreviewPanel(); break;
+    case 'PreviewPaused':
+      _preview.state = 'paused';
+      if (payload.position_ms != null) _preview.positionMS = payload.position_ms;
+      if (payload.duration_ms  != null) _preview.durationMS = payload.duration_ms;
+      _renderPreviewPanel(); break;
+    case 'PreviewResumed':
+      _preview.state = 'playing';
+      if (payload.position_ms != null) _preview.positionMS = payload.position_ms;
+      if (payload.duration_ms  != null) _preview.durationMS = payload.duration_ms;
+      _renderPreviewPanel(); break;
+    case 'PreviewProgress':
+      _preview.positionMS = payload.position_ms || 0;
+      if (payload.duration_ms) _preview.durationMS = payload.duration_ms;
+      _renderPreviewPanel(); break;
+    case 'PreviewSeeked':
+      _preview.positionMS = payload.position_ms || 0;
+      if (payload.duration_ms) _preview.durationMS = payload.duration_ms;
+      _renderPreviewPanel(); break;
+    case 'PreviewStopped':
+      _preview.state = 'idle';
+      _preview.positionMS = 0;
+      _renderPreviewPanel(); break;
   }
 }
 
@@ -3227,13 +3478,14 @@ async function libLoadTracks() {
       return;
     }
     list.innerHTML = _libTracks.map((t, i) => `
-      <div class="lib-item" ondblclick="libEnqueueTrack(${i})" title="Duplo clique para enfileirar">
+      <div class="lib-item" id="lib-track-item-${i}" ondblclick="libEnqueueTrack(${i})" title="Duplo clique para enfileirar">
         <div class="lib-item-info">
           <div class="lib-item-title" title="${escHtml(t.title || '')}">${escHtml(t.title || '—')}</div>
           <div class="lib-item-sub">${escHtml(t.artist || '—')}</div>
         </div>
         <span class="lib-item-type">${escHtml(t.type || '')}</span>
         <span class="lib-item-dur">${msToDuration(t.duration_ms)}</span>
+        <button class="lib-cue-btn" title="Preview (CUE)" data-idx="${i}" onclick="libTogglePreview(${i})">◎</button>
         <button class="lib-enqueue-btn" onclick="libEnqueueTrack(${i})">+ Fila</button>
       </div>`).join('');
   } catch(e) {

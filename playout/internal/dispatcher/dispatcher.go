@@ -176,6 +176,14 @@ func (d *Dispatcher) reply(cmd commands.Command, result commands.Result) {
 // validate returns an empty string when cmdType is permitted in currentState,
 // or a human-readable rejection reason otherwise.
 func (d *Dispatcher) validate(cmdType commands.CommandType, currentState state.PlayerState) string {
+	// Preview commands are fully isolated from the main playback pipeline and
+	// are allowed in any engine state.
+	switch cmdType {
+	case commands.CmdPreviewPlay, commands.CmdPreviewPause, commands.CmdPreviewResume,
+		commands.CmdPreviewStop, commands.CmdPreviewSeek:
+		return ""
+	}
+
 	// ENTER_PANIC has maximum priority — allowed in any state except STOPPING.
 	if cmdType == commands.CmdEnterPanic {
 		if currentState == state.StateStopping {

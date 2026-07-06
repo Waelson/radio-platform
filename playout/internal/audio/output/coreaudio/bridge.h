@@ -35,4 +35,16 @@ OSStatus caEnqueueBuffer(
 // Returns 1 if the AudioQueue is currently running, 0 otherwise.
 int caIsRunning(AudioQueueRef queue);
 
+// Finds an audio output device by its name.
+// Returns noErr (0) and sets *outID on success.
+// Returns kAudioHardwareUnknownPropertyError if not found.
+OSStatus caFindDeviceByName(const char *name, AudioDeviceID *outID);
+
+// Routes an AudioQueue to a specific output device.
+OSStatus caSetQueueDevice(AudioQueueRef queue, AudioDeviceID deviceID);
+
+// Writes the names of all output devices into buf (newline-separated).
+// bufSize is the total buffer capacity; returns the number of bytes written.
+int caListOutputDevices(char *buf, int bufSize);
+
 #endif

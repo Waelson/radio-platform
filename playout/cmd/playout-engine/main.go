@@ -14,6 +14,7 @@ import (
 	apptray "github.com/Waelson/radio-playout-engine/cmd/playout-engine/systray"
 	appwebview "github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 	"github.com/Waelson/radio-playout-engine/internal/api"
+	"github.com/Waelson/radio-playout-engine/internal/preview"
 	apiws "github.com/Waelson/radio-playout-engine/internal/api/ws"
 	"github.com/Waelson/radio-playout-engine/internal/audio/decoder"
 	"github.com/Waelson/radio-playout-engine/internal/commands"
@@ -207,6 +208,7 @@ func run(args []string) error {
 
 	// 10. Playback Manager — drives the audio session loop.
 	pbCfg := playback.Config{
+		DeviceID:                      cfg.Audio.Output.DeviceID,
 		BufferFrames:                  cfg.Audio.BufferFrames,
 		ProgressIntervalMS:            cfg.Health.ProgressIntervalMS,
 		MaxConsecutiveFailures:        cfg.Playback.MaxConsecutiveItemFailures,
@@ -261,6 +263,28 @@ func run(args []string) error {
 	disp.Handle(commands.CmdExitPanic, pbMgr.HandleExitPanic)
 	disp.Handle(commands.CmdTriggerHotButton, pbMgr.HandleTriggerHotButton)
 
+	// 11b. Preview player — optional, isolated from the main playback pipeline.
+	previewDeps := api.PreviewDeps{Enabled: cfg.Preview.Enabled}
+	if cfg.Preview.Enabled {
+		previewOut, err := outfactory.NewPreviewOutputDevice(cfg)
+		if err != nil {
+			return fmt.Errorf("preview output: %w", err)
+		}
+		prevPlayer := preview.New(evtBus, dec, previewOut, preview.AudioConfig{
+			SampleRate:   cfg.Audio.SampleRate,
+			Channels:     cfg.Audio.Channels,
+			BufferFrames: cfg.Audio.BufferFrames,
+		}, log)
+		disp.Handle(commands.CmdPreviewPlay,   prevPlayer.HandlePlay)
+		disp.Handle(commands.CmdPreviewPause,  prevPlayer.HandlePause)
+		disp.Handle(commands.CmdPreviewResume, prevPlayer.HandleResume)
+		disp.Handle(commands.CmdPreviewStop,   prevPlayer.HandleStop)
+		disp.Handle(commands.CmdPreviewSeek,   prevPlayer.HandleSeek)
+		previewDeps.GetStatus = func() any { return prevPlayer.GetStatus() }
+		go prevPlayer.Run(ctx)
+		log.Info("preview player enabled", "driver", cfg.Preview.OutputDriver)
+	}
+
 	// 12. WebSocket Hub — fans out events to connected clients.
 	wsHub := apiws.NewHub(evtBus, stateMgr, log)
 
@@ -276,7 +300,7 @@ func run(args []string) error {
 		Version:        Version,
 		StartTime:      time.Now(),
 	}
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, log)
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, log)
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)
