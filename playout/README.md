@@ -241,11 +241,14 @@ graph TD
     CB["Command Bus"]
     DISP["Dispatcher\nvalidação state machine"]
     QM["Queue Manager"]
-    PB["Playback Manager"]
+    PB["Playback Manager\n(crossfade interno)"]
     DEC["FFmpeg Decoder\nsubprocesso"]
-    MIX["Mixer / Crossfade"]
     OUT["Output Device\nNull | File | PortAudio | CoreAudio"]
     HW["Hardware de Áudio"]
+    PREV["Preview Player\n(CUE)"]
+    DEC2["FFmpeg Decoder\n(preview)"]
+    OUT2["Output Device\n(preview)"]
+    HW2["Hardware de Áudio\n(preview)"]
     HM["Health Monitor\nRMS · Peak · LUFS · Silêncio"]
     EB["Event Bus"]
     SM["State Manager"]
@@ -256,14 +259,19 @@ graph TD
     CB --> DISP
     DISP --> QM
     DISP --> PB
+    DISP --> PREV
     PB --> DEC
-    DEC -->|"PCM float32 48kHz"| MIX
-    MIX --> OUT
+    DEC -->|"PCM float32 48kHz"| OUT
     OUT --> HW
+    PREV --> DEC2
+    DEC2 -->|"PCM float32 48kHz"| OUT2
+    OUT2 --> HW2
     PB --> HM
     HM --> EB
     DISP --> EB
     QM --> EB
+    PB --> EB
+    PREV --> EB
     EB --> SM
     EB --> WS
     WS -->|"eventos tempo real"| UI
@@ -280,17 +288,23 @@ graph LR
     subgraph Negócio
         C --> D[Queue Manager]
         C --> E[Playback Manager]
+        C --> P[Preview Player]
     end
-    subgraph Áudio
+    subgraph Áudio Principal
         E --> F[Decoder FFmpeg]
-        E --> G[Mixer / Crossfade]
-        G --> H[Output Device]
+        F --> H[Output Device]
+    end
+    subgraph Áudio Preview
+        P --> F2[Decoder FFmpeg]
+        F2 --> H2[Output Device]
     end
     subgraph Observabilidade
         E --> I[Health Monitor]
         I --> J[Event Bus]
         D --> J
         C --> J
+        E --> J
+        P --> J
         J --> K[WebSocket Hub]
         J --> L[State Manager]
     end
