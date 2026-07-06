@@ -181,6 +181,24 @@ hora_certa:
   hour_pattern: "HRS{HH}.mp3"
   minute_pattern: "MIN{MM}.mp3"
   gain_db: 0.0
+
+# -----------------------------------------------------------------------------
+# Preview (cue player)
+# -----------------------------------------------------------------------------
+preview:
+  # Habilita o recurso de preview. Quando false, os endpoints /v1/preview/*
+  # retornam 503 Service Unavailable.
+  enabled: true
+
+  # Driver de saída para o dispositivo de preview.
+  # Valores: "null" (silencioso), "coreaudio" (macOS), "portaudio" (multiplataforma)
+  # Use "null" para testar sem um segundo dispositivo de áudio.
+  output_driver: "null"
+
+  # Identificador do dispositivo de saída para preview.
+  # Vazio = dispositivo padrão do driver selecionado.
+  # Exemplos: "BlackHole 2ch" (macOS virtual), "hw:1,0" (ALSA/Linux)
+  output_device: ""
 `, driver, queuePath, hoursDir, minutesDir)
 }
 
