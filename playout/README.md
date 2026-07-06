@@ -359,8 +359,8 @@ Baixar em [ffmpeg.org](https://ffmpeg.org/download.html) e adicionar ao `PATH`.
 ### Clonar e verificar
 
 ```bash
-git clone https://github.com/Waelson/radio-playout-engine.git
-cd radio-playout-engine
+git clone https://github.com/Waelson/radio-platform.git
+cd radio-platform/playout
 
 # Verificar dependências Go
 go mod download
