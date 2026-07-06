@@ -260,3 +260,13 @@ Sempre que alterar comportamento público:
 - atualizar especificação correspondente;
 - atualizar exemplos JSON;
 - atualizar README se necessário.
+
+## Planos de implementação
+
+Todo plano ou proposta de implementação gerado pelo Claude Code deve ser armazenado em:
+
+```
+docs/plans/
+```
+
+Nunca criar arquivos de plano na raiz do projeto nem fora do repositório. Nomeie os arquivos de forma descritiva, por exemplo: `plan-feature-name.md` ou `proposal-feature-name.md`.
