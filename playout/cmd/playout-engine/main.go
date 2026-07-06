@@ -326,16 +326,6 @@ func run(args []string) error {
 		}
 	}
 
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, devicesDeps, log)
-
-	// Transition from STARTING → IDLE now that core is wired.
-	stateMgr.SetState(state.StateIdle)
-
-	evtBus.Publish(events.New(events.EvtEngineStarted, events.EngineStartedPayload{
-		EngineID: cfg.Engine.ID,
-		Version:  Version,
-	}))
-
 	// 15. Scheduler — timed playback scheduling.
 	schedStorePath := cfg.Scheduler.StorePath
 	if schedStorePath == "" {
@@ -349,6 +339,17 @@ func run(args []string) error {
 	if err != nil {
 		return fmt.Errorf("scheduler: %w", err)
 	}
+
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, log)
+
+	// Transition from STARTING → IDLE now that core is wired.
+	stateMgr.SetState(state.StateIdle)
+
+	evtBus.Publish(events.New(events.EvtEngineStarted, events.EngineStartedPayload{
+		EngineID: cfg.Engine.ID,
+		Version:  Version,
+	}))
+
 	if cfg.Scheduler.Enabled {
 		go schedMgr.Run(ctx)
 		log.Info("scheduler started",
@@ -357,7 +358,6 @@ func run(args []string) error {
 			"missed_threshold_ms", cfg.Scheduler.MissedThresholdMS,
 		)
 	}
-	_ = schedMgr // will be used by API in Phase C
 
 	go healthMon.Run(ctx)
 	go wsHub.Run(ctx)

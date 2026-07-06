@@ -284,6 +284,76 @@ func (m *Manager) Get(id string) (Entry, bool) {
 	return *e, true
 }
 
+// Update replaces an existing entry, preserving its ID, CreatedAt and LastFiredAt.
+// The old cron job is cancelled and a new one registered if CronExpr changed.
+// Returns an error if the ID does not exist or the new CronExpr is invalid.
+func (m *Manager) Update(id string, e Entry) error {
+	// Parse and register the new cron job before acquiring the lock, so that
+	// an invalid expression fails fast without mutating state.
+	var newJobID cron.EntryID
+	if e.CronExpr != "" {
+		var err error
+		newJobID, err = m.cr.AddFunc(e.CronExpr, m.makeCronJob(id))
+		if err != nil {
+			return fmt.Errorf("scheduler: invalid cron expression %q: %w", e.CronExpr, err)
+		}
+	}
+
+	m.mu.Lock()
+	old, ok := m.entries[id]
+	if !ok {
+		m.mu.Unlock()
+		if newJobID != 0 {
+			m.cr.Remove(newJobID) // roll back the job we already added
+		}
+		return fmt.Errorf("scheduler: entry %q not found", id)
+	}
+	if old.cronEntryID != 0 {
+		m.cr.Remove(old.cronEntryID)
+	}
+	e.ID = id
+	e.CreatedAt = old.CreatedAt
+	e.LastFiredAt = old.LastFiredAt
+	e.cronEntryID = newJobID
+	if e.TriggerMode == "" {
+		e.TriggerMode = TriggerAfterCurrent
+	}
+	m.entries[id] = &e
+	m.mu.Unlock()
+
+	m.evtBus.Publish(events.New(events.EvtScheduleEntryUpdated, events.ScheduleEntryUpdatedPayload{
+		EntryID: id,
+		Enabled: e.Enabled,
+	}))
+	m.log.Info("scheduler: entry updated", "entry_id", id, "name", e.Name)
+	m.saveToStore()
+	return nil
+}
+
+// NextFireAt returns the next evaluation time for entry id, or nil when the
+// entry does not exist, is disabled, is a one-shot already fired, or has no
+// cron schedule registered yet.
+func (m *Manager) NextFireAt(id string) *time.Time {
+	m.mu.RLock()
+	e, ok := m.entries[id]
+	m.mu.RUnlock()
+	if !ok || !e.Enabled {
+		return nil
+	}
+	if e.FireAt != nil && e.LastFiredAt.IsZero() {
+		return e.FireAt
+	}
+	if e.cronEntryID == 0 {
+		return nil
+	}
+	next := m.cr.Entry(e.cronEntryID).Next
+	if next.IsZero() {
+		return nil
+	}
+	t := next
+	return &t
+}
+
 // List returns a snapshot of all registered entries (in arbitrary order).
 func (m *Manager) List() []Entry {
 	m.mu.RLock()

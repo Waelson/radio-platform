@@ -44,6 +44,12 @@ type DevicesDeps struct {
 	List func() ([]handlers.AudioDevice, error)
 }
 
+// ScheduleDeps carries the scheduler manager for the /v1/schedule/* endpoints.
+// When Mgr is nil all schedule endpoints return 404.
+type ScheduleDeps struct {
+	Mgr handlers.ScheduleManager
+}
+
 // Server wraps an http.Server and owns the routing for the Engine's REST API.
 type Server struct {
 	cfg            Config
@@ -55,6 +61,7 @@ type Server struct {
 	previewEnabled bool
 	previewStatus  func() any
 	listDevices    func() ([]handlers.AudioDevice, error)
+	scheduleMgr    handlers.ScheduleManager
 	log            *slog.Logger
 	httpSrv        *http.Server
 }
@@ -64,7 +71,7 @@ type Server struct {
 // wsHub may be nil; the /v1/events endpoint will not be registered.
 // col may be nil; the /v1/metrics endpoint will not be registered.
 // devicesDeps.List may be nil; GET /v1/devices will return an empty list.
-func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, devicesDeps DevicesDeps, log *slog.Logger) *Server {
+func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, log *slog.Logger) *Server {
 	s := &Server{
 		cfg:            cfg,
 		stateMgr:       stateMgr,
@@ -75,6 +82,7 @@ func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *qu
 		previewEnabled: previewDeps.Enabled,
 		previewStatus:  previewDeps.GetStatus,
 		listDevices:    devicesDeps.List,
+		scheduleMgr:    scheduleDeps.Mgr,
 		log:            log,
 	}
 
@@ -143,6 +151,17 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Devices
 	mux.HandleFunc("GET /v1/devices", handlers.Devices(s.listDevices))
 
+	// Schedule — registered only when a manager is injected.
+	if s.scheduleMgr != nil {
+		mux.HandleFunc("POST /v1/schedule", handlers.ScheduleAdd(s.scheduleMgr))
+		mux.HandleFunc("GET /v1/schedule", handlers.ScheduleList(s.scheduleMgr))
+		mux.HandleFunc("GET /v1/schedule/{id}", handlers.ScheduleGet(s.scheduleMgr))
+		mux.HandleFunc("PUT /v1/schedule/{id}", handlers.ScheduleUpdate(s.scheduleMgr))
+		mux.HandleFunc("DELETE /v1/schedule/{id}", handlers.ScheduleDelete(s.scheduleMgr))
+		mux.HandleFunc("POST /v1/schedule/{id}/enable", handlers.ScheduleEnable(s.scheduleMgr))
+		mux.HandleFunc("POST /v1/schedule/{id}/disable", handlers.ScheduleDisable(s.scheduleMgr))
+	}
+
 	// Admin
 	mux.HandleFunc("POST /v1/admin/shutdown", handlers.Shutdown())
 
@@ -192,7 +211,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		if origin != "" && s.isAllowedOrigin(origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		}
 		if r.Method == http.MethodOptions {
