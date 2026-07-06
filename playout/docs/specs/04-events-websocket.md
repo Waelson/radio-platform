@@ -267,6 +267,8 @@ Publicados pelo módulo `internal/scheduler` quando entradas da grade horária s
 
 Publicado quando uma entrada dispara com sucesso e os comandos de playback foram enviados ao Command Bus.
 
+Exemplo — item único:
+
 ```json
 {
   "type": "ScheduleEntryFired",
@@ -281,14 +283,32 @@ Publicado quando uma entrada dispara com sucesso e os comandos de playback foram
 }
 ```
 
+Exemplo — bloco comercial:
+
+```json
+{
+  "type": "ScheduleEntryFired",
+  "payload": {
+    "entry_id": "sched_01JZ...",
+    "entry_name": "Bloco Comercial 10h30",
+    "trigger_mode": "AFTER_CURRENT",
+    "break_title": "Bloco das 10h30",
+    "spot_count": 2,
+    "one_shot": false
+  }
+}
+```
+
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `entry_id` | string | ID da entrada do scheduler |
 | `entry_name` | string | Nome legível da entrada |
 | `trigger_mode` | string | `INTERRUPT` \| `AFTER_CURRENT` \| `CROSSFADE` \| `SKIP_IF_BUSY` |
-| `asset_id` | string | ID do ativo agendado (pode ser vazio) |
-| `title` | string | Título do item agendado |
-| `one_shot` | bool | `true` se a entrada é one-shot (FireAt) e foi auto-desabilitada após disparar |
+| `asset_id` | string | ID do ativo agendado — presente apenas em entradas de **item único** |
+| `title` | string | Título do item — presente apenas em entradas de **item único** |
+| `break_title` | string | Título do bloco — presente apenas em entradas de **bloco comercial** |
+| `spot_count` | int | Número de spots no bloco — presente apenas em entradas de **bloco comercial** |
+| `one_shot` | bool | `true` se a entrada é one-shot (`fire_at`) e foi auto-desabilitada após disparar |
 
 ### ScheduleEntryMissed
 

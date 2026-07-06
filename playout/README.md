@@ -239,12 +239,18 @@ Suporte nativo a anúncio de hora certa com arquivos de áudio por hora e minuto
 
 ### 17. Scheduler / Programação Horária
 
-Grade horária para disparo automático de itens em horários pré-definidos:
+Grade horária para disparo automático em horários pré-definidos. Suporta três tipos de conteúdo:
 
-**Dois modos de agendamento:**
+| Tipo de conteúdo | Campo | Observação |
+|---|---|---|
+| Item único (música, jingle, spot…) | `item` | Path obrigatório |
+| Hora Certa | `item` com `type: "HORA_CERTA"` | Path vazio — engine resolve no momento do disparo |
+| Bloco comercial (Open + Spots + Close) | `break` | Inserido na frente da fila como unidade atômica |
+
+**Dois modos de agendamento** (mutuamente exclusivos):
 
 - **`cron_expr`** — expressão cron de 5 campos para entradas recorrentes (ex: `0 10 * * *` = todo dia às 10h). Avaliada no timezone configurado (`scheduler.timezone`). Nunca se auto-desabilita.
-- **`fire_at`** — disparo único em data/hora exata no formato **RFC 3339** (ex: `2026-07-06T16:31:00-03:00`). A entrada é **auto-desabilitada após disparar**. O offset de timezone deve ser incluído no valor para evitar ambiguidade (ex: `-03:00` para Brasília). Os dois campos são mutuamente exclusivos.
+- **`fire_at`** — disparo único em data/hora exata no formato **RFC 3339** (ex: `2026-07-06T16:31:00-03:00`). A entrada é **auto-desabilitada após disparar**. O offset de timezone deve ser incluído para evitar ambiguidade (ex: `-03:00` para Brasília).
 
 **Comportamento ao reiniciar (limiar de atraso):**
 
@@ -257,7 +263,7 @@ Se o engine estava parado quando um `fire_at` passou e reiniciar com atraso, o c
 - **Integração com PANIC**: qualquer disparo durante o estado PANIC é automaticamente marcado como MISSED
 - **Persistência em JSON** (`store_path`): a grade sobrevive a reinicializações com escrita atômica (`.tmp` + rename)
 - **Gerenciamento via API REST**: 7 endpoints CRUD + enable/disable em `/v1/schedule/*`
-- **Eventos WebSocket**: `ScheduleEntryFired`, `ScheduleEntryMissed`, `ScheduleEntryAdded`, `ScheduleEntryRemoved`, `ScheduleEntryUpdated`
+- **Eventos WebSocket**: `ScheduleEntryFired` (com `break_title`/`spot_count` para blocos), `ScheduleEntryMissed`, `ScheduleEntryAdded`, `ScheduleEntryRemoved`, `ScheduleEntryUpdated`
 
 Documentação completa: `docs/specs/17-scheduler.md`
 

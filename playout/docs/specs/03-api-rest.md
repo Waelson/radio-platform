@@ -485,7 +485,7 @@ Gerenciamento da grade horária. Requer que o scheduler esteja habilitado (`sche
 
 Cria uma nova entrada na grade.
 
-Request (cron recorrente):
+Request (item único — cron recorrente):
 
 ```json
 {
@@ -503,7 +503,7 @@ Request (cron recorrente):
 }
 ```
 
-Request (one-shot via `fire_at`):
+Request (item único — one-shot via `fire_at`):
 
 ```json
 {
@@ -520,6 +520,49 @@ Request (one-shot via `fire_at`):
 }
 ```
 
+Request (bloco comercial — cron recorrente):
+
+```json
+{
+  "name": "Bloco Comercial 10h30",
+  "enabled": true,
+  "cron_expr": "30 10 * * *",
+  "trigger_mode": "AFTER_CURRENT",
+  "break": {
+    "title": "Bloco das 10h30",
+    "open": {
+      "path": "/library/jingles/break-open.mp3",
+      "type": "jingles",
+      "title": "Abertura"
+    },
+    "spots": [
+      { "path": "/library/spots/anunciante-a.mp3", "type": "spots", "title": "Anunciante A", "duration_ms": 30000 },
+      { "path": "/library/spots/anunciante-b.mp3", "type": "spots", "title": "Anunciante B", "duration_ms": 30000 }
+    ],
+    "close": {
+      "path": "/library/jingles/break-close.mp3",
+      "type": "jingles",
+      "title": "Encerramento"
+    }
+  }
+}
+```
+
+Request (Hora Certa — todo início de hora):
+
+```json
+{
+  "name": "Hora Certa",
+  "enabled": true,
+  "cron_expr": "0 * * * *",
+  "trigger_mode": "INTERRUPT",
+  "item": {
+    "type": "HORA_CERTA",
+    "title": "Hora Certa"
+  }
+}
+```
+
 **Campos do request:**
 
 | Campo | Tipo | Obrigatório | Descrição |
@@ -529,12 +572,18 @@ Request (one-shot via `fire_at`):
 | `cron_expr` | string | exclusivo¹ | Expressão cron de 5 campos (minuto hora dia mês dia-semana) |
 | `fire_at` | string (RFC3339) | exclusivo¹ | Data/hora para disparo único em formato RFC 3339 — ver detalhes abaixo |
 | `trigger_mode` | string | não | `INTERRUPT` \| `AFTER_CURRENT` \| `CROSSFADE` \| `SKIP_IF_BUSY` (padrão: `AFTER_CURRENT`) |
-| `item` | object | sim | Item de playback a ser enfileirado |
-| `item.path` | string | sim² | Path do arquivo de áudio |
+| `item` | object | exclusivo² | Item de playback a ser inserido na frente da fila |
+| `item.path` | string | sim³ | Path do arquivo de áudio |
 | `item.type` | string | não | Tipo do item: `musicas`, `jingles`, `spots`, `HORA_CERTA`, `COMMERCIAL`, `BED`, `EFFECT`, `VOICE` |
+| `break` | object | exclusivo² | Bloco comercial a ser inserido na frente da fila |
+| `break.title` | string | não | Nome do bloco (aparece em logs e eventos) |
+| `break.open` | object | não | Item de abertura (mesmo schema que `item`) |
+| `break.spots` | array | **sim** (≥ 1) | Lista de spots; cada spot requer `path` |
+| `break.close` | object | não | Item de encerramento (mesmo schema que `item`) |
 
 ¹ `cron_expr` e `fire_at` são mutuamente exclusivos — exatamente um deve ser informado.
-² Obrigatório a menos que `item.type == "HORA_CERTA"`.
+² `item` e `break` são mutuamente exclusivos — exatamente um deve ser informado.
+³ Obrigatório a menos que `item.type == "HORA_CERTA"`.
 
 **`cron_expr` — expressão cron (5 campos):**
 
@@ -590,7 +639,7 @@ Se o engine estava parado quando o horário passou e reiniciar com atraso:
 | `CROSSFADE` | Inicia com crossfade sobre o final do item atual |
 | `SKIP_IF_BUSY` | Dispara apenas se o engine estiver IDLE; caso contrário, marca como MISSED |
 
-Response (`201 Created`):
+Response (`201 Created`) — item único:
 
 ```json
 {
@@ -609,6 +658,32 @@ Response (`201 Created`):
     },
     "created_at": "2026-07-06T12:00:00Z",
     "next_fire_at": "2026-07-07T10:00:00Z"
+  }
+}
+```
+
+Response (`201 Created`) — bloco comercial:
+
+```json
+{
+  "ok": true,
+  "entry": {
+    "id": "sched_01JZ...",
+    "name": "Bloco Comercial 10h30",
+    "enabled": true,
+    "cron_expr": "30 10 * * *",
+    "trigger_mode": "AFTER_CURRENT",
+    "break": {
+      "title": "Bloco das 10h30",
+      "open":  { "path": "/library/jingles/break-open.mp3", "type": "jingles", "title": "Abertura" },
+      "spots": [
+        { "path": "/library/spots/anunciante-a.mp3", "type": "spots", "title": "Anunciante A", "duration_ms": 30000 },
+        { "path": "/library/spots/anunciante-b.mp3", "type": "spots", "title": "Anunciante B", "duration_ms": 30000 }
+      ],
+      "close": { "path": "/library/jingles/break-close.mp3", "type": "jingles", "title": "Encerramento" }
+    },
+    "created_at": "2026-07-06T12:00:00Z",
+    "next_fire_at": "2026-07-07T10:30:00Z"
   }
 }
 ```

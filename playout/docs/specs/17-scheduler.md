@@ -21,11 +21,14 @@ Cada entrada da grade possui:
 | `enabled` | Se `false`, o scheduler ignora a entrada completamente |
 | `cron_expr` | Expressão cron recorrente (mutuamente exclusivo com `fire_at`) |
 | `fire_at` | Data/hora de disparo único em RFC 3339 (mutuamente exclusivo com `cron_expr`) |
-| `trigger_mode` | Como o item entra na reprodução |
-| `item` | Item de playback (path, tipo, título, duração etc.) |
+| `trigger_mode` | Como o item/break entra na reprodução |
+| `item` | Item de playback (path, tipo, título, duração etc.) — mutuamente exclusivo com `break` |
+| `break` | Bloco comercial (open + spots + close) — mutuamente exclusivo com `item` |
 | `created_at` | Quando a entrada foi criada |
 | `last_fired_at` | Último disparo bem-sucedido |
 | `next_fire_at` | Próximo disparo calculado (somente para entradas cron) |
+
+> **Regra de exclusividade de conteúdo:** exatamente um de `item` ou `break` deve ser informado — nunca os dois ao mesmo tempo e nunca nenhum.
 
 ---
 
@@ -249,6 +252,109 @@ POST /v1/schedule
 ```
 
 > `path` **deve ser vazio** — o engine resolve os arquivos de hora e minuto automaticamente no momento do disparo usando `hora_certa.hours_dir` e `hora_certa.minutes_dir`. Informar um path neste tipo de item é ignorado.
+
+---
+
+## Bloco Comercial
+
+O scheduler suporta o agendamento de **blocos comerciais completos** — sequências de Open → Spots → Close que são inseridas na frente da fila de playback como uma unidade atômica.
+
+### Estrutura do `break`
+
+```json
+{
+  "break": {
+    "title": "Bloco das 10h30",
+    "open": {
+      "path": "/library/jingles/break-open.mp3",
+      "type": "jingles",
+      "title": "Abertura do bloco",
+      "duration_ms": 5000
+    },
+    "spots": [
+      {
+        "path": "/library/spots/anunciante-a.mp3",
+        "type": "spots",
+        "title": "Anunciante A",
+        "duration_ms": 30000
+      },
+      {
+        "path": "/library/spots/anunciante-b.mp3",
+        "type": "spots",
+        "title": "Anunciante B",
+        "duration_ms": 30000
+      }
+    ],
+    "close": {
+      "path": "/library/jingles/break-close.mp3",
+      "type": "jingles",
+      "title": "Encerramento do bloco",
+      "duration_ms": 5000
+    }
+  }
+}
+```
+
+| Campo | Obrigatório | Descrição |
+|---|---|---|
+| `break.title` | não | Nome do bloco (aparece em logs e eventos) |
+| `break.open` | não | Item de abertura; recebe `transition: CROSSFADE` automático |
+| `break.spots` | **sim** (≥ 1) | Lista de spots; cada spot precisa de `path` |
+| `break.close` | não | Item de encerramento |
+
+### Regras
+
+- `break` e `item` são **mutuamente exclusivos** — exatamente um deve ser informado
+- `break.spots` deve ter ao menos **1 item**; cada spot requer o campo `path`
+- Ao disparar, o engine envia `CmdInsertBreakNext` — o bloco é expandido e inserido **na frente da fila pendente** (não no final)
+- O `break` compartilha os mesmos `trigger_mode` disponíveis para itens simples
+
+### Exemplo completo — Bloco diário às 10h30
+
+```json
+POST /v1/schedule
+{
+  "name": "Bloco Comercial 10h30",
+  "enabled": true,
+  "cron_expr": "30 10 * * *",
+  "trigger_mode": "AFTER_CURRENT",
+  "break": {
+    "title": "Bloco das 10h30",
+    "open": {
+      "path": "/library/jingles/break-open.mp3",
+      "type": "jingles",
+      "title": "Abertura"
+    },
+    "spots": [
+      { "path": "/library/spots/anunciante-a.mp3", "type": "spots", "title": "Anunciante A", "duration_ms": 30000 },
+      { "path": "/library/spots/anunciante-b.mp3", "type": "spots", "title": "Anunciante B", "duration_ms": 30000 }
+    ],
+    "close": {
+      "path": "/library/jingles/break-close.mp3",
+      "type": "jingles",
+      "title": "Encerramento"
+    }
+  }
+}
+```
+
+### Evento WebSocket ao disparar
+
+Quando um bloco comercial dispara, o evento `ScheduleEntryFired` inclui campos específicos para break (ao invés de `asset_id` e `title`):
+
+```json
+{
+  "type": "ScheduleEntryFired",
+  "payload": {
+    "entry_id": "sched_01JZ...",
+    "entry_name": "Bloco Comercial 10h30",
+    "trigger_mode": "AFTER_CURRENT",
+    "break_title": "Bloco das 10h30",
+    "spot_count": 2,
+    "one_shot": false
+  }
+}
+```
 
 ---
 
