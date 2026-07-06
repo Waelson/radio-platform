@@ -6,7 +6,7 @@
 
 Motor de automação de áudio para rádio FM/AM escrito em Go. Executa como processo independente e se comunica com qualquer UI via **REST** e **WebSocket** — sem acoplamento, sem banco de dados, sem dependência de interface gráfica.
 
-No macOS, distribui como **`Playout.app`**: ícone na barra de menu, engine gerenciado como subprocesso e setup automático na primeira execução.
+No macOS, distribui como **`RadioCore.app`**: ícone na barra de menu, engine gerenciado como subprocesso e setup automático na primeira execução.
 
 ---
 
@@ -172,7 +172,7 @@ CORS configurável com lista de origens permitidas. Todo comando retorna um `com
 
 Canal de eventos em tempo real para a UI via `GET /v1/events`:
 
-- **25 tipos de evento** cobrem todo o ciclo de vida: estado, fila, progresso, saúde, crossfade, pânico, ducking, VU meter, erros
+- **38 tipos de evento** cobrem todo o ciclo de vida: estado, fila, progresso, saúde, crossfade, pânico, ducking, VU meter, preview (CUE), erros
 - **Prioridade de eventos** — críticos (`PanicEntered`, `CommandRejected`, `AlertRaised`, erros) nunca são descartados; eventos de baixa prioridade (`ProgressChanged`, `AudioHealthChanged`) podem ser descartados sob carga para não bloquear o pipeline
 - **Snapshot inicial** — novos clientes recebem `StateSnapshot` com o estado completo ao conectar
 
@@ -216,7 +216,7 @@ Suporte nativo a anúncio de hora certa com arquivos de áudio por hora e minuto
 - `gain_db` configurável para ajuste de volume independente
 - Diretórios configuráveis via `hora_certa.hours_dir` e `hora_certa.minutes_dir`
 
-### 17. Bundle macOS (Playout.app)
+### 17. Bundle macOS (RadioCore.app)
 
 Aplicativo nativo para macOS com systray e interface gráfica embutida:
 
@@ -311,7 +311,7 @@ graph LR
 
 ### Regra fundamental
 
-> A API nunca acessa o mixer ou o dispositivo de saída diretamente.
+> A API nunca acessa o pipeline de áudio ou o dispositivo de saída diretamente.
 > Todo comando passa pelo Command Bus → Dispatcher → handlers de negócio.
 > Todo estado visível vem do State Manager via `GET /v1/status` ou eventos WebSocket.
 
@@ -420,7 +420,7 @@ Usa `AudioToolbox` e `CoreFoundation` do sistema via CGO. Sem dependências exte
 
 ### Opção 4 — Bundle macOS (.app)
 
-Gera o `dist/Playout.app` pronto para uso, com systray, webview e ícone de aplicação:
+Gera o `dist/RadioCore.app` pronto para uso, com systray, webview e ícone de aplicação:
 
 ```bash
 make dist-mac
@@ -432,7 +432,7 @@ O app:
 - Aparece na barra de menu (sem ícone no Dock)
 - Inicia a engine automaticamente ao abrir
 - Ícone **verde** (online) / **vermelho** (offline) indica o estado da engine
-- Menu **Status** abre o painel de diagnóstico no browser
+- Menu **Status** abre o painel de diagnóstico em janela nativa WKWebView
 - Cria `~/RadioFlow/` com estrutura de diretórios e config YAML na primeira execução
 
 ---
@@ -485,23 +485,17 @@ curl http://127.0.0.1:8080/v1/status
 ### 2. Enfileirar uma música
 
 ```bash
-# Obter duração e cue points com o script utilitário
-CUES=$(./scripts/analyze-cues.sh /library/track01.mp3 --json)
-DURATION=$(echo "$CUES" | python3 -c "import sys,json; print(json.load(sys.stdin)['duration_ms'])")
-CUE_IN=$(echo  "$CUES" | python3 -c "import sys,json; print(json.load(sys.stdin)['cue_in_ms'])")
-CUE_OUT=$(echo "$CUES" | python3 -c "import sys,json; print(json.load(sys.stdin)['cue_out_ms'])")
-
 curl -X POST http://127.0.0.1:8080/v1/queue/enqueue \
   -H "Content-Type: application/json" \
-  -d "{
-    \"path\": \"/library/track01.mp3\",
-    \"title\": \"Track 01\",
-    \"artist\": \"Artista\",
-    \"type\": \"music\",
-    \"duration_ms\": $DURATION,
-    \"cue_in_ms\": $CUE_IN,
-    \"cue_out_ms\": $CUE_OUT
-  }"
+  -d '{
+    "path": "/library/track01.mp3",
+    "title": "Track 01",
+    "artist": "Artista",
+    "type": "music",
+    "duration_ms": 214500,
+    "cue_in_ms": 1150,
+    "cue_out_ms": 211300
+  }'
 ```
 
 ### 3. Iniciar reprodução
@@ -573,7 +567,7 @@ A especificação completa do sistema está em [`docs/specs/`](docs/specs/):
 | `make build` | Compila sem CGO (drivers Null e File apenas) |
 | `make build-portaudio` | Compila com suporte a PortAudio |
 | `make build-coreaudio` | Compila com CoreAudio nativo (macOS, requer CGO) |
-| `make dist-mac` | Gera `dist/Playout.app` bundle para macOS |
+| `make dist-mac` | Gera `dist/RadioCore.app` bundle para macOS |
 | `make test` | Roda todos os testes unitários (sem CGO) |
 | `make test-race` | Roda testes com detector de corrida |
 | `make vet` | Executa `go vet` |
