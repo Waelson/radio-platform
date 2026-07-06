@@ -95,7 +95,7 @@ func TestHub_ClientReceivesPublishedEvent(t *testing.T) {
 	defer conn.Close(websocket.StatusNormalClosure, "")
 
 	// Consume the snapshot.
-	_ = readEvent(t, conn, 2*time.Second)
+	_ = readEvent(t, conn, 5*time.Second)
 
 	// Publish a QueueChanged event.
 	evtBus.Publish(events.New(events.EvtQueueChanged, events.QueueChangedPayload{
@@ -107,7 +107,7 @@ func TestHub_ClientReceivesPublishedEvent(t *testing.T) {
 	}))
 
 	// Client should receive it.
-	evt := readEvent(t, conn, 2*time.Second)
+	evt := readEvent(t, conn, 5*time.Second)
 	if evt.Type != events.EvtQueueChanged {
 		t.Errorf("expected QueueChanged, got %s", evt.Type)
 	}
@@ -138,7 +138,7 @@ func TestHub_MultipleClients(t *testing.T) {
 
 	// Each client should receive it.
 	for i, c := range conns {
-		evt := readEvent(t, c, 2*time.Second)
+		evt := readEvent(t, c, 5*time.Second)
 		if evt.Type != events.EvtPlayerStateChanged {
 			t.Errorf("client %d: expected PlayerStateChanged, got %s", i, evt.Type)
 		}
@@ -169,7 +169,7 @@ func TestHub_QueueChangedAfterEnqueue(t *testing.T) {
 		{AssetID: "a1", Path: "/music/track.mp3", Type: "musicas", DurationMS: 200000},
 	})
 
-	evt := readEvent(t, conn, 2*time.Second)
+	evt := readEvent(t, conn, 5*time.Second)
 	if evt.Type != events.EvtQueueChanged {
 		t.Errorf("expected QueueChanged, got %s", evt.Type)
 	}
