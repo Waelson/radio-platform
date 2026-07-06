@@ -477,6 +477,184 @@ Modos:
 - `INTERRUPT`: corta o programa.
 - `AFTER_CURRENT`: insere após item atual.
 
+## Schedule
+
+Gerenciamento da grade horária. Requer que o scheduler esteja habilitado (`scheduler.enabled: true` no YAML).
+
+### POST /v1/schedule
+
+Cria uma nova entrada na grade.
+
+Request (cron recorrente):
+
+```json
+{
+  "name": "Noticiário das 10h",
+  "enabled": true,
+  "cron_expr": "0 10 * * *",
+  "trigger_mode": "CROSSFADE",
+  "item": {
+    "asset_id": "asset_noticiao_10h",
+    "path": "/library/spots/noticiao-10h.mp3",
+    "type": "spot",
+    "title": "Noticiário das 10h",
+    "duration_ms": 180000
+  }
+}
+```
+
+Request (one-shot via `fire_at`):
+
+```json
+{
+  "name": "Jingle especial",
+  "enabled": true,
+  "fire_at": "2026-07-06T14:30:00Z",
+  "trigger_mode": "AFTER_CURRENT",
+  "item": {
+    "path": "/library/jingles/especial.mp3",
+    "type": "jingles",
+    "title": "Jingle Especial",
+    "duration_ms": 30000
+  }
+}
+```
+
+**Campos do request:**
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `name` | string | não | Nome legível da entrada |
+| `enabled` | bool | não | Se `false`, a entrada é criada desabilitada (padrão: `false`) |
+| `cron_expr` | string | exclusivo¹ | Expressão cron de 5 campos (minuto hora dia mês dia-semana) |
+| `fire_at` | string (RFC3339) | exclusivo¹ | Data/hora para disparo único; auto-desabilitada após disparar |
+| `trigger_mode` | string | não | `INTERRUPT` \| `AFTER_CURRENT` \| `CROSSFADE` \| `SKIP_IF_BUSY` (padrão: `AFTER_CURRENT`) |
+| `item` | object | sim | Item de playback a ser enfileirado |
+| `item.path` | string | sim² | Path do arquivo de áudio |
+| `item.type` | string | não | Tipo do item (`musicas`, `jingles`, `spot`, `HORA_CERTA` etc.) |
+
+¹ `cron_expr` e `fire_at` são mutuamente exclusivos — exatamente um deve ser informado.
+² Obrigatório a menos que `item.type == "HORA_CERTA"`.
+
+**Modos de disparo (`trigger_mode`):**
+
+| Modo | Comportamento |
+|---|---|
+| `INTERRUPT` | Interrompe o item atual e inicia imediatamente |
+| `AFTER_CURRENT` | Insere como próximo da fila; aguarda o item atual terminar |
+| `CROSSFADE` | Inicia com crossfade sobre o final do item atual |
+| `SKIP_IF_BUSY` | Dispara apenas se o engine estiver IDLE; caso contrário, marca como MISSED |
+
+Response (`201 Created`):
+
+```json
+{
+  "ok": true,
+  "entry": {
+    "id": "sched_01JZ...",
+    "name": "Noticiário das 10h",
+    "enabled": true,
+    "cron_expr": "0 10 * * *",
+    "trigger_mode": "CROSSFADE",
+    "item": {
+      "path": "/library/spots/noticiao-10h.mp3",
+      "type": "spot",
+      "title": "Noticiário das 10h",
+      "duration_ms": 180000
+    },
+    "created_at": "2026-07-06T12:00:00Z",
+    "next_fire_at": "2026-07-07T10:00:00Z"
+  }
+}
+```
+
+---
+
+### GET /v1/schedule
+
+Lista todas as entradas da grade.
+
+Response:
+
+```json
+{
+  "entries": [
+    {
+      "id": "sched_01JZ...",
+      "name": "Noticiário das 10h",
+      "enabled": true,
+      "cron_expr": "0 10 * * *",
+      "trigger_mode": "CROSSFADE",
+      "item": { "path": "/library/spots/noticiao-10h.mp3", "title": "Noticiário das 10h" },
+      "created_at": "2026-07-06T12:00:00Z",
+      "last_fired_at": "2026-07-06T10:00:00Z",
+      "next_fire_at": "2026-07-07T10:00:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+### GET /v1/schedule/{id}
+
+Retorna uma entrada pelo ID.
+
+Response: igual ao objeto `entry` do `POST /v1/schedule`.
+
+Erro (não encontrado):
+
+```json
+{ "ok": false, "error": "not_found", "message": "schedule entry not found" }
+```
+
+---
+
+### PUT /v1/schedule/{id}
+
+Atualiza uma entrada existente. O body segue o mesmo schema do `POST /v1/schedule`.
+
+Response: igual ao `POST` com o objeto `entry` atualizado.
+
+---
+
+### DELETE /v1/schedule/{id}
+
+Remove uma entrada da grade.
+
+Response:
+
+```json
+{ "ok": true }
+```
+
+---
+
+### POST /v1/schedule/{id}/enable
+
+Habilita uma entrada desabilitada.
+
+Response:
+
+```json
+{ "ok": true, "entry_id": "sched_01JZ...", "enabled": true }
+```
+
+---
+
+### POST /v1/schedule/{id}/disable
+
+Desabilita uma entrada sem removê-la.
+
+Response:
+
+```json
+{ "ok": true, "entry_id": "sched_01JZ...", "enabled": false }
+```
+
+---
+
 ## Admin
 
 ### GET /v1/build

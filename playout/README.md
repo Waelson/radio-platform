@@ -163,6 +163,7 @@ Endpoints sob o prefixo `/v1` mais rotas de UI:
 | Panic | `POST /v1/panic/enter`, `POST /v1/panic/exit` |
 | Hot Buttons | `POST /v1/hotbuttons/trigger` |
 | Devices | `GET /v1/devices` — lista dispositivos de áudio disponíveis no sistema em tempo real |
+| Schedule | `POST /v1/schedule`, `GET /v1/schedule`, `GET /v1/schedule/{id}`, `PUT /v1/schedule/{id}`, `DELETE /v1/schedule/{id}`, `POST /v1/schedule/{id}/enable`, `POST /v1/schedule/{id}/disable` |
 | Admin | `POST /v1/admin/shutdown`, `GET /v1/metrics` |
 | WebSocket | `GET /v1/events` |
 | UI | `GET /status` — painel de status (SPA) |
@@ -173,7 +174,7 @@ CORS configurável com lista de origens permitidas. Todo comando retorna um `com
 
 Canal de eventos em tempo real para a UI via `GET /v1/events`:
 
-- **38 tipos de evento** cobrem todo o ciclo de vida: estado, fila, progresso, saúde, crossfade, pânico, ducking, VU meter, preview (CUE), erros
+- **43 tipos de evento** cobrem todo o ciclo de vida: estado, fila, progresso, saúde, crossfade, pânico, ducking, VU meter, preview (CUE), erros, scheduler
 - **Prioridade de eventos** — críticos (`PanicEntered`, `CommandRejected`, `AlertRaised`, erros) nunca são descartados; eventos de baixa prioridade (`ProgressChanged`, `AudioHealthChanged`) podem ser descartados sob carga para não bloquear o pipeline
 - **Snapshot inicial** — novos clientes recebem `StateSnapshot` com o estado completo ao conectar
 
@@ -236,7 +237,21 @@ Suporte nativo a anúncio de hora certa com arquivos de áudio por hora e minuto
 - `gain_db` configurável para ajuste de volume independente
 - Diretórios configuráveis via `hora_certa.hours_dir` e `hora_certa.minutes_dir`
 
-### 17. Bundle macOS (RadioCore.app)
+### 17. Scheduler / Programação Horária
+
+Grade horária para disparo automático de itens em horários pré-definidos:
+
+- **Expressões cron** (5 campos: minuto hora dia mês dia-semana) para entradas recorrentes — ex: `0 10 * * *` para todos os dias às 10h
+- **`fire_at`** para disparos únicos (one-shot): a entrada é auto-desabilitada após disparar
+- **Timezone configurável** via `scheduler.timezone` (ex: `"America/Sao_Paulo"`) — padrão: timezone do sistema
+- **4 modos de disparo** por entrada: `INTERRUPT`, `AFTER_CURRENT`, `CROSSFADE`, `SKIP_IF_BUSY`
+- **Limiar de atraso** (`missed_threshold_ms`): se o engine reiniciar com um `fire_at` já expirado além do limiar, o item é marcado como MISSED em vez de disparar com atraso
+- **Integração com PANIC**: qualquer disparo durante o estado PANIC é automaticamente marcado como MISSED
+- **Persistência em JSON** (`store_path`): a grade sobrevive a reinicializações; entradas são restauradas ao iniciar
+- **Gerenciamento via API REST**: 7 endpoints CRUD + enable/disable em `/v1/schedule/*`
+- **Eventos WebSocket**: `ScheduleEntryFired`, `ScheduleEntryMissed`, `ScheduleEntryAdded`, `ScheduleEntryRemoved`, `ScheduleEntryUpdated`
+
+### 18. Bundle macOS (RadioCore.app)
 
 Aplicativo nativo para macOS com systray e interface gráfica embutida:
 

@@ -250,3 +250,23 @@ preview:
   # Vazio = dispositivo padrão do driver selecionado.
   # Exemplos: "BlackHole 2ch" (macOS virtual), "hw:1,0" (ALSA/Linux)
   output_device: "AirPods Pro 2 2025"
+
+# -----------------------------------------------------------------------------
+# Scheduler (programação horária)
+# -----------------------------------------------------------------------------
+scheduler:
+  enabled: true
+
+  # Timezone para avaliação das expressões cron.
+  # Padrão: timezone do sistema operacional.
+  # Exemplos: "America/Sao_Paulo", "America/Manaus", "UTC"
+  timezone: "America/Sao_Paulo"
+
+  # Caminho do arquivo de persistência do schedule.
+  # Vazio = ~/RadioFlow/schedule.json
+  store_path: ""
+
+  # Tolerância de atraso: se um entry deveria ter disparado há mais que
+  # este tempo (ex: engine foi reiniciado), ele é marcado como MISSED
+  # em vez de disparar com atraso.
+  missed_threshold_ms: 5000

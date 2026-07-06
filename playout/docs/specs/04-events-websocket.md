@@ -259,6 +259,112 @@ MVP recomendado:
 }
 ```
 
+## Eventos de Scheduler
+
+Publicados pelo módulo `internal/scheduler` quando entradas da grade horária são avaliadas.
+
+### ScheduleEntryFired
+
+Publicado quando uma entrada dispara com sucesso e os comandos de playback foram enviados ao Command Bus.
+
+```json
+{
+  "type": "ScheduleEntryFired",
+  "payload": {
+    "entry_id": "sched_01JZ...",
+    "entry_name": "Noticiário das 10h",
+    "trigger_mode": "CROSSFADE",
+    "asset_id": "asset_noticiao_10h",
+    "title": "Noticiário das 10h",
+    "one_shot": false
+  }
+}
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `entry_id` | string | ID da entrada do scheduler |
+| `entry_name` | string | Nome legível da entrada |
+| `trigger_mode` | string | `INTERRUPT` \| `AFTER_CURRENT` \| `CROSSFADE` \| `SKIP_IF_BUSY` |
+| `asset_id` | string | ID do ativo agendado (pode ser vazio) |
+| `title` | string | Título do item agendado |
+| `one_shot` | bool | `true` se a entrada é one-shot (FireAt) e foi auto-desabilitada após disparar |
+
+### ScheduleEntryMissed
+
+Publicado quando uma entrada deveria ter disparado mas o estado do engine impediu a execução.
+
+**Causas possíveis:**
+- Engine em estado `PANIC` (qualquer modo de disparo)
+- `SKIP_IF_BUSY`: engine em estado `PLAYING` ou `PAUSED`
+- Entrada `FireAt` avaliada com atraso superior a `missed_threshold_ms`
+
+```json
+{
+  "type": "ScheduleEntryMissed",
+  "payload": {
+    "entry_id": "sched_01JZ...",
+    "entry_name": "Jingle das 9h",
+    "trigger_mode": "SKIP_IF_BUSY",
+    "reason": "engine is busy (state=PLAYING)"
+  }
+}
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `entry_id` | string | ID da entrada |
+| `entry_name` | string | Nome legível |
+| `trigger_mode` | string | Modo de disparo da entrada |
+| `reason` | string | Motivo textual do miss |
+
+### ScheduleEntryAdded
+
+Publicado quando uma nova entrada é registrada via `POST /v1/schedule`.
+
+```json
+{
+  "type": "ScheduleEntryAdded",
+  "payload": {
+    "entry_id": "sched_01JZ...",
+    "name": "Noticiário das 10h",
+    "cron_expr": "0 10 * * *",
+    "one_shot": false
+  }
+}
+```
+
+### ScheduleEntryRemoved
+
+Publicado quando uma entrada é removida via `DELETE /v1/schedule/{id}`.
+
+```json
+{
+  "type": "ScheduleEntryRemoved",
+  "payload": {
+    "entry_id": "sched_01JZ..."
+  }
+}
+```
+
+### ScheduleEntryUpdated
+
+Publicado quando uma entrada é habilitada (`POST /v1/schedule/{id}/enable`), desabilitada (`POST /v1/schedule/{id}/disable`) ou atualizada (`PUT /v1/schedule/{id}`).
+
+```json
+{
+  "type": "ScheduleEntryUpdated",
+  "payload": {
+    "entry_id": "sched_01JZ...",
+    "enabled": false
+  }
+}
+```
+
+**Prioridade de backpressure:** `ScheduleEntryFired` e `ScheduleEntryMissed` são eventos de baixa prioridade (podem ser descartados sob carga). `ScheduleEntryAdded`, `ScheduleEntryRemoved` e `ScheduleEntryUpdated` são discretos e raramente publicados, portanto não geram pressão significativa.
+
+---
+
 ## Reconnect
 
 A UI deve reconectar automaticamente se o WebSocket cair.
