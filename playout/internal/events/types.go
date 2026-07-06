@@ -49,6 +49,13 @@ const (
 	EvtAssistExited  EventType = "AssistExited"
 	EvtAssistWaiting EventType = "AssistWaiting"
 
+	// Scheduler events.
+	EvtScheduleEntryFired   EventType = "ScheduleEntryFired"
+	EvtScheduleEntryMissed  EventType = "ScheduleEntryMissed"
+	EvtScheduleEntryAdded   EventType = "ScheduleEntryAdded"
+	EvtScheduleEntryRemoved EventType = "ScheduleEntryRemoved"
+	EvtScheduleEntryUpdated EventType = "ScheduleEntryUpdated"
+
 	// Preview (cue) events — isolated from the main playback pipeline.
 	EvtPreviewStarted  EventType = "PreviewStarted"
 	EvtPreviewPaused   EventType = "PreviewPaused"
@@ -377,4 +384,44 @@ type PreviewProgressPayload struct {
 type PreviewSeekedPayload struct {
 	PositionMS int64 `json:"position_ms"`
 	DurationMS int64 `json:"duration_ms"`
+}
+
+// --- Scheduler event payloads ------------------------------------------------
+
+// ScheduleEntryFiredPayload is published when a scheduler entry fires successfully.
+type ScheduleEntryFiredPayload struct {
+	EntryID     string `json:"entry_id"`
+	EntryName   string `json:"entry_name"`
+	TriggerMode string `json:"trigger_mode"`
+	AssetID     string `json:"asset_id,omitempty"`
+	Title       string `json:"title,omitempty"`
+	OneShot     bool   `json:"one_shot"` // true if the entry is auto-disabled after firing
+}
+
+// ScheduleEntryMissedPayload is published when a scheduler entry fires but
+// the engine state prevents execution (e.g. PANIC, or SKIP_IF_BUSY while playing).
+type ScheduleEntryMissedPayload struct {
+	EntryID     string `json:"entry_id"`
+	EntryName   string `json:"entry_name"`
+	TriggerMode string `json:"trigger_mode"`
+	Reason      string `json:"reason"` // human-readable reason for the miss
+}
+
+// ScheduleEntryAddedPayload is published when a new entry is registered.
+type ScheduleEntryAddedPayload struct {
+	EntryID  string `json:"entry_id"`
+	Name     string `json:"name"`
+	CronExpr string `json:"cron_expr,omitempty"`
+	OneShot  bool   `json:"one_shot"`
+}
+
+// ScheduleEntryRemovedPayload is published when an entry is removed.
+type ScheduleEntryRemovedPayload struct {
+	EntryID string `json:"entry_id"`
+}
+
+// ScheduleEntryUpdatedPayload is published when an entry's enabled state changes.
+type ScheduleEntryUpdatedPayload struct {
+	EntryID string `json:"entry_id"`
+	Enabled bool   `json:"enabled"`
 }

@@ -18,6 +18,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gordonklaus/portaudio v0.0.0-20260203164431-765aa7dfa631 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6 // indirect
 	golang.org/x/sys v0.1.0 // indirect
 	nhooyr.io/websocket v1.8.17 // indirect

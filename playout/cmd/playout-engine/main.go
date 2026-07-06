@@ -30,6 +30,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/platform"
 	"github.com/Waelson/radio-playout-engine/internal/playback"
 	"github.com/Waelson/radio-playout-engine/internal/queue"
+	"github.com/Waelson/radio-playout-engine/internal/scheduler"
 	"github.com/Waelson/radio-playout-engine/internal/state"
 )
 
@@ -336,6 +337,9 @@ func run(args []string) error {
 	}))
 
 	// 15. Start goroutines.
+	schedMgr := scheduler.New(cmdBus, evtBus, stateMgr, log)
+	go schedMgr.Run(ctx)
+
 	go healthMon.Run(ctx)
 	go wsHub.Run(ctx)
 	go metricsColl.Run(ctx, evtBus)
