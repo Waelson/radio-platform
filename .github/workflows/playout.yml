@@ -123,8 +123,8 @@ jobs:
           [ "$size" -gt 0 ]
 
       # ── Variante 2: portaudio (CGO_ENABLED=1, driver PortAudio real) ──────────
-      - name: Install libportaudio-dev
-        run: sudo apt-get install -y libportaudio2 libportaudio-dev
+      - name: Install portaudio19-dev
+        run: sudo apt-get install -y libportaudio2 portaudio19-dev
 
       - name: Build playout-engine (portaudio / cli)
         env:
