@@ -3,6 +3,7 @@
 package webview
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
@@ -18,13 +19,19 @@ var (
 
 // OpenPlayerWindow re-launches the current binary with --webview=<url>
 // so that the WKWebView runs in an isolated subprocess (own main thread).
-func OpenPlayerWindow(url, title string) {
+// width and height set the fixed window dimensions in logical pixels.
+func OpenPlayerWindow(url, title string, width, height int) {
 	self, err := os.Executable()
 	if err != nil {
 		openBrowser(url)
 		return
 	}
-	cmd := exec.Command(self, "--webview="+url, "--webview-title="+title)
+	cmd := exec.Command(self,
+		"--webview="+url,
+		"--webview-title="+title,
+		fmt.Sprintf("--webview-width=%d", width),
+		fmt.Sprintf("--webview-height=%d", height),
+	)
 	cmd.Env = engine.ExpandedEnv()
 	if err := cmd.Start(); err != nil {
 		return

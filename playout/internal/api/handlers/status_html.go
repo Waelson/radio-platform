@@ -44,6 +44,7 @@ var statusPage = []byte(`<!DOCTYPE html>
         var(--bg);
       color: var(--text);
       font-family: var(--font);
+      font-size: 15px;
       padding: 14px;
     }
     h1 { margin: 0 0 12px; font-size: 20px; font-weight: 900; letter-spacing: -.03em; }
@@ -66,7 +67,7 @@ var statusPage = []byte(`<!DOCTYPE html>
     }
     .eyebrow {
       color: var(--muted);
-      font-size: 9px;
+      font-size: 11px;
       letter-spacing: .18em;
       text-transform: uppercase;
       font-weight: 900;
@@ -80,7 +81,7 @@ var statusPage = []byte(`<!DOCTYPE html>
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.05);
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 900;
       letter-spacing: .08em;
       text-transform: uppercase;
@@ -96,7 +97,7 @@ var statusPage = []byte(`<!DOCTYPE html>
     }
     .hero-value {
       margin: 0 0 4px;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 900;
       letter-spacing: -.01em;
       line-height: 1.2;
@@ -105,7 +106,7 @@ var statusPage = []byte(`<!DOCTYPE html>
     .hero-spacer { height: 14px; }
     .hero-desc {
       color: var(--muted);
-      font-size: 10px;
+      font-size: 12px;
       line-height: 1.3;
     }
 
@@ -126,7 +127,7 @@ var statusPage = []byte(`<!DOCTYPE html>
       padding: 9px 11px;
       border-bottom: 1px solid var(--line);
       color: var(--muted);
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 900;
       letter-spacing: .22em;
       text-transform: uppercase;
@@ -140,9 +141,9 @@ var statusPage = []byte(`<!DOCTYPE html>
       border-bottom: 1px solid var(--line-soft);
     }
     .row:last-child { border-bottom: none; }
-    .k { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-    .v { color: var(--text); font-weight: 800; font-size: 12px; word-break: break-all; line-height: 1.3; }
-    .v.mono { font-family: var(--mono); font-size: 11px; }
+    .k { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .v { color: var(--text); font-weight: 800; font-size: 14px; word-break: break-all; line-height: 1.3; }
+    .v.mono { font-family: var(--mono); font-size: 13px; }
   </style>
 </head>
 <body>

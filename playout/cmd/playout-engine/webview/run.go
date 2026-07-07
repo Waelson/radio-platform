@@ -6,11 +6,11 @@ import wv "github.com/webview/webview_go"
 
 // RunWebview opens a native WKWebView window and blocks until it is closed.
 // Must be called from the main goroutine.
-func RunWebview(url, title string) {
+func RunWebview(url, title string, width, height int) {
 	w := wv.New(true)
 	defer w.Destroy()
 	w.SetTitle(title)
-	w.SetSize(730, 430, wv.HintFixed)
+	w.SetSize(width, height, wv.HintFixed)
 	w.Navigate(url)
 	w.Dispatch(zoomMainWindow)
 	w.Run()

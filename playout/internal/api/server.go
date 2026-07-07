@@ -16,6 +16,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/api/handlers"
 	"github.com/Waelson/radio-playout-engine/internal/api/ws"
 	"github.com/Waelson/radio-playout-engine/internal/commands"
+	appcfg "github.com/Waelson/radio-playout-engine/internal/config"
 	"github.com/Waelson/radio-playout-engine/internal/metrics"
 	"github.com/Waelson/radio-playout-engine/internal/queue"
 	"github.com/Waelson/radio-playout-engine/internal/state"
@@ -50,6 +51,13 @@ type ScheduleDeps struct {
 	Mgr handlers.ScheduleManager
 }
 
+// ConfigDeps carries config-related dependencies for the config endpoints.
+// When Snapshot is nil, GET /v1/config/current and PUT /v1/config are not registered.
+type ConfigDeps struct {
+	Snapshot *appcfg.Config
+	Path     string // absolute path to the YAML file; empty = read-only mode
+}
+
 // Server wraps an http.Server and owns the routing for the Engine's REST API.
 type Server struct {
 	cfg            Config
@@ -62,6 +70,8 @@ type Server struct {
 	previewStatus  func() any
 	listDevices    func() ([]handlers.AudioDevice, error)
 	scheduleMgr    handlers.ScheduleManager
+	configSnapshot *appcfg.Config
+	configPath     string
 	log            *slog.Logger
 	httpSrv        *http.Server
 }
@@ -71,7 +81,7 @@ type Server struct {
 // wsHub may be nil; the /v1/events endpoint will not be registered.
 // col may be nil; the /v1/metrics endpoint will not be registered.
 // devicesDeps.List may be nil; GET /v1/devices will return an empty list.
-func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, log *slog.Logger) *Server {
+func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, configDeps ConfigDeps, log *slog.Logger) *Server {
 	s := &Server{
 		cfg:            cfg,
 		stateMgr:       stateMgr,
@@ -83,6 +93,8 @@ func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *qu
 		previewStatus:  previewDeps.GetStatus,
 		listDevices:    devicesDeps.List,
 		scheduleMgr:    scheduleDeps.Mgr,
+		configSnapshot: configDeps.Snapshot,
+		configPath:     configDeps.Path,
 		log:            log,
 	}
 
@@ -160,6 +172,14 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("DELETE /v1/schedule/{id}", handlers.ScheduleDelete(s.scheduleMgr))
 		mux.HandleFunc("POST /v1/schedule/{id}/enable", handlers.ScheduleEnable(s.scheduleMgr))
 		mux.HandleFunc("POST /v1/schedule/{id}/disable", handlers.ScheduleDisable(s.scheduleMgr))
+	}
+
+	// Config
+	if s.configSnapshot != nil {
+		mux.HandleFunc("GET /config",             handlers.ConfigHTML())
+		mux.HandleFunc("GET /v1/config/current",  handlers.GetCurrentConfig(s.configSnapshot))
+		mux.HandleFunc("POST /v1/config/browse",  handlers.BrowsePath())
+		mux.HandleFunc("PUT /v1/config",          handlers.UpdateConfig(s.configPath))
 	}
 
 	// Admin

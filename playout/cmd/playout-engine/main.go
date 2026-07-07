@@ -46,6 +46,8 @@ func main() {
 	startup := "ui"
 	webviewURL := ""
 	webviewTitle := "Playout"
+	webviewWidth := 730
+	webviewHeight := 430
 	var filteredArgs []string
 	raw := os.Args[1:]
 	for i := 0; i < len(raw); i++ {
@@ -62,6 +64,14 @@ func main() {
 			webviewURL = a[10:]
 		case len(a) > 16 && a[:16] == "--webview-title=":
 			webviewTitle = a[16:]
+		case len(a) > 16 && a[:16] == "--webview-width=":
+			if n, err := fmt.Sscanf(a[16:], "%d", &webviewWidth); n != 1 || err != nil {
+				webviewWidth = 730
+			}
+		case len(a) > 17 && a[:17] == "--webview-height=":
+			if n, err := fmt.Sscanf(a[17:], "%d", &webviewHeight); n != 1 || err != nil {
+				webviewHeight = 430
+			}
 		default:
 			filteredArgs = append(filteredArgs, a)
 		}
@@ -69,7 +79,7 @@ func main() {
 
 	// Subprocess mode: open a native WKWebView window and exit.
 	if webviewURL != "" {
-		appwebview.RunWebview(webviewURL, webviewTitle)
+		appwebview.RunWebview(webviewURL, webviewTitle, webviewWidth, webviewHeight)
 		return
 	}
 
@@ -86,6 +96,7 @@ func main() {
 
 func run(args []string) error {
 	// 1. Load configuration (flags > env > yaml > defaults).
+	configPath := config.ResolveConfigPath(args)
 	cfg, err := config.Load(args)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
@@ -341,7 +352,7 @@ func run(args []string) error {
 		return fmt.Errorf("scheduler: %w", err)
 	}
 
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, log)
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, log)
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)

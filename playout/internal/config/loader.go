@@ -42,11 +42,27 @@ func Load(args []string) (*Config, error) {
 	applyEnv(cfg)
 	applyFlags(flags, cfg)
 
-	if err := validate(cfg); err != nil {
+	if err := Validate(cfg); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 
 	return cfg, nil
+}
+
+// ResolveConfigPath returns the YAML config file path that Load would use for
+// the given args. Returns empty string if no file is found or flagged.
+func ResolveConfigPath(args []string) string {
+	flags, err := parseFlags(args)
+	if err != nil {
+		return ""
+	}
+	if flags.configFile != "" {
+		return flags.configFile
+	}
+	if _, err := os.Stat(defaultConfigFile); err == nil {
+		return defaultConfigFile
+	}
+	return ""
 }
 
 // defaults returns a Config populated with safe, sane defaults.
@@ -201,7 +217,8 @@ func applyFlags(f cliFlags, cfg *Config) {
 	}
 }
 
-func validate(cfg *Config) error {
+// Validate checks that cfg fields are within acceptable bounds and enumerations.
+func Validate(cfg *Config) error {
 	if cfg.API.Port < 1 || cfg.API.Port > 65535 {
 		return fmt.Errorf("api.port %d out of range [1, 65535]", cfg.API.Port)
 	}

@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RadioCore — Configuração (Preview)</title>
+  <style>
+    :root {
+      --bg:        #070807;
+      --surface:   rgba(15,18,16,.97);
+      --surface2:  rgba(10,12,10,.98);
+      --line:      rgba(255,255,255,.08);
+      --line-soft: rgba(255,255,255,.045);
+      --green:     #00ff80;
+      --text:      #e8eee9;
+      --muted:     #8a948d;
+      --danger:    #ff3b30;
+      --warning:   #ff9500;
+      --mono:      "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --font:      Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      --sidebar-w: 160px;
+      --header-h:  46px;
+      --footer-h:  54px;
+      --radius:    8px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    body {
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(0,255,128,.06), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    header {
+      height: var(--header-h);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(12,15,12,.99), rgba(7,8,7,.98));
+    }
+    header h1 { margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -.025em; }
+    .engine-indicator { display: flex; align-items: center; gap: 7px; }
+    .engine-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(0,255,128,.7);
+      transition: background .4s, box-shadow .4s;
+    }
+    .engine-dot.offline { background: var(--danger); box-shadow: 0 0 8px rgba(255,59,48,.5); }
+    .engine-label {
+      font-size: 13px; font-weight: 700; color: var(--muted);
+      transition: color .3s;
+    }
+    .engine-label.offline { color: var(--danger); }
+
+    /* ── Offline banner ───────────────────────────────────────── */
+    #offlineBanner {
+      flex-shrink: 0;
+      display: none;
+      padding: 9px 18px;
+      background: rgba(255,149,0,.10);
+      border-bottom: 1px solid rgba(255,149,0,.25);
+      color: var(--warning);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    #offlineBanner.visible { display: block; }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .layout { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+    /* ── Sidebar ──────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      border-right: 1px solid var(--line);
+      overflow-y: auto;
+      padding: 10px 0;
+      background: var(--surface2);
+    }
+    .nav-item {
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: color .15s, background .15s, border-color .15s;
+      user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .nav-item.active {
+      color: var(--green);
+      border-left-color: var(--green);
+      background: rgba(0,255,128,.05);
+    }
+
+    /* ── Content ──────────────────────────────────────────────── */
+    .content { flex: 1; overflow-y: auto; padding: 22px 28px; min-width: 0; }
+    .panel { display: none; max-width: 640px; }
+    .panel.active { display: block; }
+
+    .section-title {
+      font-size: 13px; font-weight: 900; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--muted);
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .subsection {
+      font-size: 12px; font-weight: 900; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--muted);
+      padding-bottom: 8px; margin: 22px 0 14px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    /* ── Form controls ────────────────────────────────────────── */
+    .field { margin-bottom: 18px; }
+    .field-row { display: flex; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+    .field-row .field { flex: 1; min-width: 120px; margin-bottom: 0; }
+
+    .lbl {
+      display: block;
+      font-size: 12px; font-weight: 900; letter-spacing: .10em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 7px;
+    }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+    .warn { font-size: 12px; color: var(--warning); font-weight: 700; margin-top: 5px; }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color .15s, background .15s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      border-color: rgba(0,255,128,.4);
+      background: rgba(255,255,255,.07);
+    }
+    input[type="number"] { font-family: var(--mono); }
+    input::placeholder { color: var(--muted); opacity: .6; }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a948d'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+      cursor: pointer;
+    }
+    select option { background: #0f120f; color: var(--text); }
+
+    .unit-row { display: flex; align-items: stretch; }
+    .unit-row input { border-radius: var(--radius) 0 0 var(--radius); flex: 1; }
+    .unit-badge {
+      background: rgba(255,255,255,.055);
+      border: 1px solid var(--line);
+      border-left: none;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 7px 9px;
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      white-space: nowrap; font-family: var(--mono);
+      display: flex; align-items: center;
+    }
+
+    /* Checkbox */
+    .check-row {
+      display: flex; align-items: flex-start; gap: 9px;
+      margin-bottom: 12px; cursor: pointer; user-select: none;
+    }
+    .check-row input[type="checkbox"] {
+      width: 15px; height: 15px; accent-color: var(--green);
+      cursor: pointer; margin-top: 2px; flex-shrink: 0;
+    }
+    .check-lbl { font-size: 14px; font-weight: 600; line-height: 1.3; }
+    .check-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+    /* Radio pill */
+    .radio-group { display: flex; flex-wrap: wrap; gap: 7px; }
+    .radio-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid var(--line); border-radius: 999px;
+      cursor: pointer; font-size: 13px; font-weight: 700; color: var(--muted);
+      transition: border-color .15s, color .15s, background .15s;
+      user-select: none;
+    }
+    .radio-pill:hover { border-color: rgba(255,255,255,.18); color: var(--text); }
+    .radio-pill.selected {
+      border-color: rgba(0,255,128,.4); color: var(--green);
+      background: rgba(0,255,128,.07);
+    }
+    .radio-pill input[type="radio"] { accent-color: var(--green); cursor: pointer; }
+
+    /* Picker row */
+    .picker-row { display: flex; gap: 8px; align-items: center; }
+    .picker-row input { flex: 1; font-family: var(--mono); font-size: 13px; }
+    .btn-browse {
+      flex-shrink: 0; white-space: nowrap;
+      padding: 7px 12px;
+      background: rgba(255,255,255,.06); border: 1px solid var(--line);
+      border-radius: var(--radius); color: var(--text);
+      font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font);
+      transition: background .15s, border-color .15s;
+    }
+    .btn-browse:hover { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.16); }
+
+    /* List box */
+    .list-box {
+      border: 1px solid var(--line); border-radius: var(--radius);
+      overflow: hidden; min-height: 58px; margin-bottom: 8px;
+    }
+    .list-empty { padding: 14px; color: var(--muted); font-size: 13px; font-style: italic; text-align: center; }
+    .list-item {
+      padding: 7px 11px; font-size: 13px; font-family: var(--mono);
+      border-bottom: 1px solid var(--line-soft); cursor: pointer;
+      transition: background .1s;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item:hover { background: rgba(255,255,255,.04); }
+    .list-item.selected { background: rgba(0,255,128,.08); color: var(--green); }
+    .list-actions { display: flex; gap: 8px; }
+    .btn-list {
+      padding: 5px 11px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--line);
+      border-radius: var(--radius); color: var(--text);
+      font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font);
+      transition: background .15s;
+    }
+    .btn-list:hover { background: rgba(255,255,255,.10); }
+    .btn-list.danger:hover {
+      background: rgba(255,59,48,.12);
+      border-color: rgba(255,59,48,.3);
+      color: var(--danger);
+    }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    footer {
+      height: var(--footer-h);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+      padding: 0 20px;
+      border-top: 1px solid var(--line);
+      background: linear-gradient(0deg, rgba(12,15,12,.99), rgba(7,8,7,.98));
+    }
+    .footer-hint { flex: 1; font-size: 12px; color: var(--muted); font-style: italic; }
+    .btn-cancel {
+      padding: 8px 18px;
+      background: transparent; border: 1px solid var(--line);
+      border-radius: var(--radius); color: var(--muted);
+      font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font);
+      transition: border-color .15s, color .15s;
+    }
+    .btn-cancel:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+    .btn-save {
+      padding: 8px 24px;
+      background: rgba(0,255,128,.12); border: 1px solid rgba(0,255,128,.35);
+      border-radius: var(--radius); color: var(--green);
+      font-size: 14px; font-weight: 900; letter-spacing: .02em;
+      cursor: pointer; font-family: var(--font);
+      transition: background .15s, border-color .15s, opacity .2s, box-shadow .2s;
+    }
+    .btn-save:hover:not(:disabled) {
+      background: rgba(0,255,128,.22);
+      border-color: rgba(0,255,128,.55);
+      box-shadow: 0 0 12px rgba(0,255,128,.15);
+    }
+    .btn-save:disabled { opacity: .3; cursor: not-allowed; pointer-events: none; }
+
+    /* ── Save banner ──────────────────────────────────────────── */
+    #saveBanner {
+      position: fixed;
+      bottom: calc(var(--footer-h) + 14px);
+      left: 50%; transform: translateX(-50%) translateY(14px);
+      background: rgba(0,255,128,.11); border: 1px solid rgba(0,255,128,.3);
+      border-radius: var(--radius); padding: 12px 22px;
+      font-size: 14px; font-weight: 700; color: var(--green);
+      opacity: 0; transition: opacity .3s, transform .3s;
+      pointer-events: none; white-space: nowrap; z-index: 200;
+      box-shadow: 0 4px 24px rgba(0,0,0,.4);
+    }
+    #saveBanner.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Dev panel ────────────────────────────────────────────── */
+    #devPanel {
+      position: fixed; bottom: calc(var(--footer-h) + 10px); right: 14px;
+      background: rgba(18,14,6,.92); border: 1px solid rgba(255,149,0,.22);
+      border-radius: var(--radius); padding: 6px 10px;
+      display: flex; align-items: center; gap: 10px; z-index: 100;
+    }
+    .dev-label { font-size: 11px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: var(--warning); opacity: .7; }
+    .btn-dev {
+      padding: 4px 10px;
+      background: rgba(255,149,0,.12); border: 1px solid rgba(255,149,0,.28);
+      border-radius: 6px; color: var(--warning);
+      font-size: 12px; font-weight: 900; cursor: pointer; font-family: var(--font);
+      transition: background .15s;
+    }
+    .btn-dev:hover { background: rgba(255,149,0,.24); }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────── -->
+<header>
+  <h1>RadioCore — Configuração</h1>
+  <div class="engine-indicator">
+    <div id="engineDot" class="engine-dot"></div>
+    <span id="engineLabel" class="engine-label">Online</span>
+  </div>
+</header>
+
+<!-- ── Offline banner ──────────────────────────────────────────── -->
+<div id="offlineBanner">
+ &nbsp; Engine offline — pode estar reiniciando. Aguarde para salvar alterações.
+</div>
+
+<!-- ── Main layout ─────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-item active"   data-s="engine">Engine</div>
+    <div class="nav-item"          data-s="api">API</div>
+    <div class="nav-item"          data-s="audio">Áudio</div>
+    <div class="nav-item"          data-s="playback">Reprodução</div>
+    <div class="nav-item"          data-s="health">Saúde</div>
+    <div class="nav-item"          data-s="panic">Panic</div>
+    <div class="nav-item"          data-s="log">Log / Seg / Admin</div>
+    <div class="nav-item"          data-s="queue">Fila</div>
+    <div class="nav-item"          data-s="horacerta">Hora Certa</div>
+    <div class="nav-item"          data-s="preview">Preview</div>
+    <div class="nav-item"          data-s="scheduler">Scheduler</div>
+  </nav>
+
+  <!-- Content -->
+  <main class="content">
+
+    <!-- ── ENGINE ──────────────────────────────────────────────── -->
+    <div id="p-engine" class="panel active">
+      <div class="section-title">Engine</div>
+
+      <div class="field">
+        <label class="lbl">ID da instância</label>
+        <input type="text" value="studio-a-main" />
+        <div class="hint">Identificador único do engine. Usado no arquivo de snapshot e no lock de instância.</div>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Bloquear instância duplicada</div>
+          <div class="check-desc">Impede que uma segunda instância com o mesmo ID seja iniciada simultaneamente.</div>
+        </div>
+      </label>
+
+    </div>
+
+    <!-- ── API ─────────────────────────────────────────────────── -->
+    <div id="p-api" class="panel">
+      <div class="section-title">API</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="lbl">Host</label>
+          <input type="text" value="127.0.0.1" />
+        </div>
+        <div class="field" style="max-width:120px">
+          <label class="lbl">Porta</label>
+          <input type="number" value="8080" min="1" max="65535" />
+        </div>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Habilitar CORS</div>
+          <div class="check-desc">Permite requisições cross-origin da UI de controle.</div>
+        </div>
+      </label>
+
+      <div class="field" style="margin-top:14px">
+        <label class="lbl">Origens permitidas</label>
+        <div class="list-box" id="cors-box"></div>
+        <div class="list-actions">
+          <button class="btn-list" onclick="addCors()">+ Adicionar</button>
+          <button class="btn-list danger" onclick="removeCors()">&#8722; Remover selecionada</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ÁUDIO ───────────────────────────────────────────────── -->
+    <div id="p-audio" class="panel">
+      <div class="section-title">Áudio</div>
+
+      <div class="field">
+        <label class="lbl">Driver de saída principal</label>
+        <div class="radio-group" id="rg-audio-driver">
+          <label class="radio-pill"><input type="radio" name="audio-driver" value="null" /> null</label>
+          <label class="radio-pill"><input type="radio" name="audio-driver" value="file" /> file</label>
+          <label class="radio-pill selected" id="pill-audio-coreaudio"><input type="radio" name="audio-driver" value="coreaudio" checked /> coreaudio</label>
+          <label class="radio-pill"><input type="radio" name="audio-driver" value="portaudio" /> portaudio</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Dispositivo de saída principal</label>
+        <select id="audio-device">
+          <option selected>Alto-falantes (MacBook Pro)</option>
+          <option>AirPods Pro 2 2025</option>
+          <option>BlackHole 2ch</option>
+          <option>USB Audio Device</option>
+        </select>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" />
+        <div>
+          <div class="check-lbl">Usar NullOutput se o dispositivo falhar ao abrir</div>
+          <div class="check-desc">Degrada graciosamente em vez de encerrar com erro.</div>
+        </div>
+      </label>
+
+      <div class="field-row" style="margin-top:16px">
+        <div class="field">
+          <label class="lbl">Taxa de amostragem</label>
+          <div class="unit-row"><input type="number" value="48000" /><span class="unit-badge">Hz</span></div>
+        </div>
+        <div class="field">
+          <label class="lbl">Canais</label>
+          <input type="number" value="2" min="1" max="8" />
+        </div>
+        <div class="field">
+          <label class="lbl">Buffer</label>
+          <div class="unit-row"><input type="number" value="2048" /><span class="unit-badge">frames</span></div>
+        </div>
+      </div>
+      <div class="hint">Menor buffer = menor latência. Maior buffer = maior estabilidade em sistemas com carga.</div>
+    </div>
+
+    <!-- ── REPRODUÇÃO ──────────────────────────────────────────── -->
+    <div id="p-playback" class="panel">
+      <div class="section-title">Reprodução</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="lbl">Crossfade padrão</label>
+          <div class="unit-row"><input type="number" value="8000" min="0" /><span class="unit-badge">ms</span></div>
+          <div class="hint">0 = desabilita crossfade automático.</div>
+        </div>
+        <div class="field">
+          <label class="lbl">Fade ao parar</label>
+          <div class="unit-row"><input type="number" value="300" min="0" /><span class="unit-badge">ms</span></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Pré-carregamento do próximo item</label>
+        <div class="unit-row" style="max-width:200px"><input type="number" value="3000" min="0" /><span class="unit-badge">ms</span></div>
+        <div class="hint">Antecipação para pré-carregar o próximo item da fila antes do fim do atual.</div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Falhas consecutivas máximas</label>
+        <input type="number" value="3" min="1" max="20" style="max-width:100px" />
+        <div class="hint">Após N falhas seguidas, a sessão é encerrada com erro.</div>
+      </div>
+
+      <div class="subsection">Auto crossfade por energia</div>
+
+      <label class="check-row">
+        <input type="checkbox" id="cb-auto-xfade" checked />
+        <div>
+          <div class="check-lbl">Habilitado</div>
+          <div class="check-desc">Crossfade disparado quando a energia do áudio cair abaixo do threshold por N buffers consecutivos.</div>
+        </div>
+      </label>
+
+      <div id="auto-xfade-fields">
+        <div class="field-row">
+          <div class="field">
+            <label class="lbl">Threshold de energia</label>
+            <div class="unit-row"><input type="number" value="-18.0" step="0.5" /><span class="unit-badge">dBFS</span></div>
+          </div>
+          <div class="field">
+            <label class="lbl">Janela mínima</label>
+            <div class="unit-row"><input type="number" value="2000" min="0" /><span class="unit-badge">ms</span></div>
+          </div>
+          <div class="field">
+            <label class="lbl">Janela máxima</label>
+            <div class="unit-row"><input type="number" value="20000" min="0" /><span class="unit-badge">ms</span></div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl">Buffers consecutivos para confirmar</label>
+          <input type="number" value="8" min="1" max="100" style="max-width:100px" />
+          <div class="hint">Leituras de baixa energia necessárias antes de acionar o crossfade.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SAÚDE ───────────────────────────────────────────────── -->
+    <div id="p-health" class="panel">
+      <div class="section-title">Saúde do Áudio</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="lbl">Intervalo de progresso</label>
+          <div class="unit-row"><input type="number" value="500" min="100" /><span class="unit-badge">ms</span></div>
+          <div class="hint">Frequência do evento ProgressChanged.</div>
+        </div>
+        <div class="field">
+          <label class="lbl">Intervalo de saúde</label>
+          <div class="unit-row"><input type="number" value="500" min="100" /><span class="unit-badge">ms</span></div>
+          <div class="hint">Frequência do monitor de RMS, pico e silêncio.</div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="lbl">Threshold de silêncio</label>
+          <div class="unit-row"><input type="number" value="-60.0" step="1" /><span class="unit-badge">dBFS</span></div>
+        </div>
+        <div class="field">
+          <label class="lbl">Duração de silêncio</label>
+          <div class="unit-row"><input type="number" value="2000" min="100" /><span class="unit-badge">ms</span></div>
+        </div>
+      </div>
+
+      <div class="subsection">VU Meter</div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Habilitado</div>
+          <div class="check-desc">Publica eventos VUMeter via WebSocket com RMS, Peak Hold, LUFS momentâneo e separação L/R.</div>
+        </div>
+      </label>
+
+      <div class="field-row" style="margin-top:10px">
+        <div class="field">
+          <label class="lbl">Intervalo VU Meter</label>
+          <div class="unit-row"><input type="number" value="100" min="50" /><span class="unit-badge">ms</span></div>
+        </div>
+        <div class="field">
+          <label class="lbl">Peak hold</label>
+          <div class="unit-row"><input type="number" value="3000" min="0" /><span class="unit-badge">ms</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PANIC ───────────────────────────────────────────────── -->
+    <div id="p-panic" class="panel">
+      <div class="section-title">Panic</div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Modo Panic habilitado</div>
+          <div class="check-desc">Permite entrar em PANIC via comando ou automaticamente por silêncio detectado.</div>
+        </div>
+      </label>
+
+      <div class="field" style="margin-top:14px">
+        <label class="lbl">Arquivo de cama (panic bed)</label>
+        <div class="picker-row">
+          <input type="text" id="panic-bed" value="/Users/waelson/Documents/workspace/medias/panic/panic.mp3" />
+          <button class="btn-browse" onclick="browse('panic-bed','file')">Procurar</button>
+        </div>
+        <div class="hint">Áudio tocado em loop enquanto o engine estiver em modo PANIC.</div>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" />
+        <div>
+          <div class="check-lbl">Auto-panic por silêncio</div>
+          <div class="check-desc">Entra em PANIC automaticamente ao detectar silêncio sustentado acima da duração configurada.</div>
+        </div>
+      </label>
+
+      <div class="field-row" style="margin-top:6px">
+        <div class="field">
+          <label class="lbl">Threshold de silêncio</label>
+          <div class="unit-row"><input type="number" value="-60.0" step="1" /><span class="unit-badge">dBFS</span></div>
+        </div>
+        <div class="field">
+          <label class="lbl">Duração mínima</label>
+          <div class="unit-row"><input type="number" value="2000" min="100" /><span class="unit-badge">ms</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LOG / SEG / ADMIN ───────────────────────────────────── -->
+    <div id="p-log" class="panel">
+      <div class="section-title">Logging / Segurança / Admin</div>
+
+      <div class="subsection" style="margin-top:0">Logging</div>
+
+      <div class="field">
+        <label class="lbl">Nível</label>
+        <div class="radio-group" id="rg-log-level">
+          <label class="radio-pill"><input type="radio" name="log-level" value="error" /> error</label>
+          <label class="radio-pill"><input type="radio" name="log-level" value="warn"  /> warn</label>
+          <label class="radio-pill"><input type="radio" name="log-level" value="info"  /> info</label>
+          <label class="radio-pill selected"><input type="radio" name="log-level" value="debug" checked /> debug</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Formato</label>
+        <div class="radio-group" id="rg-log-format">
+          <label class="radio-pill selected"><input type="radio" name="log-format" value="text" checked /> text — legível por humanos</label>
+          <label class="radio-pill"><input type="radio" name="log-format" value="json" /> json — estruturado (Loki, Datadog)</label>
+        </div>
+      </div>
+
+      <div class="subsection">Segurança</div>
+
+      <div class="field">
+        <label class="lbl">Diretórios de áudio permitidos</label>
+        <div class="list-box" id="roots-box"></div>
+        <div class="list-actions">
+          <button class="btn-list" onclick="addRoot()">+ Adicionar pasta</button>
+          <button class="btn-list danger" onclick="removeRoot()">&#8722; Remover selecionada</button>
+        </div>
+        <div class="warn">&#9888; Deixar vazio não é recomendado em produção — qualquer path será aceito.</div>
+      </div>
+
+      <div class="subsection">Admin</div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Habilitar shutdown remoto</div>
+          <div class="check-desc">Expõe POST /v1/admin/shutdown. Não habilitar em produção exposta à rede.</div>
+        </div>
+      </label>
+    </div>
+
+    <!-- ── FILA ────────────────────────────────────────────────── -->
+    <div id="p-queue" class="panel">
+      <div class="section-title">Fila</div>
+
+      <div class="subsection" style="margin-top:0">Persistência</div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Salvar e restaurar fila entre reinicializações</div>
+          <div class="check-desc">O estado da fila é persistido a cada mutação e restaurado na inicialização.</div>
+        </div>
+      </label>
+
+      <div class="field" style="margin-top:14px">
+        <label class="lbl">Arquivo de snapshot</label>
+        <div class="picker-row">
+          <input type="text" id="q-path" value="/Users/waelson/Documents/workspace/radio-playout-engine/playout-studio-a-main-queue.json" />
+          <button class="btn-browse" onclick="browse('q-path','file')">Procurar</button>
+        </div>
+        <div class="hint">Vazio = /tmp/playout-&lt;engine-id&gt;-queue.json</div>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Restaurar fila ao iniciar</div>
+          <div class="check-desc">Recarrega os itens da fila a partir do snapshot na inicialização.</div>
+        </div>
+      </label>
+
+      <label class="check-row">
+        <input type="checkbox" />
+        <div>
+          <div class="check-lbl">Apagar snapshot ao encerrar normalmente</div>
+          <div class="check-desc">Persistir apenas em caso de crash. Reinicializações normais começam com fila vazia.</div>
+        </div>
+      </label>
+    </div>
+
+    <!-- ── HORA CERTA ──────────────────────────────────────────── -->
+    <div id="p-horacerta" class="panel">
+      <div class="section-title">Hora Certa</div>
+
+      <div class="field">
+        <label class="lbl">Pasta de horas</label>
+        <div class="picker-row">
+          <input type="text" id="hc-h" value="media/hora_certa/hours_dir" />
+          <button class="btn-browse" onclick="browse('hc-h','dir')">Procurar pasta</button>
+        </div>
+        <div class="hint">Contém os arquivos HRS00.mp3 … HRS23.mp3</div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Pasta de minutos</label>
+        <div class="picker-row">
+          <input type="text" id="hc-m" value="media/hora_certa/minutes_dir" />
+          <button class="btn-browse" onclick="browse('hc-m','dir')">Procurar pasta</button>
+        </div>
+        <div class="hint">Contém os arquivos MIN00.mp3 … MIN59.mp3. Pode ser a mesma pasta que horas.</div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="lbl">Padrão — hora</label>
+          <input type="text" value="HRS{HH}.mp3" />
+          <div class="hint">{HH} = hora com zero à esquerda (00–23)</div>
+        </div>
+        <div class="field">
+          <label class="lbl">Padrão — minuto</label>
+          <input type="text" value="MIN{MM}.mp3" />
+          <div class="hint">{MM} = minuto com zero à esquerda (00–59)</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Ganho padrão</label>
+        <div class="unit-row" style="max-width:130px">
+          <input type="number" value="0.0" step="0.5" />
+          <span class="unit-badge">dB</span>
+        </div>
+        <div class="hint">0 = unity gain. Itens individuais na fila podem sobrescrever este valor.</div>
+      </div>
+    </div>
+
+    <!-- ── PREVIEW ─────────────────────────────────────────────── -->
+    <div id="p-preview" class="panel">
+      <div class="section-title">Preview (Cue)</div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Habilitar preview de áudio</div>
+          <div class="check-desc">Permite ouvir um áudio em dispositivo separado antes de colocá-lo na fila, sem interferir no sinal ao ar.</div>
+        </div>
+      </label>
+
+      <div class="field" style="margin-top:16px">
+        <label class="lbl">Driver de saída do preview</label>
+        <div class="radio-group" id="rg-prev-driver">
+          <label class="radio-pill"><input type="radio" name="prev-driver" value="null" /> null</label>
+          <label class="radio-pill selected" id="pill-prev-coreaudio"><input type="radio" name="prev-driver" value="coreaudio" checked /> coreaudio</label>
+          <label class="radio-pill"><input type="radio" name="prev-driver" value="portaudio" /> portaudio</label>
+        </div>
+        <div class="hint">Independente do driver de saída principal (seção Áudio).</div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Dispositivo de preview (cue)</label>
+        <select id="prev-device">
+          <option>Alto-falantes (MacBook Pro)</option>
+          <option selected>AirPods Pro 2 2025</option>
+          <option>BlackHole 2ch</option>
+          <option>USB Audio Device</option>
+        </select>
+        <div class="hint">Deve ser diferente do dispositivo de saída principal. Vazio = padrão do driver.</div>
+      </div>
+    </div>
+
+    <!-- ── SCHEDULER ───────────────────────────────────────────── -->
+    <div id="p-scheduler" class="panel">
+      <div class="section-title">Scheduler</div>
+
+      <label class="check-row">
+        <input type="checkbox" checked />
+        <div>
+          <div class="check-lbl">Habilitar scheduler de programação horária</div>
+          <div class="check-desc">Quando desabilitado, nenhuma entrada é avaliada mesmo que esteja registrada.</div>
+        </div>
+      </label>
+
+      <div class="field" style="margin-top:16px">
+        <label class="lbl">Timezone</label>
+        <input type="text" value="America/Sao_Paulo" />
+        <div class="hint">Timezone IANA para avaliação das expressões cron. Vazio = timezone do sistema operacional.</div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Arquivo de schedule</label>
+        <div class="picker-row">
+          <input type="text" id="sched-path" value="" placeholder="Padrão: ~/RadioFlow/schedule.json" />
+          <button class="btn-browse" onclick="browse('sched-path','file')">Procurar</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl">Tolerância de atraso (missed threshold)</label>
+        <div class="unit-row" style="max-width:180px">
+          <input type="number" value="5000" min="0" />
+          <span class="unit-badge">ms</span>
+        </div>
+        <div class="hint">Entradas atrasadas além desse tempo são marcadas MISSED em vez de disparar com atraso.</div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Footer ──────────────────────────────────────────────────── -->
+<footer>
+  <span class="footer-hint">As altera&ccedil;&otilde;es s&oacute; ter&atilde;o efeito ap&oacute;s reiniciar o RadioCore pelo menu do systray.</span>
+  <button class="btn-cancel" onclick="cancelCfg()">Cancelar</button>
+  <button class="btn-save" id="saveBtn" onclick="saveCfg()">Salvar</button>
+</footer>
+
+<!-- ── Save banner ─────────────────────────────────────────────── -->
+<div id="saveBanner">
+  &#10003; Configuração salva. Reinicie o RadioCore pelo menu do systray.
+</div>
+
+<!-- ── Dev simulation panel ────────────────────────────────────── -->
+<div id="devPanel">
+  <span class="dev-label">Preview</span>
+  <button class="btn-dev" id="devBtn" onclick="toggleEngine()">Simular offline</button>
+  <button class="btn-dev" id="osBtn" onclick="toggleOS()">Simular Linux</button>
+</div>
+
+<script>
+  // ─────────────────────────────────────────────────────────────
+  // State
+  // ─────────────────────────────────────────────────────────────
+  let engineOnline = true;
+  let saveBannerTimer = null;
+  let simulatedOS = 'darwin'; // 'darwin' | 'linux' | 'windows'
+
+  let corsOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3333',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  let corsSelected = -1;
+
+  let secRoots = [];
+  let rootSelected = -1;
+
+  // ─────────────────────────────────────────────────────────────
+  // Navigation
+  // ─────────────────────────────────────────────────────────────
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      item.classList.add('active');
+      document.getElementById('p-' + item.dataset.s).classList.add('active');
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Radio pills — visual selected state
+  // ─────────────────────────────────────────────────────────────
+  document.querySelectorAll('.radio-group').forEach(group => {
+    group.querySelectorAll('.radio-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        group.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('selected'));
+        pill.classList.add('selected');
+      });
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Auto-crossfade fields toggle
+  // ─────────────────────────────────────────────────────────────
+  document.getElementById('cb-auto-xfade').addEventListener('change', function () {
+    document.getElementById('auto-xfade-fields').style.opacity = this.checked ? '1' : '0.35';
+    document.getElementById('auto-xfade-fields').style.pointerEvents = this.checked ? '' : 'none';
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // Engine status
+  // ─────────────────────────────────────────────────────────────
+  function setEngine(online) {
+    engineOnline = online;
+    const dot    = document.getElementById('engineDot');
+    const label  = document.getElementById('engineLabel');
+    const banner = document.getElementById('offlineBanner');
+    const btn    = document.getElementById('saveBtn');
+    const devBtn = document.getElementById('devBtn');
+
+    dot.classList.toggle('offline', !online);
+    label.classList.toggle('offline', !online);
+    label.textContent = online ? 'Online' : 'Offline';
+    banner.classList.toggle('visible', !online);
+    btn.disabled = !online;
+    devBtn.textContent = online ? 'Simular offline' : 'Simular online';
+  }
+
+  function toggleEngine() { setEngine(!engineOnline); }
+
+  // ─────────────────────────────────────────────────────────────
+  // OS detection simulation
+  // In production: GET /v1/info → { "os": "darwin" | "linux" | "windows" }
+  // ─────────────────────────────────────────────────────────────
+  function applyOSRules() {
+    const isDarwin = simulatedOS === 'darwin';
+    const pills = [
+      document.getElementById('pill-audio-coreaudio'),
+      document.getElementById('pill-prev-coreaudio'),
+    ];
+    pills.forEach(pill => {
+      if (!pill) return;
+      pill.style.display = isDarwin ? '' : 'none';
+      // If coreaudio was selected and OS is not darwin, reset to null
+      if (!isDarwin) {
+        const radio = pill.querySelector('input[type="radio"]');
+        if (radio && radio.checked) {
+          radio.checked = false;
+          pill.classList.remove('selected');
+          // Select 'null' in the same group
+          const group = pill.closest('.radio-group');
+          const nullPill = group ? group.querySelector('.radio-pill') : null;
+          if (nullPill) {
+            nullPill.classList.add('selected');
+            const nullRadio = nullPill.querySelector('input[type="radio"]');
+            if (nullRadio) nullRadio.checked = true;
+          }
+        }
+      }
+    });
+  }
+
+  function toggleOS() {
+    simulatedOS = simulatedOS === 'darwin' ? 'linux' : 'darwin';
+    document.getElementById('osBtn').textContent =
+      simulatedOS === 'darwin' ? 'Simular Linux' : 'Simular macOS';
+    applyOSRules();
+  }
+
+  // Simulated polling — in production: fetch('/v1/health') every 5 s
+  // Here we just keep the ticker alive so the concept is clear.
+  setInterval(() => {
+    // real: fetch('/v1/health').then(r => setEngine(r.ok)).catch(() => setEngine(false))
+  }, 5000);
+
+  // ─────────────────────────────────────────────────────────────
+  // CORS origins list
+  // ─────────────────────────────────────────────────────────────
+  function renderCors() {
+    const box = document.getElementById('cors-box');
+    if (!corsOrigins.length) {
+      box.innerHTML = '<div class="list-empty">Nenhuma origem configurada.</div>';
+      return;
+    }
+    box.innerHTML = corsOrigins.map((o, i) =>
+      `<div class="list-item${i === corsSelected ? ' selected' : ''}"
+            onclick="selectCors(${i})">${o}</div>`
+    ).join('');
+  }
+
+  function selectCors(i) {
+    corsSelected = corsSelected === i ? -1 : i;
+    renderCors();
+  }
+
+  function addCors() {
+    const v = prompt('Nova origem (ex: http://meusite.local:3000):');
+    if (v && v.trim()) { corsOrigins.push(v.trim()); corsSelected = -1; renderCors(); }
+  }
+
+  function removeCors() {
+    if (corsSelected < 0) { alert('Selecione uma origem para remover.'); return; }
+    corsOrigins.splice(corsSelected, 1);
+    corsSelected = -1;
+    renderCors();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Security roots list
+  // ─────────────────────────────────────────────────────────────
+  function renderRoots() {
+    const box = document.getElementById('roots-box');
+    if (!secRoots.length) {
+      box.innerHTML = '<div class="list-empty">Sem restrição de paths — qualquer diretório permitido.</div>';
+      return;
+    }
+    box.innerHTML = secRoots.map((r, i) =>
+      `<div class="list-item${i === rootSelected ? ' selected' : ''}"
+            onclick="selectRoot(${i})">${r}</div>`
+    ).join('');
+  }
+
+  function selectRoot(i) {
+    rootSelected = rootSelected === i ? -1 : i;
+    renderRoots();
+  }
+
+  function addRoot() {
+    const v = prompt('Caminho do diretório permitido (ex: /var/library/audio):');
+    if (v && v.trim()) { secRoots.push(v.trim()); rootSelected = -1; renderRoots(); }
+  }
+
+  function removeRoot() {
+    if (rootSelected < 0) { alert('Selecione um diretório para remover.'); return; }
+    secRoots.splice(rootSelected, 1);
+    rootSelected = -1;
+    renderRoots();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // File / folder picker (simulated)
+  // In production: POST /v1/config/browse → Go opens native dialog
+  // ─────────────────────────────────────────────────────────────
+  function browse(fieldId, type) {
+    const field = document.getElementById(fieldId);
+    const label = type === 'dir' ? 'pasta' : 'arquivo';
+    const v = prompt(`Caminho do ${label}:`, field.value);
+    if (v !== null) field.value = v;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Save
+  // ─────────────────────────────────────────────────────────────
+  function saveCfg() {
+    if (!engineOnline) return;
+    // In production: collect form → PUT /v1/config → backend validates + writes YAML + .bak
+    const banner = document.getElementById('saveBanner');
+    banner.classList.add('visible');
+    if (saveBannerTimer) clearTimeout(saveBannerTimer);
+    saveBannerTimer = setTimeout(() => banner.classList.remove('visible'), 6000);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Cancel
+  // ─────────────────────────────────────────────────────────────
+  function cancelCfg() {
+    if (confirm('Descartar todas as alterações não salvas?')) {
+      // In production: reload form from GET /v1/config/current
+      alert('Alterações descartadas.\n(Em produção: formulário recarregado com os valores atuais do YAML.)');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Init
+  // ─────────────────────────────────────────────────────────────
+  renderCors();
+  renderRoots();
+  applyOSRules(); // In production: called after GET /v1/info resolves
+</script>
+</body>
+</html>

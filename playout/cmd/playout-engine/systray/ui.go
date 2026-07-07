@@ -36,6 +36,7 @@ func onSystrayReady() {
 	mRestart := getsystray.AddMenuItem("↺  Reiniciar        ", "Reinicia a engine de áudio")
 	getsystray.AddSeparator()
 	mStatus := getsystray.AddMenuItem("◉  Status          ", "Abre status no browser")
+	mConfig := getsystray.AddMenuItem("⚙  Configuração    ", "Abre configurações no browser")
 	getsystray.AddSeparator()
 	mQuit := getsystray.AddMenuItem("✕  Finalizar", "Encerra o systray e a engine")
 
@@ -107,7 +108,10 @@ func onSystrayReady() {
 				updateUI()
 
 			case <-mStatus.ClickedCh:
-				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort), "RadioCore — Status")
+				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/status", defaultEnginePort), "RadioCore — Status", 803, 430)
+
+			case <-mConfig.ClickedCh:
+				webview.OpenPlayerWindow(fmt.Sprintf("http://127.0.0.1:%d/config", defaultEnginePort), "RadioCore — Configuração", 1095, 741)
 
 			case <-mQuit.ClickedCh:
 				webview.KillAll()
