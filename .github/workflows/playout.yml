@@ -87,3 +87,74 @@ jobs:
           name: playout-engine-windows-wasapi-${{ github.sha }}
           path: playout/playout-engine.exe
           retention-days: 7
+
+  # ── Build Linux ──────────────────────────────────────────────────────────────
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: playout
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: playout/go.mod
+          cache-dependency-path: playout/go.sum
+
+      # ── Variante 1: headless (CGO_ENABLED=0, sem driver de áudio real) ────────
+      - name: Build playout-engine (headless / cli)
+        env:
+          CGO_ENABLED: "0"
+          GOARCH: amd64
+          GOOS: linux
+        run: |
+          go build \
+            -tags "cli" \
+            -ldflags "-X main.Version=${{ github.sha }}" \
+            -o playout-engine-headless \
+            ./cmd/playout-engine
+
+      - name: Verify headless binary
+        run: |
+          size=$(stat -c%s playout-engine-headless)
+          echo "playout-engine-headless: ${size} bytes"
+          [ "$size" -gt 0 ]
+
+      # ── Variante 2: portaudio (CGO_ENABLED=1, driver PortAudio real) ──────────
+      - name: Install libportaudio-dev
+        run: sudo apt-get install -y libportaudio2 libportaudio-dev
+
+      - name: Build playout-engine (portaudio / cli)
+        env:
+          CGO_ENABLED: "1"
+          GOARCH: amd64
+          GOOS: linux
+        run: |
+          go build \
+            -tags "portaudio cli" \
+            -ldflags "-X main.Version=${{ github.sha }}" \
+            -o playout-engine-portaudio \
+            ./cmd/playout-engine
+
+      - name: Verify portaudio binary
+        run: |
+          size=$(stat -c%s playout-engine-portaudio)
+          echo "playout-engine-portaudio: ${size} bytes"
+          [ "$size" -gt 0 ]
+
+      # ── Upload dos artefatos ─────────────────────────────────────────────────
+      - name: Upload headless artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: playout-engine-linux-headless-${{ github.sha }}
+          path: playout/playout-engine-headless
+          retention-days: 7
+
+      - name: Upload portaudio artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: playout-engine-linux-portaudio-${{ github.sha }}
+          path: playout/playout-engine-portaudio
+          retention-days: 7
