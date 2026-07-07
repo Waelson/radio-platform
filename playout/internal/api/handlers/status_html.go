@@ -36,7 +36,7 @@ var statusPageTpl = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RadioCore — Status</title>
+  <title>Status da Engine</title>
   <style>
     :root {
       --bg: #070807;
@@ -164,7 +164,7 @@ var statusPageTpl = `<!DOCTYPE html>
 <body>
   <div class="page-header">
     <img src="{{LOGO_URI}}" alt="RadioCore">
-    <h1>RadioCore — Status</h1>
+    <h1>Status da Engine</h1>
   </div>
 
   <div class="hero">

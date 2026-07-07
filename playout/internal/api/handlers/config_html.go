@@ -1,6 +1,15 @@
 package handlers
 
-import "net/http"
+import (
+	"encoding/base64"
+	"net/http"
+	"strings"
+)
+
+func init() {
+	logoURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(logoPNG)
+	configPage = []byte(strings.ReplaceAll(configPageTpl, "{{LOGO_URI}}", logoURI))
+}
 
 // ConfigHTML serves the Configuration SPA at GET /config.
 // All data is fetched via REST endpoints; the page degrades gracefully when offline.
@@ -12,7 +21,9 @@ func ConfigHTML() http.HandlerFunc {
 	}
 }
 
-var configPage = []byte(`<!DOCTYPE html>
+var configPage []byte
+
+var configPageTpl = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -52,6 +63,7 @@ var configPage = []byte(`<!DOCTYPE html>
       padding: 0 18px; border-bottom: 1px solid var(--line);
       background: linear-gradient(180deg, rgba(12,15,12,.99), rgba(7,8,7,.98));
     }
+    .header-logo { width: 50px; height: 50px; border-radius: 6px; flex-shrink: 0; }
     header h1 { margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -.025em; }
     .engine-indicator { display: flex; align-items: center; gap: 7px; }
     .engine-dot {
@@ -280,7 +292,10 @@ var configPage = []byte(`<!DOCTYPE html>
 <body>
 
 <header>
-  <h1>RadioCore &#8212; Configuração</h1>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <img src="{{LOGO_URI}}" alt="RadioCore" class="header-logo">
+    <h1>Configuração da Engine</h1>
+  </div>
   <div class="engine-indicator">
     <div id="engineDot" class="engine-dot"></div>
     <span id="engineLabel" class="engine-label">Online</span>
@@ -1188,4 +1203,4 @@ var configPage = []byte(`<!DOCTYPE html>
 </script>
 </body>
 </html>
-`)
+`
