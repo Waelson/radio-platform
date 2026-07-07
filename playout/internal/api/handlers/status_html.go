@@ -1,11 +1,22 @@
 package handlers
 
 import (
+	_ "embed"
+	"encoding/base64"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Waelson/radio-playout-engine/internal/state"
 )
+
+//go:embed icon_logo.png
+var logoPNG []byte
+
+func init() {
+	logoURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(logoPNG)
+	statusPage = []byte(strings.ReplaceAll(statusPageTpl, "{{LOGO_URI}}", logoURI))
+}
 
 // StatusHTML returns a handler for GET /status that serves a client-side SPA.
 // All data is fetched by JavaScript via /v1/info, /v1/health and /v1/status,
@@ -18,7 +29,9 @@ func StatusHTML(_ int, _ string, _ time.Time, _ *state.Manager) http.HandlerFunc
 	}
 }
 
-var statusPage = []byte(`<!DOCTYPE html>
+var statusPage []byte
+
+var statusPageTpl = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -47,7 +60,9 @@ var statusPage = []byte(`<!DOCTYPE html>
       font-size: 15px;
       padding: 14px;
     }
-    h1 { margin: 0 0 12px; font-size: 20px; font-weight: 900; letter-spacing: -.03em; }
+    .page-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .page-header img { width: 50px; height: 50px; border-radius: 6px; flex-shrink: 0; }
+    h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -.03em; }
 
     /* Hero: 3 cards side by side */
     .hero {
@@ -147,7 +162,10 @@ var statusPage = []byte(`<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h1>RadioCore — Status</h1>
+  <div class="page-header">
+    <img src="{{LOGO_URI}}" alt="RadioCore">
+    <h1>RadioCore — Status</h1>
+  </div>
 
   <div class="hero">
     <div class="hero-cell">
@@ -283,4 +301,4 @@ var statusPage = []byte(`<!DOCTYPE html>
   </script>
 </body>
 </html>
-`)
+`
