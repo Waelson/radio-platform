@@ -294,7 +294,7 @@ var configPageTpl = `<!DOCTYPE html>
 <header>
   <div style="display:flex;align-items:center;gap:10px;">
     <img src="{{LOGO_URI}}" alt="RadioCore" class="header-logo">
-    <h1>Configuração da Engine</h1>
+    <h1>Configuração do Playout</h1>
   </div>
   <div class="engine-indicator">
     <div id="engineDot" class="engine-dot"></div>
