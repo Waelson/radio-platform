@@ -668,6 +668,63 @@ input[type=range].vol-slider:disabled {
 .lib-search-select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 5px 6px; border-radius: 4px; font-size: 12px; }
 .lib-search-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 .lib-search-btn:hover { background: var(--cyan); color: #000; }
+.lib-adv-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--cyan); padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.lib-adv-btn:hover { background: var(--cyan); color: #000; }
+
+/* ── Advanced Search Modal ─────────────────────────────────────────────── */
+.adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
+.adv-backdrop.open { display: block; }
+.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(900px, 92vw); max-height: 88vh; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; overflow: hidden; }
+.adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
+.adv-modal-close { background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1; }
+.adv-modal-close:hover { background: #1e1e1e; color: var(--text); }
+.adv-filters { padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.adv-filters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.adv-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.adv-filter-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
+.adv-filter-input { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 4px; font-size: 12px; outline: none; }
+.adv-filter-input:focus { border-color: var(--cyan); }
+.adv-filter-input::placeholder { color: var(--text-dim); }
+.adv-filter-select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 4px; font-size: 12px; outline: none; width: 100%; }
+.adv-filter-select:focus { border-color: var(--cyan); }
+.adv-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.adv-btn-search { background: var(--cyan); color: #000; border: none; padding: 7px 20px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.adv-btn-search:hover { opacity: 0.85; }
+.adv-btn-clear { background: none; border: 1px solid var(--border); color: var(--text-dim); padding: 6px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.adv-btn-clear:hover { color: var(--text); border-color: var(--text-dim); }
+.adv-results-header { padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+.adv-results-header span { color: var(--cyan); font-weight: 600; }
+.adv-results { flex: 1; overflow-y: auto; min-height: 0; }
+.adv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.adv-table th { padding: 7px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); }
+.adv-table td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+.adv-table tr:hover td { background: rgba(255,255,255,0.03); }
+.adv-td-title { font-weight: 600; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adv-td-artist, .adv-td-album { color: var(--text-dim); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adv-td-dur { color: var(--text-dim); white-space: nowrap; }
+.adv-type-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.adv-type-badge.music    { background: rgba(0,188,212,0.15); color: var(--cyan); }
+.adv-type-badge.vinheta  { background: rgba(156,39,176,0.2); color: #ce93d8; }
+.adv-type-badge.jingle   { background: rgba(76,175,80,0.2); color: #a5d6a7; }
+.adv-type-badge.spot     { background: rgba(255,152,0,0.2); color: #ffcc80; }
+.adv-type-badge.efeitos  { background: rgba(244,67,54,0.15); color: #ef9a9a; }
+.adv-td-actions { white-space: nowrap; }
+.adv-td-actions button { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 3px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; margin-right: 4px; }
+.adv-td-actions button:hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.adv-row--previewing td { background: rgba(0,188,212,0.07) !important; }
+.adv-row--previewing .adv-td-actions button:first-child { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.adv-empty { padding: 40px; text-align: center; color: var(--text-dim); font-size: 13px; }
+.adv-drag-handle { cursor: grab; color: rgba(255,255,255,0.2); font-size: 14px; user-select: none; padding: 0 4px; }
+.adv-drag-handle:hover { color: rgba(255,255,255,0.55); }
+.adv-drag-handle:active { cursor: grabbing; }
+.adv-table tr.adv-dnd-dragging td { opacity: 0.35; }
+.adv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.adv-pagination button { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.adv-pagination button:hover:not(:disabled) { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.adv-pagination button:disabled { opacity: 0.3; cursor: default; }
+.adv-pagination-info { font-size: 12px; color: var(--text-dim); }
+
 .lib-list { flex: 1; overflow-y: auto; padding: 4px 0; }
 .lib-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; }
 .lib-item:hover { background: rgba(255,255,255,0.04); cursor: pointer; }
@@ -1918,6 +1975,7 @@ canvas.vu-canvas {
               <option value="SPOT">Spot</option>
             </select>
             <button class="lib-search-btn" onclick="libLoadTracks()">🔍</button>
+            <button class="lib-adv-btn" onclick="advModalOpen()" title="Busca Avançada">⚙ Avançada</button>
           </div>
           <div class="lib-list" id="libTrackList">
             <div class="lib-status">Digite algo para buscar ou clique em 🔍</div>
@@ -2707,7 +2765,7 @@ async function fetchInitialVolumes() {
 
 /* ─── Drag-and-drop ─────────────────────────────────────────── */
 
-let _dnd = { type: null, itemId: null, breakId: null };
+let _dnd = { type: null, itemId: null, breakId: null, track: null };
 
 function dropZoneRow(afterId) {
   const a = escHtml(afterId);
@@ -2724,9 +2782,24 @@ function dndStart(ev, type, id) {
 }
 
 function dndEnd() {
-  _dnd = { type: null, itemId: null, breakId: null };
+  _dnd = { type: null, itemId: null, breakId: null, track: null };
   document.querySelectorAll('.dnd-dragging, .dnd-over')
     .forEach(r => r.classList.remove('dnd-dragging', 'dnd-over'));
+  // Restore backdrop pointer-events after search-result drag
+  const bd = document.getElementById('advBackdrop');
+  if (bd) bd.style.pointerEvents = '';
+}
+
+// 4.2 — Start drag from a search-result row
+function dndStartSearch(ev, idx) {
+  const t = _advTracks[idx];
+  if (!t) return;
+  _dnd = { type: 'search-result', itemId: null, breakId: null, track: t };
+  ev.dataTransfer.effectAllowed = 'copy';
+  ev.dataTransfer.setData('text/plain', t.title || '');
+  // Let the queue receive dragover/drop by making the backdrop transparent
+  const bd = document.getElementById('advBackdrop');
+  if (bd) bd.style.pointerEvents = 'none';
 }
 
 // tbody-level drag delegation — large hit area, no gap between item rows and zones
@@ -2751,8 +2824,42 @@ function tableDragOver(ev) {
 async function tableDrop(ev) {
   ev.preventDefault();
   if (!_dnd.type) return;
-  const active = document.querySelector('tr.dnd-drop-zone.dnd-over');
+  const active  = document.querySelector('tr.dnd-drop-zone.dnd-over');
   const afterId = active ? (active.dataset.afterId ?? '') : '';
+
+  // Search-result drag: enqueue new track at target position
+  if (_dnd.type === 'search-result') {
+    const t = _dnd.track;
+    dndEnd();
+    if (!t) return;
+    try {
+      let r, j;
+      if (afterId) {
+        // Insert after a specific queue item
+        r = await fetch(API_URL + '/v1/queue/insert-after', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            after_queue_item_id: afterId,
+            item: { path: t.path, type: t.type, title: t.title, artist: t.artist || '', duration_ms: t.duration_ms || 0 },
+          }),
+        });
+      } else {
+        // No specific position — append to queue
+        r = await fetch(API_URL + '/v1/queue/enqueue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: [{ path: t.path, type: t.type, title: t.title, artist: t.artist || '', duration_ms: t.duration_ms || 0 }] }),
+        });
+      }
+      j = await r.json();
+      const ok = j.ok !== false && j.accepted !== false;
+      showToast(ok, ok ? `✓ "${t.title}" inserida na fila` : (j.reason || 'Comando rejeitado'));
+      if (ok) fetchQueue();
+    } catch(e) { showToast(false, 'Erro de rede'); }
+    return;
+  }
+
   const body = { after_id: afterId };
   if (_dnd.type === 'item')  body.queue_item_id = _dnd.itemId;
   if (_dnd.type === 'break') body.break_id      = _dnd.breakId;
@@ -3086,6 +3193,11 @@ function _renderPreviewPanel() {
   fill.style.width = pct + '%';
   pos.textContent  = msToTime(s.positionMS);
   dur.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
+
+  // 3.3 — Sync modal row highlight: clear when preview stops
+  if (s.state === 'idle' && typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
+    _advUpdatePreviewHighlight(-1);
+  }
 }
 
 async function previewPlayOrResume() {
@@ -3590,6 +3702,181 @@ let _libPlaylists = [];
 let _libBreaks    = [];
 let _libTab       = 'tracks';
 
+// ─── Advanced Search Modal ──────────────────────────────────────────────────
+
+const ADV_LIMIT = 20;
+let _advPage  = 1;
+let _advTotal = 0;
+
+function advModalOpen() {
+  document.getElementById('advBackdrop').classList.add('open');
+  document.getElementById('advModal').style.display = 'flex';
+  document.getElementById('advQ').focus();
+}
+
+function advModalClose() {
+  document.getElementById('advBackdrop').classList.remove('open');
+  document.getElementById('advModal').style.display = 'none';
+}
+
+// 2.1 — state already declared above (ADV_LIMIT, _advPage, _advTotal)
+let _advTracks = [];  // current page tracks (for preview/enqueue by index)
+
+// 2.2 — Fetch tracks from Library Service with active filters + pagination
+async function advSearch(resetPage = true) {
+  if (!_libOnline) { showToast(false, 'Library offline'); return; }
+  if (resetPage) _advPage = 1;
+
+  const q      = document.getElementById('advQ').value.trim();
+  const type   = document.getElementById('advType').value;
+  const artist = document.getElementById('advArtist').value.trim();
+  const album  = document.getElementById('advAlbum').value.trim();
+  const offset = (_advPage - 1) * ADV_LIMIT;
+
+  const qs = new URLSearchParams({ limit: ADV_LIMIT, offset });
+  if (q)      qs.set('q',      q);
+  if (type)   qs.set('type',   type);
+  if (artist) qs.set('artist', artist);
+  if (album)  qs.set('album',  album);
+
+  const resultsEl = document.getElementById('advResults');
+  resultsEl.innerHTML = '<div class="adv-empty">Buscando…</div>';
+  document.getElementById('advResultsHeader').style.display = 'none';
+  document.getElementById('advPagination').style.display    = 'none';
+
+  try {
+    const res  = await fetch(LIBRARY_URL + '/v1/tracks?' + qs);
+    const data = await res.json();
+    _advTracks = data.tracks || [];
+    _advTotal  = typeof data.total === 'number' ? data.total : _advTracks.length;
+    advRender();
+  } catch(e) {
+    resultsEl.innerHTML = '<div class="adv-empty">Erro ao buscar: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+// 2.3 — Render results table
+function advRender() {
+  _advPreviewIdx = -1;  // 3.3 — reset highlight on new render
+  const resultsEl = document.getElementById('advResults');
+  const headerEl  = document.getElementById('advResultsHeader');
+  const countEl   = document.getElementById('advResultsCount');
+  const paginEl   = document.getElementById('advPagination');
+
+  headerEl.style.display = 'block';
+  countEl.textContent    = _advTotal;
+
+  if (!_advTracks.length) {
+    resultsEl.innerHTML = '<div class="adv-empty">Nenhuma faixa encontrada</div>';
+    paginEl.style.display = 'none';
+    return;
+  }
+
+  const rows = _advTracks.map((t, i) => {
+    const badgeClass = { MUSIC:'music', VINHETA:'vinheta', JINGLE:'jingle', SPOT:'spot', EFEITOS:'efeitos' }[t.type] || '';
+    return `<tr draggable="true" ondragstart="dndStartSearch(event,${i})" ondragend="dndEnd()">
+      <td class="adv-td-title" title="${escHtml(t.title || '')}">${escHtml(t.title || '—')}</td>
+      <td class="adv-td-artist" title="${escHtml(t.artist || '')}">${escHtml(t.artist || '—')}</td>
+      <td class="adv-td-album"  title="${escHtml(t.album  || '')}">${escHtml(t.album  || '—')}</td>
+      <td><span class="adv-type-badge ${badgeClass}">${escHtml(t.type || '')}</span></td>
+      <td class="adv-td-dur">${msToDuration(t.duration_ms || 0)}</td>
+      <td class="adv-td-actions">
+        <button title="Preview (CUE)" onclick="advPreview(${i})">◎</button>
+        <button title="Adicionar à fila" onclick="advEnqueue(${i})">+ Fila</button>
+        <span class="adv-drag-handle" title="Arrastar para a fila">⠿</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  resultsEl.innerHTML = `<table class="adv-table">
+    <thead><tr>
+      <th>Título</th><th>Artista</th><th>Álbum</th><th>Tipo</th><th>Duração</th><th>Ações</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+
+  // 2.4 — Update pagination controls
+  const totalPages = Math.max(1, Math.ceil(_advTotal / ADV_LIMIT));
+  document.getElementById('advPageInfo').textContent  = `Página ${_advPage} de ${totalPages}`;
+  document.getElementById('advBtnPrev').disabled = _advPage <= 1;
+  document.getElementById('advBtnNext').disabled = _advPage >= totalPages;
+  paginEl.style.display = 'flex';
+}
+
+// 2.5 — Clear all filters and results
+function advClear() {
+  document.getElementById('advQ').value      = '';
+  document.getElementById('advType').value   = '';
+  document.getElementById('advArtist').value = '';
+  document.getElementById('advAlbum').value  = '';
+  _advPage   = 1;
+  _advTotal  = 0;
+  _advTracks = [];
+  document.getElementById('advResults').innerHTML               = '<div class="adv-empty">Preencha os filtros e clique em Buscar</div>';
+  document.getElementById('advResultsHeader').style.display     = 'none';
+  document.getElementById('advPagination').style.display        = 'none';
+}
+
+// 2.4 — Pagination
+function advPrev() {
+  if (_advPage <= 1) return;
+  _advPage--;
+  advSearch(false);
+}
+function advNext() {
+  const totalPages = Math.ceil(_advTotal / ADV_LIMIT);
+  if (_advPage >= totalPages) return;
+  _advPage++;
+  advSearch(false);
+}
+
+// 3.1 — Preview with row highlight
+let _advPreviewIdx = -1;
+
+function _advUpdatePreviewHighlight(idx) {
+  // Clear all rows
+  document.querySelectorAll('.adv-table tbody tr').forEach(r => r.classList.remove('adv-row--previewing'));
+  _advPreviewIdx = idx;
+  if (idx < 0) return;
+  const rows = document.querySelectorAll('.adv-table tbody tr');
+  if (rows[idx]) rows[idx].classList.add('adv-row--previewing');
+}
+
+async function advPreview(idx) {
+  const t = _advTracks[idx];
+  if (!t) return;
+  _advUpdatePreviewHighlight(idx);
+  _preview.path       = t.path || '';
+  _preview.positionMS = 0;
+  _preview.durationMS = t.duration_ms || 0;
+  await previewPlay();
+}
+
+async function advEnqueue(idx) {
+  const t = _advTracks[idx];
+  if (!t) return;
+  try {
+    const r = await fetch(API_URL + '/v1/queue/enqueue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: [{ path: t.path, type: t.type, title: t.title, artist: t.artist || '', duration_ms: t.duration_ms || 0 }] }),
+    });
+    const j  = await r.json();
+    const ok = j.ok !== false && j.accepted !== false;
+    showToast(ok, ok ? `+ "${t.title}" enfileirada` : (j.reason || 'Comando rejeitado'));
+    if (ok) fetchQueue();
+  } catch(e) { showToast(false, 'Erro de rede'); }
+}
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('advBackdrop').classList.contains('open')) {
+    advModalClose();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function toggleLibrary() {
   // Close hotbuttons drawer if open
   const hotDrawer = document.getElementById('hotDrawer');
@@ -3780,5 +4067,66 @@ async function libEnqueueBreak(idx) {
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
 </script>
+
+  <!-- ─── Advanced Search Modal ──────────────────────────────────────────── -->
+  <div class="adv-backdrop" id="advBackdrop" onclick="advModalClose()"></div>
+  <div class="adv-modal" id="advModal" role="dialog" aria-modal="true" aria-label="Busca Avançada de Áudio">
+
+    <div class="adv-modal-header">
+      <span class="adv-modal-title">Busca Avançada de Áudio</span>
+      <button class="adv-modal-close" onclick="advModalClose()" title="Fechar">✕</button>
+    </div>
+
+    <div class="adv-filters">
+      <div class="adv-filters-grid">
+        <div class="adv-filter-group">
+          <label class="adv-filter-label" for="advQ">Nome / Título</label>
+          <input class="adv-filter-input" id="advQ" type="text" placeholder="ex: João Gilberto…"
+            onkeydown="if(event.key==='Enter')advSearch()">
+        </div>
+        <div class="adv-filter-group">
+          <label class="adv-filter-label" for="advType">Tipo</label>
+          <select class="adv-filter-select" id="advType">
+            <option value="">Todos os tipos</option>
+            <option value="MUSIC">Música</option>
+            <option value="VINHETA">Vinheta</option>
+            <option value="JINGLE">Jingle</option>
+            <option value="SPOT">Spot</option>
+            <option value="EFEITOS">Efeitos</option>
+          </select>
+        </div>
+        <div class="adv-filter-group">
+          <label class="adv-filter-label" for="advArtist">Artista</label>
+          <input class="adv-filter-input" id="advArtist" type="text" placeholder="ex: Roberto Carlos…"
+            onkeydown="if(event.key==='Enter')advSearch()">
+        </div>
+        <div class="adv-filter-group">
+          <label class="adv-filter-label" for="advAlbum">Álbum</label>
+          <input class="adv-filter-input" id="advAlbum" type="text" placeholder="ex: Greatest Hits…"
+            onkeydown="if(event.key==='Enter')advSearch()">
+        </div>
+      </div>
+      <div class="adv-actions">
+        <button class="adv-btn-search" onclick="advSearch()">🔍 Buscar</button>
+        <button class="adv-btn-clear" onclick="advClear()">Limpar filtros</button>
+      </div>
+    </div>
+
+    <div class="adv-results-header" id="advResultsHeader" style="display:none">
+      <span id="advResultsCount">0</span> faixas encontradas
+    </div>
+
+    <div class="adv-results" id="advResults">
+      <div class="adv-empty">Preencha os filtros e clique em Buscar</div>
+    </div>
+
+    <div class="adv-pagination" id="advPagination" style="display:none">
+      <button id="advBtnPrev" onclick="advPrev()" disabled>← Anterior</button>
+      <span class="adv-pagination-info" id="advPageInfo">Página 1 de 1</span>
+      <button id="advBtnNext" onclick="advNext()" disabled>Próxima →</button>
+    </div>
+
+  </div><!-- /advModal -->
+
 </body>
 </html>
