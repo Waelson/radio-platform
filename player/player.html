@@ -699,7 +699,7 @@ input[type=range].vol-slider:disabled {
 .adv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .adv-table th { padding: 7px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); }
 .adv-table td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
-.adv-table tr:hover td { background: rgba(255,255,255,0.03); }
+.adv-table tbody tr:hover td { background: rgba(255,255,255,0.03); cursor: pointer; }
 .adv-td-title { font-weight: 600; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adv-td-artist, .adv-td-album { color: var(--text-dim); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adv-td-dur { color: var(--text-dim); white-space: nowrap; }
@@ -3730,7 +3730,7 @@ function advRender() {
 
   const rows = _advTracks.map((t, i) => {
     const badgeClass = { MUSIC:'music', VINHETA:'vinheta', JINGLE:'jingle', SPOT:'spot', EFEITOS:'efeitos' }[t.type] || '';
-    return `<tr>
+    return `<tr ondblclick="advEnqueue(${i})" title="Duplo clique para enfileirar">
       <td class="adv-td-title" title="${escHtml(t.title || '')}">${escHtml(t.title || '—')}</td>
       <td class="adv-td-artist" title="${escHtml(t.artist || '')}">${escHtml(t.artist || '—')}</td>
       <td class="adv-td-album"  title="${escHtml(t.album  || '')}">${escHtml(t.album  || '—')}</td>
