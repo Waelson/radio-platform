@@ -3607,6 +3607,13 @@ window.addEventListener('load', () => {
   fetchInitialVolumes();
   document.addEventListener('mouseup',  () => { _draggingMain = false; _draggingPreview = false; });
   document.addEventListener('touchend', () => { _draggingMain = false; _draggingPreview = false; });
+  // Safety net: always restore modal pointer-events if drag ends/cancels unexpectedly
+  document.addEventListener('dragend', () => {
+    const modal = document.getElementById('advModal');
+    if (modal) modal.style.pointerEvents = '';
+    const bd = document.getElementById('advBackdrop');
+    if (bd) bd.style.pointerEvents = '';
+  });
 });
 
 /* ─── Hot Buttons Drawer ────────────────────────────────────── */
