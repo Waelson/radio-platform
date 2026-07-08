@@ -13,6 +13,7 @@ Construída em **Electron + HTML/CSS/JS puro**, sem frameworks — uma única te
 - [Build e distribuição](#build-e-distribuição)
 - [Configuração de URLs](#configuração-de-urls)
 - [Funcionalidades](#funcionalidades)
+- [Controle de volume](#controle-de-volume)
 - [Estrutura do projeto](#estrutura-do-projeto)
 
 ---
@@ -126,6 +127,48 @@ player.html?api=http://192.168.1.10:8080&ws=ws://192.168.1.10:8080/v1/events&lib
 - Painel inline abaixo do item com Play / Pause / Stop e barra de progresso com seek
 - Áudio roteado para dispositivo de saída separado (configurado no RadioCore)
 - Progresso atualizado em tempo real via eventos WebSocket (`PreviewProgress`)
+
+---
+
+## Controle de volume
+
+A coluna esquerda da UI (`col-meters`) exibe uma seção **Volume** com dois sliders independentes:
+
+| Slider | Canal | Endpoint |
+|---|---|---|
+| Principal | Fila de reprodução principal | `PUT /v1/playback/volume` |
+| Player (CUE) | Preview de auditoria (CUE) | `PUT /v1/preview/volume` |
+
+### Intervalo
+
+Ambos os sliders operam em `0%` (mudo) a `100%` (sem atenuação). O valor é convertido para escala linear `[0.0, 1.0]` antes de ser enviado ao engine.
+
+### Inicialização
+
+Ao abrir ou reconectar, o player inicializa os sliders com os valores correntes do engine:
+
+1. **Via `StateSnapshot`** (WebSocket) — o hub envia o snapshot imediatamente ao conectar, com campos `main_volume` e `preview_volume`.
+2. **Via REST** (fallback) — se o snapshot não incluir os campos, `GET /v1/playback/volume` e `GET /v1/preview/volume` são chamados logo após a conexão.
+
+### Sincronização em tempo real
+
+Os eventos WebSocket `VolumeChanged` e `PreviewVolumeChanged` mantêm os sliders sincronizados entre múltiplos clientes abertos simultaneamente. Durante um arrasto ativo, o evento é ignorado para evitar salto visual.
+
+### Comportamento ao arrastar
+
+| Evento | Ação |
+|---|---|
+| `input` (durante arrasto) | Atualiza apenas o rótulo percentual — sem chamada de rede |
+| `change` (ao soltar) | Envia `PUT` ao engine; em erro, reverte slider e exibe toast |
+| `mouseup` no `document` | Safety net — limpa flag de arrasto se o cursor sair do slider |
+
+### Persistência
+
+O engine salva o nível de cada canal em `~/.radiocore/preferences.json` após cada mudança. O valor é restaurado automaticamente na próxima inicialização do RadioCore.
+
+### Preview desabilitado
+
+Quando o RadioCore é iniciado com `preview.enabled: false`, o endpoint `GET /v1/preview/volume` retorna `503`. O slider **Player (CUE)** é automaticamente desabilitado e exibido com opacidade reduzida.
 
 ---
 
