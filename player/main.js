@@ -14,6 +14,7 @@ function createWindow() {
   })
 
   win.loadFile(path.join(__dirname, 'player.html'))
+  win.webContents.openDevTools({ mode: 'detach' })
 }
 
 app.whenReady().then(() => {
