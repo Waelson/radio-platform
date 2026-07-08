@@ -3196,9 +3196,10 @@ function _renderPreviewPanel() {
   pos.textContent  = msToTime(s.positionMS);
   dur.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
 
-  // 3.3 — Sync modal row highlight and panel when preview stops
+  // 3.3 — When preview stops, clear row highlight but keep panel open
   if (s.state === 'idle' && typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
-    _advClosePreviewPanel();
+    document.querySelectorAll('.adv-table tbody tr').forEach(r => r.classList.remove('adv-row--previewing'));
+    document.querySelectorAll('[id^="adv-cue-"]').forEach(b => b.classList.remove('active'));
   }
 }
 
