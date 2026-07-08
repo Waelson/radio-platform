@@ -760,6 +760,10 @@ input[type=range].vol-slider:disabled {
 .lib-prev-fill { height: 100%; background: #7a4dff; border-radius: 3px; pointer-events: none; transition: width 0.1s linear; position: relative; }
 .lib-prev-thumb { position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; background: #fff; border-radius: 50%; box-shadow: 0 0 3px rgba(0,0,0,0.5); pointer-events: none; }
 .lib-prev-time { font-family: 'Courier New', monospace; font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between; }
+.adv-prev-vol { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.adv-prev-vol-label { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+.adv-prev-vol input[type=range] { width: 80px; accent-color: #7a4dff; cursor: pointer; }
+.adv-prev-vol-pct { font-size: 10px; color: var(--text-dim); font-family: 'Courier New', monospace; min-width: 30px; }
 .lib-status { padding: 16px 12px; font-size: 11px; color: var(--text-dim); text-align: center; }
 
 /* ─── Hot Buttons Drawer ─────────────────────────────────────── */
@@ -2705,13 +2709,25 @@ function setVolDisplay(channel, level) {
   document.getElementById(sliderId).value         = pct;
   document.getElementById(pctId).textContent      = pct + '%';
   if (channel === 'main')    _volMainPrev    = level;
-  if (channel === 'preview') _volPreviewPrev = level;
+  if (channel === 'preview') {
+    _volPreviewPrev = level;
+    const advSlider = document.getElementById('advPrevVol');
+    const advPct    = document.getElementById('advPrevVolPct');
+    if (advSlider) advSlider.value        = pct;
+    if (advPct)    advPct.textContent     = pct + '%';
+  }
 }
 
 function onVolInput(channel, el) {
   const pct = el.value + '%';
-  if (channel === 'main')    document.getElementById('volMainPct').textContent    = pct;
-  if (channel === 'preview') document.getElementById('volPreviewPct').textContent = pct;
+  if (channel === 'main') {
+    document.getElementById('volMainPct').textContent = pct;
+  }
+  if (channel === 'preview') {
+    document.getElementById('volPreviewPct').textContent = pct;
+    const advPct = document.getElementById('advPrevVolPct');
+    if (advPct) advPct.textContent = pct;
+  }
 }
 
 async function onVolChange(channel, el) {
@@ -3840,6 +3856,16 @@ function _advOpenPreviewPanel(idx) {
             <span id="libPrevPos">0:00</span>
             <span id="libPrevDur">${dur}</span>
           </div>
+        </div>
+        <div class="adv-prev-vol">
+          <span class="adv-prev-vol-label">Vol CUE</span>
+          <input type="range" id="advPrevVol" min="0" max="100" step="1"
+            value="${Math.round(_volPreviewPrev * 100)}"
+            oninput="onVolInput('preview', this)"
+            onchange="onVolChange('preview', this)"
+            onmousedown="_draggingPreview=true"
+            onmouseup="_draggingPreview=false">
+          <span class="adv-prev-vol-pct" id="advPrevVolPct">${Math.round(_volPreviewPrev * 100)}%</span>
         </div>
       </div>
     </td>`;
