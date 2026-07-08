@@ -30,6 +30,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/metrics"
 	"github.com/Waelson/radio-playout-engine/internal/platform"
 	"github.com/Waelson/radio-playout-engine/internal/playback"
+	"github.com/Waelson/radio-playout-engine/internal/prefs"
 	"github.com/Waelson/radio-playout-engine/internal/queue"
 	"github.com/Waelson/radio-playout-engine/internal/scheduler"
 	"github.com/Waelson/radio-playout-engine/internal/state"
@@ -170,6 +171,13 @@ func run(args []string) error {
 	evtBus := events.NewBus(log)
 	stateMgr := state.NewManager(cfg.Engine.ID)
 
+	// 6b. Load persisted preferences (volume levels) and apply to state.
+	prefsPath := prefs.DefaultPath()
+	p := prefs.Load(prefsPath)
+	stateMgr.SetMainVolume(p.MainVolume)
+	stateMgr.SetPreviewVolume(p.PreviewVolume)
+	log.Info("preferences loaded", "path", prefsPath, "main_volume", p.MainVolume, "preview_volume", p.PreviewVolume)
+
 	// 7. Queue Manager — in-memory playback queue (optionally persistent).
 	queueMgr := queue.NewManager(evtBus, stateMgr, log)
 
@@ -290,6 +298,7 @@ func run(args []string) error {
 	disp.Handle(commands.CmdEnterPanic, pbMgr.HandleEnterPanic)
 	disp.Handle(commands.CmdExitPanic, pbMgr.HandleExitPanic)
 	disp.Handle(commands.CmdTriggerHotButton, pbMgr.HandleTriggerHotButton)
+	disp.Handle(commands.CmdSetVolume,        pbMgr.HandleSetVolume)
 
 	// 11b. Preview (CUE) player — optional, runs as an isolated subprocess so
 	// its CoreAudio client lives in a separate Mach task. This prevents
@@ -297,12 +306,13 @@ func run(args []string) error {
 	// main engine's AudioQueue during preview start/stop.
 	previewDeps := api.PreviewDeps{Enabled: cfg.Preview.Enabled}
 	if cfg.Preview.Enabled {
-		prevProxy := cue.NewProxy(evtBus, args, log)
-		disp.Handle(commands.CmdPreviewPlay,   prevProxy.HandlePlay)
-		disp.Handle(commands.CmdPreviewPause,  prevProxy.HandlePause)
-		disp.Handle(commands.CmdPreviewResume, prevProxy.HandleResume)
-		disp.Handle(commands.CmdPreviewStop,   prevProxy.HandleStop)
-		disp.Handle(commands.CmdPreviewSeek,   prevProxy.HandleSeek)
+		prevProxy := cue.NewProxy(evtBus, stateMgr, args, log)
+		disp.Handle(commands.CmdPreviewPlay,        prevProxy.HandlePlay)
+		disp.Handle(commands.CmdPreviewPause,       prevProxy.HandlePause)
+		disp.Handle(commands.CmdPreviewResume,      prevProxy.HandleResume)
+		disp.Handle(commands.CmdPreviewStop,        prevProxy.HandleStop)
+		disp.Handle(commands.CmdPreviewSeek,        prevProxy.HandleSeek)
+		disp.Handle(commands.CmdPreviewSetVolume,   prevProxy.HandleSetVolume)
 		previewDeps.GetStatus = func() any { return prevProxy.GetStatus() }
 		go prevProxy.Run(ctx)
 		log.Info("preview player enabled as subprocess", "driver", outfactory.BuiltinDriverName())
@@ -464,6 +474,7 @@ func runCuePlayer(args []string) error {
 		BufferFrames: cfg.Audio.BufferFrames,
 	}
 
-	cue.RunCuePlayer(out, audioCfg, log)
+	p := prefs.Load(prefs.DefaultPath())
+	cue.RunCuePlayer(out, audioCfg, p.PreviewVolume, log)
 	return nil
 }

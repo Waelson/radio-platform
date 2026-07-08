@@ -35,6 +35,10 @@ const (
 	CmdReset            CommandType = "RESET"
 	CmdShutdown         CommandType = "SHUTDOWN"
 
+	// Volume commands.
+	CmdSetVolume        CommandType = "SET_VOLUME"
+	CmdPreviewSetVolume CommandType = "PREVIEW_SET_VOLUME"
+
 	// Preview (cue) commands — isolated from the main playback pipeline.
 	CmdPreviewPlay   CommandType = "PREVIEW_PLAY"
 	CmdPreviewPause  CommandType = "PREVIEW_PAUSE"
@@ -267,6 +271,16 @@ type PreviewPlayPayload struct {
 // Seek stops the current preview and restarts it from PositionMS.
 type PreviewSeekPayload struct {
 	PositionMS int64
+}
+
+// SetVolumePayload carries the new volume level for the main output.
+type SetVolumePayload struct {
+	Level float32 // 0.0–1.0
+}
+
+// PreviewSetVolumePayload carries the new volume level for the preview/CUE output.
+type PreviewSetVolumePayload struct {
+	Level float32 // 0.0–1.0
 }
 
 // CmdPreviewPause, CmdPreviewResume and CmdPreviewStop carry no payload.

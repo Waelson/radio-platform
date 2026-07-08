@@ -114,7 +114,9 @@ Resposta:
     "command": "SKIP",
     "status": "ACCEPTED",
     "at": "2026-01-25T23:20:12Z"
-  }
+  },
+  "main_volume": 0.8,
+  "preview_volume": 1.0
 }
 ```
 
@@ -412,6 +414,86 @@ Regras:
 
 - Se o item atual for `mandatory=true`, o Engine pode rejeitar o comando.
 - A rejeição deve retornar motivo explícito.
+
+## Volume
+
+### GET /v1/playback/volume
+
+Retorna o volume atual da fila principal.
+
+Resposta:
+
+```json
+{ "level": 0.8 }
+```
+
+### PUT /v1/playback/volume
+
+Ajusta o volume da fila principal em runtime. A alteração é instantânea (software gain aplicado antes de cada `output.Write()`). O novo valor é persistido em `~/.radiocore/preferences.json` e sobrevive a reinicializações.
+
+Request:
+
+```json
+{ "level": 0.8 }
+```
+
+- `level`: `float`, intervalo `[0.0, 1.0]`. `1.0` = sem atenuação; `0.0` = mudo.
+
+Resposta (aceito):
+
+```json
+{
+  "ok": true,
+  "command_id": "cmd_01HX...",
+  "accepted": true
+}
+```
+
+Resposta (nível inválido):
+
+```json
+{
+  "ok": false,
+  "error": "invalid_level",
+  "message": "level must be between 0.0 and 1.0"
+}
+```
+
+Publica o evento `VolumeChanged` no Event Bus após aplicar a mudança.
+
+### GET /v1/preview/volume
+
+Retorna o volume atual do player de preview (CUE).
+
+Resposta:
+
+```json
+{ "level": 1.0 }
+```
+
+### PUT /v1/preview/volume
+
+Ajusta o volume do player de preview (CUE) em runtime. O valor é encaminhado ao subprocess CUE via IPC (`{"cmd":"set_volume","volume":0.6}`) e persistido em `~/.radiocore/preferences.json`.
+
+Request:
+
+```json
+{ "level": 0.6 }
+```
+
+Resposta (aceito):
+
+```json
+{
+  "ok": true,
+  "command_id": "cmd_01HX...",
+  "accepted": true
+}
+```
+
+Publica o evento `PreviewVolumeChanged` no Event Bus após aplicar a mudança.
+
+> **Nota:** os endpoints de volume do preview retornam `503 Service Unavailable` quando `preview.enabled: false` no YAML.
 
 ## Mode commands
 

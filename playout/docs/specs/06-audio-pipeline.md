@@ -179,6 +179,34 @@ Percentual:
 buffer_pct = used_frames / capacity_frames * 100
 ```
 
+## Controle de volume em software
+
+O engine aplica um ganho de software independente de driver imediatamente antes de cada `output.Write()`.
+
+### Mecanismo
+
+```text
+sample_out = sample_pcm * volume_level
+```
+
+- `volume_level ∈ [0.0, 1.0]`: `1.0` = sem atenuação; `0.0` = mudo.
+- Se `volume_level == 1.0`, a função retorna imediatamente sem percorrer o buffer.
+- O nível é armazenado em `atomic.Uint32` (bits de `float32`) — leitura lock-free no hot path de áudio.
+- Alterações são efetivas no próximo buffer (~`buffer_frames / sample_rate` segundos de latência).
+
+### Canais independentes
+
+| Canal | Endpoint de controle | Evento publicado |
+|---|---|---|
+| Fila principal | `PUT /v1/playback/volume` | `VolumeChanged` |
+| Preview (CUE) | `PUT /v1/preview/volume` | `PreviewVolumeChanged` |
+
+O volume do canal CUE é encaminhado ao subprocess via IPC JSON (`{"cmd":"set_volume","volume":0.6}`).
+
+### Persistência
+
+O nível de cada canal é salvo em `~/.radiocore/preferences.json` após cada mudança e restaurado na inicialização — sem alterar o YAML de configuração estrutural.
+
 ## Hot path
 
 No hot path de áudio:

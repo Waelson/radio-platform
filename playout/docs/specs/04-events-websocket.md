@@ -259,6 +259,46 @@ MVP recomendado:
 }
 ```
 
+## Eventos de Volume
+
+Publicados imediatamente após cada mudança de volume via `PUT /v1/playback/volume` ou `PUT /v1/preview/volume`.
+
+### VolumeChanged
+
+```json
+{
+  "type": "VolumeChanged",
+  "payload": {
+    "level": 0.8
+  }
+}
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `level` | float | Novo nível de volume da fila principal (`0.0–1.0`) |
+
+**Prioridade:** alta — nunca descartado sob backpressure.
+
+### PreviewVolumeChanged
+
+```json
+{
+  "type": "PreviewVolumeChanged",
+  "payload": {
+    "level": 0.6
+  }
+}
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `level` | float | Novo nível de volume do player de preview CUE (`0.0–1.0`) |
+
+**Prioridade:** alta — nunca descartado sob backpressure.
+
+---
+
 ## Eventos de Scheduler
 
 Publicados pelo módulo `internal/scheduler` quando entradas da grade horária são avaliadas.
@@ -385,6 +425,16 @@ Publicado quando uma entrada é habilitada (`POST /v1/schedule/{id}/enable`), de
 
 ---
 
+## StateSnapshot — snapshot inicial
+
+Ao conectar, o hub envia imediatamente um evento do tipo `StateSnapshot` com o estado completo do engine, incluindo:
+
+- estado do player, modo, now_playing, fila, audio health
+- `main_volume` — volume atual da fila principal (`0.0–1.0`)
+- `preview_volume` — volume atual do player de preview CUE (`0.0–1.0`)
+
+A UI usa esse snapshot para inicializar os sliders de volume sem uma chamada REST adicional. Eventos subsequentes `VolumeChanged` e `PreviewVolumeChanged` mantêm os sliders sincronizados em tempo real.
+
 ## Reconnect
 
 A UI deve reconectar automaticamente se o WebSocket cair.
@@ -392,8 +442,8 @@ A UI deve reconectar automaticamente se o WebSocket cair.
 Ao reconectar:
 
 1. Abrir WebSocket.
-2. Chamar `GET /v1/status`.
-3. Reconstruir tela com snapshot.
+2. Receber `StateSnapshot` — o hub envia automaticamente ao conectar.
+3. Reconstruir tela com snapshot (incluindo volumes).
 4. Continuar recebendo eventos.
 
 ## Backpressure

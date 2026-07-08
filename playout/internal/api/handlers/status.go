@@ -50,14 +50,16 @@ type statusLastCommand struct {
 
 // statusResponse is the full body for GET /v1/status.
 type statusResponse struct {
-	EngineID    string             `json:"engine_id"`
-	State       string             `json:"state"`
-	Mode        string             `json:"mode"`
-	Panic       bool               `json:"panic"`
-	NowPlaying  *statusNowPlaying  `json:"now_playing,omitempty"`
-	Queue       statusQueue        `json:"queue"`
-	AudioHealth statusAudioHealth  `json:"audio_health"`
-	LastCommand *statusLastCommand `json:"last_command,omitempty"`
+	EngineID      string             `json:"engine_id"`
+	State         string             `json:"state"`
+	Mode          string             `json:"mode"`
+	Panic         bool               `json:"panic"`
+	NowPlaying    *statusNowPlaying  `json:"now_playing,omitempty"`
+	Queue         statusQueue        `json:"queue"`
+	AudioHealth   statusAudioHealth  `json:"audio_health"`
+	LastCommand   *statusLastCommand `json:"last_command,omitempty"`
+	MainVolume    float32            `json:"main_volume"`
+	PreviewVolume float32            `json:"preview_volume"`
 	ErrorMsg    string             `json:"error,omitempty"`
 }
 
@@ -67,10 +69,12 @@ func Status(stateMgr *state.Manager) http.HandlerFunc {
 		snap := stateMgr.Snapshot()
 
 		resp := statusResponse{
-			EngineID: snap.EngineID,
-			State:    string(snap.State),
-			Mode:     string(snap.Mode),
-			Panic:    snap.Panic,
+			EngineID:      snap.EngineID,
+			State:         string(snap.State),
+			Mode:          string(snap.Mode),
+			Panic:         snap.Panic,
+			MainVolume:    snap.MainVolume,
+			PreviewVolume: snap.PreviewVolume,
 			Queue: statusQueue{
 				Size:       snap.Queue.Size,
 				NextItemID: snap.Queue.NextItemID,

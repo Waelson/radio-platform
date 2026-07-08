@@ -159,6 +159,24 @@ var statusPageTpl = `<!DOCTYPE html>
     .k { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .v { color: var(--text); font-weight: 800; font-size: 14px; word-break: break-all; line-height: 1.3; }
     .v.mono { font-family: var(--mono); font-size: 13px; }
+
+    /* Volume card */
+    .vol-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .vol-row:last-child { border-bottom: none; }
+    .vol-label { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; min-width: 80px; }
+    .vol-pct { color: var(--text); font-size: 12px; font-weight: 800; min-width: 36px; text-align: right; }
+    input[type=range].vol-slider {
+      flex: 1;
+      accent-color: var(--green);
+      cursor: pointer;
+      height: 4px;
+    }
   </style>
 </head>
 <body>
@@ -212,6 +230,22 @@ var statusPageTpl = `<!DOCTYPE html>
     </div>
   </div>
 
+  <div class="card" style="margin-top:8px;">
+    <div class="card-title">Volume</div>
+    <div class="card-body">
+      <div class="vol-row">
+        <span class="vol-label">Fila</span>
+        <input id="mainVolSlider" type="range" class="vol-slider" min="0" max="100" value="100">
+        <span id="mainVolPct" class="vol-pct">100%</span>
+      </div>
+      <div class="vol-row">
+        <span class="vol-label">Preview</span>
+        <input id="previewVolSlider" type="range" class="vol-slider" min="0" max="100" value="100">
+        <span id="previewVolPct" class="vol-pct">100%</span>
+      </div>
+    </div>
+  </div>
+
   <script>
     const $ = id => document.getElementById(id);
     let startTime = null;
@@ -260,6 +294,16 @@ var statusPageTpl = `<!DOCTYPE html>
       }
     }
 
+    function setVolDisplay(sliderId, pctId, level) {
+      const pct = Math.round(level * 100);
+      const slider = $(sliderId);
+      // Only update the slider if the user is not currently dragging it.
+      if (slider !== document.activeElement) {
+        slider.value = pct;
+      }
+      $(pctId).textContent = pct + '%';
+    }
+
     function updateUI(status) {
       const state = status.state || '—';
       const uptime = startTime ? formatUptime(Date.now() - startTime.getTime()) : '—';
@@ -267,6 +311,23 @@ var statusPageTpl = `<!DOCTYPE html>
       $('heroDesc').textContent = stateDesc[state] || '';
       $('heroUptime').textContent = uptime;
       $('heroNow').textContent = now();
+      if (status.main_volume !== undefined)    setVolDisplay('mainVolSlider',    'mainVolPct',    status.main_volume);
+      if (status.preview_volume !== undefined) setVolDisplay('previewVolSlider', 'previewVolPct', status.preview_volume);
+    }
+
+    function wireVolSlider(sliderId, pctId, endpoint) {
+      const slider = $(sliderId);
+      slider.addEventListener('input', () => {
+        $(pctId).textContent = slider.value + '%';
+      });
+      slider.addEventListener('change', () => {
+        const level = parseFloat((parseInt(slider.value, 10) / 100).toFixed(2));
+        fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ level }),
+        }).catch(() => {});
+      });
     }
 
     async function loadInfo() {
@@ -297,6 +358,8 @@ var statusPageTpl = `<!DOCTYPE html>
       setTimeout(poll, 5000);
     }
 
+    wireVolSlider('mainVolSlider',    'mainVolPct',    '/v1/playback/volume');
+    wireVolSlider('previewVolSlider', 'previewVolPct', '/v1/preview/volume');
     loadInfo().catch(() => {}).then(poll);
   </script>
 </body>

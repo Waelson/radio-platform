@@ -159,6 +159,7 @@ Endpoints sob o prefixo `/v1` mais rotas de UI:
 | Info | `GET /v1/info` — PID, versão, start_time, IP local |
 | Fila | `GET /v1/queue`, `POST /v1/queue/enqueue`, `POST /v1/queue/enqueue-break`, `POST /v1/queue/insert-next`, `POST /v1/queue/insert-after`, `POST /v1/queue/remove-item`, `POST /v1/queue/move-item`, `POST /v1/queue/reorder-item`, `POST /v1/queue/clear` |
 | Playback | `POST /v1/playback/play`, `POST /v1/playback/pause`, `POST /v1/playback/resume`, `POST /v1/playback/stop`, `POST /v1/playback/skip`, `POST /v1/playback/enter-assist`, `POST /v1/playback/return-auto` |
+| Volume | `GET /v1/playback/volume`, `PUT /v1/playback/volume` — volume da fila; `GET /v1/preview/volume`, `PUT /v1/preview/volume` — volume do preview CUE |
 | Preview (CUE) | `POST /v1/preview/play`, `POST /v1/preview/pause`, `POST /v1/preview/resume`, `POST /v1/preview/stop`, `POST /v1/preview/seek`, `GET /v1/preview/status` |
 | Panic | `POST /v1/panic/enter`, `POST /v1/panic/exit` |
 | Hot Buttons | `POST /v1/hotbuttons/trigger` |
@@ -170,15 +171,26 @@ Endpoints sob o prefixo `/v1` mais rotas de UI:
 
 CORS configurável com lista de origens permitidas. Todo comando retorna um `command_id` para correlação com eventos.
 
-### 12. WebSocket de eventos
+### 12. Controle de volume em runtime
+
+Volume individual e independente para a fila principal e para o player de preview (CUE):
+
+- Ajuste via `PUT /v1/playback/volume` e `PUT /v1/preview/volume` com payload `{"level": 0.8}` (`0.0–1.0`)
+- **Software gain** — multiplicação de cada sample `float32` antes de `output.Write()`; sem dependência de driver ou SO; retorno imediato quando `level == 1.0`
+- **Leitura lock-free** no hot path via `atomic.Uint32` (bits de `float32`) — sem impacto no pipeline
+- **Persistência automática** em `~/.radiocore/preferences.json`, separado do YAML de configuração — sobrevive a reinicializações sem alterar a config estrutural
+- **Eventos em tempo real** — `VolumeChanged` e `PreviewVolumeChanged` publicados imediatamente; `StateSnapshot` inicial inclui os volumes atuais para novos clientes WebSocket
+- **Sliders interativos** na página `/status` — refletem o volume atual e enviam `PUT` ao alterar
+
+### 13. WebSocket de eventos
 
 Canal de eventos em tempo real para a UI via `GET /v1/events`:
 
-- **43 tipos de evento** cobrem todo o ciclo de vida: estado, fila, progresso, saúde, crossfade, pânico, ducking, VU meter, preview (CUE), erros, scheduler
-- **Prioridade de eventos** — críticos (`PanicEntered`, `CommandRejected`, `AlertRaised`, erros) nunca são descartados; eventos de baixa prioridade (`ProgressChanged`, `AudioHealthChanged`) podem ser descartados sob carga para não bloquear o pipeline
-- **Snapshot inicial** — novos clientes recebem `StateSnapshot` com o estado completo ao conectar
+- **45 tipos de evento** cobrem todo o ciclo de vida: estado, fila, progresso, saúde, crossfade, pânico, ducking, VU meter, preview (CUE), volume, erros, scheduler
+- **Prioridade de eventos** — críticos (`PanicEntered`, `CommandRejected`, `AlertRaised`, erros, `VolumeChanged`, `PreviewVolumeChanged`) nunca são descartados; eventos de baixa prioridade (`ProgressChanged`, `AudioHealthChanged`) podem ser descartados sob carga para não bloquear o pipeline
+- **Snapshot inicial** — novos clientes recebem `StateSnapshot` com o estado completo ao conectar, incluindo `main_volume` e `preview_volume`
 
-### 13. Drivers de saída plugáveis
+### 14. Drivers de saída plugáveis
 
 A interface `OutputDevice` desacopla completamente o playback do hardware:
 
@@ -210,7 +222,7 @@ O campo `host_api` (omitido nos drivers `null` e `file`) indica a host API subja
 | `JACK` | Estável — port names são fixos por natureza |
 | `CoreAudio` | Estável — usa UID interno (macOS) |
 
-### 14. Decodificador FFmpeg
+### 15. Decodificador FFmpeg
 
 Decodificação de qualquer formato suportado pelo FFmpeg via subprocesso isolado:
 
@@ -219,7 +231,7 @@ Decodificação de qualquer formato suportado pelo FFmpeg via subprocesso isolad
 - Stderr do FFmpeg capturado e emitido via log estruturado (slog) para rastreabilidade
 - Suporta MP3, AAC, WAV, FLAC, OGG e todos os formatos suportados pelo FFmpeg instalado
 
-### 15. Lock de instância
+### 16. Lock de instância
 
 Previne que dois processos com o mesmo `engine.id` sejam iniciados simultaneamente:
 
@@ -227,7 +239,7 @@ Previne que dois processos com o mesmo `engine.id` sejam iniciados simultaneamen
 - Em Windows: mutex nomeado pelo sistema operacional
 - Configurável via `engine.instance_lock: true/false`
 
-### 16. Hora Certa
+### 17. Hora Certa
 
 Suporte nativo a anúncio de hora certa com arquivos de áudio por hora e minuto:
 
@@ -237,7 +249,7 @@ Suporte nativo a anúncio de hora certa com arquivos de áudio por hora e minuto
 - `gain_db` configurável para ajuste de volume independente
 - Diretórios configuráveis via `hora_certa.hours_dir` e `hora_certa.minutes_dir`
 
-### 17. Scheduler / Programação Horária
+### 18. Scheduler / Programação Horária
 
 Grade horária para disparo automático em horários pré-definidos. Suporta três tipos de conteúdo:
 
@@ -267,7 +279,7 @@ Se o engine estava parado quando um `fire_at` passou e reiniciar com atraso, o c
 
 Documentação completa: `docs/specs/17-scheduler.md`
 
-### 18. Bundle macOS (RadioCore.app)
+### 19. Bundle macOS (RadioCore.app)
 
 Aplicativo nativo para macOS com systray e interface gráfica embutida:
 

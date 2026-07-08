@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Waelson/radio-playout-engine/internal/audio/decoder"
 	"github.com/Waelson/radio-playout-engine/internal/audio/output"
@@ -36,6 +38,7 @@ type Player struct {
 	sampleRate int
 	channels   int
 	bufFrames  int
+	vol        *atomic.Uint32 // float32 bits — read lock-free in the audio hot path
 	log        *slog.Logger
 
 	mu     sync.RWMutex
@@ -52,10 +55,18 @@ func New(
 	dec decoder.Decoder,
 	out output.OutputDevice,
 	audioCfg AudioConfig,
+	vol *atomic.Uint32,
 	log *slog.Logger,
 ) *Player {
 	if log == nil {
 		log = slog.Default()
+	}
+	if vol == nil {
+		// Fallback: create a local atomic at full volume so the player is
+		// always safe to use even when called without a volume controller.
+		v := &atomic.Uint32{}
+		v.Store(math.Float32bits(1.0))
+		vol = v
 	}
 	return &Player{
 		evtBus:     evtBus,
@@ -65,6 +76,7 @@ func New(
 		sampleRate: audioCfg.SampleRate,
 		channels:   audioCfg.Channels,
 		bufFrames:  audioCfg.BufferFrames,
+		vol:        vol,
 		log:        log,
 		status:     Status{State: StateIdle},
 		cmdCh:      make(chan extCmd, 8),
@@ -339,6 +351,12 @@ func (p *Player) loop(ctx context.Context, gen int64, path string, startMS int64
 
 		n, readErr := stream.ReadFrames(ctx, buf)
 		if n > 0 {
+			gain := math.Float32frombits(p.vol.Load())
+			if gain != 1.0 {
+				for i := range buf[:n*p.channels] {
+					buf[i] *= gain
+				}
+			}
 			if _, writeErr := p.out.Write(ctx, buf[:n*p.channels]); writeErr != nil {
 				if ctx.Err() == nil {
 					send(intMsg{kind: intEnded, err: fmt.Errorf("output write: %w", writeErr)})

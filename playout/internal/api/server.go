@@ -145,6 +145,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/playback/skip", handlers.Skip(s.cmdBus))
 	mux.HandleFunc("POST /v1/playback/enter-assist", handlers.EnterAssist(s.cmdBus))
 	mux.HandleFunc("POST /v1/playback/return-auto", handlers.ReturnAuto(s.cmdBus))
+	mux.HandleFunc("GET /v1/playback/volume", handlers.GetVolume(s.stateMgr))
+	mux.HandleFunc("PUT /v1/playback/volume", handlers.SetVolume(s.cmdBus, s.stateMgr))
 
 	// Panic mode
 	mux.HandleFunc("POST /v1/panic/enter", handlers.EnterPanic(s.cmdBus))
@@ -160,6 +162,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/preview/stop",   handlers.PreviewStop(s.cmdBus, s.previewEnabled))
 	mux.HandleFunc("POST /v1/preview/seek",   handlers.PreviewSeek(s.cmdBus, s.previewEnabled))
 	mux.HandleFunc("GET /v1/preview/status",  handlers.PreviewStatus(s.previewStatus, s.previewEnabled))
+	mux.HandleFunc("GET /v1/preview/volume",  handlers.GetPreviewVolume(s.stateMgr, s.previewEnabled))
+	mux.HandleFunc("PUT /v1/preview/volume",  handlers.SetPreviewVolume(s.cmdBus, s.stateMgr, s.previewEnabled))
 
 	// Devices
 	mux.HandleFunc("GET /v1/devices", handlers.Devices(s.listDevices))

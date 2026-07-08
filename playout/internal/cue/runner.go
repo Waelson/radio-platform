@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"math"
 	"os"
+	"sync/atomic"
 
 	"github.com/Waelson/radio-playout-engine/internal/audio/decoder"
 	"github.com/Waelson/radio-playout-engine/internal/audio/output"
@@ -23,10 +25,18 @@ import (
 // Orphan prevention: when the main engine dies for any reason, the OS closes
 // the write-end of the stdin pipe, causing bufio.Scanner.Scan() to return
 // false (EOF). RunCuePlayer then returns and the process exits cleanly.
-func RunCuePlayer(out output.OutputDevice, audioCfg preview.AudioConfig, log *slog.Logger) {
+func RunCuePlayer(out output.OutputDevice, audioCfg preview.AudioConfig, initialVolume float32, log *slog.Logger) {
 	if log == nil {
 		log = slog.Default()
 	}
+
+	// Volume is shared between the stdin command loop and the preview player's
+	// audio hot path via an atomic so no lock is needed on the write path.
+	var vol atomic.Uint32
+	if initialVolume <= 0 || initialVolume > 1 {
+		initialVolume = 1.0
+	}
+	vol.Store(math.Float32bits(initialVolume))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -34,7 +44,7 @@ func RunCuePlayer(out output.OutputDevice, audioCfg preview.AudioConfig, log *sl
 	// Local EventBus — only preview events are published on it in this process.
 	evtBus := events.NewBus(nil)
 	dec := decoder.NewFFmpegDecoder(log)
-	player := preview.New(evtBus, dec, out, audioCfg, log)
+	player := preview.New(evtBus, dec, out, audioCfg, &vol, log)
 
 	// Subscribe to preview events and forward them to stdout.
 	evtCh, unsub := evtBus.Subscribe(256)
@@ -57,6 +67,17 @@ func RunCuePlayer(out output.OutputDevice, audioCfg preview.AudioConfig, log *sl
 		}
 		if cmd.Cmd == "quit" {
 			return
+		}
+		if cmd.Cmd == "set_volume" {
+			v := cmd.Volume
+			if v < 0 {
+				v = 0
+			}
+			if v > 1 {
+				v = 1
+			}
+			vol.Store(math.Float32bits(v))
+			continue
 		}
 		dispatchToPlayer(ctx, player, cmd)
 	}

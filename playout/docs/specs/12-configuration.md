@@ -116,6 +116,46 @@ Na inicialização, validar:
 | health.silence_threshold_dbfs | -60 |
 | health.silence_duration_ms | 2000 |
 
+## Arquivo de preferências
+
+Configurações ajustadas em runtime pelo operador (ex: volume) são persistidas em um arquivo separado do YAML estrutural, para que mudanças via API não alterem o arquivo de configuração da instância.
+
+### Localização padrão
+
+```text
+~/.radiocore/preferences.json
+```
+
+### Conteúdo
+
+```json
+{
+  "main_volume": 0.8,
+  "preview_volume": 1.0
+}
+```
+
+| Campo | Tipo | Default | Descrição |
+|---|---|---|---|
+| `main_volume` | float | `1.0` | Volume da fila principal (`0.0–1.0`) |
+| `preview_volume` | float | `1.0` | Volume do player de preview CUE (`0.0–1.0`) |
+
+### Comportamento
+
+| Situação | Comportamento |
+|---|---|
+| Arquivo não existe (primeira execução) | Defaults `1.0` aplicados silenciosamente; arquivo criado na primeira mudança de volume |
+| Falha na leitura | Defaults `1.0` aplicados; aviso em log; engine continua |
+| Falha na escrita | Aviso `warn` em log; engine não interrompe a reprodução |
+| Escrita | Atômica via `WriteFile(tmp)` + `Rename` — nunca deixa o arquivo corrompido |
+
+### Relação com o YAML de configuração
+
+O arquivo `preferences.json` **nunca** é alterado por configurações do YAML e vice-versa. São arquivos completamente independentes:
+
+- **YAML**: configuração estrutural da instância (porta, driver, crossfade etc.) — modificado pelo administrador.
+- **preferences.json**: estado de preferências ajustado pelo operador em runtime via API.
+
 ## Hot reload
 
 Não implementar hot reload na primeira versão.

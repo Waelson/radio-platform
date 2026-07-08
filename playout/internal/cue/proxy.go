@@ -14,7 +14,9 @@ import (
 
 	"github.com/Waelson/radio-playout-engine/internal/commands"
 	"github.com/Waelson/radio-playout-engine/internal/events"
+	"github.com/Waelson/radio-playout-engine/internal/prefs"
 	"github.com/Waelson/radio-playout-engine/internal/preview"
+	"github.com/Waelson/radio-playout-engine/internal/state"
 )
 
 // Proxy manages a CUE player subprocess and exposes the same handler interface
@@ -31,6 +33,7 @@ import (
 //     5 seconds after receiving {"cmd":"quit"}, it is force-killed.
 type Proxy struct {
 	evtBus    *events.Bus
+	stateMgr  *state.Manager
 	spawnArgs []string // CLI args forwarded verbatim to subprocess (e.g. --config=path)
 	log       *slog.Logger
 
@@ -46,12 +49,13 @@ type Proxy struct {
 // NewProxy creates a Proxy. spawnArgs should be the filtered CLI args the main
 // engine was started with (they are forwarded to the subprocess so it loads the
 // same config file, e.g. --config=/etc/playout.yaml).
-func NewProxy(evtBus *events.Bus, spawnArgs []string, log *slog.Logger) *Proxy {
+func NewProxy(evtBus *events.Bus, stateMgr *state.Manager, spawnArgs []string, log *slog.Logger) *Proxy {
 	if log == nil {
 		log = slog.Default()
 	}
 	return &Proxy{
 		evtBus:    evtBus,
+		stateMgr:  stateMgr,
 		spawnArgs: spawnArgs,
 		log:       log,
 		status:    preview.Status{State: preview.StateIdle},
@@ -307,4 +311,27 @@ func (p *Proxy) HandleSeek(_ context.Context, cmd commands.Command) error {
 		return fmt.Errorf("cue proxy: HandleSeek: unexpected payload type %T", cmd.Payload)
 	}
 	return p.sendCmd(subCmd{Cmd: "seek", PositionMS: payload.PositionMS})
+}
+
+// HandleSetVolume handles CmdPreviewSetVolume: forwards the new level to the
+// subprocess, updates the state manager, publishes EvtPreviewVolumeChanged,
+// and persists the level to the preferences file.
+func (p *Proxy) HandleSetVolume(_ context.Context, cmd commands.Command) error {
+	payload, ok := cmd.Payload.(commands.PreviewSetVolumePayload)
+	if !ok {
+		return fmt.Errorf("cue proxy: HandleSetVolume: unexpected payload type %T", cmd.Payload)
+	}
+	if err := p.sendCmd(subCmd{Cmd: "set_volume", Volume: payload.Level}); err != nil {
+		return err
+	}
+	if p.stateMgr != nil {
+		p.stateMgr.SetPreviewVolume(payload.Level)
+	}
+	p.evtBus.Publish(events.New(events.EvtPreviewVolumeChanged, events.PreviewVolumeChangedPayload{Level: payload.Level}))
+	pr := prefs.Load(prefs.DefaultPath())
+	pr.PreviewVolume = payload.Level
+	if err := prefs.Save(prefs.DefaultPath(), pr); err != nil {
+		p.log.Warn("cue proxy: failed to save preferences", "error", err)
+	}
+	return nil
 }

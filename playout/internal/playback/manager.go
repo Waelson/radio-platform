@@ -27,6 +27,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/events"
 	"github.com/Waelson/radio-playout-engine/internal/health"
 	"github.com/Waelson/radio-playout-engine/internal/horacerta"
+	"github.com/Waelson/radio-playout-engine/internal/prefs"
 	"github.com/Waelson/radio-playout-engine/internal/queue"
 	"github.com/Waelson/radio-playout-engine/internal/state"
 )
@@ -189,6 +190,17 @@ func NewManager(
 // If r is nil, HORA_CERTA items will be marked as failed with a clear log message.
 func (m *Manager) WithHoraCerta(r *horacerta.Resolver) {
 	m.horaCerta = r
+}
+
+// applyGain multiplies every sample in buf by gain.
+// Returns immediately when gain == 1.0 to keep the hot path allocation-free.
+func applyGain(buf []float32, gain float32) {
+	if gain == 1.0 {
+		return
+	}
+	for i := range buf {
+		buf[i] *= gain
+	}
 }
 
 // --- Command handlers --------------------------------------------------------
@@ -669,6 +681,7 @@ func (m *Manager) panicBedLoop(ctx context.Context, bed commands.PanicBedInput, 
 				if frames <= spf*10 {
 					m.log.Info("panic bed: read frames, writing to output", "n", n, "total_frames", frames)
 				}
+				applyGain(buf[:n*spf], m.stateMgr.MainVolume())
 				if _, werr := m.out.Write(ctx, buf[:n*spf]); werr != nil && ctx.Err() == nil {
 					m.log.Error("panic bed: output write failed", "error", werr)
 					stream.Close() //nolint:errcheck
@@ -721,6 +734,23 @@ func (m *Manager) HandleTriggerHotButton(ctx context.Context, cmd commands.Comma
 	default:
 		return &commands.RejectedError{Reason: "play_mode must be OVERLAY, INTERRUPT, or AFTER_CURRENT"}
 	}
+}
+
+// HandleSetVolume handles CmdSetVolume: updates the main queue gain, publishes
+// EvtVolumeChanged, and persists the new level to the preferences file.
+func (m *Manager) HandleSetVolume(_ context.Context, cmd commands.Command) error {
+	payload, ok := cmd.Payload.(commands.SetVolumePayload)
+	if !ok {
+		return fmt.Errorf("playback: HandleSetVolume: unexpected payload type %T", cmd.Payload)
+	}
+	m.stateMgr.SetMainVolume(payload.Level)
+	m.evtBus.Publish(events.New(events.EvtVolumeChanged, events.VolumeChangedPayload{Level: payload.Level}))
+	p := prefs.Load(prefs.DefaultPath())
+	p.MainVolume = payload.Level
+	if err := prefs.Save(prefs.DefaultPath(), p); err != nil {
+		m.log.Warn("playback: failed to save preferences", "error", err)
+	}
+	return nil
 }
 
 // hotButtonOverlay plays the asset concurrently with the main session.
@@ -900,6 +930,7 @@ func (m *Manager) hotButtonInterrupt(ctx context.Context, p commands.TriggerHotB
 	for ctx.Err() == nil {
 		n, rerr := stream.ReadFrames(ctx, buf)
 		if n > 0 {
+			applyGain(buf[:n*spf], m.stateMgr.MainVolume())
 			if _, werr := m.out.Write(ctx, buf[:n*spf]); werr != nil && ctx.Err() == nil {
 				m.log.Error("interrupt hot button: output write failed", "error", werr)
 				return nil
@@ -1472,6 +1503,9 @@ func (m *Manager) runPlayLoop(
 			for i := 0; i < samples; i++ {
 				buf[i] += overlayBuf[i]
 			}
+
+			// ---- apply main volume gain ----
+			applyGain(buf[:samples], m.stateMgr.MainVolume())
 
 			// ---- write to output ----
 			written, werr := m.out.Write(ctx, buf[:samples])

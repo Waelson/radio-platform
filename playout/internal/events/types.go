@@ -56,6 +56,10 @@ const (
 	EvtScheduleEntryRemoved EventType = "ScheduleEntryRemoved"
 	EvtScheduleEntryUpdated EventType = "ScheduleEntryUpdated"
 
+	// Volume events.
+	EvtVolumeChanged        EventType = "VolumeChanged"
+	EvtPreviewVolumeChanged EventType = "PreviewVolumeChanged"
+
 	// Preview (cue) events — isolated from the main playback pipeline.
 	EvtPreviewStarted  EventType = "PreviewStarted"
 	EvtPreviewPaused   EventType = "PreviewPaused"
@@ -384,6 +388,18 @@ type PreviewProgressPayload struct {
 type PreviewSeekedPayload struct {
 	PositionMS int64 `json:"position_ms"`
 	DurationMS int64 `json:"duration_ms"`
+}
+
+// --- Volume event payloads ---------------------------------------------------
+
+// VolumeChangedPayload is the payload for EvtVolumeChanged.
+type VolumeChangedPayload struct {
+	Level float32 `json:"level"` // 0.0–1.0
+}
+
+// PreviewVolumeChangedPayload is the payload for EvtPreviewVolumeChanged.
+type PreviewVolumeChangedPayload struct {
+	Level float32 `json:"level"` // 0.0–1.0
 }
 
 // --- Scheduler event payloads ------------------------------------------------

@@ -4,7 +4,9 @@
 package state
 
 import (
+	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -83,35 +85,44 @@ type LastCommand struct {
 // Snapshot is a consistent, copyable view of the full engine state.
 // It is safe to read after Snapshot() returns without any lock.
 type Snapshot struct {
-	EngineID    string
-	State       PlayerState
-	Mode        OperationalMode
-	Panic       bool
-	NowPlaying  *NowPlaying
-	Queue       QueueInfo
-	AudioHealth AudioHealth
-	LastCommand *LastCommand
-	StartedAt   time.Time
-	ErrorMsg    string
+	EngineID      string
+	State         PlayerState
+	Mode          OperationalMode
+	Panic         bool
+	NowPlaying    *NowPlaying
+	Queue         QueueInfo
+	AudioHealth   AudioHealth
+	LastCommand   *LastCommand
+	StartedAt     time.Time
+	ErrorMsg      string
+	MainVolume    float32 `json:"main_volume"`
+	PreviewVolume float32 `json:"preview_volume"`
 }
 
 // Manager maintains the engine state and exposes it via Snapshot().
 // All callers that change state must use the provided mutator methods.
 type Manager struct {
-	mu  sync.RWMutex
-	snap Snapshot
+	mu         sync.RWMutex
+	snap       Snapshot
+	mainVol    atomic.Uint32 // float32 bits — read lock-free in the audio hot path
+	previewVol atomic.Uint32 // float32 bits
 }
 
-// NewManager creates a Manager initialised in StateStarting.
+// NewManager creates a Manager initialised in StateStarting with full volume (1.0).
 func NewManager(engineID string) *Manager {
-	return &Manager{
+	m := &Manager{
 		snap: Snapshot{
-			EngineID:  engineID,
-			State:     StateStarting,
-			Mode:      ModeAuto,
-			StartedAt: time.Now().UTC(),
+			EngineID:      engineID,
+			State:         StateStarting,
+			Mode:          ModeAuto,
+			StartedAt:     time.Now().UTC(),
+			MainVolume:    1.0,
+			PreviewVolume: 1.0,
 		},
 	}
+	m.mainVol.Store(math.Float32bits(1.0))
+	m.previewVol.Store(math.Float32bits(1.0))
+	return m
 }
 
 // Snapshot returns a consistent copy of the current engine state.
@@ -214,4 +225,45 @@ func (m *Manager) ClearError() {
 	m.mu.Lock()
 	m.snap.ErrorMsg = ""
 	m.mu.Unlock()
+}
+
+// SetMainVolume sets the main output volume (0.0–1.0).
+// The atomic field is written first so the audio hot path never blocks.
+func (m *Manager) SetMainVolume(v float32) {
+	v = clamp01(v)
+	m.mainVol.Store(math.Float32bits(v))
+	m.mu.Lock()
+	m.snap.MainVolume = v
+	m.mu.Unlock()
+}
+
+// MainVolume returns the current main output volume.
+// Lock-free — safe to call from the audio hot path.
+func (m *Manager) MainVolume() float32 {
+	return math.Float32frombits(m.mainVol.Load())
+}
+
+// SetPreviewVolume sets the preview/CUE output volume (0.0–1.0).
+func (m *Manager) SetPreviewVolume(v float32) {
+	v = clamp01(v)
+	m.previewVol.Store(math.Float32bits(v))
+	m.mu.Lock()
+	m.snap.PreviewVolume = v
+	m.mu.Unlock()
+}
+
+// PreviewVolume returns the current preview/CUE output volume.
+// Lock-free — safe to call from the audio hot path.
+func (m *Manager) PreviewVolume() float32 {
+	return math.Float32frombits(m.previewVol.Load())
+}
+
+func clamp01(v float32) float32 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
 }

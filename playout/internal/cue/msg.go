@@ -9,12 +9,13 @@ package cue
 // subCmd is a command sent from the main engine to the CUE subprocess via stdin.
 // Each message is a JSON object followed by a newline (\n).
 //
-// cmd values: play | pause | resume | stop | seek | quit
+// cmd values: play | pause | resume | stop | seek | set_volume | quit
 type subCmd struct {
-	Cmd        string `json:"cmd"`
-	Path       string `json:"path,omitempty"`         // play: absolute file path
-	SeekMS     int64  `json:"seek_ms,omitempty"`      // play: start position
-	PositionMS int64  `json:"position_ms,omitempty"`  // seek: target position
+	Cmd        string  `json:"cmd"`
+	Path       string  `json:"path,omitempty"`        // play: absolute file path
+	SeekMS     int64   `json:"seek_ms,omitempty"`     // play: start position
+	PositionMS int64   `json:"position_ms,omitempty"` // seek: target position
+	Volume     float32 `json:"volume,omitempty"`      // set_volume: 0.0–1.0
 }
 
 // subEvt is an event sent from the CUE subprocess to the main engine via stdout.
