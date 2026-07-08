@@ -2785,9 +2785,11 @@ function dndEnd() {
   _dnd = { type: null, itemId: null, breakId: null, track: null };
   document.querySelectorAll('.dnd-dragging, .dnd-over')
     .forEach(r => r.classList.remove('dnd-dragging', 'dnd-over'));
-  // Restore backdrop pointer-events after search-result drag
+  // Restore pointer-events on backdrop and modal
   const bd = document.getElementById('advBackdrop');
   if (bd) bd.style.pointerEvents = '';
+  const modal = document.getElementById('advModal');
+  if (modal) modal.style.pointerEvents = '';
 }
 
 // 4.2 — Start drag from a search-result row
@@ -2795,11 +2797,14 @@ function dndStartSearch(ev, idx) {
   const t = _advTracks[idx];
   if (!t) return;
   _dnd = { type: 'search-result', itemId: null, breakId: null, track: t };
-  ev.dataTransfer.effectAllowed = 'copy';
+  ev.dataTransfer.effectAllowed = 'move';
   ev.dataTransfer.setData('text/plain', t.title || '');
-  // Let the queue receive dragover/drop by making the backdrop transparent
+  // Make both backdrop AND modal transparent to pointer/drag events so the
+  // queue tbody underneath can receive dragover and drop
   const bd = document.getElementById('advBackdrop');
   if (bd) bd.style.pointerEvents = 'none';
+  const modal = document.getElementById('advModal');
+  if (modal) modal.style.pointerEvents = 'none';
 }
 
 // tbody-level drag delegation — large hit area, no gap between item rows and zones
