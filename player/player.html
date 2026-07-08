@@ -1681,7 +1681,7 @@ canvas.vu-canvas {
             <button class="btn btn-skip"   id="btnSkip"        onclick="sendCmd('skip')">⏭ Skip</button>
           </div>
           <div class="controls-group-right">
-            <button class="btn btn-audios"     id="btnAudios"      onclick="advModalOpen()">♪ Áudios</button>
+            <button class="btn btn-audios"     id="btnAudios"      onclick="advModalOpen()">♪ Catálogo</button>
             <button class="btn btn-library"    id="btnLibrary"     onclick="toggleLibrary()">☰ Biblioteca</button>
             <div class="controls-sep"></div>
             <button class="btn btn-assist"      id="btnEnterAssist" onclick="sendCmd('assist-enter')">◎ ASSIST</button>
@@ -3762,10 +3762,10 @@ async function libEnqueueBreak(idx) {
 
   <!-- ─── Advanced Search Modal ──────────────────────────────────────────── -->
   <div class="adv-backdrop" id="advBackdrop" onclick="advModalClose()"></div>
-  <div class="adv-modal" id="advModal" role="dialog" aria-modal="true" aria-label="Busca Avançada de Áudio" style="display:none">
+  <div class="adv-modal" id="advModal" role="dialog" aria-modal="true" aria-label="Catálogo" style="display:none">
 
     <div class="adv-modal-header" id="advModalHeader" onmousedown="advDragStart(event)">
-      <span class="adv-modal-title">Busca Avançada de Áudio</span>
+      <span class="adv-modal-title">Catálogo</span>
       <button class="adv-modal-close" onclick="advModalClose()" title="Fechar">✕</button>
     </div>
 
