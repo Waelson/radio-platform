@@ -90,6 +90,7 @@ func defaults() Config {
 				"vinhetas": "VINHETA",
 				"jingles":  "JINGLE",
 				"spots":    "SPOT",
+				"efeitos":  "EFEITOS",
 			},
 			Extensions:     []string{".mp3", ".wav", ".flac", ".ogg", ".aac"},
 			FFprobePath:    "ffprobe",

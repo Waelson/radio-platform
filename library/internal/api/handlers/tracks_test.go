@@ -54,6 +54,14 @@ func (f *fakeTrackStore) Search(_ context.Context, q store.SearchQuery) ([]store
 	return out, nil
 }
 
+func (f *fakeTrackStore) CountFiltered(_ context.Context, q store.SearchQuery) (int, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+	tracks, _ := f.Search(context.Background(), q)
+	return len(tracks), nil
+}
+
 func (f *fakeTrackStore) ListArtists(_ context.Context, trackType string) ([]string, error) {
 	if f.err != nil {
 		return nil, f.err

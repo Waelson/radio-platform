@@ -32,6 +32,7 @@ type SearchQuery struct {
 	Q        string // full-text search on title and artist
 	Type     string
 	Artist   string
+	Album    string
 	Category string
 	Limit    int // default 50, max 200
 	Offset   int
@@ -137,8 +138,12 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 		args = append(args, q.Type)
 	}
 	if q.Artist != "" {
-		where = append(where, "artist = ?")
-		args = append(args, q.Artist)
+		where = append(where, "artist LIKE ?")
+		args = append(args, "%"+q.Artist+"%")
+	}
+	if q.Album != "" {
+		where = append(where, "album LIKE ?")
+		args = append(args, "%"+q.Album+"%")
 	}
 	if q.Category != "" {
 		where = append(where, "category = ?")
@@ -181,6 +186,49 @@ func (s *TrackStore) Count(ctx context.Context) (int, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tracks`).Scan(&n)
 	return n, err
+}
+
+// CountFiltered returns the total number of tracks matching the query filters,
+// using the same WHERE clauses as Search but without LIMIT/OFFSET.
+func (s *TrackStore) CountFiltered(ctx context.Context, q SearchQuery) (int, error) {
+	var where []string
+	var args []any
+
+	if q.Q != "" {
+		where = append(where, "(title LIKE ? OR artist LIKE ?)")
+		like := "%" + q.Q + "%"
+		args = append(args, like, like)
+	}
+	if q.Type != "" {
+		where = append(where, "type = ?")
+		args = append(args, q.Type)
+	}
+	if q.Artist != "" {
+		where = append(where, "artist LIKE ?")
+		args = append(args, "%"+q.Artist+"%")
+	}
+	if q.Album != "" {
+		where = append(where, "album LIKE ?")
+		args = append(args, "%"+q.Album+"%")
+	}
+	if q.Category != "" {
+		where = append(where, "category = ?")
+		args = append(args, q.Category)
+	}
+
+	clause := ""
+	if len(where) > 0 {
+		clause = "WHERE " + strings.Join(where, " AND ")
+	}
+
+	query := fmt.Sprintf(`SELECT COUNT(*) FROM tracks %s`, clause)
+
+	var n int
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count filtered: %w", err)
+	}
+	return n, nil
 }
 
 // ListArtists returns distinct artist names, optionally filtered by track type,

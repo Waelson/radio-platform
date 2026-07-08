@@ -90,7 +90,7 @@ func (ix *Indexer) Scan(ctx context.Context) (ScanResult, error) {
 }
 
 // IndexFile probes a single audio file and upserts it into the track store.
-// assetType must be one of MUSIC, VINHETA, JINGLE, SPOT.
+// assetType must be one of MUSIC, VINHETA, JINGLE, SPOT, EFEITOS.
 // Metadata strategy is controlled by cfg.MetadataSource ("filename" or "tags").
 func (ix *Indexer) IndexFile(ctx context.Context, path, assetType string) error {
 	// Always probe for duration; tags are only used when strategy is "tags".

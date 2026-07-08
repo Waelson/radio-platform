@@ -17,6 +17,7 @@ import (
 type TrackStore interface {
 	FindByID(ctx context.Context, id string) (store.Track, error)
 	Search(ctx context.Context, q store.SearchQuery) ([]store.Track, error)
+	CountFiltered(ctx context.Context, q store.SearchQuery) (int, error)
 	ListArtists(ctx context.Context, trackType string) ([]string, error)
 	UpdateMeta(ctx context.Context, id string, patch store.TrackPatch) error
 }
@@ -49,7 +50,7 @@ func toTrackJSON(t store.Track) trackJSON {
 }
 
 // SearchTracks handles GET /v1/tracks
-// Query params: q, type, artist, category, limit (default 50, max 200), offset.
+// Query params: q, type, artist, album, category, limit (default 50, max 200), offset.
 func SearchTracks(ts TrackStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
@@ -61,6 +62,7 @@ func SearchTracks(ts TrackStore) http.HandlerFunc {
 			Q:        q.Get("q"),
 			Type:     q.Get("type"),
 			Artist:   q.Get("artist"),
+			Album:    q.Get("album"),
 			Category: q.Get("category"),
 			Limit:    limit,
 			Offset:   offset,
@@ -73,6 +75,13 @@ func SearchTracks(ts TrackStore) http.HandlerFunc {
 			return
 		}
 
+		total, err := ts.CountFiltered(r.Context(), sq)
+		if err != nil {
+			slog.Error("SearchTracks: count error", "error", err)
+			writeError(w, http.StatusInternalServerError, "internal_error", "count failed")
+			return
+		}
+
 		out := make([]trackJSON, len(tracks))
 		for i, t := range tracks {
 			out[i] = toTrackJSON(t)
@@ -81,6 +90,7 @@ func SearchTracks(ts TrackStore) http.HandlerFunc {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"tracks": out,
 			"count":  len(out),
+			"total":  total,
 			"limit":  limit,
 			"offset": offset,
 		})
@@ -134,11 +144,11 @@ func PatchTrack(ts TrackStore) http.HandlerFunc {
 
 		if body.Type != nil {
 			switch *body.Type {
-			case "MUSIC", "VINHETA", "JINGLE", "SPOT":
+			case "MUSIC", "VINHETA", "JINGLE", "SPOT", "EFEITOS":
 				// valid
 			default:
 				writeError(w, http.StatusBadRequest, "bad_request",
-					"type must be one of MUSIC, VINHETA, JINGLE, SPOT")
+					"type must be one of MUSIC, VINHETA, JINGLE, SPOT, EFEITOS")
 				return
 			}
 		}
