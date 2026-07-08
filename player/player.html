@@ -3132,6 +3132,8 @@ function _libOpenPreviewPanel(idx) {
   const anchor = document.getElementById(`lib-track-item-${idx}`);
   if (!anchor) return;
 
+  // Close modal preview panel first to avoid duplicate element IDs
+  if (typeof _advClosePreviewPanel === 'function') _advClosePreviewPanel();
   _libUpdateCueBtn(idx, true);
   _preview.path = t.path || '';
   _preview.positionMS = 0;
@@ -3194,9 +3196,9 @@ function _renderPreviewPanel() {
   pos.textContent  = msToTime(s.positionMS);
   dur.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
 
-  // 3.3 — Sync modal row highlight: clear when preview stops
+  // 3.3 — Sync modal row highlight and panel when preview stops
   if (s.state === 'idle' && typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
-    _advUpdatePreviewHighlight(-1);
+    _advClosePreviewPanel();
   }
 }
 
@@ -3715,6 +3717,12 @@ function advModalOpen() {
 }
 
 function advModalClose() {
+  // Stop preview and close panel before hiding modal
+  if (typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
+    _advClosePreviewPanel();
+    previewStop();
+  }
+  advClear();
   document.getElementById('advBackdrop').classList.remove('open');
   document.getElementById('advModal').style.display = 'none';
 }
@@ -3781,7 +3789,7 @@ function advRender() {
       <td><span class="adv-type-badge ${badgeClass}">${escHtml(t.type || '')}</span></td>
       <td class="adv-td-dur">${msToDuration(t.duration_ms || 0)}</td>
       <td class="adv-td-actions">
-        <button title="Preview (CUE)" onclick="advPreview(${i})">◎</button>
+        <button title="Preview (CUE)" class="lib-cue-btn" id="adv-cue-${i}" onclick="advTogglePreview(${i})">◎</button>
         <button title="Adicionar à fila" onclick="advEnqueue(${i})">+ Fila</button>
         <span class="adv-drag-handle" title="Arrastar para a fila">⠿</span>
       </td>
@@ -3830,26 +3838,59 @@ function advNext() {
   advSearch(false);
 }
 
-// 3.1 — Preview with row highlight
+// 3.1 — Preview panel inline in modal (same IDs as drawer panel)
 let _advPreviewIdx = -1;
 
 function _advUpdatePreviewHighlight(idx) {
-  // Clear all rows
   document.querySelectorAll('.adv-table tbody tr').forEach(r => r.classList.remove('adv-row--previewing'));
+  // also clear adv cue btn active states
+  document.querySelectorAll('[id^="adv-cue-"]').forEach(b => b.classList.remove('active'));
   _advPreviewIdx = idx;
   if (idx < 0) return;
   const rows = document.querySelectorAll('.adv-table tbody tr');
   if (rows[idx]) rows[idx].classList.add('adv-row--previewing');
+  const cueBtn = document.getElementById('adv-cue-' + idx);
+  if (cueBtn) cueBtn.classList.add('active');
 }
 
-async function advPreview(idx) {
+function _advOpenPreviewPanel(idx) {
   const t = _advTracks[idx];
   if (!t) return;
+  // Close drawer preview if open (same IDs can't coexist)
+  _libClosePreviewPanel();
   _advUpdatePreviewHighlight(idx);
   _preview.path       = t.path || '';
   _preview.positionMS = 0;
   _preview.durationMS = t.duration_ms || 0;
-  await previewPlay();
+  _preview.trackIdx   = null; // not a drawer item
+  const panel = document.getElementById('advPreviewPanel');
+  if (panel) {
+    // Reset controls to initial state
+    const dur = document.getElementById('libPrevDur');
+    if (dur) dur.textContent = t.duration_ms > 0 ? msToTime(t.duration_ms) : '--:--';
+    const pos = document.getElementById('libPrevPos');
+    if (pos) pos.textContent = '0:00';
+    const fill = document.getElementById('libPrevFill');
+    if (fill) fill.style.width = '0%';
+    panel.style.display = '';
+  }
+  previewPlay();
+}
+
+function _advClosePreviewPanel() {
+  const panel = document.getElementById('advPreviewPanel');
+  if (panel) panel.style.display = 'none';
+  _advUpdatePreviewHighlight(-1);
+}
+
+function advTogglePreview(idx) {
+  if (_advPreviewIdx === idx) {
+    // Same row — stop and close panel
+    _advClosePreviewPanel();
+    previewStop();
+    return;
+  }
+  _advOpenPreviewPanel(idx);
 }
 
 async function advEnqueue(idx) {
@@ -4070,7 +4111,7 @@ async function libEnqueueBreak(idx) {
 
   <!-- ─── Advanced Search Modal ──────────────────────────────────────────── -->
   <div class="adv-backdrop" id="advBackdrop" onclick="advModalClose()"></div>
-  <div class="adv-modal" id="advModal" role="dialog" aria-modal="true" aria-label="Busca Avançada de Áudio">
+  <div class="adv-modal" id="advModal" role="dialog" aria-modal="true" aria-label="Busca Avançada de Áudio" style="display:none">
 
     <div class="adv-modal-header">
       <span class="adv-modal-title">Busca Avançada de Áudio</span>
@@ -4114,6 +4155,24 @@ async function libEnqueueBreak(idx) {
 
     <div class="adv-results-header" id="advResultsHeader" style="display:none">
       <span id="advResultsCount">0</span> faixas encontradas
+    </div>
+
+    <!-- Inline preview panel — same controls as the drawer CUE panel -->
+    <div id="advPreviewPanel" class="lib-preview-panel" style="display:none; flex-shrink:0; border-bottom:1px solid var(--border);">
+      <div class="lib-preview-controls">
+        <button class="lib-prev-btn" id="libPrevPlay"   title="Play"   onclick="previewPlayOrResume()">▶</button>
+        <button class="lib-prev-btn" id="libPrevPause"  title="Pausar" onclick="previewPause()" disabled>⏸</button>
+        <button class="lib-prev-btn" id="libPrevStop"   title="Stop"   onclick="previewStop()" disabled>■</button>
+      </div>
+      <div class="lib-prev-progress">
+        <div class="lib-prev-track" id="libPrevTrack" onclick="previewSeekClick(event)">
+          <div class="lib-prev-fill" id="libPrevFill" style="width:0%"><div class="lib-prev-thumb"></div></div>
+        </div>
+        <div class="lib-prev-time">
+          <span id="libPrevPos">0:00</span>
+          <span id="libPrevDur">--:--</span>
+        </div>
+      </div>
     </div>
 
     <div class="adv-results" id="advResults">
