@@ -674,7 +674,7 @@ input[type=range].vol-slider:disabled {
 /* ── Advanced Search Modal ─────────────────────────────────────────────── */
 .adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
 .adv-backdrop.open { display: block; }
-.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(900px, 92vw); max-height: 88vh; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; overflow: hidden; }
+.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 620px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; overflow: hidden; }
 .adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; cursor: move; user-select: none; }
 .adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
 .adv-modal-close { background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1; }
@@ -3706,7 +3706,7 @@ let _libTab       = 'tracks';
 
 // ─── Advanced Search Modal ──────────────────────────────────────────────────
 
-const ADV_LIMIT = 20;
+const ADV_LIMIT = 10;
 let _advPage  = 1;
 let _advTotal = 0;
 
