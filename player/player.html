@@ -675,7 +675,7 @@ input[type=range].vol-slider:disabled {
 .adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
 .adv-backdrop.open { display: block; }
 .adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(900px, 92vw); max-height: 88vh; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; overflow: hidden; }
-.adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; cursor: move; user-select: none; }
 .adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
 .adv-modal-close { background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1; }
 .adv-modal-close:hover { background: #1e1e1e; color: var(--text); }
@@ -3909,6 +3909,53 @@ async function advEnqueue(idx) {
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
 
+// ─── Modal drag-to-move ─────────────────────────────────────────────────────
+function advDragStart(e) {
+  // Ignore clicks on the close button inside the header
+  if (e.target.closest('.adv-modal-close')) return;
+
+  const modal  = document.getElementById('advModal');
+  const rect   = modal.getBoundingClientRect();
+
+  // Convert from transform-center to explicit top/left so we can move freely
+  modal.style.transform = 'none';
+  modal.style.left      = rect.left + 'px';
+  modal.style.top       = rect.top  + 'px';
+
+  const startX = e.clientX - rect.left;
+  const startY = e.clientY - rect.top;
+
+  function onMove(e) {
+    const x = e.clientX - startX;
+    const y = e.clientY - startY;
+    // Clamp so the modal stays within the viewport
+    const maxX = window.innerWidth  - modal.offsetWidth;
+    const maxY = window.innerHeight - modal.offsetHeight;
+    modal.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
+    modal.style.top  = Math.max(0, Math.min(y, maxY)) + 'px';
+  }
+
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup',   onUp);
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup',   onUp);
+}
+
+// Reset modal position when it is opened (so it re-centers each time)
+const _advModalOpenOrig = advModalOpen;
+advModalOpen = function() {
+  const modal = document.getElementById('advModal');
+  modal.style.transform = '';
+  modal.style.left      = '';
+  modal.style.top       = '';
+  _advModalOpenOrig();
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Close on Escape
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('advBackdrop').classList.contains('open')) {
@@ -4113,7 +4160,7 @@ async function libEnqueueBreak(idx) {
   <div class="adv-backdrop" id="advBackdrop" onclick="advModalClose()"></div>
   <div class="adv-modal" id="advModal" role="dialog" aria-modal="true" aria-label="Busca Avançada de Áudio" style="display:none">
 
-    <div class="adv-modal-header">
+    <div class="adv-modal-header" id="advModalHeader" onmousedown="advDragStart(event)">
       <span class="adv-modal-title">Busca Avançada de Áudio</span>
       <button class="adv-modal-close" onclick="advModalClose()" title="Fechar">✕</button>
     </div>
