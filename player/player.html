@@ -612,9 +612,6 @@ input[type=range].vol-slider:disabled {
 .btn-panic:hover:not(:disabled)   { background: #550000; border-color: #ff2200; box-shadow: 0 0 18px rgba(255,32,32,.50); }
 .btn-exit-panic { background: #002a11; color: var(--cyan); border-color: #245bff; }
 .btn-exit-panic:hover:not(:disabled) { background: #003a18; }
-.btn-hotbuttons { background: #1a2e1a; color: #b8f0b8; border-color: #305a30; }
-.btn-hotbuttons:hover:not(:disabled) { background: #22402a; }
-.btn-hotbuttons.active { background: #22402a; color: #d0ffd0; border-color: #4a9a4a; }
 .btn-library { background: #1a2e1a; color: #b8f0b8; border-color: #305a30; }
 .btn-library:hover:not(:disabled) { background: #22402a; }
 .btn-library.active { background: #22402a; color: #d0ffd0; border-color: #4a9a4a; }
@@ -766,135 +763,6 @@ input[type=range].vol-slider:disabled {
 .adv-prev-vol-pct { font-size: 10px; color: var(--text-dim); font-family: 'Courier New', monospace; min-width: 30px; }
 .lib-status { padding: 16px 12px; font-size: 11px; color: var(--text-dim); text-align: center; }
 
-/* ─── Hot Buttons Drawer ─────────────────────────────────────── */
-.hot-drawer {
-  width: 0;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  border-left: 0px solid var(--border);
-  background: var(--bg);
-  overflow: hidden;
-  transition: width 300ms ease, border-left-width 300ms ease;
-}
-.hot-drawer.open {
-  width: 400px;
-  border-left-width: 1px;
-}
-/* inner wrapper keeps content at full width during animation */
-.hot-drawer-inner {
-  width: 400px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-.hot-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.hot-drawer-title {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-dim);
-  font-weight: 600;
-}
-.hot-drawer-close {
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 3px;
-  line-height: 1;
-}
-.hot-drawer-close:hover { background: #1e1e1e; color: var(--text); }
-.hot-drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
-}
-
-/* ─── Hot Button Grid ────────────────────────────────────────── */
-.hb-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.hb-btn {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 14px 8px;
-  background: linear-gradient(#0a0c14, #0a0c14) padding-box,
-              linear-gradient(135deg, var(--cyan), var(--blue), var(--purple)) border-box;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  cursor: pointer;
-  transition: box-shadow 120ms ease, transform 80ms ease;
-  min-height: 72px;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.hb-btn:hover {
-  background: linear-gradient(#131828, #131828) padding-box,
-              linear-gradient(135deg, var(--cyan), var(--blue), var(--purple)) border-box;
-  box-shadow: 0 0 14px rgba(122,77,255,.25);
-}
-.hb-btn:active {
-  transform: scale(0.96);
-  box-shadow: none;
-}
-.hb-btn .hb-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-.hb-btn .hb-label {
-  font-size: 11px;
-  color: inherit;
-  letter-spacing: 1px;
-}
-
-/* color variants */
-.hb-btn.hb-green  { color: var(--cyan); }
-.hb-btn.hb-red    { color: var(--red); }
-.hb-btn.hb-yellow { color: var(--blue); }
-.hb-btn.hb-blue   { color: var(--blue); }
-.hb-btn.hb-purple { color: var(--purple); }
-.hb-btn.hb-cyan   { color: var(--cyan); }
-.hb-btn.hb-orange { color: var(--purple-2); }
-.hb-btn.hb-neutral { color: var(--text); }
-
-/* active/lit state */
-.hb-btn.hb-active {
-  box-shadow: 0 0 12px currentColor;
-  opacity: 1;
-}
-
-.hb-section-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--text-dim);
-  margin: 14px 0 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-}
 
 /* ─── Queue ──────────────────────────────────────────────────── */
 .queue-section {
@@ -1351,7 +1219,6 @@ tr.dnd-drop-zone.dnd-over td {
 
 .btn-play,
 .btn-resume,
-.btn-hotbuttons,
 .btn-library,
 .btn-assist {
   background: rgba(47,123,255,.10);
@@ -1361,10 +1228,8 @@ tr.dnd-drop-zone.dnd-over td {
 
 .btn-play:hover:not(:disabled),
 .btn-resume:hover:not(:disabled),
-.btn-hotbuttons:hover:not(:disabled),
 .btn-library:hover:not(:disabled),
 .btn-assist:hover:not(:disabled),
-.btn-hotbuttons.active,
 .btn-library.active {
   background: rgba(47,123,255,.18);
   color: var(--cyan);
@@ -1508,7 +1373,6 @@ canvas.vu-canvas {
 }
 
 .controls-bar .btn:not(.btn-panic).active,
-.controls-bar .btn-hotbuttons.active,
 .controls-bar .btn-library.active {
   background:
     linear-gradient(180deg, rgba(32,230,255,.28), rgba(122,77,255,.18)) !important;
@@ -1809,7 +1673,6 @@ canvas.vu-canvas {
             <button class="btn btn-skip"   id="btnSkip"        onclick="sendCmd('skip')">⏭ Skip</button>
           </div>
           <div class="controls-group-right">
-            <button class="btn btn-hotbuttons" id="btnHotButtons"  onclick="toggleDrawer()">⊞ Botões</button>
             <button class="btn btn-library"    id="btnLibrary"     onclick="toggleLibrary()">☰ Biblioteca</button>
             <div class="controls-sep"></div>
             <button class="btn btn-assist"      id="btnEnterAssist" onclick="sendCmd('assist-enter')">◎ ASSIST</button>
@@ -1865,90 +1728,6 @@ canvas.vu-canvas {
 
     </div><!-- /col-player -->
 
-    <!-- ─── Hot Buttons Drawer ──────────────────────────────── -->
-    <div class="hot-drawer" id="hotDrawer">
-      <div class="hot-drawer-inner">
-        <div class="hot-drawer-header">
-          <span class="hot-drawer-title">Hot Buttons</span>
-          <button class="hot-drawer-close" onclick="toggleDrawer()" title="Fechar">✕</button>
-        </div>
-        <div class="hot-drawer-body">
-
-          <div class="hb-section-label">Microfone</div>
-          <div class="hb-grid">
-            <button class="hb-btn hb-green" onclick="hotBtn(this)">
-              <span class="hb-icon">🎙</span>
-              <span class="hb-label">Mic 1 On</span>
-            </button>
-            <button class="hb-btn hb-red" onclick="hotBtn(this)">
-              <span class="hb-icon">🔇</span>
-              <span class="hb-label">Mic 1 Off</span>
-            </button>
-            <button class="hb-btn hb-green" onclick="hotBtn(this)">
-              <span class="hb-icon">🎙</span>
-              <span class="hb-label">Mic 2 On</span>
-            </button>
-            <button class="hb-btn hb-red" onclick="hotBtn(this)">
-              <span class="hb-icon">🔇</span>
-              <span class="hb-label">Mic 2 Off</span>
-            </button>
-          </div>
-
-          <div class="hb-section-label">Vinhetas</div>
-          <div class="hb-grid">
-            <button class="hb-btn hb-blue" onclick="hotBtn(this)">
-              <span class="hb-icon">🎵</span>
-              <span class="hb-label">Abertura</span>
-            </button>
-            <button class="hb-btn hb-blue" onclick="hotBtn(this)">
-              <span class="hb-icon">🎵</span>
-              <span class="hb-label">Encerramento</span>
-            </button>
-            <button class="hb-btn hb-cyan" onclick="hotBtn(this, 'carimbo-horario')">
-              <span class="hb-icon">📻</span>
-              <span class="hb-label">ID Estação</span>
-            </button>
-            <button class="hb-btn hb-cyan" onclick="hotBtn(this)">
-              <span class="hb-icon">🔔</span>
-              <span class="hb-label">Hora Certa</span>
-            </button>
-          </div>
-
-          <div class="hb-section-label">Efeitos</div>
-          <div class="hb-grid">
-            <button class="hb-btn hb-yellow" onclick="hotBtn(this)">
-              <span class="hb-icon">⚡</span>
-              <span class="hb-label">Aplausos</span>
-            </button>
-            <button class="hb-btn hb-yellow" onclick="hotBtn(this)">
-              <span class="hb-icon">😂</span>
-              <span class="hb-label">Risada</span>
-            </button>
-            <button class="hb-btn hb-orange" onclick="hotBtn(this)">
-              <span class="hb-icon">🎯</span>
-              <span class="hb-label">Whoosh</span>
-            </button>
-            <button class="hb-btn hb-purple" onclick="hotBtn(this)">
-              <span class="hb-icon">🌟</span>
-              <span class="hb-label">Fanfarra</span>
-            </button>
-          </div>
-
-          <div class="hb-section-label">Sistema</div>
-          <div class="hb-grid">
-            <button class="hb-btn hb-neutral" onclick="hotBtn(this)">
-              <span class="hb-icon">🔁</span>
-              <span class="hb-label">Loop On</span>
-            </button>
-            <button class="hb-btn hb-neutral" onclick="hotBtn(this)">
-              <span class="hb-icon">⏹</span>
-              <span class="hb-label">Loop Off</span>
-            </button>
-          </div>
-
-        </div>
-      </div>
-    </div><!-- /hot-drawer -->
 
     <!-- ─── Library Drawer ──────────────────────────────────── -->
     <div class="lib-drawer" id="libDrawer">
@@ -3569,57 +3348,6 @@ window.addEventListener('load', () => {
   document.addEventListener('touchend', () => { _draggingMain = false; _draggingPreview = false; });
 });
 
-/* ─── Hot Buttons Drawer ────────────────────────────────────── */
-const HOT_BUTTON_PAYLOADS = {
-  'carimbo-horario': {
-    button_id:    'carimbo-horario',
-    play_mode:    'OVERLAY',
-    duck_main:    true,
-    duck_gain_db: -2,
-    asset: {
-      path:  '/Users/waelson/Documents/workspace/radio-crossfade-demo/jingleA-New.mp3',
-      title: 'Mellhor Rádio',
-      type:  'JINGLE',
-    },
-  },
-};
-
-async function hotBtn(el, buttonId) {
-  el.classList.add('hb-active');
-  setTimeout(() => el.classList.remove('hb-active'), 300);
-
-  if (!buttonId) return;
-
-  const payload = HOT_BUTTON_PAYLOADS[buttonId];
-  if (!payload) return;
-
-  try {
-    const res = await fetch(API_URL + '/v1/hotbuttons/trigger', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      showToast(`Hot button error: ${res.status} ${txt}`, 'error');
-    }
-  } catch (err) {
-    showToast(`Hot button failed: ${err.message}`, 'error');
-  }
-}
-
-function toggleDrawer() {
-  // Close library if open
-  const libDrawer = document.getElementById('libDrawer');
-  if (libDrawer.classList.contains('open')) {
-    libDrawer.classList.remove('open');
-    document.getElementById('btnLibrary').classList.remove('active');
-  }
-  const drawer = document.getElementById('hotDrawer');
-  const btn    = document.getElementById('btnHotButtons');
-  const isOpen = drawer.classList.toggle('open');
-  btn.classList.toggle('active', isOpen);
-}
 
 /* ─── Clock ─────────────────────────────────────────────────── */
 (function startClock() {
@@ -3962,12 +3690,6 @@ document.addEventListener('keydown', e => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function toggleLibrary() {
-  // Close hotbuttons drawer if open
-  const hotDrawer = document.getElementById('hotDrawer');
-  if (hotDrawer.classList.contains('open')) {
-    hotDrawer.classList.remove('open');
-    document.getElementById('btnHotButtons').classList.remove('active');
-  }
   const drawer = document.getElementById('libDrawer');
   const btn    = document.getElementById('btnLibrary');
   const isOpen = drawer.classList.toggle('open');
