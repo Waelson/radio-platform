@@ -3718,11 +3718,9 @@ function advModalOpen() {
 }
 
 function advModalClose() {
-  // Stop preview and close panel before hiding modal
-  if (typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
-    _advClosePreviewPanel();
-    previewStop();
-  }
+  // Always stop preview if active, regardless of panel index state
+  _advClosePreviewPanel();
+  if (_preview.state !== 'idle') previewStop();
   advClear();
   document.getElementById('advBackdrop').classList.remove('open');
   document.getElementById('advModal').style.display = 'none';
