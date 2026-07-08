@@ -3765,7 +3765,7 @@ async function advSearch(resetPage = true) {
 
 // 2.3 — Render results table
 function advRender() {
-  _advPreviewIdx = -1;  // 3.3 — reset highlight on new render
+  _advClosePreviewPanel();  // remove any open preview row before re-rendering
   const resultsEl = document.getElementById('advResults');
   const headerEl  = document.getElementById('advResultsHeader');
   const countEl   = document.getElementById('advResultsCount');
@@ -3856,30 +3856,53 @@ function _advUpdatePreviewHighlight(idx) {
 function _advOpenPreviewPanel(idx) {
   const t = _advTracks[idx];
   if (!t) return;
-  // Close drawer preview if open (same IDs can't coexist)
+
+  // Close drawer preview if open (same IDs can't coexist in DOM)
   _libClosePreviewPanel();
+  // Remove any existing adv preview row
+  const existing = document.getElementById('adv-preview-row');
+  if (existing) existing.remove();
+
   _advUpdatePreviewHighlight(idx);
   _preview.path       = t.path || '';
   _preview.positionMS = 0;
   _preview.durationMS = t.duration_ms || 0;
-  _preview.trackIdx   = null; // not a drawer item
-  const panel = document.getElementById('advPreviewPanel');
-  if (panel) {
-    // Reset controls to initial state
-    const dur = document.getElementById('libPrevDur');
-    if (dur) dur.textContent = t.duration_ms > 0 ? msToTime(t.duration_ms) : '--:--';
-    const pos = document.getElementById('libPrevPos');
-    if (pos) pos.textContent = '0:00';
-    const fill = document.getElementById('libPrevFill');
-    if (fill) fill.style.width = '0%';
-    panel.style.display = '';
-  }
-  previewPlay();
+  _preview.trackIdx   = null;
+
+  // Find the <tr> at position idx in the results tbody and insert panel row after it
+  const rows = document.querySelectorAll('.adv-table tbody tr:not(#adv-preview-row)');
+  const anchor = rows[idx];
+  if (!anchor) return;
+
+  const dur = t.duration_ms > 0 ? msToTime(t.duration_ms) : '--:--';
+  const panelRow = document.createElement('tr');
+  panelRow.id = 'adv-preview-row';
+  panelRow.innerHTML = `
+    <td colspan="6" style="padding:0; border-bottom:1px solid var(--border);">
+      <div class="lib-preview-panel">
+        <div class="lib-preview-controls">
+          <button class="lib-prev-btn" id="libPrevPlay"   title="Play"   onclick="previewPlayOrResume()">▶</button>
+          <button class="lib-prev-btn" id="libPrevPause"  title="Pausar" onclick="previewPause()" disabled>⏸</button>
+          <button class="lib-prev-btn" id="libPrevStop"   title="Stop"   onclick="previewStop()" disabled>■</button>
+        </div>
+        <div class="lib-prev-progress">
+          <div class="lib-prev-track" id="libPrevTrack" onclick="previewSeekClick(event)">
+            <div class="lib-prev-fill" id="libPrevFill" style="width:0%"><div class="lib-prev-thumb"></div></div>
+          </div>
+          <div class="lib-prev-time">
+            <span id="libPrevPos">0:00</span>
+            <span id="libPrevDur">${dur}</span>
+          </div>
+        </div>
+      </div>
+    </td>`;
+  anchor.after(panelRow);
+  // No auto-play — user presses ▶ manually
 }
 
 function _advClosePreviewPanel() {
-  const panel = document.getElementById('advPreviewPanel');
-  if (panel) panel.style.display = 'none';
+  const row = document.getElementById('adv-preview-row');
+  if (row) row.remove();
   _advUpdatePreviewHighlight(-1);
 }
 
@@ -4202,24 +4225,6 @@ async function libEnqueueBreak(idx) {
 
     <div class="adv-results-header" id="advResultsHeader" style="display:none">
       <span id="advResultsCount">0</span> faixas encontradas
-    </div>
-
-    <!-- Inline preview panel — same controls as the drawer CUE panel -->
-    <div id="advPreviewPanel" class="lib-preview-panel" style="display:none; flex-shrink:0; border-bottom:1px solid var(--border);">
-      <div class="lib-preview-controls">
-        <button class="lib-prev-btn" id="libPrevPlay"   title="Play"   onclick="previewPlayOrResume()">▶</button>
-        <button class="lib-prev-btn" id="libPrevPause"  title="Pausar" onclick="previewPause()" disabled>⏸</button>
-        <button class="lib-prev-btn" id="libPrevStop"   title="Stop"   onclick="previewStop()" disabled>■</button>
-      </div>
-      <div class="lib-prev-progress">
-        <div class="lib-prev-track" id="libPrevTrack" onclick="previewSeekClick(event)">
-          <div class="lib-prev-fill" id="libPrevFill" style="width:0%"><div class="lib-prev-thumb"></div></div>
-        </div>
-        <div class="lib-prev-time">
-          <span id="libPrevPos">0:00</span>
-          <span id="libPrevDur">--:--</span>
-        </div>
-      </div>
     </div>
 
     <div class="adv-results" id="advResults">
