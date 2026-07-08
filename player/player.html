@@ -98,10 +98,6 @@ html, body {
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-@keyframes rowPulse {
-  0%, 100% { background: linear-gradient(180deg, #2a3d52 0%, #0d1a28 55%, #07101c 100%); }
-  50%       { background: linear-gradient(180deg, #2e4e66 0%, #102435 55%, #080f1a 100%); }
-}
 
 .badge {
   display: inline-block; padding: 2px 8px; border-radius: 3px;
@@ -812,7 +808,6 @@ input[type=range].vol-slider:disabled {
   background: linear-gradient(180deg, #344e66 0%, #122030 55%, #0a1220 100%);
   border-bottom-color: rgba(32,200,240,0.50);
 }
-.queue-table tr.playing td { animation: rowPulse 2.4s ease-in-out infinite; }
 .queue-table tr.played td  { opacity: 0.35; }
 .queue-table tr.failed td  { opacity: 0.45; color: var(--red); }
 
