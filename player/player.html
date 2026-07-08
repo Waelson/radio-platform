@@ -1219,6 +1219,7 @@ tr.dnd-drop-zone.dnd-over td {
 
 .btn-play,
 .btn-resume,
+.btn-audios,
 .btn-library,
 .btn-assist {
   background: rgba(47,123,255,.10);
@@ -1228,6 +1229,7 @@ tr.dnd-drop-zone.dnd-over td {
 
 .btn-play:hover:not(:disabled),
 .btn-resume:hover:not(:disabled),
+.btn-audios:hover:not(:disabled),
 .btn-library:hover:not(:disabled),
 .btn-assist:hover:not(:disabled),
 .btn-library.active {
@@ -1673,6 +1675,7 @@ canvas.vu-canvas {
             <button class="btn btn-skip"   id="btnSkip"        onclick="sendCmd('skip')">⏭ Skip</button>
           </div>
           <div class="controls-group-right">
+            <button class="btn btn-audios"     id="btnAudios"      onclick="advModalOpen()">♪ Áudios</button>
             <button class="btn btn-library"    id="btnLibrary"     onclick="toggleLibrary()">☰ Biblioteca</button>
             <div class="controls-sep"></div>
             <button class="btn btn-assist"      id="btnEnterAssist" onclick="sendCmd('assist-enter')">◎ ASSIST</button>
