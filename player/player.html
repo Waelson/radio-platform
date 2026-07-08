@@ -1972,7 +1972,7 @@ canvas.vu-canvas {
               <option value="SPOT">Spot</option>
             </select>
             <button class="lib-search-btn" onclick="libLoadTracks()">🔍</button>
-            <button class="lib-adv-btn" onclick="advModalOpen()" title="Busca Avançada">⚙ Avançada</button>
+            <button class="lib-adv-btn" onclick="advModalOpen(); document.getElementById('libDrawer').classList.remove('open'); document.getElementById('btnLibrary').classList.remove('active');" title="Busca Avançada">⚙ Avançada</button>
           </div>
           <div class="lib-list" id="libTrackList">
             <div class="lib-status">Digite algo para buscar ou clique em 🔍</div>
