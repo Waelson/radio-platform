@@ -18,6 +18,7 @@ import (
 
 // AudioConfig carries audio format parameters for the preview player.
 type AudioConfig struct {
+	DeviceID     string // platform-specific device ID; empty = system default
 	SampleRate   int
 	Channels     int
 	BufferFrames int
@@ -31,6 +32,7 @@ type Player struct {
 	evtBus     *events.Bus
 	dec        decoder.Decoder
 	out        output.OutputDevice
+	deviceID   string
 	sampleRate int
 	channels   int
 	bufFrames  int
@@ -59,6 +61,7 @@ func New(
 		evtBus:     evtBus,
 		dec:        dec,
 		out:        out,
+		deviceID:   audioCfg.DeviceID,
 		sampleRate: audioCfg.SampleRate,
 		channels:   audioCfg.Channels,
 		bufFrames:  audioCfg.BufferFrames,
@@ -85,7 +88,42 @@ func (p *Player) setStatus(s Status) {
 
 // Run is the player event loop. Must be called in a dedicated goroutine.
 // It returns when ctx is cancelled.
+//
+// The output device is opened once here and kept open for the lifetime of the
+// engine, so that repeated preview plays do not trigger device
+// initialisation (particularly expensive for Bluetooth / A2DP devices).
+// Only Start/Stop are called around individual playback sessions.
 func (p *Player) Run(ctx context.Context) {
+	// Pre-open the output device once. If the configured device is
+	// unavailable, fall back to NullOutput so the engine keeps running.
+	outCfg := output.OutputConfig{
+		DeviceID:     p.deviceID,
+		SampleRate:   p.sampleRate,
+		Channels:     p.channels,
+		BufferFrames: p.bufFrames,
+	}
+	if err := p.out.Open(ctx, outCfg); err != nil {
+		p.log.Warn("preview: output device unavailable, falling back to null",
+			"device", p.deviceID, "error", err)
+		p.out = &output.NullOutput{}
+		_ = p.out.Open(ctx, outCfg)
+	}
+
+	// Start the queue once so the device (e.g. BT/A2DP) enters active state,
+	// then immediately pause it. Keeping the device in paused state (rather
+	// than stopped) means ResumeAudio between sessions is much lighter than
+	// a full Start — avoids the HAL notification storm that causes the break.
+	if err := p.out.Start(ctx); err != nil {
+		p.log.Warn("preview: output start failed", "error", err)
+	}
+	if pa, ok := p.out.(interface{ PauseAudio() error }); ok {
+		_ = pa.PauseAudio()
+	}
+	defer func() {
+		_ = p.out.Stop(context.Background())
+		_ = p.out.Close()
+	}()
+
 	// playSession holds the mutable state of the current playback session.
 	type playSession struct {
 		cancel context.CancelFunc
@@ -101,12 +139,11 @@ func (p *Player) Run(ctx context.Context) {
 	)
 
 	// startSession cancels any existing session and starts a new one.
+	// Duration probing is deferred to the loop goroutine (Phase 3) so this
+	// function returns immediately without blocking the event loop.
 	startSession := func(path string, seekMS, durMS int64) {
 		if sess.cancel != nil {
 			sess.cancel()
-		}
-		if durMS == 0 {
-			durMS = probeDuration(path)
 		}
 		gen++
 		pCtx, pCancel := context.WithCancel(ctx)
@@ -198,6 +235,11 @@ func (p *Player) Run(ctx context.Context) {
 			}
 			switch msg.kind {
 
+			case intDuration:
+				// Duration arrived from the background probe in loop().
+				sess.durMS = msg.posMS // posMS field reused to carry durMS
+				p.setStatus(Status{State: state, Path: sess.path, PositionMS: sess.posMS, DurationMS: sess.durMS})
+
 			case intProgress:
 				sess.posMS = msg.posMS
 				p.setStatus(Status{State: state, Path: sess.path, PositionMS: sess.posMS, DurationMS: sess.durMS})
@@ -229,6 +271,9 @@ func (p *Player) Run(ctx context.Context) {
 // loop is the playback goroutine. It opens the decoder at startMS, writes PCM
 // to the output device, and sends progress/ended messages to intCh.
 // It returns when ctx is cancelled or the stream reaches EOF.
+//
+// The output device is already open (opened once in Run). This function only
+// calls Start/Stop around the session, never Open/Close.
 func (p *Player) loop(ctx context.Context, gen int64, path string, startMS int64) {
 	send := func(msg intMsg) {
 		msg.gen = gen
@@ -237,6 +282,15 @@ func (p *Player) loop(ctx context.Context, gen int64, path string, startMS int64
 		default:
 		}
 	}
+
+	// Phase 3: probe duration in a background goroutine so the event loop
+	// is never blocked waiting for ffprobe to finish.
+	go func() {
+		dur := probeDuration(path)
+		if dur > 0 {
+			send(intMsg{kind: intDuration, posMS: dur}) // posMS field carries durMS
+		}
+	}()
 
 	stream, err := p.dec.Open(ctx, decoder.Source{Path: path, CueInMS: startMS})
 	if err != nil {
@@ -247,27 +301,32 @@ func (p *Player) loop(ctx context.Context, gen int64, path string, startMS int64
 	}
 	defer stream.Close()
 
-	outCfg := output.OutputConfig{
-		DeviceID:     "",
-		SampleRate:   p.sampleRate,
-		Channels:     p.channels,
-		BufferFrames: p.bufFrames,
-	}
-	if err := p.out.Open(ctx, outCfg); err != nil {
-		if ctx.Err() == nil {
-			send(intMsg{kind: intEnded, err: fmt.Errorf("output open: %w", err)})
+	// Phase 2: device is already open and in paused state (from Run).
+	// Use ResumeAudio if available (lighter than Start for BT/A2DP — avoids
+	// re-establishing the A2DP stream). Fall back to Start otherwise.
+	if r, ok := p.out.(interface{ ResumeAudio() error }); ok {
+		if err := r.ResumeAudio(); err != nil {
+			if ctx.Err() == nil {
+				send(intMsg{kind: intEnded, err: fmt.Errorf("output resume: %w", err)})
+			}
+			return
 		}
-		return
-	}
-	defer p.out.Close()
-
-	if err := p.out.Start(ctx); err != nil {
-		if ctx.Err() == nil {
-			send(intMsg{kind: intEnded, err: fmt.Errorf("output start: %w", err)})
+	} else {
+		if err := p.out.Start(ctx); err != nil {
+			if ctx.Err() == nil {
+				send(intMsg{kind: intEnded, err: fmt.Errorf("output start: %w", err)})
+			}
+			return
 		}
-		return
 	}
-	defer p.out.Stop(context.Background()) //nolint:contextcheck
+	// At session end: pause (not stop) so the device stays warm for the next session.
+	defer func() {
+		if pa, ok := p.out.(interface{ PauseAudio() error }); ok {
+			_ = pa.PauseAudio()
+		} else {
+			_ = p.out.Stop(context.Background()) //nolint:contextcheck
+		}
+	}()
 
 	buf := make([]float32, p.bufFrames*p.channels)
 	posMS := startMS
@@ -377,7 +436,8 @@ type extCmd struct {
 type intMsgKind int
 
 const (
-	intProgress intMsgKind = iota
+	intDuration intMsgKind = iota // duration probed in background; posMS field carries durMS
+	intProgress
 	intEnded
 )
 

@@ -14,6 +14,7 @@ import (
 	apptray "github.com/Waelson/radio-playout-engine/cmd/playout-engine/systray"
 	appwebview "github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 	"github.com/Waelson/radio-playout-engine/internal/api"
+	"github.com/Waelson/radio-playout-engine/internal/cue"
 	"github.com/Waelson/radio-playout-engine/internal/preview"
 	apiws "github.com/Waelson/radio-playout-engine/internal/api/ws"
 	"github.com/Waelson/radio-playout-engine/internal/api/handlers"
@@ -44,6 +45,7 @@ func main() {
 	// Supports both -startup=cli and -startup cli forms.
 	// The flag is stripped from args so config.Load() never sees it.
 	startup := "ui"
+	mode := ""
 	webviewURL := ""
 	webviewTitle := "Playout"
 	webviewWidth := 730
@@ -60,6 +62,8 @@ func main() {
 		case (a == "--startup" || a == "-startup") && i+1 < len(raw):
 			startup = raw[i+1]
 			i++ // skip value
+		case len(a) > 7 && a[:7] == "--mode=":
+			mode = a[7:]
 		case len(a) > 10 && a[:10] == "--webview=":
 			webviewURL = a[10:]
 		case len(a) > 16 && a[:16] == "--webview-title=":
@@ -80,6 +84,15 @@ func main() {
 	// Subprocess mode: open a native WKWebView window and exit.
 	if webviewURL != "" {
 		appwebview.RunWebview(webviewURL, webviewTitle, webviewWidth, webviewHeight)
+		return
+	}
+
+	// Subprocess mode: run the isolated CUE (preview) player and exit.
+	if mode == "cue-player" {
+		if err := runCuePlayer(filteredArgs); err != nil {
+			slog.Error("cue player fatal", "error", err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -278,26 +291,21 @@ func run(args []string) error {
 	disp.Handle(commands.CmdExitPanic, pbMgr.HandleExitPanic)
 	disp.Handle(commands.CmdTriggerHotButton, pbMgr.HandleTriggerHotButton)
 
-	// 11b. Preview player — optional, isolated from the main playback pipeline.
+	// 11b. Preview (CUE) player — optional, runs as an isolated subprocess so
+	// its CoreAudio client lives in a separate Mach task. This prevents
+	// HAL notifications from the BT/A2DP preview device from disrupting the
+	// main engine's AudioQueue during preview start/stop.
 	previewDeps := api.PreviewDeps{Enabled: cfg.Preview.Enabled}
 	if cfg.Preview.Enabled {
-		previewOut, err := outfactory.NewPreviewOutputDevice(cfg)
-		if err != nil {
-			return fmt.Errorf("preview output: %w", err)
-		}
-		prevPlayer := preview.New(evtBus, dec, previewOut, preview.AudioConfig{
-			SampleRate:   cfg.Audio.SampleRate,
-			Channels:     cfg.Audio.Channels,
-			BufferFrames: cfg.Audio.BufferFrames,
-		}, log)
-		disp.Handle(commands.CmdPreviewPlay,   prevPlayer.HandlePlay)
-		disp.Handle(commands.CmdPreviewPause,  prevPlayer.HandlePause)
-		disp.Handle(commands.CmdPreviewResume, prevPlayer.HandleResume)
-		disp.Handle(commands.CmdPreviewStop,   prevPlayer.HandleStop)
-		disp.Handle(commands.CmdPreviewSeek,   prevPlayer.HandleSeek)
-		previewDeps.GetStatus = func() any { return prevPlayer.GetStatus() }
-		go prevPlayer.Run(ctx)
-		log.Info("preview player enabled", "driver", cfg.Preview.OutputDriver)
+		prevProxy := cue.NewProxy(evtBus, args, log)
+		disp.Handle(commands.CmdPreviewPlay,   prevProxy.HandlePlay)
+		disp.Handle(commands.CmdPreviewPause,  prevProxy.HandlePause)
+		disp.Handle(commands.CmdPreviewResume, prevProxy.HandleResume)
+		disp.Handle(commands.CmdPreviewStop,   prevProxy.HandleStop)
+		disp.Handle(commands.CmdPreviewSeek,   prevProxy.HandleSeek)
+		previewDeps.GetStatus = func() any { return prevProxy.GetStatus() }
+		go prevProxy.Run(ctx)
+		log.Info("preview player enabled as subprocess", "driver", cfg.Preview.OutputDriver)
 	}
 
 	// 12. WebSocket Hub — fans out events to connected clients.
@@ -429,3 +437,32 @@ func run(args []string) error {
 	return nil
 }
 
+// runCuePlayer is the entry point for --mode=cue-player.
+// It loads the same config as the main engine (forwarding filteredArgs so
+// --config= and other flags are honoured), builds the preview output device,
+// and delegates to cue.RunCuePlayer which blocks until stdin closes or
+// {"cmd":"quit"} is received.
+func runCuePlayer(args []string) error {
+	cfg, err := config.Load(args)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	log := logging.New(cfg.Logging.Level, cfg.Logging.Format, os.Stderr)
+	log = logging.With(log, "cue")
+
+	out, err := outfactory.NewPreviewOutputDevice(cfg)
+	if err != nil {
+		return fmt.Errorf("preview output device: %w", err)
+	}
+
+	audioCfg := preview.AudioConfig{
+		DeviceID:     cfg.Preview.OutputDevice,
+		SampleRate:   cfg.Audio.SampleRate,
+		Channels:     cfg.Audio.Channels,
+		BufferFrames: cfg.Audio.BufferFrames,
+	}
+
+	cue.RunCuePlayer(out, audioCfg, log)
+	return nil
+}

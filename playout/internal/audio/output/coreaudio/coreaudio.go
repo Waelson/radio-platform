@@ -317,6 +317,7 @@ func (o *Output) RestartAudio() error {
 }
 
 // Stop halts the AudioQueue immediately (does not drain remaining buffers).
+// Resets the accumulation buffer so no partial frames leak into the next session.
 func (o *Output) Stop(_ context.Context) error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -328,6 +329,7 @@ func (o *Output) Stop(_ context.Context) error {
 		return fmt.Errorf("coreaudio: AudioQueueStop: OSStatus %d", int(status))
 	}
 	o.started = false
+	o.accumN = 0 // discard any partial accumulation buffer to prevent pop/click on next Start
 	return nil
 }
 
