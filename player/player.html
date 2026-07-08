@@ -715,10 +715,7 @@ input[type=range].vol-slider:disabled {
 .adv-row--previewing td { background: rgba(0,188,212,0.07) !important; }
 .adv-row--previewing .adv-td-actions button:first-child { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-empty { padding: 40px; text-align: center; color: var(--text-dim); font-size: 13px; }
-.adv-drag-handle { cursor: grab; color: rgba(255,255,255,0.2); font-size: 14px; user-select: none; padding: 0 4px; }
-.adv-drag-handle:hover { color: rgba(255,255,255,0.55); }
-.adv-drag-handle:active { cursor: grabbing; }
-.adv-table tr.adv-dnd-dragging td { opacity: 0.35; }
+
 .adv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .adv-pagination button { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 .adv-pagination button:hover:not(:disabled) { background: var(--cyan); color: #000; border-color: var(--cyan); }
@@ -2782,29 +2779,9 @@ function dndStart(ev, type, id) {
 }
 
 function dndEnd() {
-  _dnd = { type: null, itemId: null, breakId: null, track: null };
+  _dnd = { type: null, itemId: null, breakId: null };
   document.querySelectorAll('.dnd-dragging, .dnd-over')
     .forEach(r => r.classList.remove('dnd-dragging', 'dnd-over'));
-  // Restore pointer-events on backdrop and modal
-  const bd = document.getElementById('advBackdrop');
-  if (bd) bd.style.pointerEvents = '';
-  const modal = document.getElementById('advModal');
-  if (modal) modal.style.pointerEvents = '';
-}
-
-// 4.2 — Start drag from a search-result row
-function dndStartSearch(ev, idx) {
-  const t = _advTracks[idx];
-  if (!t) return;
-  _dnd = { type: 'search-result', itemId: null, breakId: null, track: t };
-  ev.dataTransfer.effectAllowed = 'move';
-  ev.dataTransfer.setData('text/plain', t.title || '');
-  // Make both backdrop AND modal transparent to pointer/drag events so the
-  // queue tbody underneath can receive dragover and drop
-  const bd = document.getElementById('advBackdrop');
-  if (bd) bd.style.pointerEvents = 'none';
-  const modal = document.getElementById('advModal');
-  if (modal) modal.style.pointerEvents = 'none';
 }
 
 // tbody-level drag delegation — large hit area, no gap between item rows and zones
@@ -2831,39 +2808,6 @@ async function tableDrop(ev) {
   if (!_dnd.type) return;
   const active  = document.querySelector('tr.dnd-drop-zone.dnd-over');
   const afterId = active ? (active.dataset.afterId ?? '') : '';
-
-  // Search-result drag: enqueue new track at target position
-  if (_dnd.type === 'search-result') {
-    const t = _dnd.track;
-    dndEnd();
-    if (!t) return;
-    try {
-      let r, j;
-      if (afterId) {
-        // Insert after a specific queue item
-        r = await fetch(API_URL + '/v1/queue/insert-after', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            after_queue_item_id: afterId,
-            item: { path: t.path, type: t.type, title: t.title, artist: t.artist || '', duration_ms: t.duration_ms || 0 },
-          }),
-        });
-      } else {
-        // No specific position — append to queue
-        r = await fetch(API_URL + '/v1/queue/enqueue', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: [{ path: t.path, type: t.type, title: t.title, artist: t.artist || '', duration_ms: t.duration_ms || 0 }] }),
-        });
-      }
-      j = await r.json();
-      const ok = j.ok !== false && j.accepted !== false;
-      showToast(ok, ok ? `✓ "${t.title}" inserida na fila` : (j.reason || 'Comando rejeitado'));
-      if (ok) fetchQueue();
-    } catch(e) { showToast(false, 'Erro de rede'); }
-    return;
-  }
 
   const body = { after_id: afterId };
   if (_dnd.type === 'item')  body.queue_item_id = _dnd.itemId;
@@ -3607,13 +3551,6 @@ window.addEventListener('load', () => {
   fetchInitialVolumes();
   document.addEventListener('mouseup',  () => { _draggingMain = false; _draggingPreview = false; });
   document.addEventListener('touchend', () => { _draggingMain = false; _draggingPreview = false; });
-  // Safety net: always restore modal pointer-events if drag ends/cancels unexpectedly
-  document.addEventListener('dragend', () => {
-    const modal = document.getElementById('advModal');
-    if (modal) modal.style.pointerEvents = '';
-    const bd = document.getElementById('advBackdrop');
-    if (bd) bd.style.pointerEvents = '';
-  });
 });
 
 /* ─── Hot Buttons Drawer ────────────────────────────────────── */
@@ -3793,7 +3730,7 @@ function advRender() {
 
   const rows = _advTracks.map((t, i) => {
     const badgeClass = { MUSIC:'music', VINHETA:'vinheta', JINGLE:'jingle', SPOT:'spot', EFEITOS:'efeitos' }[t.type] || '';
-    return `<tr draggable="true" ondragstart="dndStartSearch(event,${i})" ondragend="dndEnd()">
+    return `<tr>
       <td class="adv-td-title" title="${escHtml(t.title || '')}">${escHtml(t.title || '—')}</td>
       <td class="adv-td-artist" title="${escHtml(t.artist || '')}">${escHtml(t.artist || '—')}</td>
       <td class="adv-td-album"  title="${escHtml(t.album  || '')}">${escHtml(t.album  || '—')}</td>
@@ -3802,7 +3739,6 @@ function advRender() {
       <td class="adv-td-actions">
         <button title="Preview (CUE)" class="lib-cue-btn" id="adv-cue-${i}" onclick="advTogglePreview(${i})">◎</button>
         <button title="Adicionar à fila" onclick="advEnqueue(${i})">+ Fila</button>
-        <span class="adv-drag-handle" title="Arrastar para a fila">⠿</span>
       </td>
     </tr>`;
   }).join('');
