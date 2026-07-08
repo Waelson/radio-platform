@@ -99,8 +99,8 @@ html, body {
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 @keyframes rowPulse {
-  0%, 100% { background: rgba(32,230,255,.06); }
-  50%       { background: rgba(32,230,255,.28); }
+  0%, 100% { background: linear-gradient(180deg, #162233 0%, #0d1a28 55%, #07101c 100%); }
+  50%       { background: linear-gradient(180deg, #1c3a50 0%, #102435 55%, #080f1a 100%); }
 }
 
 .badge {
@@ -796,11 +796,18 @@ input[type=range].vol-slider:disabled {
   border-bottom: 1px solid var(--border); white-space: nowrap; z-index: 1;
 }
 .queue-table td {
-  padding: 8px 12px; border-bottom: 1px solid #181818;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(20,170,210,0.28);
   font-size: 15px; color: var(--text);
   white-space: nowrap; overflow: hidden; max-width: 200px; text-overflow: ellipsis;
+  background: linear-gradient(180deg, #18222e 0%, #0e1820 55%, #080e18 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.queue-table tr:hover td { background: #151515; }
+.queue-table tr:hover td {
+  background: linear-gradient(180deg, #1e2e3e 0%, #122030 55%, #0a1220 100%);
+  border-bottom-color: rgba(32,200,240,0.50);
+}
 .queue-table tr.playing td { animation: rowPulse 2.4s ease-in-out infinite; }
 .queue-table tr.played td  { opacity: 0.35; }
 .queue-table tr.failed td  { opacity: 0.45; color: var(--red); }
@@ -825,8 +832,8 @@ input[type=range].vol-slider:disabled {
 .q-type.ID         { background: #001a1a; color: var(--cyan); }
 .q-type.HORA_CERTA { background: #1a1a1a; color: #dddddd; }
 
-.queue-table tr.hora-certa td { background: #0d0d0d; }
-.queue-table tr.hora-certa:hover td { background: #151515; }
+.queue-table tr.hora-certa td { background: linear-gradient(180deg, #1a1500 0%, #0f0e08 55%, #080804 100%); }
+.queue-table tr.hora-certa:hover td { background: linear-gradient(180deg, #252000 0%, #141208 55%, #0a0a04 100%); }
 
 .q-status {
   font-size: 12px; font-weight: 600; letter-spacing: 0.5px; color: var(--text-dim);
