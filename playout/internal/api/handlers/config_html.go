@@ -28,7 +28,7 @@ var configPageTpl = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RadioCore — Configuração</title>
+  <title>RadioCore</title>
   <style>
     :root {
       --bg:        #070807;
@@ -294,7 +294,7 @@ var configPageTpl = `<!DOCTYPE html>
 <header>
   <div style="display:flex;align-items:center;gap:10px;">
     <img src="{{LOGO_URI}}" alt="RadioCore" class="header-logo">
-    <h1>Configuração do Playout</h1>
+    <h1>Configuração</h1>
   </div>
   <div class="engine-indicator">
     <div id="engineDot" class="engine-dot"></div>
@@ -379,16 +379,6 @@ var configPageTpl = `<!DOCTYPE html>
     <!-- ÁUDIO -->
     <div id="p-audio" class="panel">
       <div class="section-title">Áudio</div>
-      <div class="field">
-        <label class="lbl">Driver de saída principal</label>
-        <div class="radio-group" data-name="audio-driver">
-          <label class="radio-pill"><input type="radio" name="audio-driver" value="null" /> null</label>
-          <label class="radio-pill"><input type="radio" name="audio-driver" value="file" /> file</label>
-          <label class="radio-pill" id="pill-audio-coreaudio"><input type="radio" name="audio-driver" value="coreaudio" /> coreaudio</label>
-          <label class="radio-pill"><input type="radio" name="audio-driver" value="portaudio" /> portaudio</label>
-        </div>
-        <div class="hint" style="margin-top:6px">* coreaudio exibido apenas em macOS</div>
-      </div>
       <div class="field">
         <label class="lbl">Dispositivo de saída principal</label>
         <select id="audio-device"></select>
@@ -678,15 +668,6 @@ var configPageTpl = `<!DOCTYPE html>
         </div>
       </label>
       <div class="field" style="margin-top:16px">
-        <label class="lbl">Driver de saída do preview</label>
-        <div class="radio-group" data-name="prev-driver">
-          <label class="radio-pill"><input type="radio" name="prev-driver" value="null" /> null</label>
-          <label class="radio-pill" id="pill-prev-coreaudio"><input type="radio" name="prev-driver" value="coreaudio" /> coreaudio</label>
-          <label class="radio-pill"><input type="radio" name="prev-driver" value="portaudio" /> portaudio</label>
-        </div>
-        <div class="hint" style="margin-top:6px">* coreaudio exibido apenas em macOS. Independente do driver de saída principal.</div>
-      </div>
-      <div class="field">
         <label class="lbl">Dispositivo de preview (cue)</label>
         <select id="prev-device"></select>
         <div class="hint">Deve ser diferente do dispositivo de saída principal. Vazio = padrão do driver.</div>
@@ -894,7 +875,6 @@ var configPageTpl = `<!DOCTYPE html>
 
     var au = cfg.audio || {};
     var auo = au.output || {};
-    setRadio('audio-driver', auo.driver);
     audioDeviceID = auo.device_id || '';
     setCheck('audio-allow-null', auo.allow_null_output);
     setVal('audio-sample-rate', au.sample_rate);
@@ -954,7 +934,6 @@ var configPageTpl = `<!DOCTYPE html>
 
     var pv = cfg.preview || {};
     setCheck('prev-enabled', pv.enabled);
-    setRadio('prev-driver', pv.output_driver);
     prevDeviceID = pv.output_device || '';
 
     var sc = cfg.scheduler || {};
@@ -968,8 +947,8 @@ var configPageTpl = `<!DOCTYPE html>
   function loadDevices() {
     return fetch('/v1/devices')
       .then(function(r) { return r.json(); })
-      .then(function(devs) {
-        if (!Array.isArray(devs)) devs = [];
+      .then(function(resp) {
+        var devs = Array.isArray(resp) ? resp : (Array.isArray(resp.devices) ? resp.devices : []);
         populateDeviceSelect('audio-device', devs, audioDeviceID);
         populateDeviceSelect('prev-device', devs, prevDeviceID);
       })
@@ -1009,7 +988,6 @@ var configPageTpl = `<!DOCTYPE html>
         channels:      safeInt(getVal('audio-channels'), 2),
         buffer_frames: safeInt(getVal('audio-buffer-frames'), 2048),
         output: {
-          driver:           getRadio('audio-driver') || 'null',
           device_id:        getVal('audio-device') || 'default',
           allow_null_output: getCheck('audio-allow-null')
         }
@@ -1068,7 +1046,6 @@ var configPageTpl = `<!DOCTYPE html>
       },
       preview: {
         enabled:       getCheck('prev-enabled'),
-        output_driver: getRadio('prev-driver') || 'null',
         output_device: getVal('prev-device')
       },
       scheduler: {

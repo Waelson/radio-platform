@@ -161,7 +161,7 @@ func run(args []string) error {
 		"version", Version,
 		"engine_id", cfg.Engine.ID,
 		"api_addr", fmt.Sprintf("%s:%d", cfg.API.Host, cfg.API.Port),
-		"audio_driver", cfg.Audio.Output.Driver,
+		"audio_driver", outfactory.BuiltinDriverName(),
 		"log_level", cfg.Logging.Level,
 	)
 
@@ -305,7 +305,7 @@ func run(args []string) error {
 		disp.Handle(commands.CmdPreviewSeek,   prevProxy.HandleSeek)
 		previewDeps.GetStatus = func() any { return prevProxy.GetStatus() }
 		go prevProxy.Run(ctx)
-		log.Info("preview player enabled as subprocess", "driver", cfg.Preview.OutputDriver)
+		log.Info("preview player enabled as subprocess", "driver", outfactory.BuiltinDriverName())
 	}
 
 	// 12. WebSocket Hub — fans out events to connected clients.
@@ -322,6 +322,7 @@ func run(args []string) error {
 		EngineID:       cfg.Engine.ID,
 		Version:        Version,
 		StartTime:      time.Now(),
+		AudioDriver:    outfactory.BuiltinDriverName(),
 	}
 	devicesDeps := api.DevicesDeps{}
 	if lister, ok := out.(output.DeviceLister); ok {

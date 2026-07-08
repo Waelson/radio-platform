@@ -36,7 +36,7 @@ var statusPageTpl = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RadioCore - Status</title>
+  <title>RadioCore</title>
   <style>
     :root {
       --bg: #070807;
@@ -164,7 +164,7 @@ var statusPageTpl = `<!DOCTYPE html>
 <body>
   <div class="page-header">
     <img src="{{LOGO_URI}}" alt="RadioCore">
-    <h1>Status do Playout</h1>
+    <h1>Status</h1>
   </div>
 
   <div class="hero">
@@ -196,9 +196,9 @@ var statusPageTpl = `<!DOCTYPE html>
       <div class="card-title">Processo</div>
       <div class="card-body">
         <div class="row"><div class="k">Sistema</div><div id="os" class="v mono">—</div></div>
-        <div class="row"><div class="k">Uptime</div><div id="uptime" class="v">—</div></div>
         <div class="row"><div class="k">PID</div><div id="pid" class="v mono">—</div></div>
         <div class="row"><div class="k">Versão</div><div id="version" class="v mono">—</div></div>
+        <div class="row"><div class="k">Driver de áudio</div><div id="audioDriver" class="v mono">—</div></div>
       </div>
     </div>
     <div class="card">
@@ -267,7 +267,6 @@ var statusPageTpl = `<!DOCTYPE html>
       $('heroDesc').textContent = stateDesc[state] || '';
       $('heroUptime').textContent = uptime;
       $('heroNow').textContent = now();
-      $('uptime').textContent = uptime;
     }
 
     async function loadInfo() {
@@ -276,6 +275,7 @@ var statusPageTpl = `<!DOCTYPE html>
       $('pid').textContent = d.pid;
       $('version').textContent = d.version;
       $('os').textContent = d.os || '—';
+      $('audioDriver').textContent = d.audio_driver || '—';
       $('localIp').textContent = d.local_ip || '—';
       const host = location.host;
       $('port').textContent = location.port || '80';

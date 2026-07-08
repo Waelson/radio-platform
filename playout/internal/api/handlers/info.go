@@ -10,27 +10,29 @@ import (
 )
 
 type infoResponse struct {
-	EngineID  string    `json:"engine_id"`
-	PID       int       `json:"pid"`
-	Version   string    `json:"version"`
-	StartTime time.Time `json:"start_time"`
-	LocalIP   string    `json:"local_ip"`
-	OS        string    `json:"os"`
+	EngineID    string    `json:"engine_id"`
+	PID         int       `json:"pid"`
+	Version     string    `json:"version"`
+	StartTime   time.Time `json:"start_time"`
+	LocalIP     string    `json:"local_ip"`
+	OS          string    `json:"os"`
+	AudioDriver string    `json:"audio_driver"`
 }
 
 // Info returns a handler for GET /v1/info that exposes engine identity,
-// PID, version, start time and local network IP. Used by the client-side
-// status SPA to compute uptime and display process information.
-func Info(engineID, version string, startTime time.Time) http.HandlerFunc {
+// PID, version, start time, local network IP and the compiled audio driver.
+// Used by the client-side status SPA to compute uptime and display process information.
+func Info(engineID, version string, startTime time.Time, audioDriver string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(infoResponse{
-			EngineID:  engineID,
-			PID:       os.Getpid(),
-			OS:        runtime.GOOS + "/" + runtime.GOARCH,
-			Version:   version,
-			StartTime: startTime,
-			LocalIP:   localNetworkIP(),
+			EngineID:    engineID,
+			PID:         os.Getpid(),
+			OS:          runtime.GOOS + "/" + runtime.GOARCH,
+			Version:     version,
+			StartTime:   startTime,
+			LocalIP:     localNetworkIP(),
+			AudioDriver: audioDriver,
 		})
 	}
 }

@@ -8,7 +8,7 @@ APP_BUNDLE := dist/$(APP_NAME).app
 ICON_SRC   := icon.png
 PLIST_TMPL := cmd/playout-engine/Info.plist.tmpl
 
-.PHONY: build build-portaudio build-coreaudio dist-mac sync-icons test test-race vet clean run run-portaudio help
+.PHONY: build build-portaudio build-coreaudio dist-mac dist-mac-portaudio sync-icons test test-race vet clean run run-portaudio help
 
 ## build: compile without PortAudio (pure Go, no CGO)
 build:
@@ -21,6 +21,32 @@ build-portaudio:
 ## build-coreaudio: compile with CoreAudio (macOS only)
 build-coreaudio:
 	go build -tags coreaudio $(LDFLAGS) -o radiocore $(CMD)
+
+## dist-mac-portaudio: build macOS .app bundle with PortAudio driver
+dist-mac-portaudio: sync-icons
+	go build -tags portaudio $(LDFLAGS) -o radiocore $(CMD)
+	@echo "→ Criando bundle: $(APP_BUNDLE)"
+	@rm -rf "$(APP_BUNDLE)"
+	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
+	@mkdir -p "$(APP_BUNDLE)/Contents/Resources"
+	@cp radiocore "$(APP_BUNDLE)/Contents/MacOS/radiocore"
+	@sed "s/{{VERSION}}/$(VERSION)/g" "$(PLIST_TMPL)" > "$(APP_BUNDLE)/Contents/Info.plist"
+	@rm -rf /tmp/AppIcon.iconset
+	@mkdir /tmp/AppIcon.iconset
+	@sips -z 16   16   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_16x16.png       2>/dev/null
+	@sips -z 32   32   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_16x16@2x.png    2>/dev/null
+	@sips -z 32   32   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_32x32.png       2>/dev/null
+	@sips -z 64   64   "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_32x32@2x.png    2>/dev/null
+	@sips -z 128  128  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_128x128.png     2>/dev/null
+	@sips -z 256  256  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_128x128@2x.png  2>/dev/null
+	@sips -z 256  256  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_256x256.png     2>/dev/null
+	@sips -z 512  512  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_256x256@2x.png  2>/dev/null
+	@sips -z 512  512  "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_512x512.png     2>/dev/null
+	@sips -z 1024 1024 "$(ICON_SRC)" --out /tmp/AppIcon.iconset/icon_512x512@2x.png  2>/dev/null
+	@iconutil -c icns /tmp/AppIcon.iconset -o "$(APP_BUNDLE)/Contents/Resources/AppIcon.icns"
+	@rm -rf /tmp/AppIcon.iconset
+	@echo "✓ Bundle pronto: $(APP_BUNDLE)"
+	@echo "  Arraste para /Applications ou clique 2x para testar."
 
 ## dist-mac: build macOS .app bundle in dist/
 ## O binário é o CFBundleExecutable direto (sem shell script wrapper),

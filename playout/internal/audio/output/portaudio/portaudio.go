@@ -173,6 +173,34 @@ func (o *Output) Stop(_ context.Context) error {
 	return nil
 }
 
+// PauseAudio suspends the stream without closing it.
+// Implements the optional PauseAudio/ResumeAudio contract used by preview.Player
+// to keep the device warm between cue sessions.
+func (o *Output) PauseAudio() error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.opened || o.stream == nil {
+		return nil
+	}
+	if err := o.stream.Stop(); err != nil {
+		return fmt.Errorf("portaudio: pause (stop): %w", err)
+	}
+	return nil
+}
+
+// ResumeAudio restarts a stream previously suspended by PauseAudio.
+func (o *Output) ResumeAudio() error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.opened || o.stream == nil {
+		return fmt.Errorf("portaudio: resume: stream not open")
+	}
+	if err := o.stream.Start(); err != nil {
+		return fmt.Errorf("portaudio: resume (start): %w", err)
+	}
+	return nil
+}
+
 // Close closes the output stream. The PortAudio library stays initialised;
 // call Shutdown() to release it. After Close, Open may be called again.
 func (o *Output) Close() error {
@@ -244,6 +272,9 @@ func (o *Output) ListDevices() ([]output.DeviceInfo, error) {
 }
 
 // resolveDevice returns the PortAudio DeviceInfo for the requested device ID.
+// When matching by name, only devices with MaxOutputChannels > 0 are considered
+// to avoid returning the input-only variant of a device (e.g. AirPods microphone)
+// when an output stream is needed.
 func (o *Output) resolveDevice(deviceID string) (*pa.DeviceInfo, error) {
 	if deviceID == "" || deviceID == "default" {
 		dev, err := pa.DefaultOutputDevice()
@@ -257,9 +288,9 @@ func (o *Output) resolveDevice(deviceID string) (*pa.DeviceInfo, error) {
 		return nil, fmt.Errorf("portaudio: list devices: %w", err)
 	}
 	for _, d := range devs {
-		if d.Name == deviceID {
+		if d.Name == deviceID && d.MaxOutputChannels > 0 {
 			return d, nil
 		}
 	}
-	return nil, fmt.Errorf("portaudio: device %q not found", deviceID)
+	return nil, fmt.Errorf("portaudio: output device %q not found", deviceID)
 }

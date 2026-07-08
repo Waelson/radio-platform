@@ -22,7 +22,6 @@ func minimalValidBody(t *testing.T) []byte {
 	cfg.Audio.SampleRate = 48000
 	cfg.Audio.Channels = 2
 	cfg.Audio.BufferFrames = 2048
-	cfg.Audio.Output.Driver = "null"
 	cfg.Logging.Level = "info"
 	cfg.Logging.Format = "json"
 	b, err := json.Marshal(cfg)
@@ -170,7 +169,6 @@ func TestUpdateConfig_InvalidPort_Returns400_NoWrite(t *testing.T) {
 	cfg.Audio.SampleRate = 48000
 	cfg.Audio.Channels = 2
 	cfg.Audio.BufferFrames = 2048
-	cfg.Audio.Output.Driver = "null"
 	cfg.Logging.Level = "info"
 	cfg.Logging.Format = "json"
 	body, _ := json.Marshal(cfg)
@@ -193,28 +191,6 @@ func TestUpdateConfig_InvalidPort_Returns400_NoWrite(t *testing.T) {
 	}
 }
 
-func TestUpdateConfig_InvalidDriver_Returns400(t *testing.T) {
-	path := writeTempConfigYAML(t, "# original\n")
-
-	cfg := config.Config{}
-	cfg.API.Port = 8080
-	cfg.Audio.SampleRate = 48000
-	cfg.Audio.Channels = 2
-	cfg.Audio.BufferFrames = 2048
-	cfg.Audio.Output.Driver = "magic_driver"
-	cfg.Logging.Level = "info"
-	cfg.Logging.Format = "json"
-	body, _ := json.Marshal(cfg)
-
-	req := httptest.NewRequest(http.MethodPut, "/v1/config", bytes.NewReader(body))
-	rec := httptest.NewRecorder()
-	handlers.UpdateConfig(path)(rec, req)
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", rec.Code)
-	}
-}
-
 func TestUpdateConfig_InvalidLogLevel_Returns400(t *testing.T) {
 	path := writeTempConfigYAML(t, "# original\n")
 
@@ -223,7 +199,6 @@ func TestUpdateConfig_InvalidLogLevel_Returns400(t *testing.T) {
 	cfg.Audio.SampleRate = 48000
 	cfg.Audio.Channels = 2
 	cfg.Audio.BufferFrames = 2048
-	cfg.Audio.Output.Driver = "null"
 	cfg.Logging.Level = "verbose" // invalid
 	cfg.Logging.Format = "json"
 	body, _ := json.Marshal(cfg)

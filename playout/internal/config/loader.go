@@ -85,7 +85,6 @@ func defaults() *Config {
 			Channels:     2,
 			BufferFrames: 2048,
 			Output: OutputConfig{
-				Driver:          "null",
 				DeviceID:        "default",
 				AllowNullOutput: true,
 			},
@@ -117,7 +116,6 @@ func defaults() *Config {
 		},
 		Preview: PreviewConfig{
 			Enabled:      false,
-			OutputDriver: "null",
 			OutputDevice: "",
 		},
 		Scheduler: SchedulerConfig{
@@ -188,9 +186,6 @@ func applyEnv(cfg *Config) {
 			cfg.Audio.Channels = n
 		}
 	}
-	if v := os.Getenv("PLAYOUT_AUDIO_OUTPUT_DRIVER"); v != "" {
-		cfg.Audio.Output.Driver = v
-	}
 	if v := os.Getenv("PLAYOUT_AUDIO_OUTPUT_DEVICE"); v != "" {
 		cfg.Audio.Output.DeviceID = v
 	}
@@ -199,9 +194,6 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("RADIOCORE_PREVIEW_ENABLED"); v != "" {
 		cfg.Preview.Enabled = v == "true" || v == "1"
-	}
-	if v := os.Getenv("RADIOCORE_PREVIEW_OUTPUT_DRIVER"); v != "" {
-		cfg.Preview.OutputDriver = v
 	}
 	if v := os.Getenv("RADIOCORE_PREVIEW_OUTPUT_DEVICE"); v != "" {
 		cfg.Preview.OutputDevice = v
@@ -230,12 +222,6 @@ func Validate(cfg *Config) error {
 	}
 	if cfg.Audio.BufferFrames <= 0 {
 		return fmt.Errorf("audio.buffer_frames must be positive, got %d", cfg.Audio.BufferFrames)
-	}
-
-	validDrivers := map[string]bool{"null": true, "portaudio": true, "file": true, "coreaudio": true}
-	if !validDrivers[strings.ToLower(cfg.Audio.Output.Driver)] {
-		return fmt.Errorf("audio.output.driver %q is not supported (valid: null, portaudio, file, coreaudio)",
-			cfg.Audio.Output.Driver)
 	}
 
 	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}

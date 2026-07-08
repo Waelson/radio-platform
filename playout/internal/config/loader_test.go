@@ -135,18 +135,6 @@ func TestLoad_InvalidPort(t *testing.T) {
 	}
 }
 
-func TestLoad_InvalidDriver(t *testing.T) {
-	yaml := `
-audio:
-  output:
-    driver: "magic_driver"
-`
-	_, err := config.Load([]string{"--config", writeTempYAML(t, yaml)})
-	if err == nil {
-		t.Error("expected error for unknown driver, got nil")
-	}
-}
-
 func TestLoad_InvalidLogLevel(t *testing.T) {
 	yaml := `
 audio:

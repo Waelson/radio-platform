@@ -30,6 +30,7 @@ type Config struct {
 	EngineID       string
 	Version        string
 	StartTime      time.Time // used by the /status SPA and /v1/info
+	AudioDriver    string    // driver compiled into this binary: "coreaudio" | "portaudio" | "wasapi" | "null"
 }
 
 // PreviewDeps carries optional preview player dependencies for the API server.
@@ -120,7 +121,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/ready", handlers.Ready(s.stateMgr))
 	mux.HandleFunc("GET /v1/status", handlers.Status(s.stateMgr))
 	mux.HandleFunc("GET /v1/build", handlers.Build(s.cfg.Version))
-	mux.HandleFunc("GET /v1/info", handlers.Info(s.cfg.EngineID, s.cfg.Version, s.cfg.StartTime))
+	mux.HandleFunc("GET /v1/info", handlers.Info(s.cfg.EngineID, s.cfg.Version, s.cfg.StartTime, s.cfg.AudioDriver))
 	mux.HandleFunc("GET /status", handlers.StatusHTML(s.cfg.Port, s.cfg.Version, s.cfg.StartTime, s.stateMgr))
 
 	// Queue

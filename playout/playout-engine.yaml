@@ -53,18 +53,16 @@ audio:
   buffer_frames: 2048
 
   output:
-    # Driver de saída de áudio.
-    # Opções:
-    #   "null"       — descarta o áudio (útil para testes sem dispositivo físico)
-    #   "file"       — grava o áudio em um arquivo PCM
-    #   "portaudio"  — saída via PortAudio (requer: go build -tags portaudio)
-    #   "coreaudio"  — driver nativo macOS via AudioQueue, sem dependências externas
-    #                  (requer: go build -tags coreaudio; apenas macOS)
-    driver: "coreaudio"
+    # O driver de áudio é determinado pela build tag usada na compilação.
+    # Para trocar o driver, recompile com a tag correspondente:
+    #   -tags coreaudio   — driver nativo macOS (apenas macOS)
+    #   -tags portaudio   — PortAudio (Linux, Windows, macOS)
+    #   -tags wasapi      — WASAPI nativo (apenas Windows)
+    # Sem nenhuma tag: NullOutput (descarta o áudio — útil para testes).
 
     # Identificador do dispositivo de áudio. "default" usa o dispositivo padrão
     # do sistema operacional.
-    device_id: "Alto-falantes (MacBook Pro)"
+    device_id: "default"
 
     # Quando true, o engine degrada para NullOutput se o dispositivo de áudio
     # falhar ao abrir, em vez de encerrar com erro.
@@ -240,11 +238,6 @@ preview:
   # Habilita o recurso de preview. Quando false, os endpoints /v1/preview/*
   # retornam 503 Service Unavailable.
   enabled: true
-
-  # Driver de saída para o dispositivo de preview.
-  # Valores: "null" (silencioso), "coreaudio" (macOS), "portaudio" (multiplataforma)
-  # Use "null" para testar sem um segundo dispositivo de áudio.
-  output_driver: "coreaudio"
 
   # Identificador do dispositivo de saída para preview.
   # Vazio = dispositivo padrão do driver selecionado.

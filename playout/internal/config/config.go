@@ -46,9 +46,9 @@ type AudioConfig struct {
 	Output       OutputConfig `yaml:"output"        json:"output"`
 }
 
-// OutputConfig selects and configures the audio output adapter.
+// OutputConfig configures the audio output adapter.
+// The driver is determined at compile-time via build tag (-tags coreaudio, -tags portaudio, etc.).
 type OutputConfig struct {
-	Driver          string `yaml:"driver"            json:"driver"`           // null | portaudio | file
 	DeviceID        string `yaml:"device_id"         json:"device_id"`        // "default" or platform-specific ID
 	AllowNullOutput bool   `yaml:"allow_null_output" json:"allow_null_output"` // degrade gracefully when device fails
 }
@@ -169,15 +169,11 @@ type SchedulerConfig struct {
 // The preview player is completely isolated from the main playback pipeline —
 // it uses a dedicated output device so the presenter can monitor audio
 // without affecting the on-air signal.
+// The audio driver is determined at compile-time via build tag, same as the main output.
 type PreviewConfig struct {
 	// Enabled controls whether the preview feature is available.
 	// When false, all /v1/preview/* endpoints return 503.
 	Enabled bool `yaml:"enabled" json:"enabled"`
-
-	// OutputDriver selects the audio backend for preview playback.
-	// Valid values: "null" | "coreaudio" | "portaudio" | "file"
-	// Defaults to "null" (silent — useful for testing without a second device).
-	OutputDriver string `yaml:"output_driver" json:"output_driver"`
 
 	// OutputDevice is the platform-specific device identifier for preview output.
 	// Leave empty to use the driver's default device.
