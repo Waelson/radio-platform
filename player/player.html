@@ -1740,33 +1740,12 @@ canvas.vu-canvas {
           <button class="lib-drawer-close" onclick="toggleLibrary()" title="Fechar">✕</button>
         </div>
         <div class="lib-tabs">
-          <button class="lib-tab active" id="libTabTracks"    onclick="libSwitchTab('tracks')">Áudios</button>
-          <button class="lib-tab"        id="libTabPlaylists" onclick="libSwitchTab('playlists')">Playlists</button>
+          <button class="lib-tab active" id="libTabPlaylists" onclick="libSwitchTab('playlists')">Playlists</button>
           <button class="lib-tab"        id="libTabBreaks"    onclick="libSwitchTab('breaks')">Breaks</button>
         </div>
 
-        <!-- Músicas -->
-        <div class="lib-panel active" id="libPanelTracks">
-          <div class="lib-search-bar">
-            <input class="lib-search-input" id="libTrackQ" type="text" placeholder="Buscar título, artista…"
-              onkeydown="if(event.key==='Enter')libLoadTracks()">
-            <select class="lib-search-select" id="libTrackType">
-              <option value="">Todos</option>
-              <option value="MUSIC">Música</option>
-              <option value="VINHETA">Vinheta</option>
-              <option value="JINGLE">Jingle</option>
-              <option value="SPOT">Spot</option>
-            </select>
-            <button class="lib-search-btn" onclick="libLoadTracks()">🔍</button>
-            <button class="lib-adv-btn" onclick="advModalOpen(); document.getElementById('libDrawer').classList.remove('open'); document.getElementById('btnLibrary').classList.remove('active');" title="Busca Avançada">⚙ Avançada</button>
-          </div>
-          <div class="lib-list" id="libTrackList">
-            <div class="lib-status">Digite algo para buscar ou clique em 🔍</div>
-          </div>
-        </div>
-
         <!-- Playlists -->
-        <div class="lib-panel" id="libPanelPlaylists">
+        <div class="lib-panel active" id="libPanelPlaylists">
           <div class="lib-search-bar">
             <button class="lib-search-btn" style="flex:1" onclick="libLoadPlaylists()">↺ Atualizar</button>
           </div>
@@ -2860,65 +2839,14 @@ async function submitBreak() {
    ═══════════════════════════════════════════════════════════════ */
 const _preview = { state: 'idle', path: '', positionMS: 0, durationMS: 0, trackIdx: null };
 
-// Abre/fecha painel inline abaixo do item da biblioteca.
-function libTogglePreview(idx) {
-  const existing = document.getElementById('lib-preview-panel');
-  if (existing) {
-    const same = _preview.trackIdx === idx;
-    _libClosePreviewPanel();
-    previewStop();
-    if (same) return; // mesmo item → só fecha
-  }
-  _preview.trackIdx = idx;
-  _libOpenPreviewPanel(idx);
-}
-
-function _libOpenPreviewPanel(idx) {
-  const t = _libTracks[idx];
-  if (!t) return;
-  const anchor = document.getElementById(`lib-track-item-${idx}`);
-  if (!anchor) return;
-
-  // Close modal preview panel first to avoid duplicate element IDs
-  if (typeof _advClosePreviewPanel === 'function') _advClosePreviewPanel();
-  _libUpdateCueBtn(idx, true);
-  _preview.path = t.path || '';
-  _preview.positionMS = 0;
-  _preview.durationMS = t.duration_ms || 0;
-
-  const panel = document.createElement('div');
-  panel.id = 'lib-preview-panel';
-  panel.className = 'lib-preview-panel';
-  panel.innerHTML = `
-    <div class="lib-preview-controls">
-      <button class="lib-prev-btn" id="libPrevPlay"   title="Play"   onclick="previewPlayOrResume()">▶</button>
-      <button class="lib-prev-btn" id="libPrevPause"  title="Pausar" onclick="previewPause()" disabled>⏸</button>
-      <button class="lib-prev-btn" id="libPrevStop"   title="Stop"   onclick="previewStop()" disabled>■</button>
-    </div>
-    <div class="lib-prev-progress">
-      <div class="lib-prev-track" id="libPrevTrack" onclick="previewSeekClick(event)">
-        <div class="lib-prev-fill" id="libPrevFill" style="width:0%"><div class="lib-prev-thumb"></div></div>
-      </div>
-      <div class="lib-prev-time">
-        <span id="libPrevPos">0:00</span>
-        <span id="libPrevDur">${_preview.durationMS > 0 ? msToTime(_preview.durationMS) : '--:--'}</span>
-      </div>
-    </div>`;
-  anchor.after(panel);
-}
 
 function _libClosePreviewPanel() {
   const panel = document.getElementById('lib-preview-panel');
   if (panel) panel.remove();
-  if (_preview.trackIdx !== null) _libUpdateCueBtn(_preview.trackIdx, false);
   _preview.trackIdx = null;
   _preview.state = 'idle';
 }
 
-function _libUpdateCueBtn(idx, active) {
-  const btn = document.querySelector(`#lib-track-item-${idx} .lib-cue-btn`);
-  if (btn) btn.classList.toggle('active', active);
-}
 
 function _renderPreviewPanel() {
   const s = _preview;
@@ -3396,10 +3324,9 @@ checkLibraryHealth();
 setInterval(checkLibraryHealth, 5000);
 
 /* ─── Library Drawer ─────────────────────────────────────────── */
-let _libTracks    = [];
 let _libPlaylists = [];
 let _libBreaks    = [];
-let _libTab       = 'tracks';
+let _libTab       = 'playlists';
 
 // ─── Advanced Search Modal ──────────────────────────────────────────────────
 
@@ -3699,7 +3626,6 @@ function toggleLibrary() {
   btn.classList.toggle('active', isOpen);
   if (isOpen) {
     if (!_libOnline) {
-      _libOfflineMsg('libTrackList');
       _libOfflineMsg('libPlaylistList');
       _libOfflineMsg('libBreakList');
     } else if (_libTab === 'playlists') libLoadPlaylists();
@@ -3718,39 +3644,6 @@ function libSwitchTab(tab) {
   if (tab === 'breaks')    libLoadBreaks();
 }
 
-async function libLoadTracks() {
-  if (!_libOnline) { _libOfflineMsg('libTrackList'); return; }
-  const q    = document.getElementById('libTrackQ').value.trim();
-  const type = document.getElementById('libTrackType').value;
-  const list = document.getElementById('libTrackList');
-  list.innerHTML = '<div class="lib-status">Buscando…</div>';
-  _libTracks = [];
-  try {
-    const qs = new URLSearchParams({ limit: 50, offset: 0 });
-    if (q)    qs.set('q', q);
-    if (type) qs.set('type', type);
-    const res  = await fetch(LIBRARY_URL + '/v1/tracks?' + qs);
-    const data = await res.json();
-    _libTracks = data.tracks || [];
-    if (!_libTracks.length) {
-      list.innerHTML = '<div class="lib-status">Nenhum resultado encontrado</div>';
-      return;
-    }
-    list.innerHTML = _libTracks.map((t, i) => `
-      <div class="lib-item" id="lib-track-item-${i}" ondblclick="libEnqueueTrack(${i})" title="Duplo clique para enfileirar">
-        <div class="lib-item-info">
-          <div class="lib-item-title" title="${escHtml(t.title || '')}">${escHtml(t.title || '—')}</div>
-          <div class="lib-item-sub">${escHtml(t.artist || '—')}</div>
-        </div>
-        <span class="lib-item-type">${escHtml(t.type || '')}</span>
-        <span class="lib-item-dur">${msToDuration(t.duration_ms)}</span>
-        <button class="lib-cue-btn" title="Preview (CUE)" data-idx="${i}" onclick="libTogglePreview(${i})">◎</button>
-        <button class="lib-enqueue-btn" onclick="libEnqueueTrack(${i})">+ Fila</button>
-      </div>`).join('');
-  } catch(e) {
-    list.innerHTML = '<div class="lib-status">Erro ao buscar: ' + escHtml(e.message) + '</div>';
-  }
-}
 
 async function libLoadPlaylists() {
   if (!_libOnline) { _libOfflineMsg('libPlaylistList'); return; }
@@ -3804,22 +3697,6 @@ async function libLoadBreaks() {
   }
 }
 
-async function libEnqueueTrack(idx) {
-  if (!_libOnline) { showToast(false, 'Library offline — não foi possível enfileirar'); return; }
-  const t = _libTracks[idx];
-  if (!t) return;
-  try {
-    const r = await fetch(API_URL + '/v1/queue/enqueue', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [{ path: t.path, type: t.type, title: t.title, artist: t.artist || '', duration_ms: t.duration_ms || 0 }] }),
-    });
-    const j = await r.json();
-    const ok = j.ok !== false && j.accepted !== false;
-    showToast(ok, ok ? `+ "${t.title}" enfileirada` : (j.reason || 'Comando rejeitado'));
-    if (ok) fetchQueue();
-  } catch(e) { showToast(false, 'Erro de rede'); }
-}
 
 async function libEnqueuePlaylist(idx) {
   if (!_libOnline) { showToast(false, 'Library offline — não foi possível enfileirar'); return; }
