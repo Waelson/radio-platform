@@ -1,7 +1,10 @@
 # RadioFlow — Player
 
-Interface de operação para o [RadioCore Playout Engine](../playout/README.md).
-Construída em **Electron + HTML/CSS/JS puro**, sem frameworks — uma única tela fullscreen que se conecta ao engine via REST e WebSocket.
+![Electron](https://img.shields.io/badge/Electron-35+-47848F?logo=electron&logoColor=white)
+![Plataformas](https://img.shields.io/badge/plataformas-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
+
+Interface de operação ao vivo para o [RadioCore Playout Engine](../playout/README.md) e o [Radio Library Service](../library/README.md).
+Construída em **Electron + HTML/CSS/JS puro**, sem frameworks — um único arquivo `player.html` que se conecta aos serviços via REST e WebSocket.
 
 ---
 
@@ -12,6 +15,7 @@ Construída em **Electron + HTML/CSS/JS puro**, sem frameworks — uma única te
 - [Instalação e execução](#instalação-e-execução)
 - [Build e distribuição](#build-e-distribuição)
 - [Configuração de URLs](#configuração-de-urls)
+- [Interface](#interface)
 - [Funcionalidades](#funcionalidades)
 - [Controle de volume](#controle-de-volume)
 - [Estrutura do projeto](#estrutura-do-projeto)
@@ -20,19 +24,22 @@ Construída em **Electron + HTML/CSS/JS puro**, sem frameworks — uma única te
 
 ## Visão geral
 
-O RadioFlow é a interface de operação ao vivo do sistema de automação de rádio. Conecta-se ao **RadioCore** (playout engine) via:
+O RadioFlow é a interface de operação ao vivo do sistema de automação de rádio. Conecta-se a dois serviços independentes:
 
-- **REST** — envio de comandos (play, pause, fila, panic, hot buttons, preview)
-- **WebSocket** (`GET /v1/events`) — recebimento de eventos em tempo real (estado, progresso, VU meter, fila)
-- **Library Service** (`http://127.0.0.1:8081`) — busca e enfileiramento de faixas, playlists e blocos
+| Serviço | Protocolo | Função |
+|---|---|---|
+| RadioCore (Playout Engine) | REST + WebSocket | Controle de playback, fila, modos, volume, preview |
+| Radio Library Service | REST | Catálogo de áudios, playlists e blocos comerciais |
+
+A comunicação é **unidirecional via eventos**: o engine publica estados via WebSocket e o player reage, sem polling.
 
 ---
 
 ## Pré-requisitos
 
-- [Node.js](https://nodejs.org/) ≥ 18
+- [Node.js](https://nodejs.org/) >= 18
 - [RadioCore](../playout/README.md) em execução (porta `8080` por padrão)
-- Radio Library Service em execução (porta `8081` por padrão) — opcional para a Biblioteca
+- [Radio Library Service](../library/README.md) em execução (porta `8081`) — opcional para a Biblioteca
 
 ---
 
@@ -55,13 +62,13 @@ O app abre em modo fullscreen conectado em `http://127.0.0.1:8080`.
 ## Build e distribuição
 
 ```bash
-# Gerar RadioFlow.app (macOS arm64)
+# macOS (arm64) — gera .app e .dmg
 npm run build
 # → dist/mac-arm64/RadioFlow.app
 # → dist/RadioFlow-0.1.0-arm64.dmg
 ```
 
-O `electron-builder` gera também `.AppImage` (Linux) e `.exe` NSIS (Windows) conforme a plataforma.
+O `electron-builder` gera `.AppImage` (Linux) e instalador NSIS `.exe` (Windows) conforme a plataforma de build.
 
 ---
 
@@ -75,7 +82,7 @@ Por padrão o player conecta em:
 | Playout Engine (WebSocket) | `ws://127.0.0.1:8080/v1/events` |
 | Library Service | `http://127.0.0.1:8081` |
 
-Para apontar para endereços diferentes, passe parâmetros na query string ao carregar o `player.html`:
+Para apontar para endereços diferentes, use a query string ao carregar `player.html`:
 
 ```
 player.html?api=http://192.168.1.10:8080&ws=ws://192.168.1.10:8080/v1/events&lib=http://192.168.1.10:8081
@@ -83,92 +90,147 @@ player.html?api=http://192.168.1.10:8080&ws=ws://192.168.1.10:8080/v1/events&lib
 
 ---
 
+## Interface
+
+### Header
+
+O cabeçalho permanente exibe:
+
+- **Logotipo RadioFlow** à esquerda
+- **Card de status** com os campos:
+  - Engine — identificador do engine conectado (truncado em 160 px com reticências)
+  - Estado — badge com o estado atual (`IDLE`, `PLAYING`, `PAUSED`, `PANIC`, etc.)
+  - Modo — badge com o modo ativo (`AUTO`, `ASSIST`, `PANIC`)
+  - Playout — indicador `On-line` / `Off-line` com ponto colorido
+  - Library — indicador `On-line` / `Off-line` com ponto colorido
+- **Relógio centralizado** com:
+  - Hora `HH:MM:SS` em fonte monoespaçada
+  - Data por extenso em pt-BR (ex.: `quarta-feira, 9 de julho de 2026`)
+  - Temperatura e umidade em tempo real via [Open-Meteo](https://open-meteo.com/) (geolocalização automática; fallback para São Paulo)
+
+### Colunas principais
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         HEADER                              │
+├──────────────┬──────────────────────────┬───────────────────┤
+│  col-left    │      col-center          │    col-right      │
+│              │                          │                   │
+│  Now Playing │  Fila de Reprodução      │  Biblioteca       │
+│  Loudness    │  (queue list)            │  (drawer)         │
+│  Saúde Áudio │                          │                   │
+│  Volume      │                          │                   │
+│  VU Meters   │                          │                   │
+└──────────────┴──────────────────────────┴───────────────────┘
+```
+
+---
+
 ## Funcionalidades
 
 ### Fila de reprodução
-- Visualização em tempo real da fila (item atual em destaque)
-- Reordenação por drag-and-drop
-- Remoção de itens individuais
-- Suporte a tipos: `music`, `jingle`, `vinheta`, `hora_certa`
-- Badge de estado por item: `QUEUED`, `PLAYING`, `PLAYED`, `SKIPPED`, `FAILED`
+
+- Visualização em tempo real da fila via eventos WebSocket (`QueueChanged`)
+- Item atual em destaque com barra de progresso animada
+- Badge de estado por item: `Tocando`, `Próxima`, `NA FILA`, `Tocada`, `Pulada`, `Erro`
+- Barra de rolagem customizada sempre visível (flat, sem overlay nativo do SO)
+- Suporte a tipos: `MUSIC`, `JINGLE`, `VINHETA`, `SPOT`, `HORA_CERTA`
+
+**Blocos comerciais** são exibidos como um único grupo visual com borda laranja, separando o header do bloco e cada spot individualmente, em vez de linhas independentes.
+
+**Reordenação** (modo ASSIST) — drag-and-drop e botões ↑ / ↓ por item; remoção com ✕.
+
+### Menu de contexto (modo AUTO)
+
+Clique com o botão direito sobre qualquer item da fila (exceto o em reprodução) para exibir o menu:
+
+- **Excluir da fila** — remove o item imediatamente; para blocos comerciais, exige confirmação e remove todos os spots do bloco em sequência.
+
+### CUE — Preview de auditória
+
+Permite ouvir um áudio da fila antes que ele seja reproduzido no ar, sem interromper a transmissão. O áudio de preview é roteado para o **dispositivo de saída separado** configurado no RadioCore.
+
+**Acionamento pela fila:**
+
+1. Itens com status `QUEUED` ou `PRELOADING` exibem o botão `◎` na coluna de ações.
+2. Ao clicar, um **painel flutuante** aparece no canto inferior direito com:
+   - Título e artista do áudio
+   - Barra de progresso com seek (clique para saltar)
+   - Controles Play / Pause / Stop
+   - Tempo decorrido e duração total
+3. O botão na row pulsa (animação de escala + brilho ciano) enquanto o CUE está ativo.
+4. Clicar novamente no `◎` ativo (ou no botão Stop do painel) encerra o preview.
+
+**Acionamento pela Biblioteca:**
+
+- Botão `◎` em cada faixa do catálogo abre um painel inline abaixo do item com os mesmos controles.
+- Progresso atualizado em tempo real via evento WebSocket `PreviewProgress`.
 
 ### Controles de playback
+
 - Play / Pause / Stop / Skip
-- Barra de progresso e tempo decorrido/restante do item atual
-- Indicador de estado do engine (IDLE, PLAYING, PAUSED, PANIC)
+- Barra de progresso do item atual com tempo decorrido e restante
+- Crossfade visual — item anterior em fade-out enquanto o próximo inicia
 
 ### Modo ASSIST
-- Ativa operação manual (o engine aguarda comando para avançar)
-- Botão "Avançar" para confirmar próximo item
-- Enfileiramento de Hora Certa e limpeza de fila pelo operador
-- Banner visual de aviso enquanto em modo ASSIST
+
+- Operação manual: o engine aguarda confirmação antes de avançar para o próximo item
+- Botão **Avançar** para confirmar o próximo item
+- Banner visual persistente enquanto em modo ASSIST
+- Enfileiramento de Hora Certa pelo operador
+- Limpeza total da fila
 
 ### Modo PANIC
-- Entra em loop de áudio de emergência
-- Banner vermelho de alerta
-- Saída via botão "Sair do Panic"
+
+- Entra em loop de áudio de emergência configurado no RadioCore
+- Banner vermelho de alerta em tela cheia
+- Saída controlada via botão "Sair do Panic"
+
+### Loudness / Saúde do Áudio
+
+- Medição EBU R128 em tempo real: Momentary (M), Short-term (S), Integrated (I)
+- Indicadores de pico e LUFS
+- Monitor de saúde: estado do decodificador, buffer, latência e alertas de silêncio
 
 ### VU Meter
-- Medição RMS em tempo real (canais L e R)
-- Indicador de pico e nível LUFS
-- Alerta visual de silêncio
+
+- Barras L e R com medição RMS em tempo real
+- Peak hold com decay visual
+- Alerta de clipping
 
 ### Hot Buttons
-- Painel de botões configuráveis para disparo de áudios instantâneos
-- Feedback visual de reprodução em andamento
+
+- Painel de botões configuráveis para disparo instantâneo de áudios (jingles, vinhetas, etc.)
+- Feedback visual do botão em reprodução
 
 ### Biblioteca (drawer lateral)
-- **Aba Áudio** — busca de faixas por título/artista; enfileiramento com duplo clique ou botão `+ Fila`
-- **Aba Playlists** — enfileiramento de playlists completas
-- **Aba Blocos** — enfileiramento de blocos comerciais
 
-### Preview / CUE
-- Botão `◎` em cada faixa da Biblioteca para ouvir o áudio antes de enfileirar
-- Painel inline abaixo do item com Play / Pause / Stop e barra de progresso com seek
-- Áudio roteado para dispositivo de saída separado (configurado no RadioCore)
-- Progresso atualizado em tempo real via eventos WebSocket (`PreviewProgress`)
+| Aba | Conteúdo |
+|---|---|
+| Áudio | Busca por título/artista com filtros; enfileiramento via duplo clique ou botão `+ Fila`; CUE inline |
+| Playlists | Lista de playlists cadastradas; enfileiramento completo com um clique |
+| Blocos | Lista de blocos comerciais; enfileiramento com um clique |
+
+O catálogo é carregado do **Radio Library Service** (`/v1/tracks`, `/v1/playlists`, `/v1/breaks`).
 
 ---
 
 ## Controle de volume
 
-A coluna esquerda da UI (`col-meters`) exibe uma seção **Volume** com dois sliders independentes:
+Dois sliders independentes na coluna esquerda:
 
 | Slider | Canal | Endpoint |
 |---|---|---|
-| Principal | Fila de reprodução principal | `PUT /v1/playback/volume` |
-| Player (CUE) | Preview de auditoria (CUE) | `PUT /v1/preview/volume` |
+| Principal | Fila de reprodução | `PUT /v1/playback/volume` |
+| Player (CUE) | Preview / auditória | `PUT /v1/preview/volume` |
 
-### Intervalo
+Ambos operam de `0%` (mudo) a `100%` (sem atenuação). O valor é convertido para escala linear `[0.0, 1.0]` antes de ser enviado.
 
-Ambos os sliders operam em `0%` (mudo) a `100%` (sem atenuação). O valor é convertido para escala linear `[0.0, 1.0]` antes de ser enviado ao engine.
+**Inicialização** — os sliders são sincronizados com o engine via `StateSnapshot` (WebSocket) ao conectar, com fallback para `GET /v1/playback/volume` e `GET /v1/preview/volume`.
 
-### Inicialização
+**Sincronização** — eventos `VolumeChanged` e `PreviewVolumeChanged` mantêm os sliders atualizados entre múltiplos clientes simultaneamente. Durante arrasto, o evento é ignorado para evitar salto visual.
 
-Ao abrir ou reconectar, o player inicializa os sliders com os valores correntes do engine:
-
-1. **Via `StateSnapshot`** (WebSocket) — o hub envia o snapshot imediatamente ao conectar, com campos `main_volume` e `preview_volume`.
-2. **Via REST** (fallback) — se o snapshot não incluir os campos, `GET /v1/playback/volume` e `GET /v1/preview/volume` são chamados logo após a conexão.
-
-### Sincronização em tempo real
-
-Os eventos WebSocket `VolumeChanged` e `PreviewVolumeChanged` mantêm os sliders sincronizados entre múltiplos clientes abertos simultaneamente. Durante um arrasto ativo, o evento é ignorado para evitar salto visual.
-
-### Comportamento ao arrastar
-
-| Evento | Ação |
-|---|---|
-| `input` (durante arrasto) | Atualiza apenas o rótulo percentual — sem chamada de rede |
-| `change` (ao soltar) | Envia `PUT` ao engine; em erro, reverte slider e exibe toast |
-| `mouseup` no `document` | Safety net — limpa flag de arrasto se o cursor sair do slider |
-
-### Persistência
-
-O engine salva o nível de cada canal em `~/.radiocore/preferences.json` após cada mudança. O valor é restaurado automaticamente na próxima inicialização do RadioCore.
-
-### Preview desabilitado
-
-Quando o RadioCore é iniciado com `preview.enabled: false`, o endpoint `GET /v1/preview/volume` retorna `503`. O slider **Player (CUE)** é automaticamente desabilitado e exibido com opacidade reduzida.
+**Preview desabilitado** — se o RadioCore iniciar com `preview.enabled: false`, o endpoint retorna `503` e o slider de CUE é desabilitado automaticamente.
 
 ---
 
@@ -176,11 +238,23 @@ Quando o RadioCore é iniciado com `preview.enabled: false`, o endpoint `GET /v1
 
 ```
 player/
-├── main.js          — processo principal Electron (cria BrowserWindow fullscreen)
-├── player.html      — toda a UI: HTML + CSS + JS em arquivo único
-├── package.json     — dependências e configuração do electron-builder
-├── icon.icns        — ícone macOS
-├── icon.png         — ícone base
-├── logo.svg         — logotipo RadioFlow
-└── dist/            — artefatos gerados pelo build
+├── main.js           processo principal Electron — cria BrowserWindow fullscreen
+├── player.html       toda a UI: HTML + CSS + JS em arquivo único
+├── package.json      dependências e configuração do electron-builder
+├── icon.icns         ícone macOS
+├── icon.png          ícone base
+├── logo.svg          logotipo RadioFlow
+├── radio-flow.png    imagem do header
+└── dist/             artefatos gerados pelo build
 ```
+
+---
+
+## Dependências
+
+| Pacote | Versão | Papel |
+|---|---|---|
+| `electron` | ^35 | Runtime desktop |
+| `electron-builder` | ^25 | Empacotamento e distribuição |
+
+Nenhuma dependência de runtime além do Electron — toda a lógica de UI está em JS vanilla no `player.html`.
