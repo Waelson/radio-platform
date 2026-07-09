@@ -781,7 +781,7 @@ input[type=range].vol-slider:disabled {
 }
 .queue-refresh:hover { color: var(--cyan); border-color: var(--cyan); }
 
-.queue-table-wrap { flex: 1; overflow-y: auto; background: #050b0c; padding: 2px 2px 4px; }
+.queue-table-wrap { flex: 1; overflow-y: auto; background: #03060b; padding: 2px 2px 4px; }
 .queue-table {
   width: 100%; border-collapse: separate; border-spacing: 0 8px;
 }
@@ -793,25 +793,25 @@ input[type=range].vol-slider:disabled {
 }
 .queue-table td {
   padding: 16px 12px;
-  border-top: 1px solid var(--cyan);
-  border-bottom: 1px solid #0d706d;
+  border-top: 1px solid #48bfff;
+  border-bottom: 1px solid #063a86;
   border-left: none;
   border-right: none;
   font-size: 15px; color: var(--cyan);
   white-space: nowrap; overflow: hidden; max-width: 200px; text-overflow: ellipsis;
-  background-color: #0c171d;
+  background-color: #06101d;
   background-image: linear-gradient(180deg,
-    #4c5a5a 0%, #485556 12%, #3d4a4b 28%, #2f3d3d 46%,
-    #172324 58%, #132020 68%, #0c171d 82%, #112c2c 100%);
+    #5ecfff 0%, #58c5f8 12%, #46aaf2 28%, #2a7fdc 46%,
+    #1559bd 58%, #0c3d93 68%, #071d4d 82%, #06101d 100%);
 }
-.queue-table td:nth-child(2)      { border-left: 1px solid var(--cyan); border-radius: 8px 0 0 8px; }
-.queue-table td:nth-last-child(2) { border-right: 1px solid var(--cyan); border-radius: 0 8px 8px 0; }
+.queue-table td:nth-child(2)      { border-left: 1px solid #48bfff; border-radius: 8px 0 0 8px; }
+.queue-table td:nth-last-child(2) { border-right: 1px solid #48bfff; border-radius: 0 8px 8px 0; }
 .queue-table tr:hover td {
   background-image: linear-gradient(180deg,
-    #5c6c6c 0%, #566264 12%, #4a5859 28%, #3c4c4c 46%,
-    #1e2e2f 58%, #182828 68%, #112030 82%, #163838 100%);
-  border-top-color: #20ccc8;
-  border-bottom-color: #12908c;
+    #78d8ff 0%, #6ccff8 12%, #58baf2 28%, #3a8fe0 46%,
+    #1f69cd 58%, #1050a8 68%, #092560 82%, #071525 100%);
+  border-top-color: #6ed0ff;
+  border-bottom-color: #0a4aaa;
 }
 .queue-table tr.played td  { opacity: 0.35; }
 .queue-table tr.failed td  { opacity: 0.45; color: var(--red); }
