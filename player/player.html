@@ -763,7 +763,14 @@ input[type=range].vol-slider:disabled {
 .queue-refresh-orange:hover { background: #3d2105 !important; border-color: rgba(255,138,0,0.9) !important; color: #ffd28f !important; }
 
 /* ─── Queue list (card layout) ───────────────────────────────── */
-.queue-list-wrap { flex: 1; overflow-y: auto; background: #000000; padding: 10px; }
+.queue-scroll-host { position: relative; flex: 1; display: flex; overflow: hidden; }
+.queue-list-wrap { flex: 1; overflow-y: scroll; background: #000000; padding: 10px 30px 10px 10px; scrollbar-width: none; }
+.queue-list-wrap::-webkit-scrollbar { display: none; }
+/* Custom scrollbar */
+.q-sb-track { position: absolute; right: 0; top: 0; bottom: 0; width: 20px; background: rgba(255,255,255,0.04); pointer-events: auto; cursor: pointer; display: flex; align-items: stretch; justify-content: center; padding: 8px 0; box-sizing: border-box; }
+.q-sb-thumb { position: absolute; left: 3px; right: 3px; min-height: 28px; background: rgba(45,212,200,0.32); border-radius: 6px; cursor: grab; transition: background 0.15s; }
+.q-sb-thumb:hover { background: rgba(45,212,200,0.58); }
+.q-sb-thumb.is-dragging { background: rgba(45,212,200,0.72); cursor: grabbing; }
 .queue-list { display: grid; gap: 10px; }
 
 .queue-row {
@@ -1596,11 +1603,16 @@ canvas.vu-canvas {
             <button class="queue-refresh queue-refresh-orange" onclick="assistInsertHoraCerta()">◷ Hora Certa</button>
           </div>
         </div>
-        <div class="queue-list-wrap">
-          <div class="queue-list" id="queueBody"
-            ondragover="tableDragOver(event)"
-            ondrop="tableDrop(event)">
-            <div class="queue-empty">Fila vazia</div>
+        <div class="queue-scroll-host">
+          <div class="queue-list-wrap" id="queueScrollPane">
+            <div class="queue-list" id="queueBody"
+              ondragover="tableDragOver(event)"
+              ondrop="tableDrop(event)">
+              <div class="queue-empty">Fila vazia</div>
+            </div>
+          </div>
+          <div class="q-sb-track" id="queueSbTrack">
+            <div class="q-sb-thumb" id="queueSbThumb"></div>
           </div>
         </div>
       </div>
@@ -3189,12 +3201,66 @@ function connect() {
 }
 
 /* ─── Init ───────────────────────────────────────────────────── */
+/* ─── Custom Queue Scrollbar ─────────────────────────────────── */
+function initQueueScrollbar() {
+  const pane  = document.getElementById('queueScrollPane');
+  const track = document.getElementById('queueSbTrack');
+  const thumb = document.getElementById('queueSbThumb');
+  if (!pane || !track || !thumb) return;
+
+  function updateThumb() {
+    const viewH = pane.clientHeight;
+    const fullH = pane.scrollHeight;
+    const ratio = viewH / fullH;
+    if (ratio >= 1) { track.style.display = 'none'; pane.style.paddingRight = '10px'; return; }
+    track.style.display = ''; pane.style.paddingRight = '30px';
+    const trackH  = track.clientHeight;
+    const thumbH  = Math.max(28, trackH * ratio);
+    const maxScroll = fullH - viewH;
+    const pos     = maxScroll > 0 ? pane.scrollTop / maxScroll : 0;
+    const maxTop  = trackH - thumbH;
+    thumb.style.height = thumbH + 'px';
+    thumb.style.top    = (pos * maxTop) + 'px';
+  }
+
+  pane.addEventListener('scroll', updateThumb);
+  new ResizeObserver(updateThumb).observe(pane);
+  new MutationObserver(updateThumb).observe(document.getElementById('queueBody'), { childList: true, subtree: true });
+
+  let dragging = false, startY = 0, startTop = 0;
+  thumb.addEventListener('mousedown', e => {
+    dragging  = true;
+    startY    = e.clientY;
+    startTop  = parseInt(thumb.style.top) || 0;
+    thumb.classList.add('is-dragging');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const thumbH  = thumb.offsetHeight;
+    const maxTop  = track.clientHeight - thumbH;
+    const newTop  = Math.max(0, Math.min(maxTop, startTop + e.clientY - startY));
+    pane.scrollTop = (newTop / (maxTop || 1)) * (pane.scrollHeight - pane.clientHeight);
+  });
+  document.addEventListener('mouseup', () => {
+    if (dragging) { dragging = false; thumb.classList.remove('is-dragging'); }
+  });
+  track.addEventListener('click', e => {
+    if (e.target === thumb) return;
+    const rect = track.getBoundingClientRect();
+    pane.scrollTop = ((e.clientY - rect.top) / track.clientHeight) * (pane.scrollHeight - pane.clientHeight);
+  });
+
+  updateThumb();
+}
+
 window.addEventListener('load', () => {
   setupCanvases();
   updateButtons('');
   renderLoop();
   connect();
   fetchInitialVolumes();
+  initQueueScrollbar();
   document.addEventListener('mouseup',  () => { _draggingMain = false; _draggingPreview = false; });
   document.addEventListener('touchend', () => { _draggingMain = false; _draggingPreview = false; });
 });
