@@ -781,93 +781,109 @@ input[type=range].vol-slider:disabled {
 }
 .queue-refresh:hover { color: var(--cyan); border-color: var(--cyan); }
 
-.queue-table-wrap { flex: 1; overflow-y: auto; background: #03060b; padding: 2px 2px 4px; }
-.queue-table {
-  width: 100%; border-collapse: separate; border-spacing: 0 8px;
-}
-.queue-table th {
-  position: sticky; top: 0; background: var(--bg2);
-  padding: 6px 12px; text-align: left; font-size: 11px;
-  text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim);
-  border-bottom: 1px solid var(--border); white-space: nowrap; z-index: 1;
-}
-.queue-table td {
-  padding: 16px 12px;
-  border-top: 1px solid #48bfff;
-  border-bottom: 1px solid #063a86;
-  border-left: none;
-  border-right: none;
-  font-size: 15px; color: var(--cyan);
-  white-space: nowrap; overflow: hidden; max-width: 200px; text-overflow: ellipsis;
-  background-color: #06101d;
-  background-image: linear-gradient(180deg,
-    #5ecfff 0%, #58c5f8 12%, #46aaf2 28%, #2a7fdc 46%,
-    #1559bd 58%, #0c3d93 68%, #071d4d 82%, #06101d 100%);
-}
-.queue-table td:nth-child(2)      { border-left: 1px solid #48bfff; border-radius: 8px 0 0 8px; }
-.queue-table td:nth-last-child(2) { border-right: 1px solid #48bfff; border-radius: 0 8px 8px 0; }
-.queue-table tr:hover td {
-  background-image: linear-gradient(180deg,
-    #78d8ff 0%, #6ccff8 12%, #58baf2 28%, #3a8fe0 46%,
-    #1f69cd 58%, #1050a8 68%, #092560 82%, #071525 100%);
-  border-top-color: #6ed0ff;
-  border-bottom-color: #0a4aaa;
-}
-.queue-table tr.played td  { opacity: 0.35; }
-.queue-table tr.failed td  { opacity: 0.45; color: var(--red); }
+/* ─── Queue list (card layout) ───────────────────────────────── */
+.queue-list-wrap { flex: 1; overflow-y: auto; background: #061113; padding: 10px; }
+.queue-list { display: grid; gap: 10px; }
 
-.q-indicator { width: 24px; text-align: center; font-size: 14px; }
-.q-indicator.playing { color: var(--cyan); animation: pulse 1s ease-in-out infinite; }
-.q-indicator.preload { color: var(--blue); }
-.q-indicator.played  { color: #444; }
-.q-indicator.skipped { color: #555; }
-.q-indicator.failed  { color: var(--red); }
-
-.q-type {
-  display: inline-block; padding: 1px 5px; border-radius: 2px;
-  font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+.queue-row {
+  min-height: 80px;
+  display: grid;
+  grid-template-columns: 58px minmax(0,1fr) 110px 86px auto;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: #0e1f23;
+  border: 1px solid rgba(69,211,202,0.18);
+  border-left: 4px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
-.q-type.MUSIC   { background: #001a33; color: var(--blue); }
-.q-type.JINGLE  { background: #1a1000; color: var(--orange); }
-.q-type.SPOT    { background: #110022; color: var(--purple); }
-.q-type.BED     { background: #1a1a1a; color: #999; }
-.q-type.EFFECT  { background: #001a1a; color: var(--cyan); }
-.q-type.VOICE      { background: #1a001a; color: #cc88ff; }
-.q-type.ID         { background: #001a1a; color: var(--cyan); }
-.q-type.HORA_CERTA { background: #1a1a1a; color: #dddddd; }
+.queue-row:hover { background: #112528; border-color: rgba(69,211,202,0.30); }
+.queue-row.is-current { background: #11282c; border-color: rgba(69,211,202,0.42); border-left-color: #2dd4c8; }
+.queue-row.is-next    { border-left-color: rgba(45,212,200,0.52); }
+.queue-row.is-played  { opacity: 0.38; }
+.queue-row.is-failed  { opacity: 0.5; border-left-color: var(--red); }
+.queue-row.hora-certa { background: #1a0c00; border-color: rgba(255,130,0,0.28); border-left-color: #ff7700; }
+.queue-row.hora-certa:hover { background: #201200; }
+.queue-row.vinheta { background: #110d22; border-color: rgba(122,77,255,0.28); border-left-color: #7a4dff; }
+.queue-row.vinheta:hover { background: #17102e; }
+.queue-row.vinheta .q-track-name { color: #c4b0ff; }
+.queue-row.vinheta .q-artist { color: rgba(154,120,255,0.7); }
+.queue-row.vinheta .q-time { color: #c4b0ff; }
+.queue-row.vinheta .q-status-pill { color: var(--purple-2); background: rgba(122,77,255,0.10); border-color: rgba(122,77,255,0.25); }
+.queue-row.vinheta.is-current { background: #1a1035; border-color: rgba(122,77,255,0.50); border-left-color: var(--purple-2); }
+.queue-row.vinheta .q-equalizer i { background: var(--purple-2); }
+.queue-row.vinheta .q-badge { color: var(--purple-2); background: rgba(122,77,255,0.12); border-color: rgba(122,77,255,0.25); }
 
-.queue-table tr.hora-certa td { background-color: #1a0800; background-image: linear-gradient(180deg, #ffb060 0%, #7a3200 28%, #4a1800 58%, #1a0800 82%, #cc5500 100%); border-top-color: #cc6600; border-bottom-color: #884400; }
-.queue-table tr.hora-certa:hover td { background-image: linear-gradient(180deg, #ffc070 0%, #8a3a00 28%, #5a2000 58%, #220a00 82%, #e06000 100%); border-top-color: #e07700; border-bottom-color: #aa5500; }
-
-.q-status {
-  font-size: 12px; font-weight: 600; letter-spacing: 0.5px; color: var(--text-dim);
+.q-index {
+  display: flex; align-items: center; justify-content: center;
+  color: #9de7e2; font-size: 16px; font-weight: 800; letter-spacing: 0.03em;
 }
-.q-status.PLAYING   { color: var(--cyan); }
-.q-status.PRELOADING{ color: var(--blue); }
-.q-status.PAUSED    { color: var(--yellow); }
-.q-status.PLAYED    { color: #444; }
-.q-status.SKIPPED   { color: #555; }
-.q-status.FAILED    { color: var(--red); }
-.q-status.MISSED    { color: var(--red); }
-.q-duration { font-family: 'Courier New', monospace; font-size: 14px; color: var(--cyan); }
+.q-track { min-width: 0; }
+.q-track-name {
+  display: flex; align-items: center; gap: 8px;
+  color: #e8fbfb; font-size: 16px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.q-artist {
+  display: block; margin-top: 4px; color: #77a4a3;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.q-badge {
+  flex: 0 0 auto; height: 20px;
+  display: inline-flex; align-items: center; padding: 0 7px;
+  border-radius: 999px; color: #2dd4c8;
+  background: rgba(45,212,200,0.10); border: 1px solid rgba(45,212,200,0.18);
+  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.q-status-pill {
+  min-width: 86px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0 10px;
+  border-radius: 8px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06);
+  color: #bce8e5; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.q-status-pill.live    { color: #2dd4c8; background: rgba(45,212,200,0.10); border-color: rgba(45,212,200,0.22); }
+.q-status-pill.waiting { color: #f3c15f; background: rgba(243,193,95,0.08); border-color: rgba(243,193,95,0.18); }
+.q-status-pill.done    { color: #3a5a58; background: transparent; border-color: rgba(255,255,255,0.04); }
+.q-status-pill.danger  { color: var(--red); background: rgba(255,50,50,0.08); border-color: rgba(255,50,50,0.18); }
+.q-time {
+  color: #d5fbf9; font-family: 'Courier New', monospace;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.01em; text-align: right;
+}
+.q-progress {
+  grid-column: 2 / -1; width: 100%; height: 3px; margin-top: -10px;
+  border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden;
+}
+.q-progress span {
+  display: block; height: 100%; background: #2dd4c8;
+  border-radius: inherit; width: 0%; transition: width 0.5s linear;
+}
+.q-equalizer {
+  width: 18px; height: 16px; flex-shrink: 0;
+  display: inline-grid; grid-template-columns: repeat(4,3px); gap: 2px; align-items: end;
+}
+.q-equalizer i {
+  display: block; width: 3px; border-radius: 999px; background: #2dd4c8;
+  animation: eqBounce 0.8s ease-in-out infinite alternate;
+}
+.q-equalizer i:nth-child(1) { height: 9px;  animation-delay: 0s; }
+.q-equalizer i:nth-child(2) { height: 15px; animation-delay: 0.15s; }
+.q-equalizer i:nth-child(3) { height: 11px; animation-delay: 0.3s; }
+.q-equalizer i:nth-child(4) { height: 6px;  animation-delay: 0.45s; }
+@keyframes eqBounce { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+
+/* Break rows */
+.queue-row.break-header { background: rgba(230,130,10,0.10); border-color: rgba(230,130,10,0.30); border-left-color: #e6820a; min-height: 52px; }
+.queue-row.break-header:hover { background: rgba(230,130,10,0.15); }
+.queue-row.break-item   { background: rgba(230,130,10,0.04); border-color: rgba(230,130,10,0.15); border-left-color: rgba(230,130,10,0.40); min-height: 64px; }
+.queue-row.break-item:hover { background: rgba(230,130,10,0.09) !important; }
+.queue-row.break-item.is-current { background: rgba(230,130,10,0.14) !important; }
 
 .queue-empty {
-  padding: 32px; text-align: center; color: var(--text-dim);
+  padding: 40px; text-align: center; color: var(--text-dim);
   font-style: italic; font-size: 15px;
 }
-
-/* ─── Break Block (queue rows) ───────────────────────────────── */
-.break-block-header td {
-  background: rgba(230,130,10,0.10);
-  border-left: 3px solid #e6820a;
-  padding: 6px 12px;
-}
-.break-block-item td {
-  background: rgba(230,130,10,0.04);
-  border-left: 3px solid rgba(230,130,10,0.30);
-}
-.break-block-item:hover td { background: rgba(230,130,10,0.09) !important; }
-.break-block-item.playing td { background: rgba(230,130,10,0.14) !important; }
 
 /* ─── Break Banner (Now Playing card) ───────────────────────── */
 .break-banner {
@@ -983,12 +999,8 @@ input[type=range].vol-slider:disabled {
 .btn-modal-ok:hover { background: #004d22; }
 
 /* ─── Queue reorder buttons (ASSIST only) ────────────────────── */
-.q-actions { display: none; gap: 3px; }
-.assist-active .q-actions { display: flex; }
-.q-action-col-header { display: none; }
-.assist-active .q-action-col-header { display: table-cell; }
-td.q-action-col { display: none; }
-.assist-active td.q-action-col { display: table-cell; vertical-align: middle; }
+.q-actions-wrap { display: none; gap: 3px; align-items: center; }
+.assist-active .q-actions-wrap { display: flex; }
 .q-btn {
   background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 3px;
   color: var(--text-dim); font-size: 11px; font-weight: 700;
@@ -1056,33 +1068,17 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 .prev-state-badge.paused  { color: #ffdd00; background: #1a1600; }
 
 /* ─── Drag-and-drop ──────────────────────────────────────────── */
-.drag-handle {
-  cursor: grab; color: rgba(255,255,255,0.18); font-size: 14px; line-height: 1;
-  padding: 0 6px; user-select: none; display: none; vertical-align: middle;
-  transition: color 0.15s;
-}
-.assist-active .drag-handle { display: table-cell; }
-.drag-handle:active { cursor: grabbing; }
-tr:hover .drag-handle { color: rgba(255,255,255,0.45); }
+.dnd-dragging { opacity: 0.32; }
 
-.dnd-dragging td { opacity: 0.32; }
-
-tr.dnd-drop-zone { display: none; }
-.assist-active tr.dnd-drop-zone { display: table-row; }
-tr.dnd-drop-zone td {
-  padding: 0; height: 8px; background: transparent;
-  transition: height 0.1s, background 0.12s, box-shadow 0.12s;
-  pointer-events: none; /* tbody handles events now */
-}
-tr.dnd-drop-zone.dnd-over td {
-  height: 6px;
+.dnd-drop-zone { display: none; height: 6px; border-radius: 4px; background: transparent; transition: background 0.12s, box-shadow 0.12s; pointer-events: none; }
+.assist-active .dnd-drop-zone { display: block; }
+.dnd-drop-zone.dnd-over {
   background: linear-gradient(to right, transparent 0%, var(--orange) 12%, var(--orange) 88%, transparent 100%);
   box-shadow: 0 0 10px rgba(255,119,0,0.4);
 }
 
 /* ─── Queue ASSIST marker ────────────────────────────────────── */
-.queue-table tr.assist-next td { }
-.queue-table tr.assist-next:hover td { }
+.queue-row.assist-next { border-left-color: var(--orange) !important; }
 .q-next-tag {
   display: inline-block; margin-left: 6px;
   font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
@@ -1303,9 +1299,6 @@ tr.dnd-drop-zone.dnd-over td {
   color: var(--cyan);
 }
 
-.queue-table tr.playing td {
-  animation: rowPulse 2.4s ease-in-out infinite;
-}
 
 .toast.ok {
   background: rgba(47,123,255,.16);
@@ -1717,26 +1710,12 @@ canvas.vu-canvas {
             <button class="queue-refresh" style="color:#ffaa00;border-color:#664400" onclick="assistInsertHoraCerta()">🕐 Hora Certa</button>
           </div>
         </div>
-        <div class="queue-table-wrap">
-          <table class="queue-table">
-            <thead>
-              <tr>
-                <th class="drag-handle" style="width:24px"></th>
-                <th style="width:28px"></th>
-                <th>Título</th>
-                <th>Artista</th>
-                <th style="width:70px">Tipo</th>
-                <th style="width:60px">Duração</th>
-                <th style="width:80px">Status</th>
-                <th class="q-action-col-header" style="width:90px">Ação</th>
-              </tr>
-            </thead>
-            <tbody id="queueBody"
-              ondragover="tableDragOver(event)"
-              ondrop="tableDrop(event)">
-              <tr><td colspan="6" class="queue-empty">Fila vazia</td></tr>
-            </tbody>
-          </table>
+        <div class="queue-list-wrap">
+          <div class="queue-list" id="queueBody"
+            ondragover="tableDragOver(event)"
+            ondrop="tableDrop(event)">
+            <div class="queue-empty">Fila vazia</div>
+          </div>
         </div>
       </div>
 
@@ -2221,7 +2200,7 @@ function renderQueue() {
   window._assistNextId = nextItem ? (nextItem.queue_item_id || nextItem.id) : null;
 
   if (!queueItems.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="queue-empty">Fila vazia</td></tr>';
+    tbody.innerHTML = '<div class="queue-empty">Fila vazia</div>';
     document.getElementById('npNextTitle').textContent = '—';
     return;
   }
@@ -2275,39 +2254,79 @@ function renderQueue() {
 function renderItemRow(item) {
   if (!item) return '';
   const status   = item.status || 'QUEUED';
-  const isHC     = (item.type || '').toUpperCase() === 'HORA_CERTA';
+  const isHC      = (item.type || '').toUpperCase() === 'HORA_CERTA';
+  const isVinheta = (item.type || '').toUpperCase() === 'VINHETA';
   const itemId   = item.queue_item_id || item.id || '';
   const isAssistNext = _inAssist && itemId && itemId === window._assistNextId;
-  const rowCls   = [
-    status === 'PLAYING' ? 'playing' : status === 'PLAYED' ? 'played' : status === 'FAILED' || status === 'MISSED' ? 'failed' : '',
-    isHC ? 'hora-certa' : '',
-    isAssistNext ? 'assist-next' : '',
+  const isPlaying  = status === 'PLAYING';
+  const isPaused   = status === 'PAUSED';
+  const isPreload  = status === 'PRELOADING';
+  const isPlayed   = status === 'PLAYED' || status === 'SKIPPED';
+  const isFailed   = status === 'FAILED' || status === 'MISSED';
+  const canReorder = !isPlaying && !isPlayed && !isFailed;
+
+  const rowCls = [
+    isPlaying ? 'is-current' : isPreload ? 'is-next' : '',
+    isPlayed  ? 'is-played'  : '',
+    isFailed  ? 'is-failed'  : '',
+    isHC      ? 'hora-certa' : isVinheta ? 'vinheta' : '',
+    isAssistNext && !isPlaying ? 'assist-next' : '',
   ].filter(Boolean).join(' ');
-  const indCls   = status === 'PLAYING' ? 'playing' : status === 'PRELOADING' ? 'preload' : status === 'PLAYED' ? 'played' : status === 'SKIPPED' ? 'skipped' : status === 'FAILED' || status === 'MISSED' ? 'failed' : '';
-  const indChar  = status === 'PLAYING' ? '▶' : status === 'PRELOADING' ? '⟳' : status === 'PLAYED' ? '✓' : status === 'SKIPPED' ? '—' : status === 'FAILED' || status === 'MISSED' ? '✗' : isHC ? '🕐' : '';
+
+  let statusLabel, statusCls;
+  switch (status) {
+    case 'PLAYING':    statusLabel = 'Tocando';  statusCls = 'live';    break;
+    case 'PAUSED':     statusLabel = 'Pausado';  statusCls = 'live';    break;
+    case 'PRELOADING': statusLabel = 'Próxima';  statusCls = '';        break;
+    case 'PLAYED':     statusLabel = 'Tocada';   statusCls = 'done';    break;
+    case 'SKIPPED':    statusLabel = 'Pulada';   statusCls = 'done';    break;
+    case 'FAILED':     statusLabel = 'Erro';     statusCls = 'danger';  break;
+    case 'MISSED':     statusLabel = 'Perdida';  statusCls = 'danger';  break;
+    default:           statusLabel = 'Na fila';  statusCls = 'waiting'; break;
+  }
+
   const typeStr  = (item.type || 'UNKNOWN').toUpperCase();
-  const typeLabel = isHC ? '◷ HC' : typeStr;
-  const nextTag  = isAssistNext ? '<span class="q-next-tag">← PRÓXIMA</span>' : '';
-  const canReorder = status !== 'PLAYING' && status !== 'PLAYED' && status !== 'SKIPPED' && status !== 'FAILED' && status !== 'MISSED';
-  const actionsCell = canReorder && itemId ? `
-    <button class="q-btn q-btn-up"   title="Mover para cima" onclick="queueMoveItem('${escHtml(itemId)}','up')">↑</button>
-    <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${escHtml(itemId)}','down')">↓</button>
-    <button class="q-btn q-btn-del"  title="Remover" onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>
-  ` : '';
+  const artistStr = item.artist
+    ? `${escHtml(item.artist)} · ${typeStr}`
+    : typeStr;
+
+  const eqHTML  = isPlaying
+    ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
+    : (isHC ? '🕐' : (isPlayed ? '<span style="color:#3a5a58">✓</span>' : (isFailed ? '<span style="color:var(--red)">✗</span>' : '')));
+
+  const badgeHTML = isPlaying ? `<span class="q-badge">Atual</span>` : '';
+  const nextTag   = isAssistNext && !isPlaying ? `<span class="q-next-tag">← PRÓXIMA</span>` : '';
+
+  const titleHTML = isHC
+    ? `<span style="background:#ff7700;color:#000;font-size:13px;font-weight:700;padding:2px 10px;border-radius:4px">${escHtml(item.title || '—')}</span>`
+    : escHtml(item.title || '—');
+
+  const progressHTML = isPlaying
+    ? `<div class="q-progress"><span style="width:0%"></span></div>`
+    : '';
+
   const dragAttrs = canReorder && itemId
     ? `draggable="true" ondragstart="dndStart(event,'item','${escHtml(itemId)}')" ondragend="dndEnd()"`
     : '';
-  const handleCell = canReorder && itemId ? `<td class="drag-handle" title="Arrastar">⠿</td>` : '<td class="drag-handle"></td>';
-  return `<tr class="${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
-    ${handleCell}
-    <td class="q-indicator ${indCls}">${indChar}</td>
-    <td style="max-width:220px;text-transform:uppercase;font-size:12px;font-weight:600;letter-spacing:0.5px" title="${escHtml(item.title || '')}">${isHC ? `<span style="background:#ff7700;color:#000;font-size:12px;font-weight:700;padding:2px 10px;border-radius:4px;letter-spacing:0.3px;">${escHtml(item.title || '—')}</span>` : escHtml(item.title || '—')}${nextTag}</td>
-    <td style="max-width:140px;color:var(--cyan);text-transform:uppercase;font-size:12px;font-weight:600;letter-spacing:0.5px" title="${escHtml(item.artist || '')}">${escHtml(item.artist || '—')}</td>
-    <td><span class="q-type ${typeStr}">${typeLabel}</span></td>
-    <td class="q-duration">${msToTime(item.duration_ms)}</td>
-    <td><span class="q-status ${status}">${status}</span></td>
-    <td class="q-action-col"><div class="q-actions">${actionsCell}</div></td>
-  </tr>`;
+
+  const actionsHTML = canReorder && itemId ? `
+    <div class="q-actions-wrap">
+      <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${escHtml(itemId)}','up')">↑</button>
+      <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${escHtml(itemId)}','down')">↓</button>
+      <button class="q-btn q-btn-del"  title="Remover"          onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>
+    </div>` : '<div></div>';
+
+  return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
+    <div class="q-index">${eqHTML}</div>
+    <div class="q-track">
+      <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}</div>
+      <span class="q-artist">${artistStr}</span>
+    </div>
+    <div class="q-status-pill ${statusCls}">${statusLabel}</div>
+    <div class="q-time">${msToTime(item.duration_ms)}</div>
+    ${actionsHTML}
+    ${progressHTML}
+  </article>`;
 }
 
 function renderBreakRows(brk, rows) {
@@ -2321,42 +2340,46 @@ function renderBreakRows(brk, rows) {
   const dragAttrs = isDraggable
     ? `draggable="true" ondragstart="dndStart(event,'break','${breakId}')" ondragend="dndEnd()"`
     : '';
-  rows.push(`<tr class="break-block-header" data-break-id="${breakId}" ${dragAttrs}>
-    <td class="drag-handle" title="Arrastar bloco">${isDraggable ? '⠿' : ''}</td>
-    <td class="q-indicator" style="color:#e6820a">🎙</td>
-    <td colspan="3" style="color:#e6820a;font-weight:700;font-size:13px;">
-      BLOCO: ${escHtml(brk.title || '—')}
-      <span style="font-size:11px;font-weight:400;color:rgba(230,130,10,0.65);margin-left:8px;">(${cnt} item${cnt !== 1 ? 's' : ''})</span>
-    </td>
-    <td class="q-duration" style="color:#e6820a">${msToTime(totalDur)}</td>
-    <td><span class="q-status ${brkStatus}" style="color:#e6820a">${brkStatus}</span></td>
-    <td class="q-action-col"><div class="q-actions">${isDraggable ? `
-      <button class="q-btn q-btn-up"  title="Mover para cima"  onclick="queueMoveItem('${breakId}','up','break')">↑</button>
+  const brkActionsHTML = isDraggable ? `
+    <div class="q-actions-wrap">
+      <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${breakId}','up','break')">↑</button>
       <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${breakId}','down','break')">↓</button>
       <button class="q-btn q-btn-del"  title="Remover bloco"    onclick="queueRemoveItem('${breakId}','break')">✕</button>
-    ` : ''}</div></td>
-  </tr>`);
+    </div>` : '<div></div>';
+  rows.push(`<article class="queue-row break-header" data-break-id="${breakId}" ${dragAttrs}>
+    <div class="q-index" style="color:#e6820a;font-size:20px">🎙</div>
+    <div class="q-track">
+      <div class="q-track-name" style="color:#e6820a">BLOCO: ${escHtml(brk.title || '—')}</div>
+      <span class="q-artist" style="color:rgba(230,130,10,0.65)">${cnt} item${cnt !== 1 ? 's' : ''}</span>
+    </div>
+    <div class="q-status-pill" style="color:#e6820a;border-color:rgba(230,130,10,0.3)">${brkStatus}</div>
+    <div class="q-time" style="color:#e6820a">${msToTime(totalDur)}</div>
+    ${brkActionsHTML}
+  </article>`);
+
   subItems.forEach(sub => {
     if (!sub) return;
     const item    = sub.item || {};
     const role    = sub.break_role || '';
     const st      = item.status || 'QUEUED';
     const typeStr = (item.type || 'UNKNOWN').toUpperCase();
-    const indChar = st === 'PLAYING' ? '▶' : st === 'PLAYED' ? '✓' : st === 'SKIPPED' ? '—' : st === 'FAILED' ? '✗' : roleIcon(role);
-    const indCls  = st === 'PLAYING' ? 'playing' : st === 'PLAYED' ? 'played' : '';
-    rows.push(`<tr class="break-block-item${st === 'PLAYING' ? ' playing' : ''}" data-id="${escHtml(item.queue_item_id || '')}" data-break-group="${breakId}">
-      <td class="drag-handle"></td>
-      <td class="q-indicator ${indCls}" style="color:rgba(230,130,10,0.7)">${indChar}</td>
-      <td style="max-width:220px;padding-left:24px;text-transform:uppercase;font-size:12px;font-weight:600;letter-spacing:0.5px" title="${escHtml(item.title || '')}">
-        <span style="font-size:10px;color:rgba(230,130,10,0.5);text-transform:uppercase;letter-spacing:0.5px;margin-right:6px">${escHtml(role)}</span>${escHtml(item.title || '—')}
-      </td>
-      <td style="max-width:140px;color:var(--cyan);text-transform:uppercase;font-size:12px;font-weight:600;letter-spacing:0.5px">${escHtml(item.artist || '—')}</td>
-      <td><span class="q-type ${typeStr}">${typeStr}</span></td>
-      <td class="q-duration">${msToTime(item.duration_ms)}</td>
-      <td><span class="q-status ${st}">${st}</span></td>
-      <td class="q-action-col"></td>
-    </tr>`);
-
+    const isPlaying = st === 'PLAYING';
+    const idxHTML = isPlaying
+      ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
+      : `<span style="color:rgba(230,130,10,0.7);font-size:14px">${st === 'PLAYED' ? '✓' : st === 'SKIPPED' ? '—' : st === 'FAILED' ? '✗' : roleIcon(role)}</span>`;
+    rows.push(`<article class="queue-row break-item${isPlaying ? ' is-current' : ''}" data-id="${escHtml(item.queue_item_id || '')}" data-break-group="${breakId}">
+      <div class="q-index">${idxHTML}</div>
+      <div class="q-track">
+        <div class="q-track-name" title="${escHtml(item.title || '')}">
+          <span style="font-size:10px;color:rgba(230,130,10,0.5);text-transform:uppercase;letter-spacing:0.5px">${escHtml(role)}</span>
+          ${escHtml(item.title || '—')}
+        </div>
+        <span class="q-artist">${escHtml(item.artist || '—')} · ${typeStr}</span>
+      </div>
+      <div class="q-status-pill" style="color:rgba(230,130,10,0.8);border-color:rgba(230,130,10,0.2)">${st}</div>
+      <div class="q-time" style="color:rgba(230,130,10,0.8)">${msToTime(item.duration_ms)}</div>
+      <div></div>
+    </article>`);
   });
 }
 
@@ -2554,15 +2577,15 @@ let _dnd = { type: null, itemId: null, breakId: null, track: null };
 
 function dropZoneRow(afterId) {
   const a = escHtml(afterId);
-  return `<tr class="dnd-drop-zone" data-after-id="${a}"><td colspan="8"></td></tr>`;
+  return `<div class="dnd-drop-zone" data-after-id="${a}"></div>`;
 }
 
 function dndStart(ev, type, id) {
   _dnd = { type, itemId: type === 'item' ? id : null, breakId: type === 'break' ? id : null };
   ev.dataTransfer.effectAllowed = 'move';
   const sel = type === 'item'
-    ? `tr[data-id="${id}"]`
-    : `tr[data-break-id="${id}"], tr[data-break-group="${id}"]`;
+    ? `[data-id="${id}"]`
+    : `[data-break-id="${id}"], [data-break-group="${id}"]`;
   document.querySelectorAll(sel).forEach(r => r.classList.add('dnd-dragging'));
 }
 
@@ -2577,7 +2600,7 @@ function tableDragOver(ev) {
   if (!_dnd.type) return;
   ev.preventDefault();
   ev.dataTransfer.dropEffect = 'move';
-  const zones = Array.from(document.querySelectorAll('tr.dnd-drop-zone'))
+  const zones = Array.from(document.querySelectorAll('.dnd-drop-zone'))
     .filter(z => z.offsetParent !== null); // skip display:none zones
   if (!zones.length) return;
   let best = null, bestDist = Infinity;
@@ -2587,14 +2610,14 @@ function tableDragOver(ev) {
     const dist = Math.abs(ev.clientY - mid);
     if (dist < bestDist) { bestDist = dist; best = z; }
   }
-  document.querySelectorAll('tr.dnd-drop-zone').forEach(r => r.classList.remove('dnd-over'));
+  document.querySelectorAll('.dnd-drop-zone').forEach(r => r.classList.remove('dnd-over'));
   if (best) best.classList.add('dnd-over');
 }
 
 async function tableDrop(ev) {
   ev.preventDefault();
   if (!_dnd.type) return;
-  const active  = document.querySelector('tr.dnd-drop-zone.dnd-over');
+  const active  = document.querySelector('.dnd-drop-zone.dnd-over');
   const afterId = active ? (active.dataset.afterId ?? '') : '';
 
   const body = { after_id: afterId };
