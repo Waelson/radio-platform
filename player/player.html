@@ -60,33 +60,105 @@ html, body {
   align-items: center;
   gap: 12px;
   padding: 0 16px;
-  background: var(--bg2);
+  background:
+    linear-gradient(
+      100deg,
+      rgba(45, 216, 255, 0.10),
+      transparent 32%,
+      rgba(123, 92, 255, 0.10) 78%,
+      rgba(45, 216, 255, 0.06)
+    ),
+    linear-gradient(
+      180deg,
+      #0f171f,
+      #081018 62%,
+      #05080d
+    );
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  height: 60px;
+  height: 110px;
   position: relative;
 }
 .topbar-logo { font-size: 16px; font-weight: 700; color: var(--cyan); letter-spacing: 0.5px; }
 .topbar-sep  { flex: 1; }
-.topbar-item { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.topbar-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
-.topbar-value { font-size: 13px; font-weight: 600; color: var(--text-hi); }
+.topbar-status-card {
+  display: flex;
+  align-items: stretch;
+  background: rgba(6, 14, 22, 0.88);
+  border: 1px solid rgba(45,216,255,0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  height: 76px;
+}
+.topbar-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0 18px; }
+.topbar-item-fixed { width: 110px; flex-shrink: 0; }
+.topbar-status-div { width: 1px; background: rgba(45,216,255,0.12); margin: 10px 0; }
+.topbar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.10em; color: rgba(220,239,242,0.40); font-weight: 700; }
+.topbar-value { font-size: 13px; font-weight: 700; color: var(--text-hi); }
 
+/* ─── Clock Widget ──────────────────────────────────────────── */
 .topbar-clock {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  padding: 4px 12px;
+  display: flex;
+  align-items: stretch;
+  background: rgba(6, 14, 22, 0.88);
+  border: 1px solid rgba(45,216,255,0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  height: 76px;
+  flex-shrink: 0;
+}
+.clk-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  gap: 5px;
+}
+.clk-time-row { display: flex; align-items: center; gap: 10px; }
+.clk-line { width: 28px; height: 1px; background: rgba(45,216,255,0.22); flex-shrink: 0; }
+.clk-time {
   font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-size: 34px;
   font-weight: 700;
   color: var(--cyan);
-  text-shadow: 0 0 8px rgba(32,230,255,.12);
-  letter-spacing: 1px;
+  letter-spacing: 3px;
   line-height: 1;
-  margin-left: 12px;
+  text-shadow: 0 0 18px rgba(45,216,255,0.30);
+}
+.clk-date {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-hi);
+  letter-spacing: 0.04em;
+}
+.clk-divider { width: 1px; background: rgba(45,216,255,0.12); margin: 10px 0; }
+.clk-weather {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+.clk-w-item { display: flex; align-items: center; gap: 8px; }
+.clk-w-icon {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(45,216,255,0.07);
+  border: 1px solid rgba(45,216,255,0.18);
+  border-radius: 6px;
+  color: var(--cyan);
   flex-shrink: 0;
 }
+.clk-w-label {
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.10em;
+  color: rgba(220,239,242,0.40); line-height: 1;
+}
+.clk-w-value { font-size: 13px; font-weight: 700; color: var(--text-hi); line-height: 1.3; }
 
 .conn-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -100,21 +172,22 @@ html, body {
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 .badge {
-  display: inline-block; padding: 2px 8px; border-radius: 3px;
-  font-size: 12px; font-weight: 700; letter-spacing: 1px;
-  text-transform: uppercase; background: #222; color: var(--text-dim);
+  display: inline-block; padding: 4px 12px; border-radius: 6px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; background: rgba(255,255,255,0.06);
+  color: var(--text-dim); border: 1px solid rgba(255,255,255,0.10);
 }
-.badge.IDLE     { background: #2a2a2a; color: #888; }
-.badge.PLAYING  { background: #002a11; color: var(--cyan); box-shadow: 0 0 8px #00441a; }
-.badge.PAUSED   { background: #2a2500; color: var(--yellow); }
-.badge.ASSIST   { background: #2a1800; color: var(--orange); }
-.badge.PANIC    { background: #2a0000; color: var(--red); animation: blink 0.5s step-start infinite; }
-.badge.ERROR    { background: #2a0000; color: var(--red); }
-.badge.STOPPING { background: #1a1a1a; color: #666; }
-.badge.STARTING { background: #001a2a; color: var(--blue); }
-.badge.AUTO     { background: #001a33; color: var(--blue); }
-.badge.ASSIST_MODE { background: #2a1800; color: var(--orange); }
-.badge.PANIC_MODE  { background: #2a0000; color: var(--red); }
+.badge.IDLE     { background: rgba(42,42,42,0.6); color: #666; border-color: rgba(255,255,255,0.08); }
+.badge.PLAYING  { background: rgba(0,42,17,0.8); color: var(--cyan); border-color: rgba(45,216,255,0.40); box-shadow: 0 0 10px rgba(45,216,255,0.12); }
+.badge.PAUSED   { background: rgba(42,37,0,0.8); color: var(--yellow); border-color: rgba(255,210,0,0.35); }
+.badge.ASSIST   { background: rgba(42,24,0,0.8); color: var(--orange); border-color: rgba(255,138,0,0.35); }
+.badge.PANIC    { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.45); animation: blink 0.5s step-start infinite; }
+.badge.ERROR    { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.40); }
+.badge.STOPPING { background: rgba(26,26,26,0.6); color: #666; border-color: rgba(255,255,255,0.08); }
+.badge.STARTING { background: rgba(0,26,42,0.8); color: var(--blue); border-color: rgba(39,147,219,0.35); }
+.badge.AUTO     { background: rgba(0,22,51,0.8); color: #8fc2ff; border-color: rgba(39,147,219,0.40); }
+.badge.ASSIST_MODE { background: rgba(42,24,0,0.8); color: var(--orange); border-color: rgba(255,138,0,0.35); }
+.badge.PANIC_MODE  { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.45); }
 
 /* ─── Main 3-column layout ───────────────────────────────────── */
 .main-layout {
@@ -426,7 +499,7 @@ input[type=range].vol-slider:disabled {
   font-family: 'Share Tech Mono', 'Courier New', monospace;
   font-size: 30px;
   font-weight: 800;
-  color: #2bd8de;
+  color: #20e6ff;
   letter-spacing: 0.08em;
 }
 .np5-title {
@@ -443,7 +516,7 @@ input[type=range].vol-slider:disabled {
 }
 .np5-artist {
   font-size: 14px;
-  color: #2bd8de;
+  color: #20e6ff;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -496,7 +569,7 @@ input[type=range].vol-slider:disabled {
 .np5-fill {
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  background: #2bd8de;
+  background: #20e6ff;
   border-radius: 999px;
   transition: width 0.5s linear;
 }
@@ -645,35 +718,35 @@ input[type=range].vol-slider:disabled {
 /* ── Advanced Search Modal ─────────────────────────────────────────────── */
 .adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
 .adv-backdrop.open { display: block; }
-.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 620px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; overflow: hidden; }
-.adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; cursor: move; user-select: none; }
+.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 620px; background: var(--bg); border: 1px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: 0 0 32px rgba(32,230,255,0.14), 0 0 8px rgba(32,230,255,0.08); overflow: hidden; }
+.adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(32,230,255,0.15); background: rgba(32,230,255,0.05); flex-shrink: 0; cursor: move; user-select: none; }
 .adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
 .adv-modal-close { background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1; }
 .adv-modal-close:hover { background: #1e1e1e; color: var(--text); }
 .adv-filters { padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .adv-filters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
 .adv-filter-group { display: flex; flex-direction: column; gap: 4px; }
-.adv-filter-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
-.adv-filter-input { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 4px; font-size: 12px; outline: none; }
+.adv-filter-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: var(--text-dim); }
+.adv-filter-input { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 4px; font-size: 14px; outline: none; }
 .adv-filter-input:focus { border-color: var(--cyan); }
-.adv-filter-input::placeholder { color: var(--text-dim); }
-.adv-filter-select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 4px; font-size: 12px; outline: none; width: 100%; }
+.adv-filter-input::placeholder { color: var(--text-dim); font-size: 13px; }
+.adv-filter-select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 4px; font-size: 14px; outline: none; width: 100%; }
 .adv-filter-select:focus { border-color: var(--cyan); }
 .adv-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-.adv-btn-search { background: var(--cyan); color: #000; border: none; padding: 7px 20px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.adv-btn-search { background: var(--cyan); color: #000; border: none; padding: 8px 20px; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; }
 .adv-btn-search:hover { opacity: 0.85; }
-.adv-btn-clear { background: none; border: 1px solid var(--border); color: var(--text-dim); padding: 6px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.adv-btn-clear { background: none; border: 1px solid var(--border); color: var(--text-dim); padding: 8px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; }
 .adv-btn-clear:hover { color: var(--text); border-color: var(--text-dim); }
-.adv-results-header { padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+.adv-results-header { padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
 .adv-results-header span { color: var(--cyan); font-weight: 600; }
 .adv-results { flex: 1; overflow-y: auto; min-height: 0; }
 .adv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.adv-table th { padding: 7px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); }
-.adv-table td { padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+.adv-table th { padding: 7px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: var(--text-dim); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); }
+.adv-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
 .adv-table tbody tr:hover td { background: rgba(255,255,255,0.03); cursor: pointer; }
-.adv-td-title { font-weight: 600; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adv-td-artist, .adv-td-album { color: var(--text-dim); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adv-td-dur { color: var(--text-dim); white-space: nowrap; }
+.adv-td-title { font-size: 16px; font-weight: 700; color: #e8fbfb; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adv-td-artist, .adv-td-album { font-size: 12px; font-weight: 600; color: var(--text-dim); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adv-td-dur { font-size: 15px; font-weight: 800; font-family: 'Courier New', monospace; color: #d5fbf9; white-space: nowrap; }
 .adv-type-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .adv-type-badge.music    { background: rgba(0,188,212,0.15); color: var(--cyan); }
 .adv-type-badge.vinheta  { background: rgba(156,39,176,0.2); color: #ce93d8; }
@@ -686,6 +759,54 @@ input[type=range].vol-slider:disabled {
 .adv-row--previewing td { background: rgba(0,188,212,0.07) !important; }
 .adv-row--previewing .adv-td-actions button:first-child { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-empty { padding: 40px; text-align: center; color: var(--text-dim); font-size: 13px; }
+
+/* ─── CUE Float Panel ───────────────────────────────────────── */
+.cue-float {
+  position: fixed; bottom: 90px; right: 24px; width: 296px;
+  background: #091520; border: 1px solid rgba(45,216,255,0.30);
+  border-radius: 12px; padding: 14px 16px 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.60), 0 0 20px rgba(45,216,255,0.08);
+  z-index: 800; display: none;
+}
+.cue-float.open { display: block; }
+.cue-float-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cue-float-badge { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: var(--cyan); flex-shrink: 0; animation: cuePulse 1.2s ease-in-out infinite; }
+.cue-float-title { flex: 1; font-size: 13px; font-weight: 700; color: #e8fbfb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cue-float-close { background: none; border: none; color: var(--text-dim); font-size: 14px; cursor: pointer; line-height: 1; padding: 0; }
+.cue-float-close:hover { color: #fff; }
+.cue-float-artist { font-size: 11px; color: #77a4a3; font-weight: 600; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cue-float-track-wrap { cursor: pointer; padding: 5px 0; }
+.cue-float-track { height: 4px; background: rgba(45,216,255,0.12); border-radius: 999px; position: relative; overflow: hidden; }
+.cue-float-fill { height: 100%; background: var(--cyan); border-radius: 999px; }
+.cue-float-controls { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.cue-float-time { font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; color: #77a4a3; min-width: 40px; }
+.cue-float-btns { display: flex; gap: 6px; }
+.cue-float-btns button { background: rgba(45,216,255,0.08); border: 1px solid rgba(45,216,255,0.22); color: var(--cyan); border-radius: 6px; width: 32px; height: 32px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.12s; }
+.cue-float-btns button:hover { background: rgba(45,216,255,0.20); }
+/* CUE button in queue rows */
+.q-cue-btn { background: none; border: 1px solid rgba(45,216,255,0.18); color: rgba(45,216,255,0.45); font-size: 13px; cursor: pointer; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.12s, background 0.12s, border-color 0.12s; flex-shrink: 0; }
+.q-cue-btn:hover { color: var(--cyan); background: rgba(45,216,255,0.10); border-color: rgba(45,216,255,0.40); }
+.q-cue-btn.is-cuing { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cuePulse 1.2s ease-in-out infinite; }
+@keyframes cuePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.50; } }
+
+/* ─── Queue Context Menu ─────────────────────────────────────── */
+.ctx-menu {
+  position: fixed; z-index: 9999;
+  background: #0d1a1f; border: 1px solid rgba(45,216,255,0.22);
+  border-radius: 8px; padding: 4px 0;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55), 0 0 12px rgba(45,216,255,0.08);
+  min-width: 180px; display: none; user-select: none;
+}
+.ctx-menu.open { display: block; }
+.ctx-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; font-size: 13px; font-weight: 600;
+  color: #dceff2; cursor: pointer; transition: background 0.12s;
+}
+.ctx-menu-item:hover { background: rgba(45,216,255,0.10); }
+.ctx-menu-item.danger { color: #ff6b6b; }
+.ctx-menu-item.danger:hover { background: rgba(255,70,70,0.10); }
+.ctx-menu-sep { height: 1px; background: rgba(45,216,255,0.10); margin: 4px 0; }
 
 .adv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .adv-pagination button { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
@@ -764,10 +885,10 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Queue list (card layout) ───────────────────────────────── */
 .queue-scroll-host { position: relative; flex: 1; display: flex; overflow: hidden; }
-.queue-list-wrap { flex: 1; overflow-y: scroll; background: #000000; padding: 10px 30px 10px 10px; scrollbar-width: none; }
+.queue-list-wrap { flex: 1; overflow-y: scroll; background: #000000; padding: 10px 30px 10px 10px; scrollbar-width: none; transition: padding-right 0.25s ease; }
 .queue-list-wrap::-webkit-scrollbar { display: none; }
 /* Custom scrollbar */
-.q-sb-track { position: absolute; right: 0; top: 0; bottom: 0; width: 20px; background: rgba(255,255,255,0.04); pointer-events: auto; cursor: pointer; display: flex; align-items: stretch; justify-content: center; padding: 8px 0; box-sizing: border-box; }
+.q-sb-track { position: absolute; right: 0; top: 0; bottom: 0; width: 20px; background: rgba(255,255,255,0.04); pointer-events: auto; cursor: pointer; display: flex; align-items: stretch; justify-content: center; padding: 8px 0; box-sizing: border-box; opacity: 1; transition: opacity 0.25s ease; }
 .q-sb-thumb { position: absolute; left: 3px; right: 3px; min-height: 28px; background: rgba(45,212,200,0.32); border-radius: 6px; cursor: grab; transition: background 0.15s; }
 .q-sb-thumb:hover { background: rgba(45,212,200,0.58); }
 .q-sb-thumb.is-dragging { background: rgba(45,212,200,0.72); cursor: grabbing; }
@@ -861,12 +982,26 @@ input[type=range].vol-slider:disabled {
 .q-equalizer i:nth-child(4) { height: 6px;  animation-delay: 0.45s; }
 @keyframes eqBounce { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
 
-/* Break rows */
-.queue-row.break-header { background: rgba(230,130,10,0.10); border-color: rgba(230,130,10,0.30); border-left-color: #e6820a; min-height: 52px; }
-.queue-row.break-header:hover { background: rgba(230,130,10,0.15); }
-.queue-row.break-item   { background: rgba(230,130,10,0.04); border-color: rgba(230,130,10,0.15); border-left-color: rgba(230,130,10,0.40); min-height: 64px; }
-.queue-row.break-item:hover { background: rgba(230,130,10,0.09) !important; }
-.queue-row.break-item.is-current { background: rgba(230,130,10,0.14) !important; }
+/* Break group container */
+.break-group {
+  border: 1px solid rgba(230,130,10,0.38);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.break-group .queue-row {
+  border-radius: 0;
+  border: none;
+  border-left: 4px solid transparent;
+  border-bottom: 1px solid rgba(230,130,10,0.10);
+}
+.break-group .queue-row:last-child { border-bottom: none; }
+.break-group .queue-row.break-header { min-height: 52px; background: rgba(230,130,10,0.12); border-left-color: #e6820a; }
+.break-group .queue-row.break-header:hover { background: rgba(230,130,10,0.18); }
+.break-group .queue-row.break-item   { min-height: 64px; background: rgba(230,130,10,0.04); border-left-color: rgba(230,130,10,0.35); }
+.break-group .queue-row.break-item:hover { background: rgba(230,130,10,0.09) !important; }
+.break-group .queue-row.break-item.is-current { background: rgba(230,130,10,0.16) !important; border-left-color: #e6820a; }
 
 .queue-empty {
   padding: 40px; text-align: center; color: var(--text-dim);
@@ -983,8 +1118,9 @@ input[type=range].vol-slider:disabled {
 .btn-modal-ok:hover { background: #004d22; }
 
 /* ─── Queue reorder buttons (ASSIST only) ────────────────────── */
-.q-actions-wrap { display: none; gap: 3px; align-items: center; }
-.assist-active .q-actions-wrap { display: flex; }
+.q-actions-wrap { display: flex; gap: 3px; align-items: center; }
+.q-actions-wrap .q-btn { display: none; }
+.assist-active .q-actions-wrap .q-btn { display: inline-flex; }
 .q-btn {
   background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 3px;
   color: var(--text-dim); font-size: 11px; font-weight: 700;
@@ -1094,10 +1230,6 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
   align-items: center;
 }
 
-.topbar-clock {
-  color: var(--cyan);
-  text-shadow: 0 0 12px rgba(32,230,255,.28);
-}
 
 .conn-dot.ok {
   background: var(--cyan);
@@ -1147,7 +1279,7 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 }
 
 .np5-status-dot {
-  background: #2bd8de;
+  background: #20e6ff;
   box-shadow: none;
 }
 
@@ -1309,33 +1441,69 @@ canvas.vu-canvas {
     <img src="radio-flow.png" alt="RadioFlow" style="height:36px;width:auto;">
 
     <div class="topbar-sep"></div>
-    <div class="topbar-item">
-      <span class="topbar-label">Engine</span>
-      <span class="topbar-value" id="tEngineId" style="text-transform:uppercase">—</span>
+    <div class="topbar-status-card">
+      <div class="topbar-item">
+        <span class="topbar-label">Engine</span>
+        <span class="topbar-value" id="tEngineId" style="text-transform:uppercase;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+      </div>
+      <div class="topbar-status-div"></div>
+      <div class="topbar-item topbar-item-fixed">
+        <span class="topbar-label">Estado</span>
+        <span id="tState" class="badge">—</span>
+      </div>
+      <div class="topbar-status-div"></div>
+      <div class="topbar-item topbar-item-fixed">
+        <span class="topbar-label">Modo</span>
+        <span id="tMode" class="badge">—</span>
+      </div>
+      <div class="topbar-status-div"></div>
+      <div class="topbar-item">
+        <span class="topbar-label">Playout</span>
+        <span style="display:flex;align-items:center;gap:6px;">
+          <span class="conn-dot" id="connDot"></span>
+          <span id="connLabel" style="font-size:13px;font-weight:700;">Off-line</span>
+        </span>
+      </div>
+      <div class="topbar-status-div"></div>
+      <div class="topbar-item">
+        <span class="topbar-label">Library</span>
+        <span style="display:flex;align-items:center;gap:6px;">
+          <span class="conn-dot" id="libDot"></span>
+          <span id="libLabel" style="font-size:13px;font-weight:700;">Off-line</span>
+        </span>
+      </div>
     </div>
-    <div class="topbar-item">
-      <span class="topbar-label">Estado</span>
-      <span id="tState" class="badge">—</span>
+    <div class="topbar-clock" id="topbarClock">
+      <div class="clk-main">
+        <div class="clk-time-row">
+          <span class="clk-line"></span>
+          <span class="clk-time" id="clkTime">--:--:--</span>
+          <span class="clk-line"></span>
+        </div>
+        <div class="clk-date" id="clkDate">carregando...</div>
+      </div>
+      <div class="clk-divider"></div>
+      <div class="clk-weather">
+        <div class="clk-w-item">
+          <div class="clk-w-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+          </div>
+          <div>
+            <div class="clk-w-label">Temperatura</div>
+            <div class="clk-w-value" id="clkTemp">--°C</div>
+          </div>
+        </div>
+        <div class="clk-w-item">
+          <div class="clk-w-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+          </div>
+          <div>
+            <div class="clk-w-label">Umidade</div>
+            <div class="clk-w-value" id="clkHumidity">--%</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="topbar-item">
-      <span class="topbar-label">Modo</span>
-      <span id="tMode" class="badge">—</span>
-    </div>
-    <div class="topbar-item">
-      <span class="topbar-label">Playout</span>
-      <span style="display:flex;align-items:center;">
-        <span class="conn-dot" id="connDot"></span>
-        <span id="connLabel" style="font-size: 13px;">Desconectado</span>
-      </span>
-    </div>
-    <div class="topbar-item">
-      <span class="topbar-label">Library</span>
-      <span style="display:flex;align-items:center;">
-        <span class="conn-dot" id="libDot"></span>
-        <span id="libLabel" style="font-size: 13px;">Off-line</span>
-      </span>
-    </div>
-    <div class="topbar-clock" id="topbarClock">--:--</div>
   </div>
 
   <!-- ─── Main 3-column layout ─────────────────────────── -->
@@ -1346,7 +1514,7 @@ canvas.vu-canvas {
 
       <!-- Loudness (EBU R128) -->
       <div class="lufs-panel">
-        <div class="section-title">Loudness (EBU R128)</div>
+        <div class="queue-title-label">Loudness (EBU R128)</div>
         <div class="lufs-meter-wrap">
           <div class="lufs-name">LUFS Momentâneo <span style="color:#555;font-size: 10px">(400ms)</span></div>
           <div class="lufs-bar-track">
@@ -1383,7 +1551,7 @@ canvas.vu-canvas {
 
       <!-- Saúde do Áudio -->
       <div class="health-panel">
-        <div class="section-title">Saúde do Áudio</div>
+        <div class="queue-title-label">Saúde do Áudio</div>
         <div class="health-row">
           <div class="health-name">Buffer de saída</div>
           <div class="bar-track"><div class="bar-fill buf" id="bufBar" style="width:0%"></div></div>
@@ -1410,7 +1578,7 @@ canvas.vu-canvas {
 
       <!-- ─── Volume ───────────────────────────── -->
       <div class="vol-section">
-        <div class="section-title">Volume</div>
+        <div class="queue-title-label">Volume</div>
 
         <div class="vol-row">
           <div class="vol-label">Principal</div>
@@ -1453,7 +1621,7 @@ canvas.vu-canvas {
 
       <!-- VU Meters (abaixo de Saúde do Áudio) -->
       <div class="vu-section">
-        <div class="section-title">VU Meters</div>
+        <div class="queue-title-label">VU Meters</div>
         <div class="vu-meters">
           <div class="vu-channel">
             <div class="vu-label" style="color:transparent">·</div>
@@ -1656,6 +1824,34 @@ canvas.vu-canvas {
 
   </div><!-- /main-layout -->
 </div><!-- /app -->
+
+<!-- ─── CUE Float Panel ───────────────────────────────────── -->
+<div class="cue-float" id="cueFloat">
+  <div class="cue-float-header">
+    <span class="cue-float-badge">◉ CUE</span>
+    <span class="cue-float-title" id="cueFloatTitle">—</span>
+    <button class="cue-float-close" title="Fechar" onclick="cueStop()">✕</button>
+  </div>
+  <div class="cue-float-artist" id="cueFloatArtist"></div>
+  <div class="cue-float-track-wrap" onclick="cueSeekClick(event)">
+    <div class="cue-float-track">
+      <div class="cue-float-fill" id="cueFloatFill" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="cue-float-controls">
+    <span class="cue-float-time" id="cueFloatPos">0:00</span>
+    <div class="cue-float-btns">
+      <button id="cueFloatBtnPP" title="Play / Pause" onclick="cuePauseResume()">⏸</button>
+      <button title="Stop" onclick="cueStop()">⏹</button>
+    </div>
+    <span class="cue-float-time" id="cueFloatDur" style="text-align:right">0:00</span>
+  </div>
+</div>
+
+<!-- ─── Queue Context Menu ─────────────────────────────────── -->
+<div class="ctx-menu" id="queueCtxMenu">
+  <div class="ctx-menu-item danger" id="ctxMenuDelete">✕ Excluir da fila</div>
+</div>
 
 <!-- Toast container -->
 <div id="toastContainer"></div>
@@ -2207,11 +2403,24 @@ function renderItemRow(item) {
     ? `draggable="true" ondragstart="dndStart(event,'item','${escHtml(itemId)}')" ondragend="dndEnd()"`
     : '';
 
-  const actionsHTML = canReorder && itemId ? `
+  // Registrar no map para CUE (usa path como fallback quando não há queue_item_id)
+  const cuePath = item.path || item.file_path || '';
+  const cueKey  = itemId || cuePath;
+  if (cueKey) _queueItemMap[cueKey] = { path: cuePath, title: item.title || '—', artist: item.artist || '' };
+
+  const canCue = (status === 'QUEUED' || status === 'PRELOADING') && !!cueKey;
+  const isCuing = canCue && _cueQueueItemId === cueKey && _preview.state !== 'idle';
+  const cueBtnHTML = canCue
+    ? `<button class="q-cue-btn${isCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(cueKey)}" title="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(cueKey)}')">${isCuing ? '◉' : '◎'}</button>`
+    : '';
+
+  const actionsHTML = (canReorder && itemId) || canCue ? `
     <div class="q-actions-wrap">
+      ${cueBtnHTML}
+      ${canReorder && itemId ? `
       <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${escHtml(itemId)}','up')">↑</button>
       <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${escHtml(itemId)}','down')">↓</button>
-      <button class="q-btn q-btn-del"  title="Remover"          onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>
+      <button class="q-btn q-btn-del"  title="Remover"          onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>` : ''}
     </div>` : '<div></div>';
 
   return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
@@ -2244,16 +2453,19 @@ function renderBreakRows(brk, rows) {
       <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${breakId}','down','break')">↓</button>
       <button class="q-btn q-btn-del"  title="Remover bloco"    onclick="queueRemoveItem('${breakId}','break')">✕</button>
     </div>` : '<div></div>';
-  rows.push(`<article class="queue-row break-header" data-break-id="${breakId}" ${dragAttrs}>
+
+  let html = `<div class="break-group" data-break-id="${breakId}" ${dragAttrs}>`;
+
+  html += `<article class="queue-row break-header" data-break-id="${breakId}">
     <div class="q-index" style="color:#e6820a;font-size:20px">🎙</div>
     <div class="q-track">
       <div class="q-track-name" style="color:#e6820a">BLOCO: ${escHtml(brk.title || '—')}</div>
       <span class="q-artist" style="color:rgba(230,130,10,0.65)">${cnt} item${cnt !== 1 ? 's' : ''}</span>
     </div>
-    <div class="q-status-pill" style="color:#e6820a;border-color:rgba(230,130,10,0.3)">${brkStatus}</div>
+    <div class="q-status-pill" style="color:#e6820a;border-color:rgba(230,130,10,0.3)">${brkStatus === 'QUEUED' ? 'NA FILA' : brkStatus}</div>
     <div class="q-time" style="color:#e6820a">${msToTime(totalDur)}</div>
     ${brkActionsHTML}
-  </article>`);
+  </article>`;
 
   subItems.forEach(sub => {
     if (!sub) return;
@@ -2265,7 +2477,7 @@ function renderBreakRows(brk, rows) {
     const idxHTML = isPlaying
       ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
       : `<span style="color:rgba(230,130,10,0.7);font-size:14px">${st === 'PLAYED' ? '✓' : st === 'SKIPPED' ? '—' : st === 'FAILED' ? '✗' : roleIcon(role)}</span>`;
-    rows.push(`<article class="queue-row break-item${isPlaying ? ' is-current' : ''}" data-id="${escHtml(item.queue_item_id || '')}" data-break-group="${breakId}">
+    html += `<article class="queue-row break-item${isPlaying ? ' is-current' : ''}" data-id="${escHtml(item.queue_item_id || '')}" data-break-group="${breakId}">
       <div class="q-index">${idxHTML}</div>
       <div class="q-track">
         <div class="q-track-name" title="${escHtml(item.title || '')}">
@@ -2274,11 +2486,14 @@ function renderBreakRows(brk, rows) {
         </div>
         <span class="q-artist">${escHtml(item.artist || '—')} · ${typeStr}</span>
       </div>
-      <div class="q-status-pill" style="color:rgba(230,130,10,0.8);border-color:rgba(230,130,10,0.2)">${st}</div>
+      <div class="q-status-pill" style="color:rgba(230,130,10,0.8);border-color:rgba(230,130,10,0.2)">${st === 'QUEUED' ? 'NA FILA' : st}</div>
       <div class="q-time" style="color:rgba(230,130,10,0.8)">${msToTime(item.duration_ms)}</div>
       <div></div>
-    </article>`);
+    </article>`;
   });
+
+  html += `</div>`;
+  rows.push(html);
 }
 
 function roleIcon(role) {
@@ -2696,18 +2911,6 @@ async function assistClearQueue() {
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
 
-async function queueRemoveItem(id) {
-  try {
-    const r = await fetch(API_URL + '/v1/queue/remove-item', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ queue_item_id: id }),
-    });
-    const j = await r.json();
-    if (!j.ok) showToast(false, j.reason || 'Erro ao remover item');
-    else fetchQueue();
-  } catch(e) { showToast(false, 'Erro de rede'); }
-}
 
 
 async function submitInsertNextMusic() {
@@ -2786,28 +2989,33 @@ function _renderPreviewPanel() {
   const paused  = s.state === 'paused';
   const active  = playing || paused;
 
+  // Update library preview panel only when it is open
   const btnPlay  = document.getElementById('libPrevPlay');
-  const btnPause = document.getElementById('libPrevPause');
-  const btnStop  = document.getElementById('libPrevStop');
-  const fill     = document.getElementById('libPrevFill');
-  const pos      = document.getElementById('libPrevPos');
-  const dur      = document.getElementById('libPrevDur');
-  if (!btnPlay) return;
+  if (btnPlay) {
+    const btnPause = document.getElementById('libPrevPause');
+    const btnStop  = document.getElementById('libPrevStop');
+    const fill     = document.getElementById('libPrevFill');
+    const pos      = document.getElementById('libPrevPos');
+    const dur      = document.getElementById('libPrevDur');
 
-  btnPlay.disabled  = playing;
-  btnPause.disabled = !playing;
-  btnStop.disabled  = !active;
+    btnPlay.disabled  = playing;
+    btnPause.disabled = !playing;
+    btnStop.disabled  = !active;
 
-  const pct = s.durationMS > 0 ? Math.min(100, (s.positionMS / s.durationMS) * 100) : 0;
-  fill.style.width = pct + '%';
-  pos.textContent  = msToTime(s.positionMS);
-  dur.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
+    const pct = s.durationMS > 0 ? Math.min(100, (s.positionMS / s.durationMS) * 100) : 0;
+    fill.style.width = pct + '%';
+    pos.textContent  = msToTime(s.positionMS);
+    dur.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
 
-  // 3.3 — When preview stops, clear row highlight but keep panel open
-  if (s.state === 'idle' && typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
-    document.querySelectorAll('.adv-table tbody tr').forEach(r => r.classList.remove('adv-row--previewing'));
-    document.querySelectorAll('[id^="adv-cue-"]').forEach(b => b.classList.remove('active'));
+    // When preview stops, clear row highlight but keep panel open
+    if (s.state === 'idle' && typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
+      document.querySelectorAll('.adv-table tbody tr').forEach(r => r.classList.remove('adv-row--previewing'));
+      document.querySelectorAll('[id^="adv-cue-"]').forEach(b => b.classList.remove('active'));
+    }
   }
+
+  // Always update CUE float panel (used when preview is triggered from queue)
+  _updateCueFloat();
 }
 
 async function previewPlayOrResume() {
@@ -3188,7 +3396,7 @@ function setConn(ok) {
   const dot   = document.getElementById('connDot');
   const label = document.getElementById('connLabel');
   dot.className     = 'conn-dot ' + (ok ? 'ok' : 'error');
-  label.textContent = ok ? 'Conectado' : 'Reconectando…';
+  label.textContent = ok ? 'On-line' : 'Off-line';
   label.style.color = ok ? 'var(--cyan)' : 'var(--red)';
 }
 
@@ -3212,8 +3420,8 @@ function initQueueScrollbar() {
     const viewH = pane.clientHeight;
     const fullH = pane.scrollHeight;
     const ratio = viewH / fullH;
-    if (ratio >= 1) { track.style.display = 'none'; pane.style.paddingRight = '10px'; return; }
-    track.style.display = ''; pane.style.paddingRight = '30px';
+    if (ratio >= 1) { track.style.opacity = '0'; track.style.pointerEvents = 'none'; pane.style.paddingRight = '10px'; return; }
+    track.style.opacity = '1'; track.style.pointerEvents = ''; pane.style.paddingRight = '30px';
     const trackH  = track.clientHeight;
     const thumbH  = Math.max(28, trackH * ratio);
     const maxScroll = fullH - viewH;
@@ -3266,21 +3474,183 @@ window.addEventListener('load', () => {
 });
 
 
-/* ─── Clock ─────────────────────────────────────────────────── */
+/* ─── Clock Widget ───────────────────────────────────────────── */
 (function startClock() {
-  const el = document.getElementById('topbarClock');
+  const elTime = document.getElementById('clkTime');
+  const elDate = document.getElementById('clkDate');
+  const days   = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
   function tick() {
     const now = new Date();
     const hh  = String(now.getHours()).padStart(2, '0');
     const mm  = String(now.getMinutes()).padStart(2, '0');
     const ss  = String(now.getSeconds()).padStart(2, '0');
-    el.textContent = hh + ':' + mm + ':' + ss;
+    elTime.textContent = hh + ':' + mm + ':' + ss;
+    elDate.textContent = days[now.getDay()] + ', ' + now.getDate() + ' de ' + months[now.getMonth()] + ' de ' + now.getFullYear();
   }
   tick();
   setInterval(tick, 1000);
+
+  // Clima via Open-Meteo (sem chave de API)
+  function updateWeather(lat, lon) {
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m&timezone=auto`)
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('clkTemp').textContent     = d.current.temperature_2m + '°C';
+        document.getElementById('clkHumidity').textContent = d.current.relative_humidity_2m + '%';
+      })
+      .catch(() => {});
+  }
+
+  // Busca clima imediatamente com fallback; tenta refinar com geolocalização se disponível
+  updateWeather(-23.55, -46.63);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      p => updateWeather(p.coords.latitude, p.coords.longitude),
+      () => {},
+      { timeout: 5000 }
+    );
+  }
 })();
 
 window.addEventListener('resize', setupCanvases);
+
+/* ─── CUE Queue Panel ────────────────────────────────────────── */
+let _cueQueueItemId = null;
+const _queueItemMap  = {}; // cueKey (queue_item_id ou path) → { path, title, artist }
+
+function cueToggleQueueItem(itemId) {
+  if (_cueQueueItemId === itemId && _preview.state !== 'idle') { cueStop(); return; }
+  const info = _queueItemMap[itemId];
+  if (!info) return;
+  _cueQueueItemId = itemId;
+  _preview.path = info.path;
+  document.getElementById('cueFloatTitle').textContent  = info.title  || '—';
+  document.getElementById('cueFloatArtist').textContent = info.artist || '';
+  document.getElementById('cueFloat').classList.add('open');
+  fetch(API_URL + '/v1/preview/play', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ path: info.path, seek_ms: 0 }),
+  }).catch(e => console.warn('[CUE] play error', e));
+}
+
+async function cueStop() {
+  _cueQueueItemId = null;
+  document.getElementById('cueFloat').classList.remove('open');
+  document.querySelectorAll('.q-cue-btn').forEach(b => { b.classList.remove('is-cuing'); b.textContent = '◎'; });
+  await previewStop();
+}
+
+async function cuePauseResume() {
+  if (_preview.state === 'playing') await previewPause();
+  else if (_preview.state === 'paused') await previewResume();
+}
+
+function cueSeekClick(event) {
+  if (_preview.durationMS <= 0 || _preview.state === 'idle') return;
+  const rect  = event.currentTarget.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  fetch(API_URL + '/v1/preview/seek', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ position_ms: Math.round(ratio * _preview.durationMS) }),
+  }).catch(e => console.warn('[CUE] seek error', e));
+}
+
+function _updateCueFloat() {
+  const s = _preview;
+  const pct = s.durationMS > 0 ? Math.min(100, (s.positionMS / s.durationMS) * 100) : 0;
+  const fillEl = document.getElementById('cueFloatFill');
+  const posEl  = document.getElementById('cueFloatPos');
+  const durEl  = document.getElementById('cueFloatDur');
+  const ppBtn  = document.getElementById('cueFloatBtnPP');
+  if (fillEl) fillEl.style.width = pct + '%';
+  if (posEl)  posEl.textContent  = msToTime(s.positionMS);
+  if (durEl)  durEl.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
+  if (ppBtn)  ppBtn.textContent  = s.state === 'playing' ? '⏸' : '▶';
+
+  // Sincronizar botões CUE nas rows
+  const isActive = _cueQueueItemId && (s.state === 'playing' || s.state === 'paused');
+  document.querySelectorAll('.q-cue-btn').forEach(btn => {
+    const mine = isActive && btn.dataset.itemId === _cueQueueItemId;
+    btn.classList.toggle('is-cuing', mine);
+    btn.textContent = mine ? '◉' : '◎';
+  });
+
+  // Fechar painel se preview parou
+  if (s.state === 'idle' && _cueQueueItemId !== null) {
+    _cueQueueItemId = null;
+    document.getElementById('cueFloat').classList.remove('open');
+  }
+}
+
+/* ─── Queue Context Menu ─────────────────────────────────────── */
+(function initQueueCtxMenu() {
+  const menu    = document.getElementById('queueCtxMenu');
+  const btnDel  = document.getElementById('ctxMenuDelete');
+  let _ctxTarget = null; // { id, type: 'item'|'break' }
+
+  function closeMenu() {
+    menu.classList.remove('open');
+    _ctxTarget = null;
+  }
+
+  function openMenu(x, y, target) {
+    _ctxTarget = target;
+    // Posicionar e garantir que não saia da viewport
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
+    menu.classList.add('open');
+    const rect = menu.getBoundingClientRect();
+    if (rect.right  > window.innerWidth)  menu.style.left = (x - rect.width)  + 'px';
+    if (rect.bottom > window.innerHeight) menu.style.top  = (y - rect.height) + 'px';
+  }
+
+  document.getElementById('queueBody').addEventListener('contextmenu', e => {
+    if (engineMode !== 'AUTO') return;
+
+    const row = e.target.closest('.queue-row, .break-group');
+    if (!row) return;
+    if (row.classList.contains('is-current')) return;
+
+    e.preventDefault();
+
+    const breakGroup = e.target.closest('.break-group');
+    if (breakGroup) {
+      openMenu(e.clientX, e.clientY, { id: breakGroup.dataset.breakId, type: 'break' });
+      return;
+    }
+    const queueRow = e.target.closest('.queue-row');
+    if (queueRow && queueRow.dataset.id) {
+      openMenu(e.clientX, e.clientY, { id: queueRow.dataset.id, type: 'item' });
+    }
+  });
+
+  btnDel.addEventListener('click', async () => {
+    if (!_ctxTarget) return;
+    const { id, type } = _ctxTarget;
+    closeMenu();
+
+    if (type === 'break') {
+      const ok = confirm('Remover este bloco comercial e todos os seus itens da fila?');
+      if (!ok) return;
+
+      // Coletar todos os queue_item_ids do bloco e remover individualmente
+      const entry = (queueData?.pending || []).find(e => e.kind === 'break' && (e.break?.id === id || e.break?.break_id === id));
+      const ids = (entry?.break?.items || []).map(s => s?.item?.queue_item_id).filter(Boolean);
+      for (const qid of ids) {
+        await queueRemoveItem(qid, 'item');
+      }
+      fetchQueue();
+    } else {
+      await queueRemoveItem(id, type);
+    }
+  });
+
+  document.addEventListener('click',   e => { if (!menu.contains(e.target)) closeMenu(); });
+  document.addEventListener('keydown',  e => { if (e.key === 'Escape') closeMenu(); });
+  document.getElementById('queueScrollPane').addEventListener('scroll', closeMenu);
+})();
 
 /* ─── Library Health ─────────────────────────────────────────── */
 let _libOnline = false;
