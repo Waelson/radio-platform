@@ -786,7 +786,11 @@ input[type=range].vol-slider:disabled {
 /* CUE button in queue rows */
 .q-cue-btn { background: none; border: 1px solid rgba(45,216,255,0.18); color: rgba(45,216,255,0.45); font-size: 13px; cursor: pointer; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.12s, background 0.12s, border-color 0.12s; flex-shrink: 0; }
 .q-cue-btn:hover { color: var(--cyan); background: rgba(45,216,255,0.10); border-color: rgba(45,216,255,0.40); }
-.q-cue-btn.is-cuing { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cuePulse 1.2s ease-in-out infinite; }
+.q-cue-btn.is-cuing { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
+@keyframes cueBtnPulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0px rgba(45,216,255,0);    color: var(--cyan); }
+  50%       { transform: scale(1.18); box-shadow: 0 0 10px rgba(45,216,255,0.55); color: #fff; }
+}
 @keyframes cuePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.50; } }
 
 /* ─── Queue Context Menu ─────────────────────────────────────── */
