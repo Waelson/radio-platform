@@ -39,7 +39,7 @@ A comunicação é **unidirecional via eventos**: o engine publica estados via W
 
 - [Node.js](https://nodejs.org/) >= 18
 - [RadioCore](../playout/README.md) em execução (porta `8080` por padrão)
-- [Radio Library Service](../library/README.md) em execução (porta `8081`) — opcional para a Biblioteca
+- [Radio Library Service](../library/README.md) em execução (porta `8081`) — opcional para o Catálogo e Biblioteca
 
 ---
 
@@ -98,7 +98,7 @@ O cabeçalho permanente exibe:
 
 - **Logotipo RadioFlow** à esquerda
 - **Card de status** com os campos:
-  - Engine — identificador do engine conectado (truncado em 160 px com reticências)
+  - Engine — identificador do engine conectado (truncado com reticências)
   - Estado — badge com o estado atual (`IDLE`, `PLAYING`, `PAUSED`, `PANIC`, etc.)
   - Modo — badge com o modo ativo (`AUTO`, `ASSIST`, `PANIC`)
   - Playout — indicador `On-line` / `Off-line` com ponto colorido
@@ -108,20 +108,20 @@ O cabeçalho permanente exibe:
   - Data por extenso em pt-BR (ex.: `quarta-feira, 9 de julho de 2026`)
   - Temperatura e umidade em tempo real via [Open-Meteo](https://open-meteo.com/) (geolocalização automática; fallback para São Paulo)
 
-### Colunas principais
+### Layout principal
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         HEADER                              │
-├──────────────┬──────────────────────────┬───────────────────┤
-│  col-left    │      col-center          │    col-right      │
-│              │                          │                   │
-│  Now Playing │  Fila de Reprodução      │  Biblioteca       │
-│  Loudness    │  (queue list)            │  (drawer)         │
-│  Saúde Áudio │                          │                   │
-│  Volume      │                          │                   │
-│  VU Meters   │                          │                   │
-└──────────────┴──────────────────────────┴───────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                            HEADER                                │
+├───────────────┬─────────────────────────────┬────────────────────┤
+│   col-left    │        col-center           │    col-right       │
+│               │                             │                    │
+│  Now Playing  │   Fila de Reprodução        │  Biblioteca /      │
+│  Loudness     │   (queue list)              │  drawer lateral    │
+│  Saúde Áudio  │                             │                    │
+│  Volume       │                             │                    │
+│  VU Meters    │                             │                    │
+└───────────────┴─────────────────────────────┴────────────────────┘
 ```
 
 ---
@@ -136,7 +136,7 @@ O cabeçalho permanente exibe:
 - Barra de rolagem customizada sempre visível (flat, sem overlay nativo do SO)
 - Suporte a tipos: `MUSIC`, `JINGLE`, `VINHETA`, `SPOT`, `HORA_CERTA`
 
-**Blocos comerciais** são exibidos como um único grupo visual com borda laranja, separando o header do bloco e cada spot individualmente, em vez de linhas independentes.
+**Blocos comerciais** são exibidos como um único grupo visual com borda laranja, agrupando o header do bloco e cada spot, em vez de linhas independentes.
 
 **Reordenação** (modo ASSIST) — drag-and-drop e botões ↑ / ↓ por item; remoção com ✕.
 
@@ -158,12 +158,12 @@ Permite ouvir um áudio da fila antes que ele seja reproduzido no ar, sem interr
    - Barra de progresso com seek (clique para saltar)
    - Controles Play / Pause / Stop
    - Tempo decorrido e duração total
-3. O botão na row pulsa (animação de escala + brilho ciano) enquanto o CUE está ativo.
-4. Clicar novamente no `◎` ativo (ou no botão Stop do painel) encerra o preview.
+3. O botão `◎` na row pulsa (animação de escala + brilho ciano) enquanto o CUE está ativo.
+4. Clicar novamente no botão ativo (ou no Stop do painel) encerra o preview.
 
-**Acionamento pela Biblioteca:**
+**Acionamento pelo Catálogo:**
 
-- Botão `◎` em cada faixa do catálogo abre um painel inline abaixo do item com os mesmos controles.
+- Botão `◎` em cada faixa abre um painel inline abaixo do item com os mesmos controles.
 - Progresso atualizado em tempo real via evento WebSocket `PreviewProgress`.
 
 ### Controles de playback
@@ -198,20 +198,23 @@ Permite ouvir um áudio da fila antes que ele seja reproduzido no ar, sem interr
 - Peak hold com decay visual
 - Alerta de clipping
 
-### Hot Buttons
+### Catálogo (modal)
 
-- Painel de botões configuráveis para disparo instantâneo de áudios (jingles, vinhetas, etc.)
-- Feedback visual do botão em reprodução
+Acessado pelo botão **♪ Catálogo** na barra de controles. Abre um pop-up flutuante (arrastável) para busca de faixas no Library Service.
+
+- Filtros: texto livre (título/artista), tipo (`MUSIC`, `VINHETA`, `JINGLE`, `SPOT`), artista e álbum
+- Resultados paginados em tabela com título, artista, tipo e duração
+- Botão `+ Fila` por faixa para enfileirar diretamente
+- Botão `◎` por faixa para CUE inline (preview antes de enfileirar)
 
 ### Biblioteca (drawer lateral)
 
+Acessado pelo botão **☰ Biblioteca** na barra de controles. Abre um painel lateral com duas abas:
+
 | Aba | Conteúdo |
 |---|---|
-| Áudio | Busca por título/artista com filtros; enfileiramento via duplo clique ou botão `+ Fila`; CUE inline |
 | Playlists | Lista de playlists cadastradas; enfileiramento completo com um clique |
-| Blocos | Lista de blocos comerciais; enfileiramento com um clique |
-
-O catálogo é carregado do **Radio Library Service** (`/v1/tracks`, `/v1/playlists`, `/v1/breaks`).
+| Breaks | Lista de blocos comerciais; enfileiramento com um clique |
 
 ---
 
