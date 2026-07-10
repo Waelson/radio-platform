@@ -13,6 +13,9 @@ import (
 //go:embed migrations/001_initial.sql
 var migration001 string
 
+//go:embed migrations/003_hotkeys.sql
+var migration003 string
+
 // Open opens (or creates) the SQLite database at path, applies required PRAGMAs,
 // runs migrations and returns a ready-to-use *sql.DB.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
@@ -77,6 +80,16 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("002_advanced_search: %w", err)
 		}
 		if err := markMigration(ctx, db, "002_advanced_search"); err != nil {
+			return err
+		}
+	}
+
+	// 003_hotkeys: hotkey_profiles and hotkey_buttons tables.
+	if !migrationDone(ctx, db, "003_hotkeys") {
+		if _, err := db.ExecContext(ctx, migration003); err != nil {
+			return fmt.Errorf("003_hotkeys: %w", err)
+		}
+		if err := markMigration(ctx, db, "003_hotkeys"); err != nil {
 			return err
 		}
 	}

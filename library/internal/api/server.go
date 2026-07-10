@@ -20,14 +20,15 @@ type Server struct {
 	ts   handlers.TrackStore
 	ps   handlers.PlaylistStore
 	bs   handlers.BreakStore
+	hs   handlers.HotkeyStore
 	ix   handlers.IndexService
 	log  *slog.Logger
 	http *http.Server
 }
 
 // New creates a Server ready to be started.
-func New(cfg config.APIConfig, ts handlers.TrackStore, ps handlers.PlaylistStore, bs handlers.BreakStore, ix handlers.IndexService, log *slog.Logger) *Server {
-	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, ix: ix, log: log}
+func New(cfg config.APIConfig, ts handlers.TrackStore, ps handlers.PlaylistStore, bs handlers.BreakStore, hs handlers.HotkeyStore, ix handlers.IndexService, log *slog.Logger) *Server {
+	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix, log: log}
 	s.http = &http.Server{
 		Addr:         net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
 		Handler:      s.routes(),
@@ -88,6 +89,16 @@ func (s *Server) routes() http.Handler {
 
 	mux.HandleFunc("GET /v1/index/status", handlers.GetIndexStatus(s.ix))
 	mux.HandleFunc("POST /v1/index/scan", handlers.TriggerScan(s.ix))
+
+	mux.HandleFunc("GET /v1/hotkeys/profiles",                          handlers.ListHotkeyProfiles(s.hs))
+	mux.HandleFunc("POST /v1/hotkeys/profiles",                         handlers.CreateHotkeyProfile(s.hs))
+	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}",                     handlers.GetHotkeyProfile(s.hs))
+	mux.HandleFunc("PUT /v1/hotkeys/profiles/{id}",                     handlers.UpdateHotkeyProfile(s.hs))
+	mux.HandleFunc("DELETE /v1/hotkeys/profiles/{id}",                  handlers.DeleteHotkeyProfile(s.hs))
+	mux.HandleFunc("POST /v1/hotkeys/profiles/{id}/buttons",            handlers.AddHotkeyButton(s.hs))
+	mux.HandleFunc("PUT /v1/hotkeys/profiles/{id}/buttons/reorder",     handlers.ReorderHotkeyButtons(s.hs))
+	mux.HandleFunc("PATCH /v1/hotkeys/buttons/{id}",                    handlers.PatchHotkeyButton(s.hs))
+	mux.HandleFunc("DELETE /v1/hotkeys/buttons/{id}",                   handlers.DeleteHotkeyButton(s.hs))
 
 	return corsMiddleware(s.cfg.CORS.AllowedOrigins, mux)
 }

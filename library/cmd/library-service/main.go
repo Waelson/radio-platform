@@ -91,7 +91,8 @@ func run(args []string) error {
 	// 8. Start HTTP API server.
 	playlistStore := store.NewPlaylistStore(db)
 	breakStore := store.NewBreakStore(db)
-	srv := api.New(cfg.API, trackStore, playlistStore, breakStore, idxSvc, logging.With(log, "api"))
+	hotkeyStore := store.NewHotkeyStore(db)
+	srv := api.New(cfg.API, trackStore, playlistStore, breakStore, hotkeyStore, idxSvc, logging.With(log, "api"))
 	go func() {
 		if err := srv.Start(ctx); err != nil {
 			slog.Error("API server error", "error", err)

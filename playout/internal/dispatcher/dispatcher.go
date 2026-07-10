@@ -218,6 +218,9 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdEnterAssist:        true,
 		commands.CmdSetVolume:          true,
 		commands.CmdPreviewSetVolume:   true,
+		commands.CmdCartPlay:           true,
+		commands.CmdCartStop:           true,
+		commands.CmdCartSetVolume:      true,
 	},
 	state.StatePlaying: {
 		commands.CmdPause:              true,
@@ -236,6 +239,9 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdTriggerHotButton:   true,
 		commands.CmdSetVolume:          true,
 		commands.CmdPreviewSetVolume:   true,
+		commands.CmdCartPlay:           true,
+		commands.CmdCartStop:           true,
+		commands.CmdCartSetVolume:      true,
 	},
 	state.StatePaused: {
 		commands.CmdResume:             true,
@@ -251,6 +257,9 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdReorderItem:        true,
 		commands.CmdSetVolume:          true,
 		commands.CmdPreviewSetVolume:   true,
+		commands.CmdCartPlay:           true,
+		commands.CmdCartStop:           true,
+		commands.CmdCartSetVolume:      true,
 	},
 	state.StateAssist: {
 		commands.CmdPlay:               true, // manual advance: sends signal to waiting sessionLoop
@@ -269,6 +278,9 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdTriggerHotButton:   true,
 		commands.CmdSetVolume:          true,
 		commands.CmdPreviewSetVolume:   true,
+		commands.CmdCartPlay:           true,
+		commands.CmdCartStop:           true,
+		commands.CmdCartSetVolume:      true,
 	},
 	state.StatePanic: {
 		commands.CmdExitPanic:          true,
@@ -277,10 +289,16 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdInsertNext:         true,
 		commands.CmdSetVolume:          true,
 		commands.CmdPreviewSetVolume:   true,
+		commands.CmdCartPlay:           true,
+		commands.CmdCartStop:           true,
+		commands.CmdCartSetVolume:      true,
 		// CmdInsertBreakNext not allowed in PANIC — scheduler never fires breaks during PANIC
 	},
 	state.StateError: {
-		commands.CmdReset: true,
+		commands.CmdReset:              true,
+		commands.CmdCartPlay:           true,
+		commands.CmdCartStop:           true,
+		commands.CmdCartSetVolume:      true,
 	},
 	// StateStarting and StateStopping: no commands accepted (except ENTER_PANIC above).
 }

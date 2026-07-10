@@ -1,5 +1,8 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+
+// Set of all open hotkey windows — allows multiple simultaneous instances.
+const hotkeyWindows = new Set()
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -16,6 +19,32 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'player.html'))
   win.webContents.openDevTools({ mode: 'detach' })
 }
+
+ipcMain.on('open-hotkeys', (event, opts) => {
+  const apiUrl = (opts && opts.api) || ''
+  const libUrl = (opts && opts.lib) || ''
+  const query  = (apiUrl || libUrl)
+    ? '?api=' + encodeURIComponent(apiUrl) + '&lib=' + encodeURIComponent(libUrl)
+    : ''
+
+  const win = new BrowserWindow({
+    width: 560,
+    height: 720,
+    minWidth: 380,
+    minHeight: 420,
+    resizable: true,
+    fullscreen: true,
+    frame: true,
+    title: 'RadioFlow — Botoneira',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  })
+  win.loadFile(path.join(__dirname, 'hotkeys.html'), { search: query })
+  hotkeyWindows.add(win)
+  win.on('closed', () => hotkeyWindows.delete(win))
+})
 
 app.whenReady().then(() => {
   createWindow()

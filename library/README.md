@@ -14,6 +14,7 @@ Fornece busca de faixas, playlists e blocos comerciais consumidos pelo [RadioFlo
   - [Faixas](#faixas)
   - [Playlists](#playlists)
   - [Blocos comerciais (Breaks)](#blocos-comerciais-breaks)
+  - [Botoneira (Hotkeys)](#botoneira-hotkeys)
 - [Contratos de resposta](#contratos-de-resposta)
 - [Integração com o Player](#integração-com-o-player)
 
@@ -185,6 +186,173 @@ Retorna o bloco com estrutura pronta para envio ao endpoint `POST /v1/queue/enqu
 
 ---
 
+### Botoneira (Hotkeys)
+
+A Botoneira é um painel de botões de ação rápida para disparar áudios curtos (carts) sem interromper o fluxo principal. Cada **perfil** agrupa um conjunto de **botões**; cada botão referencia uma faixa da biblioteca.
+
+#### Perfis
+
+##### Listar perfis
+
+```
+GET /v1/hotkeys/profiles
+```
+
+**Resposta:**
+```json
+{
+  "profiles": [
+    { "id": "uuid", "name": "Efeitos", "columns": 4, "button_count": 8 }
+  ]
+}
+```
+
+##### Criar perfil
+
+```
+POST /v1/hotkeys/profiles
+```
+
+**Body:**
+```json
+{ "name": "Efeitos", "columns": 4 }
+```
+
+##### Obter perfil (com botões)
+
+```
+GET /v1/hotkeys/profiles/:id
+```
+
+**Resposta:**
+```json
+{
+  "id": "uuid",
+  "name": "Efeitos",
+  "columns": 4,
+  "buttons": [
+    {
+      "id":           "btn-uuid",
+      "position":     1,
+      "label":        "Aplausos",
+      "sub_label":    "8s",
+      "icon":         "👏",
+      "palette":      2,
+      "track_id":     "track-uuid",
+      "track_path":   "/library/efeitos/aplausos.mp3",
+      "track_title":  "Aplausos",
+      "track_artist": "",
+      "track_type":   "EFEITOS",
+      "duration_ms":  8000
+    }
+  ]
+}
+```
+
+##### Atualizar perfil
+
+```
+PUT /v1/hotkeys/profiles/:id
+```
+
+**Body:** `{ "name": "Novo Nome", "columns": 5 }`
+
+##### Excluir perfil
+
+```
+DELETE /v1/hotkeys/profiles/:id
+```
+
+Remove o perfil e todos os seus botões (CASCADE).
+
+---
+
+#### Botões
+
+##### Adicionar botão a um perfil
+
+```
+POST /v1/hotkeys/profiles/:id/buttons
+```
+
+**Body:**
+```json
+{
+  "label":        "Aplausos",
+  "sub_label":    "8s",
+  "icon":         "👏",
+  "palette":      2,
+  "track_id":     "track-uuid",
+  "track_path":   "/library/efeitos/aplausos.mp3",
+  "track_title":  "Aplausos",
+  "track_artist": "",
+  "track_type":   "EFEITOS",
+  "duration_ms":  8000
+}
+```
+
+##### Reordenar botões de um perfil
+
+```
+PUT /v1/hotkeys/profiles/:id/buttons/reorder
+```
+
+**Body:** `{ "button_ids": ["btn-uuid-1", "btn-uuid-2", "btn-uuid-3"] }`
+
+##### Atualizar campos de um botão
+
+```
+PATCH /v1/hotkeys/buttons/:id
+```
+
+Apenas os campos presentes no body são alterados (patch parcial).
+
+**Body (exemplo):**
+```json
+{ "label": "Nova Label", "palette": 3 }
+```
+
+##### Excluir botão
+
+```
+DELETE /v1/hotkeys/buttons/:id
+```
+
+---
+
+#### Esquema do banco de dados
+
+```sql
+CREATE TABLE hotkey_profiles (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    columns    INTEGER NOT NULL DEFAULT 4,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE hotkey_buttons (
+    id           TEXT PRIMARY KEY,
+    profile_id   TEXT NOT NULL REFERENCES hotkey_profiles(id) ON DELETE CASCADE,
+    position     INTEGER NOT NULL DEFAULT 0,
+    label        TEXT NOT NULL DEFAULT '',
+    sub_label    TEXT NOT NULL DEFAULT '',
+    icon         TEXT NOT NULL DEFAULT '',
+    palette      INTEGER NOT NULL DEFAULT 0,
+    track_id     TEXT REFERENCES tracks(id) ON DELETE SET NULL,
+    track_path   TEXT NOT NULL DEFAULT '',
+    track_title  TEXT NOT NULL DEFAULT '',
+    track_artist TEXT NOT NULL DEFAULT '',
+    track_type   TEXT NOT NULL DEFAULT '',
+    duration_ms  INTEGER NOT NULL DEFAULT 0,
+    created_at   DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+> **Nota:** `track_id` usa `ON DELETE SET NULL` — se a faixa for removida da biblioteca, o botão permanece com os metadados em cache (`track_path`, `track_title`, etc.) e continua funcional.
+
+---
+
 ## Contratos de resposta
 
 Todos os objetos de faixa seguem o mesmo schema:
@@ -212,3 +380,7 @@ O RadioFlow Player consome esta API na aba **Biblioteca** (drawer lateral):
 | Listar blocos | `GET /v1/breaks` | — |
 | Enfileirar bloco | `GET /v1/breaks/:id?format=engine-payload` | `POST /v1/queue/enqueue-break` |
 | Preview de faixa | — | `POST /v1/preview/play` |
+| Listar perfis da botoneira | `GET /v1/hotkeys/profiles` | — |
+| Criar/editar perfil | `POST/PUT /v1/hotkeys/profiles` | — |
+| Adicionar/editar botão | `POST /v1/hotkeys/profiles/:id/buttons` | — |
+| Disparar cart (botão) | — | `POST /v1/cart/play` |

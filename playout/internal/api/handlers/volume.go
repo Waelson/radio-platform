@@ -89,3 +89,46 @@ func SetPreviewVolume(bus queueBus, stateMgr *state.Manager, enabled bool) http.
 		})
 	}
 }
+
+// GetCartVolume returns a handler for GET /v1/cart/volume.
+func GetCartVolume(stateMgr *state.Manager, enabled bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !enabled {
+			cartUnavailable(w)
+			return
+		}
+		writeJSON(w, http.StatusOK, volumeResponse{Level: stateMgr.CartVolume()})
+	}
+}
+
+// SetCartVolume returns a handler for PUT /v1/cart/volume.
+func SetCartVolume(bus queueBus, stateMgr *state.Manager, enabled bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !enabled {
+			cartUnavailable(w)
+			return
+		}
+		var req struct {
+			Level float32 `json:"level"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_json", err.Error())
+			return
+		}
+		if req.Level < 0 || req.Level > 1 {
+			writeError(w, http.StatusBadRequest, "invalid_level", "level must be between 0.0 and 1.0")
+			return
+		}
+		cmd, replyCh := commands.NewSync(commands.CmdCartSetVolume, commands.CartSetVolumePayload{Level: req.Level})
+		result, ok := sendAndWait(w, bus, cmd, replyCh)
+		if !ok {
+			return
+		}
+		writeJSON(w, http.StatusOK, cmdResponse{
+			OK:        true,
+			CommandID: cmd.ID,
+			Accepted:  result.Accepted,
+			Reason:    result.Reason,
+		})
+	}
+}
