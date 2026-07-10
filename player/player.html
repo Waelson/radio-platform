@@ -713,14 +713,20 @@ input[type=range].vol-slider:disabled {
 }
 
 /* Botões icon-only — largura fixa */
+.btn-play, .btn-resume, .btn-pause, .btn-stop, .btn-skip { width: 120px; padding: 0; }
 .btn-audios, .btn-library, .btn-hotkeys, .btn-assist { width: 46px; padding: 0; }
-.btn-panic, .btn-exit-panic { width: 46px; padding: 0; border: none; }
+.btn-panic, .btn-exit-panic { width: 46px; padding: 0; }
 .queue-refresh.btn-sq { width: 40px; padding: 0; justify-content: center; border: none; background: transparent; }
 
 /* Primary — cyan (Play, Resume) */
-.btn-play, .btn-resume, .btn-exit-panic {
+.btn-play, .btn-resume {
   --btn-bg: #123b40; --btn-border: rgba(43,216,222,0.55); --btn-text: #bdfcff;
   --btn-bg-hover: #174b51; --btn-border-hover: rgba(43,216,222,0.8);
+}
+/* Exit Panic — mantém vermelho mesmo no estado ativo */
+.btn-exit-panic {
+  --btn-bg: #301010; --btn-border: rgba(255,72,72,0.72); --btn-text: #ffadad;
+  --btn-bg-hover: #461616; --btn-border-hover: rgba(255,59,59,0.95);
 }
 /* Blue — (Pause, Stop, Skip, Catálogo, Biblioteca, Voltar Auto) */
 .btn-pause, .btn-stop, .btn-skip, .btn-audios, .btn-library, .btn-return-auto {
@@ -1134,6 +1140,11 @@ input[type=range].vol-slider:disabled {
   animation: assistPulse 3s ease-in-out infinite;
 }
 .assist-banner.visible { display: flex; }
+@keyframes panicPulse {
+  0%, 100% { filter: brightness(0.85); }
+  50%       { filter: brightness(1.5) drop-shadow(0 0 10px rgba(255,32,32,0.9)); }
+}
+
 @keyframes assistPulse {
   0%, 100% { border-bottom-color: var(--purple); }
   50%       { border-bottom-color: rgba(122,77,255,0.4); }
@@ -1463,7 +1474,7 @@ canvas.vu-canvas {
 /* ─── Padronização dos botões abaixo do Play Now ─────────────── */
 /* Todos os botões operacionais usam a mesma linguagem azul/cyan/roxo.
    Panic permanece vermelho por ser ação crítica. */
-.controls-bar .btn:not(.btn-panic) {
+.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist) {
   background:
     linear-gradient(180deg, rgba(47,123,255,.18), rgba(15,26,48,.72)) !important;
   color: #bfeeff !important;
@@ -1473,7 +1484,7 @@ canvas.vu-canvas {
     0 0 10px rgba(32,230,255,.08) !important;
 }
 
-.controls-bar .btn:not(.btn-panic):hover:not(:disabled) {
+.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist):hover:not(:disabled) {
   background:
     linear-gradient(180deg, rgba(32,230,255,.24), rgba(47,123,255,.18), rgba(122,77,255,.14)) !important;
   color: #ffffff !important;
@@ -1484,13 +1495,24 @@ canvas.vu-canvas {
     0 0 22px rgba(122,77,255,.10) !important;
 }
 
-.controls-bar .btn:not(.btn-panic):active:not(:disabled) {
+.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist):active:not(:disabled) {
   background:
     linear-gradient(180deg, rgba(122,77,255,.24), rgba(47,123,255,.18)) !important;
   transform: scale(.97);
 }
 
-.controls-bar .btn:not(.btn-panic).active,
+/* Estado desabilitado — sobrescreve os !important do controls-bar */
+.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist):disabled,
+.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist).disabled {
+  background: #0e1416 !important;
+  color: #2e3d42 !important;
+  border-color: rgba(220,239,242,0.06) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist).active,
 .controls-bar .btn-library.active {
   background:
     linear-gradient(180deg, rgba(32,230,255,.28), rgba(122,77,255,.18)) !important;
@@ -1501,8 +1523,9 @@ canvas.vu-canvas {
     0 0 16px rgba(122,77,255,.20) !important;
 }
 
-/* Mantém Panic como ação crítica/vermelha */
-.controls-bar .btn-panic {
+/* Mantém Panic como ação crítica/vermelha — inclusive no estado ativo (btn-exit-panic) */
+.controls-bar .btn-panic,
+.controls-bar .btn-exit-panic {
   background: #3d0000 !important;
   color: #ff3b30 !important;
   border-color: #cc0000 !important;
@@ -1510,7 +1533,13 @@ canvas.vu-canvas {
   font-weight: 900 !important;
 }
 
-.controls-bar .btn-panic:hover:not(:disabled) {
+/* Pulsação vermelha quando panic está ativo */
+.controls-bar .btn-exit-panic {
+  animation: panicPulse 1s ease-in-out infinite !important;
+}
+
+.controls-bar .btn-panic:hover:not(:disabled),
+.controls-bar .btn-exit-panic:hover:not(:disabled) {
   background: #550000 !important;
   color: #ff5a52 !important;
   border-color: #ff2200 !important;
@@ -1539,6 +1568,16 @@ canvas.vu-canvas {
 .controls-bar .btn.btn-hotkeys:active:not(:disabled),
 .controls-bar .btn.btn-assist:active:not(:disabled) {
   background: rgba(220,239,242,0.10) !important;
+}
+
+/* Ícones desabilitados — reduz opacidade já que background é transparente */
+.controls-bar .btn.btn-audios:disabled,
+.controls-bar .btn.btn-library:disabled,
+.controls-bar .btn.btn-hotkeys:disabled,
+.controls-bar .btn.btn-assist:disabled {
+  opacity: 0.25 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
 }
 
 </style>
