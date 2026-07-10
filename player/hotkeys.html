@@ -360,6 +360,12 @@ html, body {
 }
 .apc-clear:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.10); }
 
+/* ─── DD overlay ──────────────────────────────────────────── */
+#ddOverlay {
+  display: none; position: fixed; inset: 0; z-index: 299;
+}
+#ddOverlay.open { display: block; }
+
 /* ─── Toast ───────────────────────────────────────────────── */
 #toastContainer {
   position: fixed; top: 50px; right: 12px;
@@ -381,15 +387,6 @@ html, body {
 
 <!-- ══ HEADER ════════════════════════════════════════════════ -->
 <div class="header">
-  <img src="logo.svg"       alt="Logo"      height="22" style="flex-shrink:0;">
-  <img src="radio-flow.png" alt="RadioFlow" height="20" style="flex-shrink:0;width:auto;">
-  <div class="hdr-divider"></div>
-  <div class="hdr-badge">
-    <span class="hdr-badge-line"></span>
-    <span class="hdr-badge-text">Botoneira</span>
-    <span class="hdr-badge-line"></span>
-  </div>
-
   <div class="profile-pill" id="profilePill" onclick="toggleDD(event)">
     <div>
       <div class="pp-label">Perfil</div>
@@ -486,6 +483,7 @@ html, body {
   </div>
 </div>
 
+<div id="ddOverlay" onclick="closeDD()"></div>
 <div id="toastContainer"></div>
 
 <script>
@@ -1029,7 +1027,7 @@ function renderDD() {
     item.className = 'pdd-item' + (p.id === _curId ? ' cur' : '');
     item.dataset.profileId   = p.id;
     item.dataset.profileName = p.name;
-    item.innerHTML = `<span>${escH(p.name)}</span><span class="pdd-del" data-action="delete">✕</span>`;
+    item.innerHTML = `<span>${escH(p.name)}</span>`;
     dd.appendChild(item);
   });
   const sep = document.createElement('div'); sep.className = 'pdd-sep'; dd.appendChild(sep);
@@ -1066,9 +1064,17 @@ async function switchProfile(id) {
   showToast(true, `Perfil "${activeProfile().name}" carregado`);
 }
 
-function toggleDD(e) { e.stopPropagation(); document.getElementById('profileDD').classList.toggle('open'); }
-function closeDD()   { document.getElementById('profileDD').classList.remove('open'); }
-document.addEventListener('click', closeDD);
+function toggleDD(e) {
+  e.stopPropagation();
+  const dd  = document.getElementById('profileDD');
+  const ov  = document.getElementById('ddOverlay');
+  const open = dd.classList.toggle('open');
+  ov.classList.toggle('open', open);
+}
+function closeDD() {
+  document.getElementById('profileDD').classList.remove('open');
+  document.getElementById('ddOverlay').classList.remove('open');
+}
 
 /* ══ COLUMNS CHANGE ══════════════════════════════════════════ */
 async function onColsChange(val) {
