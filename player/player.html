@@ -2846,18 +2846,9 @@ async function fetchInitialVolumes() {
 /* ─── Hotkeys (Botoneira) ────────────────────────────────────── */
 
 function openHotkeys() {
-  if (typeof require !== 'undefined') {
-    try {
-      const { ipcRenderer } = require('electron');
-      ipcRenderer.send('open-hotkeys', { api: API_URL, lib: LIBRARY_URL });
-      return;
-    } catch (_) {}
+  if (window.electronAPI) {
+    window.electronAPI.openHotkeys({ api: API_URL, lib: LIBRARY_URL });
   }
-  window.open(
-    'hotkeys.html?api=' + encodeURIComponent(API_URL) + '&lib=' + encodeURIComponent(LIBRARY_URL),
-    '_blank',
-    'width=560,height=720'
-  );
 }
 
 /* ─── Drag-and-drop ─────────────────────────────────────────── */

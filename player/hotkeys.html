@@ -1288,17 +1288,11 @@ async function saveProfModal() {
 
 /* ══ NEW WINDOW ══════════════════════════════════════════════ */
 function openNewWindow() {
-  if (typeof require !== 'undefined') {
-    try {
-      const { ipcRenderer } = require('electron');
-      ipcRenderer.send('open-hotkeys', { api: API_URL, lib: LIB_URL });
-      return;
-    } catch (_) {}
+  // Usa o preload (contextBridge) para pedir ao processo principal que abra
+  // uma nova janela independente — sem relação parent-child com esta janela.
+  if (window.electronAPI) {
+    window.electronAPI.openHotkeys({ api: API_URL, lib: LIB_URL });
   }
-  window.open(
-    'hotkeys.html?api=' + encodeURIComponent(API_URL) + '&lib=' + encodeURIComponent(LIB_URL),
-    '_blank', 'width=560,height=720'
-  );
 }
 
 /* ══ COLOR ROW ═══════════════════════════════════════════════ */
