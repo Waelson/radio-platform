@@ -27,6 +27,7 @@ O player consulta o library-service para montar playlists e envia os paths dos a
 3. O `go.work` existe apenas para desenvolvimento local — em produção cada serviço é buildado e deployado separadamente.
 4. O `player/` é um app separado — não colocar código de UI dentro de `playout/` ou `library/`.
 5. Cada subdiretório tem seu próprio `CLAUDE.md` com regras específicas — ler antes de trabalhar em cada serviço.
+6. **Toda implementação originada de um plano (`docs/plans/`) deve ser desenvolvida em uma branch dedicada**, criada a partir de `main` antes de qualquer alteração de código. O nome da branch deve ser descritivo e derivado do nome do plano (ex.: `feature/hotkeys`, `feature/cart-player`). Nunca implementar diretamente na `main`.
 
 ## Como trabalhar neste repo
 
