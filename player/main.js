@@ -18,6 +18,30 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, 'player.html'))
   win.webContents.openDevTools({ mode: 'detach' })
+
+  const hotkeyWindowOptions = {
+    action: 'allow',
+    overrideBrowserWindowOptions: {
+      width: 560,
+      height: 720,
+      minWidth: 380,
+      minHeight: 420,
+      fullscreen: false,
+      resizable: true,
+      frame: true,
+      title: 'RadioFlow — Botoneira',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    },
+  }
+
+  win.webContents.setWindowOpenHandler(() => hotkeyWindowOptions)
+
+  win.webContents.on('did-create-window', (childWin) => {
+    childWin.webContents.setWindowOpenHandler(() => hotkeyWindowOptions)
+  })
 }
 
 ipcMain.on('open-hotkeys', (event, opts) => {
@@ -33,7 +57,6 @@ ipcMain.on('open-hotkeys', (event, opts) => {
     minWidth: 380,
     minHeight: 420,
     resizable: true,
-    fullscreen: true,
     frame: true,
     title: 'RadioFlow — Botoneira',
     webPreferences: {
