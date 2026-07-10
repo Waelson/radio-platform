@@ -97,6 +97,8 @@ type Snapshot struct {
 	ErrorMsg      string
 	MainVolume    float32 `json:"main_volume"`
 	PreviewVolume float32 `json:"preview_volume"`
+	CartVolume    float32 `json:"cart_volume"`
+	CartEnabled   bool    `json:"cart_enabled"`
 }
 
 // Manager maintains the engine state and exposes it via Snapshot().
@@ -106,6 +108,7 @@ type Manager struct {
 	snap       Snapshot
 	mainVol    atomic.Uint32 // float32 bits — read lock-free in the audio hot path
 	previewVol atomic.Uint32 // float32 bits
+	cartVol    atomic.Uint32 // float32 bits
 }
 
 // NewManager creates a Manager initialised in StateStarting with full volume (1.0).
@@ -118,10 +121,12 @@ func NewManager(engineID string) *Manager {
 			StartedAt:     time.Now().UTC(),
 			MainVolume:    1.0,
 			PreviewVolume: 1.0,
+			CartVolume:    1.0,
 		},
 	}
 	m.mainVol.Store(math.Float32bits(1.0))
 	m.previewVol.Store(math.Float32bits(1.0))
+	m.cartVol.Store(math.Float32bits(1.0))
 	return m
 }
 
@@ -256,6 +261,34 @@ func (m *Manager) SetPreviewVolume(v float32) {
 // Lock-free — safe to call from the audio hot path.
 func (m *Manager) PreviewVolume() float32 {
 	return math.Float32frombits(m.previewVol.Load())
+}
+
+// SetCartVolume sets the cart output volume (0.0–1.0).
+func (m *Manager) SetCartVolume(v float32) {
+	v = clamp01(v)
+	m.cartVol.Store(math.Float32bits(v))
+	m.mu.Lock()
+	m.snap.CartVolume = v
+	m.mu.Unlock()
+}
+
+// CartVolume returns the current cart output volume.
+// Lock-free — safe to call from the audio hot path.
+func (m *Manager) CartVolume() float32 {
+	return math.Float32frombits(m.cartVol.Load())
+}
+
+// SetCartEnabled records whether the cart player is enabled.
+func (m *Manager) SetCartEnabled(enabled bool) {
+	m.mu.Lock()
+	m.snap.CartEnabled = enabled
+	m.mu.Unlock()
+}
+
+// CartVolAtomicPtr returns a pointer to the underlying atomic cart volume field.
+// Use this to share a lock-free volume reference with the cart player's audio hot path.
+func (m *Manager) CartVolAtomicPtr() *atomic.Uint32 {
+	return &m.cartVol
 }
 
 func clamp01(v float32) float32 {

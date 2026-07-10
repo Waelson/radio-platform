@@ -59,6 +59,12 @@ const (
 	// Volume events.
 	EvtVolumeChanged        EventType = "VolumeChanged"
 	EvtPreviewVolumeChanged EventType = "PreviewVolumeChanged"
+	EvtCartVolumeChanged    EventType = "CartVolumeChanged"
+
+	// Cart player events — isolated from the main playback pipeline and preview.
+	EvtCartStarted  EventType = "CartStarted"
+	EvtCartProgress EventType = "CartProgress"
+	EvtCartStopped  EventType = "CartStopped"
 
 	// Preview (cue) events — isolated from the main playback pipeline.
 	EvtPreviewStarted  EventType = "PreviewStarted"
@@ -399,6 +405,37 @@ type VolumeChangedPayload struct {
 
 // PreviewVolumeChangedPayload is the payload for EvtPreviewVolumeChanged.
 type PreviewVolumeChangedPayload struct {
+	Level float32 `json:"level"` // 0.0–1.0
+}
+
+// --- Cart player event payloads ----------------------------------------------
+
+// CartStartedPayload is published when a cart begins playback.
+type CartStartedPayload struct {
+	CartID     string `json:"cart_id"`
+	Path       string `json:"path"`
+	Title      string `json:"title"`
+	Artist     string `json:"artist"`
+	DurationMS int64  `json:"duration_ms"`
+}
+
+// CartProgressPayload is published periodically (~100ms) during cart playback.
+type CartProgressPayload struct {
+	CartID     string `json:"cart_id"`
+	PositionMS int64  `json:"position_ms"`
+	DurationMS int64  `json:"duration_ms"`
+}
+
+// CartStoppedPayload is published when a cart stops for any reason.
+// Reason values: "finished" (reached end), "manual" (explicit stop),
+// "replaced" (new cart triggered while this one was playing).
+type CartStoppedPayload struct {
+	CartID string `json:"cart_id"`
+	Reason string `json:"reason"`
+}
+
+// CartVolumeChangedPayload is the payload for EvtCartVolumeChanged.
+type CartVolumeChangedPayload struct {
 	Level float32 `json:"level"` // 0.0–1.0
 }
 

@@ -40,6 +40,13 @@ type PreviewDeps struct {
 	GetStatus func() any // returns preview.Status as any; nil when disabled
 }
 
+// CartDeps carries optional cart player dependencies for the API server.
+// When Enabled is false all /v1/cart/* endpoints return 503.
+type CartDeps struct {
+	Enabled   bool
+	GetStatus func() any // returns cart.Status as any; nil when disabled
+}
+
 // DevicesDeps carries the device-listing function for GET /v1/devices.
 // When List is nil the endpoint returns an empty list with 200 OK.
 type DevicesDeps struct {
@@ -69,6 +76,8 @@ type Server struct {
 	metrics        *metrics.Collector
 	previewEnabled bool
 	previewStatus  func() any
+	cartEnabled    bool
+	cartStatus     func() any
 	listDevices    func() ([]handlers.AudioDevice, error)
 	scheduleMgr    handlers.ScheduleManager
 	configSnapshot *appcfg.Config
@@ -82,7 +91,7 @@ type Server struct {
 // wsHub may be nil; the /v1/events endpoint will not be registered.
 // col may be nil; the /v1/metrics endpoint will not be registered.
 // devicesDeps.List may be nil; GET /v1/devices will return an empty list.
-func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, configDeps ConfigDeps, log *slog.Logger) *Server {
+func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, cartDeps CartDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, configDeps ConfigDeps, log *slog.Logger) *Server {
 	s := &Server{
 		cfg:            cfg,
 		stateMgr:       stateMgr,
@@ -92,6 +101,8 @@ func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *qu
 		metrics:        col,
 		previewEnabled: previewDeps.Enabled,
 		previewStatus:  previewDeps.GetStatus,
+		cartEnabled:    cartDeps.Enabled,
+		cartStatus:     cartDeps.GetStatus,
 		listDevices:    devicesDeps.List,
 		scheduleMgr:    scheduleDeps.Mgr,
 		configSnapshot: configDeps.Snapshot,
@@ -164,6 +175,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/preview/status",  handlers.PreviewStatus(s.previewStatus, s.previewEnabled))
 	mux.HandleFunc("GET /v1/preview/volume",  handlers.GetPreviewVolume(s.stateMgr, s.previewEnabled))
 	mux.HandleFunc("PUT /v1/preview/volume",  handlers.SetPreviewVolume(s.cmdBus, s.stateMgr, s.previewEnabled))
+
+	// Cart player — always registered; returns 503 when disabled.
+	mux.HandleFunc("POST /v1/cart/play",   handlers.CartPlay(s.cmdBus, s.cartEnabled))
+	mux.HandleFunc("POST /v1/cart/stop",   handlers.CartStop(s.cmdBus, s.cartEnabled))
+	mux.HandleFunc("GET /v1/cart/status",  handlers.CartStatus(s.cartStatus, s.cartEnabled))
+	mux.HandleFunc("GET /v1/cart/volume",  handlers.GetCartVolume(s.stateMgr, s.cartEnabled))
+	mux.HandleFunc("PUT /v1/cart/volume",  handlers.SetCartVolume(s.cmdBus, s.stateMgr, s.cartEnabled))
 
 	// Devices
 	mux.HandleFunc("GET /v1/devices", handlers.Devices(s.listDevices))

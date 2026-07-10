@@ -325,6 +325,7 @@ var configPageTpl = `<!DOCTYPE html>
     <div class="nav-item"         data-s="horacerta">Hora Certa</div>
     <div class="nav-item"         data-s="preview">Preview</div>
     <div class="nav-item"         data-s="scheduler">Scheduler</div>
+    <div class="nav-item"         data-s="cart">Cart</div>
   </nav>
 
   <main class="content">
@@ -706,6 +707,23 @@ var configPageTpl = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- CART -->
+    <div id="p-cart" class="panel">
+      <div class="section-title">Cart Player (Botoneira)</div>
+      <label class="check-row">
+        <input id="cart-enabled" type="checkbox" />
+        <div>
+          <div class="check-lbl">Habilitar cart player</div>
+          <div class="check-desc">Canal de áudio dedicado para reprodução via hotkeys, isolado do sinal ao ar e do preview/CUE.</div>
+        </div>
+      </label>
+      <div class="field" style="margin-top:16px">
+        <label class="lbl">Dispositivo de saída do cart</label>
+        <select id="cart-device"></select>
+        <div class="hint">Deve ser diferente do dispositivo principal e do dispositivo de preview. Vazio = padrão do driver.</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -729,6 +747,7 @@ var configPageTpl = `<!DOCTYPE html>
   var rootSelected  = -1;
   var audioDeviceID = '';
   var prevDeviceID  = '';
+  var cartDeviceID  = '';
 
   // ── Navigation ───────────────────────────────────────────────
   document.querySelectorAll('.nav-item').forEach(function(item) {
@@ -941,6 +960,10 @@ var configPageTpl = `<!DOCTYPE html>
     setVal('sched-tz', sc.timezone);
     setVal('sched-path', sc.store_path);
     setVal('sched-missed', sc.missed_threshold_ms);
+
+    var ct = cfg.cart || {};
+    setCheck('cart-enabled', ct.enabled);
+    cartDeviceID = (ct.output && ct.output.device_id) || '';
   }
 
   // ── Load devices ─────────────────────────────────────────────
@@ -951,6 +974,7 @@ var configPageTpl = `<!DOCTYPE html>
         var devs = Array.isArray(resp) ? resp : (Array.isArray(resp.devices) ? resp.devices : []);
         populateDeviceSelect('audio-device', devs, audioDeviceID);
         populateDeviceSelect('prev-device', devs, prevDeviceID);
+        populateDeviceSelect('cart-device', devs, cartDeviceID);
       })
       .catch(function() {});
   }
@@ -1053,6 +1077,12 @@ var configPageTpl = `<!DOCTYPE html>
         timezone:           getVal('sched-tz'),
         store_path:         getVal('sched-path'),
         missed_threshold_ms: safeInt(getVal('sched-missed'), 5000)
+      },
+      cart: {
+        enabled: getCheck('cart-enabled'),
+        output: {
+          device_id: getVal('cart-device')
+        }
       }
     };
   }

@@ -14,6 +14,7 @@ import (
 	apptray "github.com/Waelson/radio-playout-engine/cmd/playout-engine/systray"
 	appwebview "github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 	"github.com/Waelson/radio-playout-engine/internal/api"
+	"github.com/Waelson/radio-playout-engine/internal/cart"
 	"github.com/Waelson/radio-playout-engine/internal/cue"
 	"github.com/Waelson/radio-playout-engine/internal/preview"
 	apiws "github.com/Waelson/radio-playout-engine/internal/api/ws"
@@ -318,6 +319,39 @@ func run(args []string) error {
 		log.Info("preview player enabled as subprocess", "driver", outfactory.BuiltinDriverName())
 	}
 
+	// 11c. Cart player — optional dedicated audio channel for hotkey-triggered playback.
+	// Isolated from both the main pipeline and the preview/CUE channel.
+	cartDeps := api.CartDeps{Enabled: cfg.Cart.Enabled}
+	if cfg.Cart.Enabled {
+		cartOut, err := outfactory.NewCartOutputDevice(cfg)
+		if err != nil {
+			return fmt.Errorf("cart output device: %w", err)
+		}
+		cartVolAtomic := stateMgr.CartVolAtomicPtr()
+		cartAudioCfg := cart.AudioConfig{
+			DeviceID:     cfg.Cart.Output.DeviceID,
+			SampleRate:   cfg.Audio.SampleRate,
+			Channels:     cfg.Audio.Channels,
+			BufferFrames: cfg.Audio.BufferFrames,
+		}
+		cartPlayer := cart.New(evtBus, decoder.NewFFmpegDecoder(log), cartOut, cartAudioCfg, cartVolAtomic, log)
+		disp.Handle(commands.CmdCartPlay,      cartPlayer.HandlePlay)
+		disp.Handle(commands.CmdCartStop,      cartPlayer.HandleStop)
+		disp.Handle(commands.CmdCartSetVolume, func(_ context.Context, cmd commands.Command) error {
+			payload, ok := cmd.Payload.(commands.CartSetVolumePayload)
+			if !ok {
+				return fmt.Errorf("cart: SetVolume: unexpected payload %T", cmd.Payload)
+			}
+			stateMgr.SetCartVolume(payload.Level)
+			evtBus.Publish(events.New(events.EvtCartVolumeChanged, events.CartVolumeChangedPayload{Level: payload.Level}))
+			return nil
+		})
+		cartDeps.GetStatus = func() any { return cartPlayer.GetStatus() }
+		go cartPlayer.Run(ctx)
+		stateMgr.SetCartEnabled(true)
+		log.Info("cart player enabled", "device", cfg.Cart.Output.DeviceID)
+	}
+
 	// 12. WebSocket Hub — fans out events to connected clients.
 	wsHub := apiws.NewHub(evtBus, stateMgr, log)
 
@@ -371,7 +405,7 @@ func run(args []string) error {
 		return fmt.Errorf("scheduler: %w", err)
 	}
 
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, log)
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, cartDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, log)
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)

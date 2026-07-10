@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>RadioFlow — Botoneira</title>
+<style>
+/* ─── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #080f16;
+  --bg2:      #0d1a25;
+  --bg3:      #122030;
+  --border:   rgba(255,255,255,0.08);
+  --cyan:     #20e6ff;
+  --text:     #c8d8e0;
+  --text-dim: rgba(200,216,224,0.45);
+  --text-hi:  #ffffff;
+  --cols:     4;
+}
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* ─── Header ──────────────────────────────────────────────── */
+.header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 12px;
+  background: rgba(32,230,255,0.04);
+  border-bottom: 1px solid rgba(32,230,255,0.10);
+  flex-shrink: 0;
+}
+.hdr-badge {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  background: rgba(6,14,22,0.88);
+  border: 1px solid rgba(45,216,255,0.18);
+  border-radius: 10px;
+  padding: 15px 14px;
+}
+.hdr-badge-line {
+  width: 22px; height: 1px; background: rgba(45,216,255,0.28); flex-shrink: 0;
+}
+.hdr-badge-text {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 15px; font-weight: 700; letter-spacing: 3px;
+  color: var(--cyan); text-transform: uppercase;
+  text-shadow: 0 0 16px rgba(45,216,255,0.35);
+  white-space: nowrap;
+}
+
+/* Profile pill */
+.profile-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 7px; padding: 4px 10px; cursor: pointer;
+  transition: border-color .15s, background .15s; position: relative;
+  min-width: 240px;
+}
+.profile-pill:hover { border-color: rgba(32,230,255,0.35); background: rgba(32,230,255,0.07); }
+.pp-label { font-size: 10px; color: var(--text-dim); font-weight: 700; letter-spacing:.08em; text-transform: uppercase; }
+.pp-name  { font-size: 12px; color: var(--text-hi); font-weight: 700; }
+.pp-arrow { font-size: 9px; color: var(--text-dim); }
+
+/* Dropdown */
+.profile-dd {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0;
+  background: var(--bg2); border: 1px solid rgba(32,230,255,0.18);
+  border-radius: 9px; padding: 5px; min-width: 175px;
+  z-index: 300; box-shadow: 0 8px 28px rgba(0,0,0,0.65);
+}
+.profile-dd.open { display: block; }
+.pdd-item {
+  padding: 8px 11px; border-radius: 6px; cursor: pointer;
+  font-size: 12px; color: var(--text);
+  display: flex; align-items: center; justify-content: space-between;
+  transition: background .1s;
+}
+.pdd-item:hover { background: rgba(32,230,255,0.08); color: var(--text-hi); }
+.pdd-item.cur { color: var(--cyan); font-weight: 700; }
+.pdd-del { opacity: 0; font-size: 10px; color: var(--text-dim); transition: opacity .1s; }
+.pdd-item:hover .pdd-del { opacity: 1; }
+.pdd-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.pdd-new { color: var(--cyan); font-size: 11px; }
+
+.hdr-sep { flex: 1; }
+
+/* Header icon buttons */
+.hdr-btn {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: none; border: 1px solid var(--border);
+  color: #ffffff; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .12s; flex-shrink: 0;
+}
+.hdr-btn:hover { background: rgba(255,255,255,0.07); color: var(--text-hi); border-color: rgba(255,255,255,0.15); }
+.hdr-btn.on { background: rgba(32,230,255,0.12); border-color: rgba(32,230,255,0.50); color: var(--cyan); }
+.hdr-btn-del:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.45); color: #ef4444; }
+
+/* Cols selector */
+.cols-select {
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 6px; color: #ffffff;
+  font-size: 11px; font-weight: 700; font-family: inherit;
+  padding: 3px 6px; cursor: pointer; outline: none; transition: all .12s;
+}
+.cols-select:hover { border-color: rgba(32,230,255,0.30); color: #ffffff; }
+.cols-select option { background: var(--bg2); }
+
+.hdr-divider { width: 1px; height: 16px; background: var(--border); }
+
+/* ─── Edit banner ─────────────────────────────────────────── */
+.edit-banner {
+  display: none; align-items: center; gap: 10px;
+  padding: 6px 14px;
+  background: rgba(167,139,250,0.07); border-bottom: 1px solid rgba(167,139,250,0.16);
+  font-size: 10px; color: #a78bfa; font-weight: 700; letter-spacing:.10em; text-transform: uppercase;
+  flex-shrink: 0;
+}
+.edit-banner.show { display: flex; }
+.eb-sep { flex: 1; }
+.eb-btn {
+  padding: 3px 12px; border-radius: 5px; font-size: 11px; font-weight: 700;
+  cursor: pointer; border: 1px solid; transition: all .12s; font-family: inherit;
+}
+.eb-save   { background: rgba(32,230,255,0.12); border-color: rgba(32,230,255,0.40); color: var(--cyan); }
+.eb-save:hover { background: rgba(32,230,255,0.22); }
+.eb-cancel { background: none; border-color: var(--border); color: var(--text-dim); }
+.eb-cancel:hover { color: var(--text-hi); }
+
+/* ─── Grid ────────────────────────────────────────────────── */
+.grid-wrap {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(32,230,255,0.22) transparent;
+}
+.grid-wrap::-webkit-scrollbar { width: 6px; }
+.grid-wrap::-webkit-scrollbar-thumb { background: rgba(32,230,255,0.22); border-radius: 3px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 8px;
+}
+
+/* ─── Button card ─────────────────────────────────────────── */
+.hk {
+  position: relative; border-radius: 10px; overflow: hidden;
+  cursor: pointer; display: flex; flex-direction: column;
+  min-height: 100px;
+  transition: transform .10s, box-shadow .15s, filter .15s;
+  border: 2px solid transparent;
+}
+.hk::before {
+  content: ''; position: absolute; inset: 0;
+  background: var(--hk-grad); z-index: 0;
+}
+.hk::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(155deg, rgba(255,255,255,0.13) 0%, transparent 50%, rgba(0,0,0,0.22) 100%);
+  z-index: 1; pointer-events: none;
+}
+.hk:hover:not(.hk-add-card) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.50); filter: brightness(1.08); }
+.hk:active:not(.hk-add-card) { transform: translateY(0); filter: brightness(0.95); }
+.hk:focus { outline: 2px solid rgba(32,230,255,0.70); outline-offset: 2px; }
+.hk:focus:not(.hk-add-card) { transform: translateY(-2px); filter: brightness(1.08); }
+
+/* Playing */
+.hk.playing {
+  border-color: rgba(255,255,255,0.55);
+  animation: playGlow 1.8s ease-in-out infinite;
+}
+@keyframes playGlow {
+  0%,100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.10), 0 6px 20px rgba(0,0,0,0.45); }
+  50%      { box-shadow: 0 0 0 4px rgba(255,255,255,0.26), 0 8px 28px rgba(0,0,0,0.55); }
+}
+
+.hk-inner {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 7px 0; flex: 1;
+}
+.hk-toprow {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  width: 100%;
+}
+.hk-slot {
+  font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.65);
+  background: rgba(0,0,0,0.28); border-radius: 3px;
+  padding: 1px 5px; line-height: 1.5; letter-spacing:.04em;
+}
+.hk-icon {
+  font-size: 26px; line-height: 1; margin: 4px 0 3px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.40));
+  transition: transform .15s;
+}
+.hk.playing .hk-icon { animation: iconBounce .55s ease-in-out infinite alternate; }
+@keyframes iconBounce { to { transform: scale(1.14); } }
+
+.hk-name {
+  font-size: 11px; font-weight: 700; color: #fff;
+  text-align: center; line-height: 1.25;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  width: 100%;
+}
+.hk-sub {
+  font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.60);
+  text-align: center; margin-top: 1px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.40);
+}
+.hk-time {
+  font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.88);
+  text-align: center; margin-top: 2px;
+  font-family: 'Courier New', monospace; letter-spacing:.04em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+}
+/* Progress bar */
+.hk-bar { height: 4px; background: rgba(0,0,0,0.30); flex-shrink: 0; position: relative; z-index: 2; margin-top: 6px; }
+.hk-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.65); border-radius: 0 2px 2px 0; transition: width .22s linear; }
+
+/* Stop button */
+.hk-stop {
+  display: none; position: absolute; top: 6px; right: 6px; z-index: 10;
+  width: 18px; height: 18px; border-radius: 4px;
+  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.22);
+  align-items: center; justify-content: center;
+  font-size: 8px; color: rgba(255,255,255,0.65); cursor: pointer; transition: all .12s;
+}
+.hk.playing .hk-stop { display: flex; }
+.hk-stop:hover { background: rgba(220,40,40,0.55); border-color: #ef4444; color: #fff; }
+
+/* ─── Edit overlay ────────────────────────────────────────── */
+.hk-edit-ov {
+  display: none; position: absolute; inset: 0; z-index: 10;
+  background: rgba(6,10,16,0.82); border-radius: 8px;
+  align-items: center; justify-content: center; gap: 8px;
+}
+.edit-mode .hk:not(.hk-add-card) .hk-edit-ov { display: flex; }
+.eo {
+  width: 32px; height: 32px; border-radius: 7px; border: 1px solid;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .12s;
+}
+.eo-e { background: rgba(32,230,255,0.10); border-color: rgba(32,230,255,0.35); color: var(--cyan); }
+.eo-e:hover { background: rgba(32,230,255,0.25); }
+.eo-d { background: rgba(239,68,68,0.10); border-color: rgba(239,68,68,0.35); color: #ef4444; }
+.eo-d:hover { background: rgba(239,68,68,0.25); }
+
+/* ─── Add card ────────────────────────────────────────────── */
+.hk-add-card {
+  min-height: 100px; border-radius: 10px;
+  border: 2px dashed rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: border-color .15s, background .15s;
+  background: transparent;
+}
+.hk-add-card:hover { border-color: rgba(32,230,255,0.35); background: rgba(32,230,255,0.05); }
+.hk-add-card:hover .add-icon { color: var(--cyan); border-color: rgba(32,230,255,0.35); }
+.add-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px dashed rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.25); font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+
+/* ─── Footer ──────────────────────────────────────────────── */
+.footer {
+  padding: 5px 12px 7px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 10px; color: var(--text-dim);
+  flex-shrink: 0; text-align: center;
+}
+
+/* ─── Modals ──────────────────────────────────────────────── */
+.backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.72); z-index: 400;
+  align-items: center; justify-content: center;
+}
+.backdrop.open { display: flex; }
+.modal {
+  background: var(--bg); border: 1px solid rgba(32,230,255,0.22);
+  border-radius: 14px; padding: 22px 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.80);
+  width: 462px;
+}
+.modal-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing:.14em; color: var(--cyan); margin-bottom: 18px; }
+.modal-field { margin-bottom: 14px; }
+.modal-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing:.12em; color: var(--text-dim); display: block; margin-bottom: 6px; }
+.modal-input, .modal-select {
+  width: 100%; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 8px 12px;
+  color: var(--text-hi); font-size: 13px; font-family: inherit;
+  outline: none; transition: border-color .15s;
+}
+.modal-input:focus, .modal-select:focus { border-color: rgba(32,230,255,0.45); }
+.modal-select option { background: var(--bg2); }
+.color-row { display: flex; gap: 7px; flex-wrap: wrap; }
+.cswatch {
+  width: 30px; height: 30px; border-radius: 7px; cursor: pointer;
+  border: 2px solid transparent; transition: all .12s; position: relative;
+}
+.cswatch.sel { border-color: #fff; transform: scale(1.18); }
+.cswatch.sel::after { content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; font-weight:800; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.modal-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.mbtn { padding: 8px 18px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid; transition: all .12s; font-family: inherit; }
+.mbtn-ok     { background: rgba(32,230,255,0.14); border-color: rgba(32,230,255,0.45); color: var(--cyan); }
+.mbtn-ok:hover { background: rgba(32,230,255,0.26); }
+.mbtn-cancel { background: none; border-color: var(--border); color: var(--text-dim); }
+.mbtn-cancel:hover { color: var(--text-hi); border-color: rgba(255,255,255,0.18); }
+
+/* ─── Audio Picker ────────────────────────────────────────── */
+.ap-search-wrap { position: relative; }
+.ap-spinner {
+  position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+  font-size: 11px; color: var(--text-dim); letter-spacing: .12em; pointer-events: none;
+}
+.ap-results {
+  max-height: 196px; overflow-y: auto;
+  border: 1px solid rgba(32,230,255,0.18); border-radius: 7px;
+  margin-top: 4px; background: var(--bg2);
+  scrollbar-width: thin; scrollbar-color: rgba(32,230,255,0.22) transparent;
+}
+.ap-result {
+  padding: 8px 11px; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background .1s;
+}
+.ap-result:last-child { border-bottom: none; }
+.ap-result:hover { background: rgba(32,230,255,0.07); }
+.ap-result:hover .apr-title { color: var(--cyan); }
+.apr-title { font-size: 12px; color: var(--text-hi); font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.apr-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing:.08em; padding: 2px 5px; border-radius: 3px; background: rgba(255,255,255,0.08); color: var(--text-dim); flex-shrink: 0; }
+.apr-dur   { font-size: 10px; color: var(--text-dim); flex-shrink: 0; font-family: monospace; }
+
+/* Chip de confirmação */
+.ap-chip {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(32,230,255,0.07); border: 1px solid rgba(32,230,255,0.28);
+  border-radius: 7px; padding: 9px 12px;
+}
+.apc-icon  { font-size: 16px; flex-shrink: 0; }
+.apc-info  { flex: 1; min-width: 0; }
+.apc-title { font-size: 13px; font-weight: 700; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.apc-meta  { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.apc-clear {
+  background: none; border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-dim); border-radius: 5px; font-family: inherit;
+  width: 22px; height: 22px; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all .12s;
+}
+.apc-clear:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.10); }
+
+/* ─── Toast ───────────────────────────────────────────────── */
+#toastContainer {
+  position: fixed; top: 50px; right: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  z-index: 9999; pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 4px; border: 1px solid;
+  font-size: 13px; font-weight: 600; max-width: 300px;
+  animation: toastIn 0.2s ease-out; pointer-events: none;
+}
+.toast.ok  { background: #002a11; color: #20e6ff; border-color: #2f7bff; }
+.toast.err { background: #2a0000; color: #ff6b6b; border-color: #aa0000; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ════════════════════════════════════════════════ -->
+<div class="header">
+  <img src="logo.svg"       alt="Logo"      height="22" style="flex-shrink:0;">
+  <img src="radio-flow.png" alt="RadioFlow" height="20" style="flex-shrink:0;width:auto;">
+  <div class="hdr-divider"></div>
+  <div class="hdr-badge">
+    <span class="hdr-badge-line"></span>
+    <span class="hdr-badge-text">Botoneira</span>
+    <span class="hdr-badge-line"></span>
+  </div>
+
+  <div class="profile-pill" id="profilePill" onclick="toggleDD(event)">
+    <div>
+      <div class="pp-label">Perfil</div>
+      <div class="pp-name" id="ppName">—</div>
+    </div>
+    <span class="pp-arrow">▾</span>
+    <div class="profile-dd" id="profileDD"></div>
+  </div>
+
+  <div class="hdr-sep"></div>
+
+  <label style="font-size:10px;color:#ffffff;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Colunas</label>
+  <select class="cols-select" id="colsSel" onchange="onColsChange(this.value)">
+    <option value="3">3</option>
+    <option value="4" selected>4</option>
+    <option value="5">5</option>
+    <option value="6">6</option>
+  </select>
+
+  <div class="hdr-divider"></div>
+  <button class="hdr-btn" id="btnEdit" title="Editar botoneira" onclick="toggleEdit()">✎</button>
+  <button class="hdr-btn" title="Novo perfil" onclick="openProfModal()">＋</button>
+  <button class="hdr-btn hdr-btn-del" id="btnDelProf" title="Excluir perfil atual" onclick="deleteCurrentProfile()">🗑</button>
+  <button class="hdr-btn" title="Nova janela" onclick="openNewWindow()">↗</button>
+</div>
+
+<!-- ══ EDIT BANNER ═══════════════════════════════════════════ -->
+<div class="edit-banner" id="editBanner">
+  ✎ Modo edição — clique nos botões para editar ou remover
+  <span class="eb-sep"></span>
+  <button class="eb-btn eb-cancel" onclick="cancelEdit()">Fechar edição</button>
+</div>
+
+<!-- ══ GRID ══════════════════════════════════════════════════ -->
+<div class="grid-wrap" id="gridWrap">
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════ -->
+<div class="footer" id="footer">Carregando…</div>
+
+<!-- Button modal -->
+<div class="backdrop" id="btnBackdrop">
+  <div class="modal">
+    <div class="modal-title" id="btnModalTitle">Configurar botão</div>
+    <div class="modal-field">
+      <label class="modal-label">Rótulo</label>
+      <input class="modal-input" id="mLabel" placeholder="Ex: Abertura Manhã">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Sub-rótulo (opcional)</label>
+      <input class="modal-input" id="mSubLabel" placeholder="Ex: 05:12">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Áudio</label>
+      <div id="apSearchWrap" class="ap-search-wrap">
+        <input class="modal-input" id="mSearch" placeholder="🔍 Buscar por título, artista…" oninput="onSearchInput(this.value)" autocomplete="off">
+        <span class="ap-spinner" id="apSpinner" style="display:none">···</span>
+      </div>
+      <div class="ap-results" id="apResults" style="display:none"></div>
+      <div class="ap-chip" id="apChip" style="display:none">
+        <div class="apc-icon">♪</div>
+        <div class="apc-info">
+          <div class="apc-title" id="apcTitle"></div>
+          <div class="apc-meta"  id="apcMeta"></div>
+        </div>
+        <button class="apc-clear" onclick="clearTrackSelection()">✕</button>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Cor</label>
+      <div class="color-row" id="colorRow"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="mbtn mbtn-cancel" onclick="closeBtnModal()">Cancelar</button>
+      <button class="mbtn mbtn-ok"     onclick="saveBtnModal()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Profile modal -->
+<div class="backdrop" id="profBackdrop">
+  <div class="modal" style="width:310px">
+    <div class="modal-title">Novo perfil</div>
+    <div class="modal-field">
+      <label class="modal-label">Nome</label>
+      <input class="modal-input" id="mProfName" placeholder="Ex: Tarde, Fim de semana…">
+    </div>
+    <div class="modal-foot">
+      <button class="mbtn mbtn-cancel" onclick="closeProfModal()">Cancelar</button>
+      <button class="mbtn mbtn-ok"     onclick="saveProfModal()">Criar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+/* ══ CONFIG ══════════════════════════════════════════════════ */
+const params   = new URLSearchParams(window.location.search);
+const API_URL  = params.get('api') || 'http://127.0.0.1:8080';
+const LIB_URL  = params.get('lib') || 'http://127.0.0.1:8081';
+
+/* ══ PALETTES ════════════════════════════════════════════════ */
+const PALETTES = [
+  { id:'purple', grad:'linear-gradient(145deg,#7c6dea,#4a38b5)', accent:'#a78bfa' },
+  { id:'teal',   grad:'linear-gradient(145deg,#1a8ca8,#0e5970)', accent:'#20e6ff' },
+  { id:'gold',   grad:'linear-gradient(145deg,#d4a030,#9a6a08)', accent:'#fcd34d' },
+  { id:'red',    grad:'linear-gradient(145deg,#e05050,#a01818)', accent:'#fca5a5' },
+  { id:'green',  grad:'linear-gradient(145deg,#2ab870,#12703a)', accent:'#6ee7b7' },
+  { id:'blue',   grad:'linear-gradient(145deg,#3a8de0,#1850a0)', accent:'#93c5fd' },
+  { id:'orange', grad:'linear-gradient(145deg,#e08030,#a04808)', accent:'#fdba74' },
+  { id:'pink',   grad:'linear-gradient(145deg,#d060a0,#902070)', accent:'#f9a8d4' },
+];
+const pal = id => PALETTES.find(p => p.id === id) || PALETTES[0];
+
+/* ══ STATE ═══════════════════════════════════════════════════ */
+let _profiles      = [];  // [{id, name, columns, buttons:[…]}]
+let _curId         = null;
+let _editMode      = false;
+let _editBtnId     = null;
+let _selPal        = 'purple';
+let _selTrack      = null; // {path, title, artist, type, duration_ms}
+let _searchTimer   = null;
+let _searchResults = []; // último lote de resultados de busca
+
+// Cart state — updated via WebSocket (primary) or polling (fallback)
+let _activeCartBtnId = null; // button ID whose track is playing
+let _activeCartId    = null; // cart_id returned by engine
+let _cartDurMS       = 0;
+let _cartPosMS       = 0;
+let _cartPollTimer   = null; // polling interval when WS is unavailable
+
+/* ══ BOOT ════════════════════════════════════════════════════ */
+buildColorRow();
+loadProfiles();
+connectWS();
+
+/* ══ LIBRARY API ═════════════════════════════════════════════ */
+async function loadProfiles() {
+  try {
+    const r = await fetch(LIB_URL + '/v1/hotkeys/profiles');
+    const j = await r.json();
+    _profiles = (j.data || []).map(p => ({
+      id: p.id, name: p.name, columns: p.columns || 4, buttons: [],
+    }));
+    // Load first profile's buttons
+    if (_profiles.length > 0) {
+      _curId = _profiles[0].id;
+      await loadButtons(_curId);
+    } else {
+      renderGrid();
+    }
+    renderDD();
+  } catch (e) {
+    console.error('[hotkeys] load profiles', e);
+    showToast(false, 'Erro ao carregar perfis');
+    renderGrid();
+  }
+}
+
+async function loadButtons(profileId) {
+  try {
+    const r = await fetch(LIB_URL + '/v1/hotkeys/profiles/' + profileId);
+    const j = await r.json();
+    const prof = _profiles.find(p => p.id === profileId);
+    if (!prof) return;
+    prof.buttons = (j.data && j.data.buttons) || [];
+    prof.columns = (j.data && j.data.columns) || 4;
+  } catch (e) {
+    console.error('[hotkeys] load buttons', e);
+  }
+  renderGrid();
+}
+
+async function apiCreateProfile(name, columns) {
+  const r = await fetch(LIB_URL + '/v1/hotkeys/profiles', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, columns }),
+  });
+  return (await r.json()).data;
+}
+
+async function apiDeleteProfile(id) {
+  await fetch(LIB_URL + '/v1/hotkeys/profiles/' + id, { method: 'DELETE' });
+}
+
+async function apiUpdateProfile(id, name, columns) {
+  await fetch(LIB_URL + '/v1/hotkeys/profiles/' + id, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, columns }),
+  });
+}
+
+async function apiAddButton(profileId, btn) {
+  const r = await fetch(LIB_URL + '/v1/hotkeys/profiles/' + profileId + '/buttons', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(btn),
+  });
+  return (await r.json()).data;
+}
+
+async function apiPatchButton(btnId, patch) {
+  const r = await fetch(LIB_URL + '/v1/hotkeys/buttons/' + btnId, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  return (await r.json()).data;
+}
+
+async function apiDeleteButton(btnId) {
+  await fetch(LIB_URL + '/v1/hotkeys/buttons/' + btnId, { method: 'DELETE' });
+}
+
+/* ══ TRACK SEARCH ════════════════════════════════════════════ */
+function onSearchInput(q) {
+  clearTimeout(_searchTimer);
+  hideTrackResults();
+  if (!q || q.length < 2) { document.getElementById('apSpinner').style.display = 'none'; return; }
+  document.getElementById('apSpinner').style.display = '';
+  _searchTimer = setTimeout(() => searchTracks(q), 280);
+}
+
+async function searchTracks(q) {
+  try {
+    const r = await fetch(LIB_URL + '/v1/tracks?q=' + encodeURIComponent(q) + '&limit=8');
+    const j = await r.json();
+    document.getElementById('apSpinner').style.display = 'none';
+    renderTrackResults(j.tracks || j.data || []);
+  } catch (e) {
+    document.getElementById('apSpinner').style.display = 'none';
+    hideTrackResults();
+  }
+}
+
+function renderTrackResults(tracks) {
+  _searchResults = tracks;
+  const box = document.getElementById('apResults');
+  if (!tracks.length) { hideTrackResults(); return; }
+  box.innerHTML = tracks.map((t, i) => `
+    <div class="ap-result" data-idx="${i}">
+      <span class="apr-title">${escH(t.title || t.path)}</span>
+      ${t.artist ? `<span class="apr-badge">${escH(t.artist)}</span>` : ''}
+      <span class="apr-badge">${escH(t.type || '')}</span>
+      <span class="apr-dur">${msToTS(t.duration_ms)}</span>
+    </div>`).join('');
+  box.querySelectorAll('.ap-result').forEach(el => {
+    el.addEventListener('click', () => selectTrack(_searchResults[+el.dataset.idx]));
+  });
+  box.style.display = 'block';
+}
+
+function hideTrackResults() {
+  const box = document.getElementById('apResults');
+  box.innerHTML = '';
+  box.style.display = 'none';
+}
+
+function selectTrack(t) {
+  _selTrack = t;
+  hideTrackResults();
+  // Auto-preenche rótulo e sub-rótulo se vazios
+  if (!document.getElementById('mLabel').value)    document.getElementById('mLabel').value    = t.title  || '';
+  if (!document.getElementById('mSubLabel').value) document.getElementById('mSubLabel').value = t.artist || '';
+  showTrackChip(t);
+}
+
+function showTrackChip(t) {
+  document.getElementById('apSearchWrap').style.display = 'none';
+  document.getElementById('apcTitle').textContent = t.title || t.path || '';
+  const parts = [];
+  if (t.artist) parts.push(t.artist);
+  if (t.type)   parts.push(t.type);
+  if (t.duration_ms) parts.push(msToTS(t.duration_ms));
+  document.getElementById('apcMeta').textContent = parts.join(' · ');
+  document.getElementById('apChip').style.display = 'flex';
+}
+
+function clearTrackSelection() {
+  _selTrack = null;
+  document.getElementById('apChip').style.display = 'none';
+  document.getElementById('apSearchWrap').style.display = '';
+  document.getElementById('mSearch').value = '';
+  document.getElementById('mSearch').focus();
+  hideTrackResults();
+}
+
+/* ══ CART DISPATCH ═══════════════════════════════════════════ */
+async function cartPlay(btn) {
+  try {
+    const r = await fetch(API_URL + '/v1/cart/play', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist }),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      showToast(false, 'Erro: ' + (j.message || r.status));
+      return;
+    }
+    // Otimista: marca como tocando e inicia polling de progresso
+    _activeCartBtnId = btn.id;
+    _cartDurMS = btn.duration_ms || 0;
+    _cartPosMS = 0;
+    updateCartVisual();
+    startCartPoll();
+  } catch (e) {
+    showToast(false, 'Sem conexão com o engine');
+  }
+}
+
+async function cartStop() {
+  try {
+    await fetch(API_URL + '/v1/cart/stop', { method: 'POST' });
+    clearCartVisual();
+    stopCartPoll();
+  } catch (_) {}
+}
+
+/* ── Cart polling (fallback quando WebSocket não está disponível) ── */
+function startCartPoll() {
+  stopCartPoll();
+  _cartPollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(API_URL + '/v1/cart/status');
+      const j = await r.json();
+      if (j.state === 'playing') {
+        _cartPosMS = j.position_ms || 0;
+        if (j.duration_ms) _cartDurMS = j.duration_ms;
+        updateCartProgress();
+      } else if (j.state === 'idle' && _activeCartBtnId) {
+        clearCartVisual();
+        stopCartPoll();
+      }
+    } catch (_) {}
+  }, 250);
+}
+
+function stopCartPoll() {
+  if (_cartPollTimer) { clearInterval(_cartPollTimer); _cartPollTimer = null; }
+}
+
+/* ══ WEBSOCKET ═══════════════════════════════════════════════ */
+let _ws, _wsRetry = 0;
+
+function connectWS() {
+  const wsUrl = API_URL.replace(/^http/, 'ws') + '/v1/events';
+  _ws = new WebSocket(wsUrl);
+  _ws.onmessage = e => {
+    try {
+      const { type, payload } = JSON.parse(e.data);
+      onWsEvent(type, payload || {});
+    } catch (_) {}
+  };
+  _ws.onclose = () => {
+    _wsRetry = Math.min(_wsRetry + 1, 8);
+    setTimeout(connectWS, Math.min(1000 * _wsRetry, 10000));
+  };
+  _ws.onerror = () => _ws.close();
+}
+
+function onWsEvent(type, payload) {
+  switch (type) {
+    case 'CartStarted':
+      _activeCartId    = payload.cart_id;
+      _cartDurMS       = payload.duration_ms || 0;
+      _cartPosMS       = 0;
+      _activeCartBtnId = findBtnIdByPath(payload.path);
+      updateCartVisual();
+      stopCartPoll(); // WebSocket assumiu — polling desnecessário
+      break;
+
+    case 'CartProgress':
+      _cartPosMS = payload.position_ms || 0;
+      if (payload.duration_ms) _cartDurMS = payload.duration_ms;
+      updateCartProgress();
+      break;
+
+    case 'CartStopped':
+      _activeCartId    = null;
+      _activeCartBtnId = null;
+      _cartPosMS       = 0;
+      _cartDurMS       = 0;
+      clearCartVisual();
+      stopCartPoll();
+      break;
+  }
+}
+
+function findBtnIdByPath(path) {
+  const prof = activeProfile();
+  if (!prof) return null;
+  const btn = prof.buttons.find(b => b.track_path === path);
+  return btn ? btn.id : null;
+}
+
+function updateCartVisual() {
+  clearCartVisual(false);
+  if (!_activeCartBtnId) return;
+  const card = document.querySelector(`[data-btn-id="${_activeCartBtnId}"]`);
+  if (card) card.classList.add('playing');
+}
+
+function updateCartProgress() {
+  if (!_activeCartBtnId || !_cartDurMS) return;
+  const card = document.querySelector(`[data-btn-id="${_activeCartBtnId}"]`);
+  if (!card) return;
+  const pct = Math.min(100, (_cartPosMS / _cartDurMS) * 100);
+  const fill = card.querySelector('.hk-fill');
+  const time = card.querySelector('.hk-time');
+  if (fill) fill.style.width = pct + '%';
+  if (time) time.textContent = msToTS(Math.max(0, _cartDurMS - _cartPosMS));
+}
+
+function clearCartVisual(resetId = true) {
+  document.querySelectorAll('.hk.playing').forEach(c => {
+    c.classList.remove('playing');
+    const fill = c.querySelector('.hk-fill');
+    const time = c.querySelector('.hk-time');
+    if (fill) fill.style.width = '0%';
+    if (time) {
+      const bid  = parseInt(c.dataset.btnId);
+      const prof = activeProfile();
+      const btn  = prof && prof.buttons.find(b => b.id === bid);
+      if (btn) time.textContent = msToTS(btn.duration_ms || 0);
+    }
+  });
+  if (resetId) { _activeCartBtnId = null; _activeCartId = null; }
+}
+
+/* ══ GRID ════════════════════════════════════════════════════ */
+function activeProfile() { return _profiles.find(p => p.id === _curId); }
+
+function renderGrid() {
+  const prof = activeProfile();
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  if (!prof) {
+    document.getElementById('footer').textContent = 'Nenhum perfil criado';
+    document.getElementById('ppName').textContent = '—';
+    return;
+  }
+
+  const cols = prof.columns || 4;
+  document.getElementById('colsSel').value = String(cols);
+  document.documentElement.style.setProperty('--cols', cols);
+  document.getElementById('ppName').textContent = prof.name;
+
+  prof.buttons.forEach((b, idx) => grid.appendChild(makeCard(b, idx + 1)));
+
+  // Add card
+  const add = document.createElement('div');
+  add.className = 'hk-add-card';
+  if (_editMode) add.style.display = 'none';
+  add.innerHTML = `<div class="add-icon">＋</div>`;
+  add.onclick = () => openBtnModal(null);
+  grid.appendChild(add);
+
+  const total = prof.buttons.length;
+  document.getElementById('footer').textContent =
+    `${total} botão${total !== 1 ? 'ões' : ''} · ${cols} col · máx 40`;
+}
+
+function makeCard(b, slotNum) {
+  const p    = PALETTES[b.palette] || PALETTES[0];
+  const isPlaying = _activeCartBtnId === b.id;
+  const pct  = isPlaying && _cartDurMS ? Math.min(100, (_cartPosMS / _cartDurMS) * 100) : 0;
+  const durMS = b.duration_ms || 0;
+  const remMS = isPlaying ? Math.max(0, _cartDurMS - _cartPosMS) : durMS;
+
+  const card = document.createElement('div');
+  card.className = 'hk' + (isPlaying ? ' playing' : '');
+  card.dataset.btnId = b.id;
+  card.tabIndex = 0;
+  card.style.setProperty('--hk-grad',   p.grad);
+  card.style.setProperty('--hk-accent', p.accent);
+
+  card.innerHTML = `
+    <div class="hk-inner">
+      <div class="hk-toprow">
+        <span class="hk-slot">${slotNum}</span>
+      </div>
+      <div class="hk-icon">🎵</div>
+      <div class="hk-name">${escH(b.label || b.track_title || '—')}</div>
+      <div class="hk-sub">${escH(b.sub_label || b.track_artist || b.track_type || '')}</div>
+      <div class="hk-time">${msToTS(remMS)}</div>
+    </div>
+    <div class="hk-bar"><div class="hk-fill" style="width:${pct}%"></div></div>
+    <div class="hk-stop" onclick="stopCard(event)">■</div>
+    <div class="hk-edit-ov">
+      <div class="eo eo-e" onclick="openBtnModal('${escH(String(b.id))}')">✎</div>
+      <div class="eo eo-d" onclick="delBtn(event,'${escH(String(b.id))}')">✕</div>
+    </div>`;
+
+  card.addEventListener('click', () => { card.focus(); if (!_editMode) triggerCart(b); });
+  card.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!_editMode) triggerCart(b);
+    }
+  });
+  return card;
+}
+
+function triggerCart(btn) {
+  if (!btn.track_path) { showToast(false, 'Botão sem áudio configurado'); return; }
+  if (_activeCartBtnId === btn.id) {
+    cartStop();
+  } else {
+    cartPlay(btn);
+  }
+}
+
+function stopCard(e) {
+  e.stopPropagation();
+  cartStop();
+}
+
+/* ══ EDIT MODE ═══════════════════════════════════════════════ */
+function toggleEdit() {
+  _editMode = !_editMode;
+  document.getElementById('gridWrap').classList.toggle('edit-mode', _editMode);
+  document.getElementById('grid').classList.toggle('edit-mode', _editMode);
+  document.getElementById('editBanner').classList.toggle('show', _editMode);
+  document.getElementById('btnEdit').classList.toggle('on', _editMode);
+  const addCard = document.querySelector('.hk-add-card');
+  if (addCard) addCard.style.display = _editMode ? 'none' : '';
+}
+function cancelEdit() {
+  _editMode = false;
+  document.getElementById('gridWrap').classList.remove('edit-mode');
+  document.getElementById('grid').classList.remove('edit-mode');
+  document.getElementById('editBanner').classList.remove('show');
+  document.getElementById('btnEdit').classList.remove('on');
+}
+
+/* ══ BUTTON MODAL ════════════════════════════════════════════ */
+function openBtnModal(btnId) {
+  _editBtnId = btnId;
+  _selTrack  = null;
+  const prof = activeProfile();
+  const b    = btnId ? (prof && prof.buttons.find(x => x.id === btnId)) : null;
+  document.getElementById('btnModalTitle').textContent = b ? 'Editar botão' : 'Novo botão';
+  document.getElementById('mLabel').value    = b ? (b.label || '') : '';
+  document.getElementById('mSubLabel').value = b ? (b.sub_label || '') : '';
+  _selPal = (b && b.palette != null) ? (PALETTES[b.palette] || PALETTES[0]).id : 'purple';
+  refreshColorRow();
+  hideTrackResults();
+  document.getElementById('apSpinner').style.display = 'none';
+  // Mostra chip se há track associado; senão, campo de busca
+  if (b && b.track_path) {
+    _selTrack = { id: b.track_id || '', path: b.track_path, title: b.track_title, artist: b.track_artist, type: b.track_type, duration_ms: b.duration_ms };
+    showTrackChip(_selTrack);
+  } else {
+    document.getElementById('apChip').style.display = 'none';
+    document.getElementById('apSearchWrap').style.display = '';
+    document.getElementById('mSearch').value = '';
+  }
+  document.getElementById('btnBackdrop').classList.add('open');
+  setTimeout(() => document.getElementById('mLabel').focus(), 40);
+}
+
+function closeBtnModal() {
+  document.getElementById('btnBackdrop').classList.remove('open');
+  _editBtnId = null;
+  _selTrack  = null;
+  hideTrackResults();
+  document.getElementById('apChip').style.display = 'none';
+  document.getElementById('apSearchWrap').style.display = '';
+  document.getElementById('mSearch').value = '';
+  document.getElementById('apSpinner').style.display = 'none';
+}
+
+async function saveBtnModal() {
+  const label    = document.getElementById('mLabel').value.trim();
+  if (!label) { document.getElementById('mLabel').focus(); return; }
+  const subLabel = document.getElementById('mSubLabel').value.trim();
+  const palIdx   = PALETTES.findIndex(p => p.id === _selPal);
+  const palette  = palIdx >= 0 ? palIdx : 0;
+
+  const prof = activeProfile();
+  if (!prof) return;
+
+  try {
+    if (_editBtnId) {
+      const patch = {
+        label, sub_label: subLabel, palette,
+        ..._selTrack ? {
+          track_path: _selTrack.path, track_title: _selTrack.title,
+          track_artist: _selTrack.artist, track_type: _selTrack.type,
+          duration_ms: _selTrack.duration_ms, track_id: _selTrack.id || '',
+        } : {},
+      };
+      const updated = await apiPatchButton(_editBtnId, patch);
+      const idx = prof.buttons.findIndex(x => x.id === _editBtnId);
+      if (idx >= 0 && updated) prof.buttons[idx] = updated;
+    } else {
+      const track = _selTrack || {};
+      const newBtn = await apiAddButton(prof.id, {
+        label, sub_label: subLabel, palette,
+        track_path: track.path || '', track_title: track.title || label,
+        track_artist: track.artist || '', track_type: track.type || '',
+        duration_ms: track.duration_ms || 0, track_id: track.id || '',
+      });
+      if (newBtn) prof.buttons.push(newBtn);
+    }
+  } catch (e) {
+    showToast(false, 'Erro ao salvar botão');
+    return;
+  }
+
+  closeBtnModal();
+  renderGrid();
+  showToast(true, `Botão "${label}" salvo`);
+}
+
+async function delBtn(e, btnId) {
+  e.stopPropagation();
+  const prof = activeProfile();
+  const b = prof && prof.buttons.find(x => x.id === btnId);
+  try {
+    await apiDeleteButton(btnId);
+  } catch (_) {}
+  if (prof) prof.buttons = prof.buttons.filter(x => x.id !== btnId);
+  if (_activeCartBtnId === btnId) cartStop();
+  renderGrid();
+  showToast(true, 'Botão removido');
+}
+
+/* ══ PROFILE DD ══════════════════════════════════════════════ */
+function renderDD() {
+  const dd = document.getElementById('profileDD');
+  dd.innerHTML = '';
+  _profiles.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pdd-item' + (p.id === _curId ? ' cur' : '');
+    item.dataset.profileId   = p.id;
+    item.dataset.profileName = p.name;
+    item.innerHTML = `<span>${escH(p.name)}</span><span class="pdd-del" data-action="delete">✕</span>`;
+    dd.appendChild(item);
+  });
+  const sep = document.createElement('div'); sep.className = 'pdd-sep'; dd.appendChild(sep);
+  const add = document.createElement('div'); add.className = 'pdd-item pdd-new';
+  add.textContent = '＋ Novo perfil';
+  add.dataset.action = 'new-profile';
+  dd.appendChild(add);
+
+  // Delegação única no dropdown — evita conflitos com profile-pill.onclick
+  dd.onclick = ev => {
+    ev.stopPropagation();
+    const item   = ev.target.closest('[data-profile-id]');
+    const action = ev.target.dataset.action;
+
+    if (action === 'new-profile') { closeDD(); openProfModal(); return; }
+    if (action === 'delete' && item) {
+      if (_profiles.length === 1) { showToast(false, 'Último perfil — não pode remover'); return; }
+      const prof = { id: item.dataset.profileId, name: item.dataset.profileName };
+      closeDD();
+      setTimeout(() => openConfirmModal(prof), 0);
+      return;
+    }
+    if (item) switchProfile(item.dataset.profileId);
+  };
+}
+
+async function switchProfile(id) {
+  clearCartVisual();
+  _curId = id;
+  cancelEdit();
+  await loadButtons(id);
+  renderDD();
+  closeDD();
+  showToast(true, `Perfil "${activeProfile().name}" carregado`);
+}
+
+function toggleDD(e) { e.stopPropagation(); document.getElementById('profileDD').classList.toggle('open'); }
+function closeDD()   { document.getElementById('profileDD').classList.remove('open'); }
+document.addEventListener('click', closeDD);
+
+/* ══ COLUMNS CHANGE ══════════════════════════════════════════ */
+async function onColsChange(val) {
+  const prof = activeProfile();
+  if (!prof) return;
+  const cols = parseInt(val);
+  prof.columns = cols;
+  document.documentElement.style.setProperty('--cols', cols);
+  try {
+    await apiUpdateProfile(prof.id, prof.name, cols);
+  } catch (_) {}
+}
+
+/* ══ DELETE CURRENT PROFILE ══════════════════════════════════ */
+function deleteCurrentProfile() {
+  const prof = activeProfile();
+  if (!prof) return;
+  if (_profiles.length === 1) { showToast(false, 'Último perfil — não pode remover'); return; }
+  if (!window.confirm(`Excluir o perfil "${prof.name}"?\n\nTodos os botões serão removidos permanentemente.`)) return;
+  apiDeleteProfile(prof.id).catch(() => {});
+  _profiles = _profiles.filter(x => x.id !== prof.id);
+  _curId = _profiles[0].id;
+  loadButtons(_curId).then(() => renderDD());
+  showToast(true, `Perfil "${prof.name}" excluído`);
+}
+
+/* ══ CONFIRM DELETE PROFILE MODAL ═══════════════════════════ */
+let _confirmProfId   = null;
+let _confirmProfName = null;
+
+function openConfirmModal(prof) {
+  _confirmProfId   = prof.id;
+  _confirmProfName = prof.name;
+
+  // Remove instância anterior se existir
+  const old = document.getElementById('confirmBackdrop');
+  if (old) old.remove();
+
+  const el = document.createElement('div');
+  el.id = 'confirmBackdrop';
+  el.style.cssText = [
+    'position:fixed','inset:0','z-index:9999',
+    'background:rgba(0,0,0,0.72)',
+    'display:flex','align-items:center','justify-content:center',
+  ].join(';');
+
+  el.innerHTML = `
+    <div style="
+      background:#080f16;border:1px solid rgba(239,68,68,0.35);
+      border-radius:14px;padding:22px 24px;width:340px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.80);
+    ">
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#ef4444;margin-bottom:14px;">
+        Excluir perfil
+      </div>
+      <p style="font-size:13px;color:#c8d8e0;margin-bottom:8px;">
+        Tem certeza que deseja excluir o perfil
+        <strong style="color:#fff;">${escH(prof.name)}</strong>?
+      </p>
+      <p style="font-size:11px;color:rgba(200,216,224,0.45);margin-bottom:0;">
+        Todos os botões deste perfil serão removidos permanentemente.
+      </p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button id="_confirmCancelBtn" style="
+          padding:8px 18px;border-radius:7px;font-size:12px;font-weight:700;
+          cursor:pointer;border:1px solid rgba(255,255,255,0.08);
+          background:none;color:rgba(200,216,224,0.45);font-family:inherit;
+        ">Cancelar</button>
+        <button id="_confirmOkBtn" style="
+          padding:8px 18px;border-radius:7px;font-size:12px;font-weight:700;
+          cursor:pointer;border:1px solid rgba(239,68,68,0.45);
+          background:rgba(239,68,68,0.14);color:#ef4444;font-family:inherit;
+        ">Excluir</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(el);
+  document.getElementById('_confirmCancelBtn').onclick = closeConfirmModal;
+  document.getElementById('_confirmOkBtn').onclick     = confirmDeleteProfile;
+}
+
+function closeConfirmModal() {
+  const el = document.getElementById('confirmBackdrop');
+  if (el) el.remove();
+  _confirmProfId   = null;
+  _confirmProfName = null;
+}
+
+async function confirmDeleteProfile() {
+  const id   = _confirmProfId;
+  const name = _confirmProfName;
+  closeConfirmModal();
+  await apiDeleteProfile(id).catch(() => {});
+  _profiles = _profiles.filter(x => x.id !== id);
+  if (_curId === id) { _curId = _profiles[0].id; await loadButtons(_curId); }
+  renderDD();
+  showToast(true, `Perfil "${name}" excluído`);
+}
+
+/* ══ PROFILE MODAL ═══════════════════════════════════════════ */
+function openProfModal() {
+  document.getElementById('mProfName').value = '';
+  document.getElementById('profBackdrop').classList.add('open');
+  setTimeout(() => document.getElementById('mProfName').focus(), 40);
+}
+function closeProfModal() { document.getElementById('profBackdrop').classList.remove('open'); }
+
+async function saveProfModal() {
+  const name = document.getElementById('mProfName').value.trim();
+  if (!name) { document.getElementById('mProfName').focus(); return; }
+  try {
+    const p = await apiCreateProfile(name, 4);
+    if (p) {
+      _profiles.push({ id: p.id, name: p.name, columns: p.columns || 4, buttons: [] });
+      closeProfModal();
+      await switchProfile(p.id);
+      showToast(true, `Perfil "${name}" criado`);
+    }
+  } catch (e) {
+    showToast(false, 'Erro ao criar perfil');
+  }
+}
+
+/* ══ NEW WINDOW ══════════════════════════════════════════════ */
+function openNewWindow() {
+  if (typeof require !== 'undefined') {
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('open-hotkeys', { api: API_URL, lib: LIB_URL });
+      return;
+    } catch (_) {}
+  }
+  window.open(
+    'hotkeys.html?api=' + encodeURIComponent(API_URL) + '&lib=' + encodeURIComponent(LIB_URL),
+    '_blank', 'width=560,height=720'
+  );
+}
+
+/* ══ COLOR ROW ═══════════════════════════════════════════════ */
+function buildColorRow() {
+  const row = document.getElementById('colorRow');
+  PALETTES.forEach(p => {
+    const s = document.createElement('div');
+    s.className = 'cswatch' + (p.id === _selPal ? ' sel' : '');
+    s.style.background = p.grad;
+    s.title = p.id;
+    s.onclick = () => { _selPal = p.id; refreshColorRow(); };
+    row.appendChild(s);
+  });
+}
+function refreshColorRow() {
+  document.querySelectorAll('.cswatch').forEach((s, i) =>
+    s.classList.toggle('sel', PALETTES[i].id === _selPal));
+}
+
+/* ══ TOAST ═══════════════════════════════════════════════════ */
+function showToast(ok, msg) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok ? 'ok' : 'err');
+  el.textContent = (ok ? '✓ ' : '✗ ') + msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.4s';
+    el.style.opacity    = '0';
+    setTimeout(() => el.remove(), 400);
+  }, 3000);
+}
+
+/* ══ UTILS ═══════════════════════════════════════════════════ */
+function msToTS(ms) {
+  ms = Math.max(0, Math.round(ms));
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+  return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0') + '.' + (Math.round(ms / 100) % 10);
+}
+function escH(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) { return "'" + String(s).replace(/'/g, "\\'") + "'"; }
+
+/* ══ KEYBOARD ════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeBtnModal(); closeProfModal(); closeConfirmModal(); closeDD(); }
+  if (e.key === 'Enter' && document.getElementById('btnBackdrop').classList.contains('open'))  saveBtnModal();
+  if (e.key === 'Enter' && document.getElementById('profBackdrop').classList.contains('open')) saveProfModal();
+});
+
+// Navegação por setas no grid — usa activeElement para máxima compatibilidade com Electron
+document.addEventListener('keydown', e => {
+  const arrows = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];
+  if (!arrows.includes(e.key)) return;
+
+  const focused = document.activeElement;
+  if (!focused || !focused.classList.contains('hk') || focused.classList.contains('hk-add-card')) return;
+
+  e.preventDefault();
+  const cards = [...document.querySelectorAll('#grid .hk:not(.hk-add-card)')];
+  const idx   = cards.indexOf(focused);
+  if (idx < 0) return;
+
+  const cols = (activeProfile() && activeProfile().columns) || 4;
+  let next = idx;
+  if (e.key === 'ArrowRight') next = idx + 1;
+  if (e.key === 'ArrowLeft')  next = idx - 1;
+  if (e.key === 'ArrowDown')  next = idx + cols;
+  if (e.key === 'ArrowUp')    next = idx - cols;
+
+  if (next >= 0 && next < cards.length) cards[next].focus();
+});
+</script>
+</body>
+</html>

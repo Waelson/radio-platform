@@ -38,6 +38,7 @@ const (
 	// Volume commands.
 	CmdSetVolume        CommandType = "SET_VOLUME"
 	CmdPreviewSetVolume CommandType = "PREVIEW_SET_VOLUME"
+	CmdCartSetVolume    CommandType = "CART_SET_VOLUME"
 
 	// Preview (cue) commands — isolated from the main playback pipeline.
 	CmdPreviewPlay   CommandType = "PREVIEW_PLAY"
@@ -45,6 +46,10 @@ const (
 	CmdPreviewResume CommandType = "PREVIEW_RESUME"
 	CmdPreviewStop   CommandType = "PREVIEW_STOP"
 	CmdPreviewSeek   CommandType = "PREVIEW_SEEK"
+
+	// Cart player commands — dedicated hotkey audio channel.
+	CmdCartPlay CommandType = "CART_PLAY"
+	CmdCartStop CommandType = "CART_STOP"
 )
 
 // Command is the internal envelope carried through the Command Bus.
@@ -284,3 +289,21 @@ type PreviewSetVolumePayload struct {
 }
 
 // CmdPreviewPause, CmdPreviewResume and CmdPreviewStop carry no payload.
+
+// --- Cart payloads -----------------------------------------------------------
+
+// CartPlayPayload is the payload for CmdCartPlay.
+// If a cart is already playing it is stopped with reason "replaced" before
+// the new one starts.
+type CartPlayPayload struct {
+	Path   string
+	Title  string
+	Artist string
+}
+
+// CartSetVolumePayload carries the new volume level for the cart output.
+type CartSetVolumePayload struct {
+	Level float32 // 0.0–1.0
+}
+
+// CmdCartStop carries no payload.

@@ -118,6 +118,10 @@ func defaults() *Config {
 			Enabled:      false,
 			OutputDevice: "",
 		},
+		Cart: CartConfig{
+			Enabled: false,
+			Output:  OutputConfig{DeviceID: "default"},
+		},
 		Scheduler: SchedulerConfig{
 			Enabled:           true,
 			Timezone:          "",
@@ -197,6 +201,12 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("RADIOCORE_PREVIEW_OUTPUT_DEVICE"); v != "" {
 		cfg.Preview.OutputDevice = v
+	}
+	if v := os.Getenv("RADIOCORE_CART_ENABLED"); v != "" {
+		cfg.Cart.Enabled = v == "true" || v == "1"
+	}
+	if v := os.Getenv("RADIOCORE_CART_OUTPUT_DEVICE"); v != "" {
+		cfg.Cart.Output.DeviceID = v
 	}
 }
 
