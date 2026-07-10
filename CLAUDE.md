@@ -48,6 +48,12 @@ make test-all
 
 O `go.work` permite importar módulos locais entre si durante desenvolvimento. Não commitar código que dependa disso em produção.
 
+## Autonomia operacional
+
+- Ferramentas de leitura (Read, Glob, Grep, Bash somente leitura) podem ser usadas sem pedir autorização prévia.
+- Comandos que não alteram estado (`git status`, `git log`, `git diff`, `go test`, `curl GET`) podem ser executados sem confirmação.
+- Confirmação é necessária apenas para: commits, pushes, criação/exclusão de branches, escrita em arquivos e comandos destrutivos.
+
 ## Subdiretórios — contexto rápido
 
 - `playout/CLAUDE.md` — arquitetura obrigatória, regras de áudio, estados, comandos
