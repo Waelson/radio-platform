@@ -247,7 +247,30 @@ cart: {
 
 ---
 
-### 1.10 — MODIFICAR `cmd/playout-engine/main.go`
+### 1.10 — MODIFICAR `cmd/playout-engine/engine/firstrun.go`
+
+Adicionar a seção `cart:` ao template YAML gerado na primeira execução
+(`defaultConfig()`), após a seção `scheduler:`, seguindo o mesmo estilo
+de comentários das demais seções:
+
+```yaml
+# -----------------------------------------------------------------------------
+# Cart Player (botoneira)
+# -----------------------------------------------------------------------------
+cart:
+  # Habilita o cart player. Quando false, os endpoints /v1/cart/*
+  # retornam 503 Service Unavailable.
+  enabled: false
+
+  # Dispositivo de saída dedicado para o cart player.
+  # Deve ser diferente do dispositivo principal e do dispositivo de preview.
+  # Vazio = dispositivo padrão do driver.
+  # Exemplos: "BlackHole 2ch" (macOS), "hw:1,0" (ALSA/Linux)
+  output:
+    device_id: ""
+```
+
+### 1.11 — MODIFICAR `cmd/playout-engine/main.go`
 
 Instanciar `cart.Player` com seu próprio decoder e output device, passá-lo ao
 API server e ao dispatcher — idêntico ao padrão do preview player.
@@ -551,6 +574,8 @@ function openNewHotkeyWindow() {
 | Fase | Arquivo | Ação |
 |---|---|---|
 | 1 | `playout/internal/config/config.go` | Adicionar `CartConfig` |
+| 1 | `playout/internal/config/loader.go` | Default + env vars do cart |
+| 1 | `playout/cmd/playout-engine/engine/firstrun.go` | Seção `cart:` no YAML gerado no first-run |
 | 1 | `playout/internal/cart/player.go` | CRIAR |
 | 1 | `playout/internal/events/types.go` | `CartStarted/Progress/Stopped/VolumeChanged` |
 | 1 | `playout/internal/commands/types.go` | `CmdCartPlay/Stop/SetVolume` |

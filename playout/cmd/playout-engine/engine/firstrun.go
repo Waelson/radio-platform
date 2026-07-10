@@ -221,6 +221,21 @@ scheduler:
   # este tempo (ex: engine foi reiniciado), ele é marcado como MISSED
   # em vez de disparar com atraso.
   missed_threshold_ms: 5000
+
+# -----------------------------------------------------------------------------
+# Cart Player (botoneira)
+# -----------------------------------------------------------------------------
+cart:
+  # Habilita o cart player. Quando false, os endpoints /v1/cart/*
+  # retornam 503 Service Unavailable.
+  enabled: false
+
+  # Dispositivo de saída dedicado para o cart player.
+  # Deve ser diferente do dispositivo principal e do dispositivo de preview.
+  # Vazio = dispositivo padrão do driver.
+  # Exemplos: "BlackHole 2ch" (macOS), "hw:1,0" (ALSA/Linux)
+  output:
+    device_id: ""
 `, driver, queuePath, hoursDir, minutesDir, schedulePath)
 }
 
