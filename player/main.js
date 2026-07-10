@@ -13,38 +13,19 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload-hotkeys.js'),
     },
   })
 
   win.loadFile(path.join(__dirname, 'player.html'))
   win.webContents.openDevTools({ mode: 'detach' })
 
-  const hotkeyWindowOptions = {
-    action: 'allow',
-    overrideBrowserWindowOptions: {
-      width: 560,
-      height: 720,
-      minWidth: 380,
-      minHeight: 420,
-      fullscreen: false,
-      resizable: true,
-      frame: true,
-      title: 'RadioFlow — Botoneira',
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    },
-  }
-
-  win.webContents.setWindowOpenHandler(() => hotkeyWindowOptions)
-
-  win.webContents.on('did-create-window', (childWin) => {
-    childWin.webContents.setWindowOpenHandler(() => hotkeyWindowOptions)
-  })
+  // Bloqueia window.open() no player principal — janelas de botoneira
+  // são sempre abertas via IPC pelo processo principal, sem parent-child.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 }
 
-ipcMain.on('open-hotkeys', (event, opts) => {
+function createHotkeyWindow(opts) {
   const apiUrl = (opts && opts.api) || ''
   const libUrl = (opts && opts.lib) || ''
   const query  = (apiUrl || libUrl)
@@ -59,15 +40,21 @@ ipcMain.on('open-hotkeys', (event, opts) => {
     resizable: true,
     frame: true,
     title: 'RadioFlow — Botoneira',
+    // Sem parent — janela completamente independente.
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload-hotkeys.js'),
     },
   })
   win.loadFile(path.join(__dirname, 'hotkeys.html'), { search: query })
+  // Bloqueia window.open() dentro da botoneira — novas janelas via IPC.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   hotkeyWindows.add(win)
   win.on('closed', () => hotkeyWindows.delete(win))
-})
+}
+
+ipcMain.on('open-hotkeys', (_event, opts) => createHotkeyWindow(opts))
 
 app.whenReady().then(() => {
   createWindow()
