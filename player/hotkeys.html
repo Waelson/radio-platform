@@ -100,6 +100,54 @@ html, body {
 .hdr-btn.on { background: rgba(32,230,255,0.12); border-color: rgba(32,230,255,0.50); color: var(--cyan); }
 .hdr-btn-del:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.45); color: #ef4444; }
 
+/* ─── Tooltips dos botões do header ───────────────────────── */
+.hdr-btn[data-tooltip] { position: relative; }
+.hdr-btn[data-tooltip]::before,
+.hdr-btn[data-tooltip]::after {
+  position: absolute; left: 50%;
+  pointer-events: none; opacity: 0;
+  transition: opacity .18s ease, transform .18s ease;
+  z-index: 600;
+}
+.hdr-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  top: calc(100% + 9px);
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--bg2);
+  border: 1px solid rgba(32,230,255,0.25);
+  border-top: 2px solid rgba(32,230,255,0.55);
+  border-radius: 7px;
+  padding: 6px 11px;
+  font-size: 11px; font-weight: 600; letter-spacing: .03em;
+  color: var(--text); white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.60);
+}
+.hdr-btn[data-tooltip]::before {
+  content: '';
+  top: calc(100% + 3px);
+  transform: translateX(-50%) translateY(-4px);
+  border: 5px solid transparent;
+  border-bottom-color: rgba(32,230,255,0.55);
+}
+.hdr-btn[data-tooltip]:hover::before,
+.hdr-btn[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+/* Variante alinhada à direita — para botões na borda da tela */
+.hdr-btn[data-tooltip].tip-end::after {
+  left: auto; right: 0;
+  transform: translateY(-4px);
+}
+.hdr-btn[data-tooltip].tip-end::before {
+  left: auto; right: 8px;
+  transform: translateY(-4px);
+}
+.hdr-btn[data-tooltip].tip-end:hover::after,
+.hdr-btn[data-tooltip].tip-end:hover::before {
+  transform: translateY(0);
+}
+
 /* Cols selector */
 .cols-select {
   background: rgba(255,255,255,0.05); border: 1px solid var(--border);
@@ -407,10 +455,10 @@ html, body {
   </select>
 
   <div class="hdr-divider"></div>
-  <button class="hdr-btn" id="btnEdit" title="Editar botoneira" onclick="toggleEdit()">✎</button>
-  <button class="hdr-btn" title="Novo perfil" onclick="openProfModal()">＋</button>
-  <button class="hdr-btn hdr-btn-del" id="btnDelProf" title="Excluir perfil atual" onclick="deleteCurrentProfile()">🗑</button>
-  <button class="hdr-btn" title="Nova janela" onclick="openNewWindow()">↗</button>
+  <button class="hdr-btn" id="btnEdit" data-tooltip="Editar botoneira" onclick="toggleEdit()">✎</button>
+  <button class="hdr-btn" data-tooltip="Novo perfil" onclick="openProfModal()">＋</button>
+  <button class="hdr-btn hdr-btn-del" id="btnDelProf" data-tooltip="Excluir perfil atual" onclick="deleteCurrentProfile()">✕</button>
+  <button class="hdr-btn tip-end" data-tooltip="Nova janela" onclick="openNewWindow()">↗</button>
 </div>
 
 <!-- ══ EDIT BANNER ═══════════════════════════════════════════ -->
@@ -516,11 +564,12 @@ let _searchTimer   = null;
 let _searchResults = []; // último lote de resultados de busca
 
 // Cart state — updated via WebSocket (primary) or polling (fallback)
-let _activeCartBtnId = null; // button ID whose track is playing
-let _activeCartId    = null; // cart_id returned by engine
-let _cartDurMS       = 0;
-let _cartPosMS       = 0;
-let _cartPollTimer   = null; // polling interval when WS is unavailable
+let _activeCartBtnId  = null; // button ID whose track is playing
+let _activeCartId     = null; // cart_id returned by engine
+let _activeCartPath   = null; // path this window sent to /v1/cart/play
+let _cartDurMS        = 0;
+let _cartPosMS        = 0;
+let _cartPollTimer    = null; // polling interval when WS is unavailable
 
 /* ══ BOOT ════════════════════════════════════════════════════ */
 buildColorRow();
@@ -562,6 +611,8 @@ async function loadButtons(profileId) {
     console.error('[hotkeys] load buttons', e);
   }
   renderGrid();
+  const first = document.querySelector('#grid .hk:not(.hk-add-card)');
+  if (first) first.focus();
 }
 
 async function apiCreateProfile(name, columns) {
@@ -690,6 +741,7 @@ async function cartPlay(btn) {
     }
     // Otimista: marca como tocando e inicia polling de progresso
     _activeCartBtnId = btn.id;
+    _activeCartPath  = btn.track_path || null;
     _cartDurMS = btn.duration_ms || 0;
     _cartPosMS = 0;
     updateCartVisual();
@@ -715,6 +767,12 @@ function startCartPoll() {
       const r = await fetch(API_URL + '/v1/cart/status');
       const j = await r.json();
       if (j.state === 'playing') {
+        if (_activeCartPath && j.path && j.path !== _activeCartPath) {
+          // Outro cart (de outra janela) tomou o canal — limpa este visual
+          clearCartVisual();
+          stopCartPoll();
+          return;
+        }
         _cartPosMS = j.position_ms || 0;
         if (j.duration_ms) _cartDurMS = j.duration_ms;
         updateCartProgress();
@@ -809,13 +867,13 @@ function clearCartVisual(resetId = true) {
     const time = c.querySelector('.hk-time');
     if (fill) fill.style.width = '0%';
     if (time) {
-      const bid  = parseInt(c.dataset.btnId);
+      const bid  = c.dataset.btnId;
       const prof = activeProfile();
-      const btn  = prof && prof.buttons.find(b => b.id === bid);
+      const btn  = prof && prof.buttons.find(b => String(b.id) === bid);
       if (btn) time.textContent = msToTS(btn.duration_ms || 0);
     }
   });
-  if (resetId) { _activeCartBtnId = null; _activeCartId = null; }
+  if (resetId) { _activeCartBtnId = null; _activeCartId = null; _activeCartPath = null; }
 }
 
 /* ══ GRID ════════════════════════════════════════════════════ */

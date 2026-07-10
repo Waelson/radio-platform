@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     width="64"
+     height="64"
+     fill="none"
+     aria-labelledby="title desc"
+     role="img">
+  <title id="title">CUE Preview</title>
+  <desc id="desc">Ícone branco de fones de ouvido com símbolo de reprodução</desc>
+
+  <g stroke="#bdfcff"
+     stroke-width="3"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+
+    <!-- Arco do fone -->
+    <path d="M10 34v-4C10 18 20 8 32 8s22 10 22 22v4"/>
+
+    <!-- Conexões laterais -->
+    <path d="M10 34c-3 1-5 4-5 8v5c0 5 3 8 8 8h3"/>
+    <path d="M54 34c3 1 5 4 5 8v5c0 5-3 8-8 8h-3"/>
+
+    <!-- Conchas -->
+    <rect x="14" y="31" width="10" height="25" rx="4"/>
+    <rect x="40" y="31" width="10" height="25" rx="4"/>
+
+    <!-- Símbolo de preview -->
+    <path d="M29 37l10 7-10 7z"/>
+  </g>
+</svg>

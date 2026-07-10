@@ -639,6 +639,84 @@ input[type=range].vol-slider:disabled {
   cursor: not-allowed; pointer-events: none;
 }
 
+/* Ícones SVG nos botões */
+.btn-icon { height: 26px; width: auto; vertical-align: middle; }
+.queue-refresh .btn-icon { height: 24px; vertical-align: middle; }
+
+/* ─── Tooltips ─────────────────────────────────────────────── */
+[data-tooltip] { position: relative; }
+[data-tooltip]::before, [data-tooltip]::after {
+  position: absolute; left: 50%;
+  pointer-events: none; opacity: 0;
+  transition: opacity .18s ease, transform .18s ease;
+  z-index: 9000;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  bottom: calc(100% + 9px);
+  transform: translateX(-50%) translateY(4px);
+  background: #0d1a25;
+  border: 1px solid rgba(32,230,255,0.25);
+  border-top: 2px solid rgba(32,230,255,0.55);
+  border-radius: 7px;
+  padding: 6px 11px;
+  font-size: 11px; font-weight: 600; letter-spacing: .03em;
+  color: #c8d8e0; white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.60);
+  text-transform: none;
+}
+[data-tooltip]::before {
+  content: '';
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%) translateY(4px);
+  border: 5px solid transparent;
+  border-top-color: rgba(32,230,255,0.55);
+}
+[data-tooltip]:hover::before, [data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+/* Variante tooltip à esquerda — para botões dentro de containers com overflow:scroll */
+.tip-left[data-tooltip]::after {
+  left: auto; right: calc(100% + 9px);
+  bottom: auto; top: 50%;
+  transform: translateY(-50%) translateX(4px);
+}
+.tip-left[data-tooltip]::before {
+  left: auto; right: calc(100% + 3px);
+  bottom: auto; top: 50%;
+  transform: translateY(-50%) translateX(4px);
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: rgba(32,230,255,0.55);
+  border-right-color: transparent;
+}
+.tip-left[data-tooltip]:hover::after,
+.tip-left[data-tooltip]:hover::before {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* Variante tooltip abaixo — para botões dentro de containers com overflow:hidden */
+.tip-below[data-tooltip]::after {
+  bottom: auto; top: calc(100% + 9px);
+  transform: translateX(-50%) translateY(-4px);
+}
+.tip-below[data-tooltip]::before {
+  bottom: auto; top: calc(100% + 3px);
+  transform: translateX(-50%) translateY(-4px);
+  border-top-color: transparent;
+  border-bottom-color: rgba(32,230,255,0.55);
+}
+.tip-below[data-tooltip]:hover::after,
+.tip-below[data-tooltip]:hover::before {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Botões icon-only — largura fixa */
+.btn-audios, .btn-library, .btn-hotkeys, .btn-assist { width: 46px; padding: 0; }
+.btn-panic, .btn-exit-panic { width: 46px; padding: 0; border: none; }
+.queue-refresh.btn-sq { width: 40px; padding: 0; justify-content: center; border: none; background: transparent; }
+
 /* Primary — cyan (Play, Resume) */
 .btn-play, .btn-resume, .btn-exit-panic {
   --btn-bg: #123b40; --btn-border: rgba(43,216,222,0.55); --btn-text: #bdfcff;
@@ -726,7 +804,7 @@ input[type=range].vol-slider:disabled {
 /* ── Advanced Search Modal ─────────────────────────────────────────────── */
 .adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
 .adv-backdrop.open { display: block; }
-.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 620px; background: var(--bg); border: 1px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: 0 0 32px rgba(32,230,255,0.14), 0 0 8px rgba(32,230,255,0.08); overflow: hidden; }
+.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 620px; background: var(--bg); border: 0.5px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: 0 0 32px rgba(32,230,255,0.07), 0 0 8px rgba(32,230,255,0.04); overflow: hidden; }
 .adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(32,230,255,0.15); background: rgba(32,230,255,0.05); flex-shrink: 0; cursor: move; user-select: none; }
 .adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
 .adv-modal-close { background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1; }
@@ -762,10 +840,10 @@ input[type=range].vol-slider:disabled {
 .adv-type-badge.spot     { background: rgba(255,152,0,0.2); color: #ffcc80; }
 .adv-type-badge.efeitos  { background: rgba(244,67,54,0.15); color: #ef9a9a; }
 .adv-td-actions { white-space: nowrap; }
-.adv-td-actions button { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 3px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; margin-right: 4px; }
-.adv-td-actions button:hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.adv-td-actions button:not(.lib-cue-btn):not(.lib-enqueue-btn) { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 3px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; margin-right: 4px; }
+.adv-td-actions button:not(.lib-cue-btn):not(.lib-enqueue-btn):hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-row--previewing td { background: rgba(0,188,212,0.07) !important; }
-.adv-row--previewing .adv-td-actions button:first-child { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.adv-row--previewing .adv-td-actions button:first-child:not(.lib-cue-btn) { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-empty { padding: 40px; text-align: center; color: var(--text-dim); font-size: 13px; }
 
 /* ─── CUE Float Panel ───────────────────────────────────────── */
@@ -792,7 +870,10 @@ input[type=range].vol-slider:disabled {
 .cue-float-btns button { background: rgba(45,216,255,0.08); border: 1px solid rgba(45,216,255,0.22); color: var(--cyan); border-radius: 6px; width: 32px; height: 32px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.12s; }
 .cue-float-btns button:hover { background: rgba(45,216,255,0.20); }
 /* CUE button in queue rows */
-.q-cue-btn { background: none; border: 1px solid rgba(45,216,255,0.18); color: rgba(45,216,255,0.45); font-size: 13px; cursor: pointer; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.12s, background 0.12s, border-color 0.12s; flex-shrink: 0; }
+.q-cue-btn { background: none; border: 1px solid rgba(45,216,255,0.18); cursor: pointer; width: 39px; height: 39px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s, border-color 0.12s; flex-shrink: 0; }
+.q-cue-btn img { height: 22px; width: auto; opacity: 0.75; transition: opacity 0.12s; }
+.q-cue-btn:hover img { opacity: 1; }
+.q-cue-btn.is-cuing img { opacity: 1; }
 .q-cue-btn:hover { color: var(--cyan); background: rgba(45,216,255,0.10); border-color: rgba(45,216,255,0.40); }
 .q-cue-btn.is-cuing { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
 @keyframes cueBtnPulse {
@@ -834,11 +915,14 @@ input[type=range].vol-slider:disabled {
 .lib-item-sub { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-dim); margin-top: 2px; }
 .lib-item-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--bg3); color: var(--text-dim); flex-shrink: 0; }
 .lib-item-dur { font-size: 10px; color: var(--text-dim); width: 36px; text-align: right; flex-shrink: 0; }
-.lib-enqueue-btn { background: none; border: 1px solid var(--cyan); color: var(--cyan); padding: 2px 7px; border-radius: 3px; font-size: 10px; cursor: pointer; flex-shrink: 0; transition: background 0.12s, color 0.12s; }
-.lib-enqueue-btn:hover { background: var(--cyan); color: #000; }
-.lib-cue-btn { background: none; border: 1px solid #4a2a6a; color: #9b5cff; padding: 2px 7px; border-radius: 3px; font-size: 10px; cursor: pointer; flex-shrink: 0; transition: background 0.12s, color 0.12s; }
-.lib-cue-btn:hover  { background: #7a4dff; color: #fff; border-color: #7a4dff; }
-.lib-cue-btn.active { background: #7a4dff; color: #fff; border-color: #7a4dff; }
+.lib-enqueue-btn { background: transparent; border: none; padding: 0; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s; }
+.lib-enqueue-btn img { height: 21px; width: auto; filter: brightness(0) invert(1); }
+.lib-enqueue-btn:hover { background: rgba(220,239,242,0.05); }
+.lib-cue-btn { background: transparent; border: none; padding: 0; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s; }
+.lib-cue-btn img { height: 21px; width: auto; filter: brightness(0) invert(1); }
+.lib-cue-btn:hover  { background: rgba(220,239,242,0.05); }
+.lib-cue-btn.active { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
+.lib-cue-btn.active img { opacity: 1; }
 .lib-preview-panel {
   background: #241a3a; border-bottom: 2px solid #7a4dff;
   padding: 10px 14px; display: flex; align-items: center; gap: 10px;
@@ -894,6 +978,7 @@ input[type=range].vol-slider:disabled {
 .queue-refresh:disabled { opacity: 0.35; cursor: not-allowed; }
 .queue-refresh-orange { background: #2d1803; border-color: rgba(255,144,24,0.7); color: #ffd28f; }
 .queue-refresh-orange:hover { background: #3d2105 !important; border-color: rgba(255,138,0,0.9) !important; color: #ffd28f !important; }
+.queue-refresh-orange.btn-sq:hover { background: rgba(220,239,242,0.05) !important; border-color: transparent !important; color: #dceff2 !important; }
 
 /* ─── Queue list (card layout) ───────────────────────────────── */
 .queue-scroll-host { position: relative; flex: 1; display: flex; overflow: hidden; }
@@ -1130,7 +1215,7 @@ input[type=range].vol-slider:disabled {
 .btn-modal-ok:hover { background: #004d22; }
 
 /* ─── Queue reorder buttons (ASSIST only) ────────────────────── */
-.q-actions-wrap { display: flex; gap: 3px; align-items: center; }
+.q-actions-wrap { display: flex; gap: 3px; align-items: center; min-width: 39px; justify-content: flex-end; }
 .q-actions-wrap .q-btn { display: none; }
 .assist-active .q-actions-wrap .q-btn { display: inline-flex; }
 .q-btn {
@@ -1301,16 +1386,6 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
   border-bottom-color: var(--cyan);
 }
 
-.lib-search-btn:hover,
-.lib-enqueue-btn:hover {
-  background: linear-gradient(90deg, var(--cyan), var(--blue));
-  color: #000;
-}
-
-.lib-enqueue-btn {
-  border-color: var(--cyan);
-  color: var(--cyan);
-}
 
 
 .q-type.MUSIC {
@@ -1440,6 +1515,30 @@ canvas.vu-canvas {
   color: #ff5a52 !important;
   border-color: #ff2200 !important;
   box-shadow: 0 0 18px rgba(255,32,32,.50) !important;
+}
+
+/* Botões icon-only transparentes — sobrescrita após regras controls-bar (especificidade 0,3,0) */
+.controls-bar .btn.btn-audios,
+.controls-bar .btn.btn-library,
+.controls-bar .btn.btn-hotkeys,
+.controls-bar .btn.btn-assist {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.controls-bar .btn.btn-audios:hover:not(:disabled),
+.controls-bar .btn.btn-library:hover:not(:disabled),
+.controls-bar .btn.btn-hotkeys:hover:not(:disabled),
+.controls-bar .btn.btn-assist:hover:not(:disabled) {
+  background: rgba(220,239,242,0.05) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.controls-bar .btn.btn-audios:active:not(:disabled),
+.controls-bar .btn.btn-library:active:not(:disabled),
+.controls-bar .btn.btn-hotkeys:active:not(:disabled),
+.controls-bar .btn.btn-assist:active:not(:disabled) {
+  background: rgba(220,239,242,0.10) !important;
 }
 
 </style>
@@ -1771,13 +1870,13 @@ canvas.vu-canvas {
             <button class="btn btn-skip"   id="btnSkip"        onclick="sendCmd('skip')">⏭ Skip</button>
           </div>
           <div class="controls-group-right">
-            <button class="btn btn-audios"     id="btnAudios"      onclick="advModalOpen()">♪ Catálogo</button>
-            <button class="btn btn-library"    id="btnLibrary"     onclick="toggleLibrary()">☰ Biblioteca</button>
-            <button class="btn btn-hotkeys"    id="btnHotkeys"     onclick="openHotkeys()">⌨ Botoneira</button>
+            <button class="btn btn-audios"     id="btnAudios"      onclick="advModalOpen()"             data-tooltip="Catálogo"><img class="btn-icon" src="icons/catalogo.svg"></button>
+            <button class="btn btn-library"    id="btnLibrary"     onclick="toggleLibrary()"            data-tooltip="Biblioteca"><img class="btn-icon" src="icons/biblioteca.svg"></button>
+            <button class="btn btn-hotkeys"    id="btnHotkeys"     onclick="openHotkeys()"              data-tooltip="Botoneira"><img class="btn-icon" src="icons/botoneira.svg"></button>
             <div class="controls-sep"></div>
-            <button class="btn btn-assist"      id="btnEnterAssist" onclick="sendCmd('assist-enter')">◎ ASSIST</button>
-            <button class="btn btn-return-auto" id="btnReturnAuto"  onclick="sendCmd('return-auto')" style="display:none">↩ AUTO</button>
-            <button class="btn btn-panic"       id="btnPanicToggle" onclick="sendCmd('panic-toggle')">⊘ Panic</button>
+            <button class="btn btn-assist"      id="btnEnterAssist" onclick="sendCmd('assist-enter')"   data-tooltip="ASSIST"><img class="btn-icon" src="icons/assist.svg"></button>
+            <button class="btn btn-return-auto" id="btnReturnAuto"  onclick="sendCmd('return-auto')"    data-tooltip="Voltar Auto" style="display:none">↩ AUTO</button>
+            <button class="btn btn-panic"       id="btnPanicToggle" onclick="sendCmd('panic-toggle')"   data-tooltip="Panic"><img class="btn-icon" src="icons/panic.svg"></button>
           </div>
         </div>
       </div>
@@ -1798,9 +1897,9 @@ canvas.vu-canvas {
           <span class="queue-count" id="queueCount">0 itens</span>
           <span class="queue-duration" id="queueDuration"></span>
           <div style="margin-left:auto;display:flex;gap:6px">
-            <button class="queue-refresh" onclick="fetchQueue()">↻ Atualizar</button>
-            <button class="queue-refresh" id="btnClearQueue" onclick="assistClearQueue()">▣ Limpar Fila</button>
-            <button class="queue-refresh queue-refresh-orange" onclick="assistInsertHoraCerta()">◷ Hora Certa</button>
+            <button class="queue-refresh btn-sq tip-below" onclick="fetchQueue()" data-tooltip="Atualizar"><img class="btn-icon" src="icons/atualizar.svg"></button>
+            <button class="queue-refresh btn-sq tip-below" id="btnClearQueue" onclick="assistClearQueue()" data-tooltip="Limpar Fila"><img class="btn-icon" src="icons/limpar_fila.svg"></button>
+            <button class="queue-refresh btn-sq queue-refresh-orange tip-below" onclick="assistInsertHoraCerta()" data-tooltip="Hora Certa"><img class="btn-icon" src="icons/hora_certa.svg"></button>
           </div>
         </div>
         <div class="queue-scroll-host">
@@ -2443,17 +2542,17 @@ function renderItemRow(item) {
   const canCue = (status === 'QUEUED' || status === 'PRELOADING') && !!cueKey;
   const isCuing = canCue && _cueQueueItemId === cueKey && _preview.state !== 'idle';
   const cueBtnHTML = canCue
-    ? `<button class="q-cue-btn${isCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(cueKey)}" title="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(cueKey)}')">${isCuing ? '◉' : '◎'}</button>`
+    ? `<button class="q-cue-btn tip-left${isCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(cueKey)}" data-tooltip="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(cueKey)}')"><img src="icons/cue_preview.svg"></button>`
     : '';
 
-  const actionsHTML = (canReorder && itemId) || canCue ? `
+  const actionsHTML = `
     <div class="q-actions-wrap">
       ${cueBtnHTML}
       ${canReorder && itemId ? `
       <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${escHtml(itemId)}','up')">↑</button>
       <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${escHtml(itemId)}','down')">↓</button>
       <button class="q-btn q-btn-del"  title="Remover"          onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>` : ''}
-    </div>` : '<div></div>';
+    </div>`;
 
   return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
     <div class="q-index">${eqHTML}</div>
@@ -2470,9 +2569,11 @@ function renderItemRow(item) {
 
 function renderBreakRows(brk, rows) {
   if (!brk) return;
-  const totalDur  = brk.total_duration_ms || 0;
-  const brkStatus = brk.status || 'QUEUED';
   const subItems  = brk.items || [];
+  const totalDur  = subItems.length
+    ? subItems.reduce((acc, s) => acc + Math.floor((((s && s.item) || {}).duration_ms || 0) / 1000) * 1000, 0)
+    : (brk.total_duration_ms || 0);
+  const brkStatus = brk.status || 'QUEUED';
   const cnt       = subItems.length;
   const breakId   = escHtml(brk.id || brk.break_id || '');
   const isDraggable = brkStatus === 'QUEUED' && breakId;
@@ -2520,7 +2621,7 @@ function renderBreakRows(brk, rows) {
       </div>
       <div class="q-status-pill" style="color:rgba(230,130,10,0.8);border-color:rgba(230,130,10,0.2)">${st === 'QUEUED' ? 'NA FILA' : st}</div>
       <div class="q-time" style="color:rgba(230,130,10,0.8)">${msToTime(item.duration_ms)}</div>
-      <div></div>
+      <div class="q-actions-wrap"></div>
     </article>`;
   });
 
@@ -3320,8 +3421,11 @@ function syncPanicToggle(st) {
   const btn = document.getElementById('btnPanicToggle');
   if (!btn) return;
   const inPanic = st === 'PANIC';
-  btn.textContent = inPanic ? '✓ Sair do Panic' : '⊘ Panic';
-  btn.className   = 'btn ' + (inPanic ? 'btn-exit-panic' : 'btn-panic');
+  btn.innerHTML = inPanic
+    ? '✓'
+    : '<img class="btn-icon" src="icons/panic.svg">';
+  btn.dataset.tooltip = inPanic ? 'Sair do Panic' : 'Panic';
+  btn.className = 'btn ' + (inPanic ? 'btn-exit-panic' : 'btn-panic');
 }
 
 function _syncCurrentItemStatus(newStatus) {
@@ -3619,7 +3723,7 @@ function cueToggleQueueItem(itemId) {
 async function cueStop() {
   _cueQueueItemId = null;
   document.getElementById('cueFloat').classList.remove('open');
-  document.querySelectorAll('.q-cue-btn').forEach(b => { b.classList.remove('is-cuing'); b.textContent = '◎'; });
+  document.querySelectorAll('.q-cue-btn').forEach(b => { b.classList.remove('is-cuing'); });
   await previewStop();
 }
 
@@ -3655,7 +3759,6 @@ function _updateCueFloat() {
   document.querySelectorAll('.q-cue-btn').forEach(btn => {
     const mine = isActive && btn.dataset.itemId === _cueQueueItemId;
     btn.classList.toggle('is-cuing', mine);
-    btn.textContent = mine ? '◉' : '◎';
   });
 
   // Fechar painel se preview parou
@@ -3848,8 +3951,8 @@ function advRender() {
       <td><span class="adv-type-badge ${badgeClass}">${escHtml(t.type || '')}</span></td>
       <td class="adv-td-dur">${msToDuration(t.duration_ms || 0)}</td>
       <td class="adv-td-actions">
-        <button title="Preview (CUE)" class="lib-cue-btn" id="adv-cue-${i}" onclick="advTogglePreview(${i})">◎</button>
-        <button title="Adicionar à fila" onclick="advEnqueue(${i})">+ Fila</button>
+        <button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" id="adv-cue-${i}" onclick="advTogglePreview(${i})"><img src="icons/cue_preview.svg"></button>
+        <button class="lib-enqueue-btn tip-left" data-tooltip="Adicionar à fila" onclick="advEnqueue(${i})"><img src="icons/add_audio_queue.svg"></button>
       </td>
     </tr>`;
   }).join('');
