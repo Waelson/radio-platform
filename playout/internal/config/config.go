@@ -17,6 +17,7 @@ type Config struct {
 	HoraCerta HoraCertaConfig `yaml:"hora_certa" json:"hora_certa"`
 	Preview   PreviewConfig   `yaml:"preview"    json:"preview"`
 	Scheduler SchedulerConfig `yaml:"scheduler"  json:"scheduler"`
+	Cart      CartConfig      `yaml:"cart"       json:"cart"`
 }
 
 // EngineConfig holds process-level settings.
@@ -163,6 +164,22 @@ type SchedulerConfig struct {
 	// stale one-shot entries from firing unexpectedly after an engine restart.
 	// Default: 5000 (5 seconds).
 	MissedThresholdMS int `yaml:"missed_threshold_ms" json:"missed_threshold_ms"`
+}
+
+// CartConfig configures the cart player — a dedicated audio channel for
+// hotkey-triggered playback, completely isolated from the main pipeline and
+// the preview/CUE channel. The cart player uses its own output device and
+// supports one active cart at a time.
+// The audio driver is determined at compile-time via build tag, same as the main output.
+type CartConfig struct {
+	// Enabled controls whether the cart player is available.
+	// When false, all /v1/cart/* endpoints return 503.
+	Enabled bool `yaml:"enabled" json:"enabled"`
+
+	// Output configures the dedicated output device for cart playback.
+	// device_id should differ from the main output and preview output devices.
+	// Leave device_id empty to use the driver's default device.
+	Output OutputConfig `yaml:"output" json:"output"`
 }
 
 // PreviewConfig configures the audio preview (cue) player.
