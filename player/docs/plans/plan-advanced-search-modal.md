@@ -1,4 +1,4 @@
-# Plano: Modal de Busca Avançada — Player UI
+# Plano: Modal de Busca Avançada — Player UI ✅ IMPLEMENTADO
 
 ## Contexto
 
