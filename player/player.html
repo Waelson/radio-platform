@@ -1580,6 +1580,50 @@ canvas.vu-canvas {
   pointer-events: none !important;
 }
 
+/* ─── Banner: Próximo Evento Agendado ────────────────── */
+.next-evt-banner {
+  max-height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  background: rgba(245, 166, 35, 0.08);
+  border-top: 2px solid rgba(245, 166, 35, 0.55);
+  transition: max-height 0.4s ease, padding 0.4s ease;
+}
+.next-evt-banner.visible {
+  max-height: 80px;
+  padding: 10px 18px;
+}
+.next-evt-banner-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.next-evt-banner-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f0d080;
+}
+#nextEvtCountdown {
+  color: #f5a623;
+  font-family: 'Courier New', monospace;
+}
+.next-evt-banner-sub {
+  font-size: 12px;
+  color: rgba(240, 208, 128, 0.55);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.next-evt-dot { color: rgba(245, 166, 35, 0.4); }
+
 </style>
 </head>
 <body>
@@ -1921,6 +1965,21 @@ canvas.vu-canvas {
       </div>
 
       <!-- ASSIST Banner (visible when engine is waiting in ASSIST) -->
+      <!-- ─── Banner: Próximo Evento Agendado ──────────── -->
+      <div class="next-evt-banner" id="nextEvtBanner">
+        <div class="next-evt-banner-icon">🕐</div>
+        <div class="next-evt-banner-body">
+          <div class="next-evt-banner-title">
+            PRÓXIMO EVENTO — EM <span id="nextEvtCountdown">00:00:00</span>
+          </div>
+          <div class="next-evt-banner-sub">
+            <span id="nextEvtName">—</span>
+            <span class="next-evt-dot">•</span>
+            <span id="nextEvtType">—</span>
+          </div>
+        </div>
+      </div>
+
       <div class="assist-banner" id="assistBanner">
         <div class="assist-banner-icon">🎙</div>
         <div class="assist-banner-body">
@@ -3330,6 +3389,20 @@ function handleEvent({ type, payload }) {
       _preview.state = 'idle';
       _preview.positionMS = 0;
       _renderPreviewPanel(); break;
+    // Scheduler
+    case 'ScheduleEntryFired':
+      fecharBannerEvento();
+      fetchNextScheduledEvent();
+      break;
+    case 'ScheduleEntryMissed':
+      showToast(false, 'Evento pulado: ' + (payload.entry_name || ''));
+      fetchNextScheduledEvent();
+      break;
+    case 'ScheduleEntryAdded':
+    case 'ScheduleEntryRemoved':
+    case 'ScheduleEntryUpdated':
+      fetchNextScheduledEvent();
+      break;
   }
 }
 
@@ -3552,6 +3625,75 @@ function onSnapshot(p) {
 
   const cartEnabled = p.CartEnabled ?? p.cart_enabled ?? false;
   setCartAvailable(cartEnabled);
+
+  initSchedule();
+}
+
+/* ─── Próximo Evento Agendado ────────────────────────────── */
+
+let _nextEvent    = null;
+let _nextEvtTimer = null;
+
+function _nextEvtTipo(entry) {
+  if (!entry) return '—';
+  if (entry.break)                           return 'BREAK';
+  if (entry.item?.type === 'HORA_CERTA')     return 'HORA_CERTA';
+  return 'ITEM';
+}
+
+async function fetchNextScheduledEvent() {
+  try {
+    const r = await fetch(API_URL + '/v1/schedule');
+    if (!r.ok) { _nextEvent = null; return; }
+    const d = await r.json();
+    const now = Date.now();
+    _nextEvent = (d.entries || [])
+      .filter(e => e.enabled && e.next_fire_at && new Date(e.next_fire_at).getTime() > now)
+      .sort((a, b) => new Date(a.next_fire_at) - new Date(b.next_fire_at))[0] || null;
+  } catch (_) {
+    _nextEvent = null;
+  }
+}
+
+function abrirBannerEvento(countdown) {
+  if (!_nextEvent) return;
+  document.getElementById('nextEvtName').textContent      = _nextEvent.name || '—';
+  document.getElementById('nextEvtType').textContent      = _nextEvtTipo(_nextEvent);
+  document.getElementById('nextEvtCountdown').textContent = countdown;
+  document.getElementById('nextEvtBanner').classList.add('visible');
+}
+
+function fecharBannerEvento() {
+  document.getElementById('nextEvtBanner').classList.remove('visible');
+}
+
+function tickNextEvent() {
+  if (!_nextEvent) { fecharBannerEvento(); return; }
+
+  const delta = new Date(_nextEvent.next_fire_at).getTime() - Date.now();
+
+  if (delta <= 0) {
+    fecharBannerEvento();
+    fetchNextScheduledEvent();
+    return;
+  }
+
+  if (delta < 5 * 60 * 1000) {
+    const totalSec = Math.floor(delta / 1000);
+    const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+    const s = String(totalSec % 60).padStart(2, '0');
+    abrirBannerEvento(`${h}:${m}:${s}`);
+  } else {
+    fecharBannerEvento();
+  }
+}
+
+async function initSchedule() {
+  await fetchNextScheduledEvent();
+  if (_nextEvtTimer) clearInterval(_nextEvtTimer);
+  _nextEvtTimer = setInterval(tickNextEvent, 1000);
+  setInterval(fetchNextScheduledEvent, 60_000);
 }
 
 function onPanic(entering) {
@@ -3683,6 +3825,7 @@ window.addEventListener('load', () => {
   renderLoop();
   connect();
   fetchInitialVolumes();
+  initSchedule();
   initQueueScrollbar();
   document.addEventListener('mouseup',  () => { _draggingMain = false; _draggingPreview = false; });
   document.addEventListener('touchend', () => { _draggingMain = false; _draggingPreview = false; });
