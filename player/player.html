@@ -1234,23 +1234,6 @@ input[type=range].vol-slider:disabled {
   font-style: italic; font-size: 15px;
 }
 
-/* ─── Break Banner (Now Playing card) ───────────────────────── */
-.break-banner[hidden] { display: none; }
-.break-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 16px 5px;
-  background: rgba(47,123,255,0.10);
-  border-top: 1px solid rgba(47,123,255,0.28);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--cyan);
-  letter-spacing: 0.3px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
 
 /* ─── ASSIST mode ────────────────────────────────────────────── */
 
@@ -2055,13 +2038,6 @@ canvas.vu-canvas {
                 <div class="np5-next-title" id="npNextTitle">—</div>
               </div>
 
-            </div>
-
-            <!-- Break banner — visible only during commercial breaks -->
-            <div id="breakBanner" class="break-banner" hidden>
-              🎙 <span id="breakTitle"></span>
-              <span style="color:rgba(230,130,10,0.45)">&nbsp;|&nbsp;</span>
-              <span id="breakSpotLabel"></span>
             </div>
 
             <!-- Bottom: progress bar -->
@@ -3578,19 +3554,8 @@ function handleEvent({ type, payload }) {
   }
 }
 
-function updateBreakBanner(p) {
-  const roleLabel = p.break_role === 'open' ? 'Abertura' : p.break_role === 'close' ? 'Encerramento' : 'Spot';
-  document.getElementById('breakTitle').textContent    = p.break_title || '';
-  document.getElementById('breakSpotLabel').textContent =
-    `${roleLabel} ${p.break_seq}/${p.break_total}: ${p.title || ''}`;
-  document.getElementById('breakBanner').hidden = false;
-}
-
-function clearBreakBanner() {
-  document.getElementById('breakBanner').hidden = true;
-  document.getElementById('breakTitle').textContent    = '';
-  document.getElementById('breakSpotLabel').textContent = '';
-}
+function updateBreakBanner() {}
+function clearBreakBanner() {}
 
 function onHealth(p) {
   const pct = p.buffer_pct ?? 0;
@@ -3630,6 +3595,7 @@ function msToTime2(ms) {
 }
 
 let npDurationMS = 0;
+let _npCurrentType = '';
 let _lastRemainingMs = 0;
 
 function onNowPlaying(p) {
@@ -3638,24 +3604,13 @@ function onNowPlaying(p) {
   document.getElementById('npArtist').style.color = '';
   document.getElementById('npTitle').textContent        = p.title || '—';
   document.getElementById('npArtist').textContent       = p.artist || '';
-  document.getElementById('npTypeVal').textContent      = p.type  || '—';
+  _npCurrentType = p.type || '';
+  document.getElementById('npTypeVal').textContent      = _npCurrentType || '—';
   document.getElementById('npStatusVal').innerHTML      = '<span class="np5-status-dot"></span>' + (p.status || 'PLAYING');
   document.getElementById('npSampleVal').textContent    = '48 kHz / Stereo';
   if (p.duration_ms) {
     npDurationMS = p.duration_ms;
     document.getElementById('npTotal').textContent = msToTime2(npDurationMS);
-  }
-  // Sync break banner from NowPlayingChanged payload
-  if (p.break_id) {
-    updateBreakBanner({
-      break_title: p.break_title,
-      break_role:  p.break_role,
-      break_seq:   p.break_position,
-      break_total: p.break_total,
-      title:       p.title,
-    });
-  } else {
-    clearBreakBanner();
   }
 }
 
@@ -3668,7 +3623,7 @@ function onProgress(p) {
   const remMs = Math.max(0, p.remaining_ms);
   const remEl = document.getElementById('npRemCol');
   remEl.textContent = msToTime2(remMs);
-  remEl.style.color = remMs <= 10000 ? 'var(--red)' : remMs <= 30000 ? 'var(--yellow)' : 'var(--cyan)';
+  remEl.style.color = (_npCurrentType.toUpperCase() === 'MUSIC' && remMs <= 10000) ? 'var(--red)' : 'var(--cyan)';
   if (!npDurationMS && p.position_ms && p.remaining_ms) {
     npDurationMS = (p.position_ms || 0) + (p.remaining_ms || 0);
     document.getElementById('npTotal').textContent = msToTime2(npDurationMS);
