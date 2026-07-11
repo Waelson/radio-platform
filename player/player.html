@@ -84,10 +84,6 @@ html, body {
 .topbar-status-card {
   display: flex;
   align-items: stretch;
-  background: rgba(6, 14, 22, 0.88);
-  border: 1px solid rgba(45,216,255,0.18);
-  border-radius: 12px;
-  overflow: hidden;
   height: 76px;
 }
 .topbar-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0 18px; }
@@ -1004,10 +1000,10 @@ input[type=range].vol-slider:disabled {
   padding: 10px 16px; border-bottom: 1px solid rgba(43,216,222,0.16);
   background: #0c0f11; flex-shrink: 0;
 }
-.queue-title-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; color: #65777d; font-weight: 800; }
+.queue-title-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; color: #dceff2; font-weight: 800; }
 .meter-section-label { font-size: 16px; font-weight: 700; color: #20e6ff; text-transform: uppercase; letter-spacing: 0.01em; }
-.queue-count { font-size: 13px; font-weight: 800; color: #2bd8de; letter-spacing: 0.02em; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); text-transform: uppercase; }
-.queue-duration { font-size: 13px; font-weight: 700; color: #9cb5ba; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); }
+.queue-count { font-size: 13px; font-weight: 800; color: #dceff2; letter-spacing: 0.02em; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); text-transform: uppercase; }
+.queue-duration { font-size: 13px; font-weight: 700; color: #dceff2; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); }
 .queue-refresh {
   padding: 0 12px; min-height: 32px; background: transparent;
   border: 1px solid rgba(220,239,242,0.12); border-radius: 6px;
@@ -1558,8 +1554,7 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 }
 
 .q-status.PLAYING,
-.q-indicator.playing,
-.queue-count {
+.q-indicator.playing {
   color: var(--cyan);
 }
 
