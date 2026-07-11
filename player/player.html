@@ -76,7 +76,7 @@ html, body {
     );
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  height: 110px;
+  height: 90px;
   position: relative;
 }
 .topbar-logo { font-size: 16px; font-weight: 700; color: var(--cyan); letter-spacing: 0.5px; }
@@ -432,8 +432,8 @@ input[type=range].vol-slider:disabled {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 14px 18px 10px;
+  justify-content: center;
+  padding: 14px 18px;
   min-width: 0;
   position: relative;
   overflow: hidden;
@@ -513,6 +513,7 @@ input[type=range].vol-slider:disabled {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   margin-bottom: 6px;
+  text-transform: uppercase;
 }
 .np5-artist {
   font-size: 14px;
@@ -642,6 +643,7 @@ input[type=range].vol-slider:disabled {
 /* Ícones SVG nos botões */
 .btn-icon { height: 26px; width: auto; vertical-align: middle; }
 .queue-refresh .btn-icon { height: 24px; vertical-align: middle; }
+.queue-refresh-orange .btn-icon { filter: brightness(1.85) saturate(0.45); }
 
 /* ─── Tooltips ─────────────────────────────────────────────── */
 [data-tooltip] { position: relative; }
@@ -714,7 +716,7 @@ input[type=range].vol-slider:disabled {
 
 /* Botões icon-only — largura fixa */
 .btn-play, .btn-resume, .btn-pause, .btn-stop, .btn-skip { width: 120px; padding: 0; }
-.btn-audios, .btn-library, .btn-hotkeys, .btn-assist { width: 46px; padding: 0; }
+.btn-audios, .btn-library, .btn-hotkeys, .btn-assist, .btn-return-auto { width: 46px; padding: 0; }
 .btn-panic, .btn-exit-panic { width: 46px; padding: 0; }
 .queue-refresh.btn-sq { width: 40px; padding: 0; justify-content: center; border: none; background: transparent; }
 
@@ -876,12 +878,15 @@ input[type=range].vol-slider:disabled {
 .cue-float-btns button { background: rgba(45,216,255,0.08); border: 1px solid rgba(45,216,255,0.22); color: var(--cyan); border-radius: 6px; width: 32px; height: 32px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.12s; }
 .cue-float-btns button:hover { background: rgba(45,216,255,0.20); }
 /* CUE button in queue rows */
-.q-cue-btn { background: none; border: 1px solid rgba(45,216,255,0.18); cursor: pointer; width: 39px; height: 39px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s, border-color 0.12s; flex-shrink: 0; }
-.q-cue-btn img { height: 22px; width: auto; opacity: 0.75; transition: opacity 0.12s; }
+.q-cue-btn { background: none; border: none; cursor: pointer; width: 39px; height: 39px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s; flex-shrink: 0; }
+.q-cue-btn img { height: 34px; width: auto; opacity: 0.75; transition: opacity 0.12s; }
+.break-group .q-cue-btn img { filter: brightness(0) saturate(100%) invert(55%) sepia(90%) saturate(700%) hue-rotate(12deg) brightness(1.05); opacity: 0.9; }
+.break-group .q-type-icon { filter: brightness(0) saturate(100%) invert(55%) sepia(90%) saturate(700%) hue-rotate(12deg) brightness(1.05); opacity: 0.9; }
 .q-cue-btn:hover img { opacity: 1; }
+.q-cue-btn--disabled, .q-cue-btn--disabled:hover { opacity: 0.25; cursor: not-allowed; background: none; }
 .q-cue-btn.is-cuing img { opacity: 1; }
-.q-cue-btn:hover { color: var(--cyan); background: rgba(45,216,255,0.10); border-color: rgba(45,216,255,0.40); }
-.q-cue-btn.is-cuing { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
+.q-cue-btn:hover { color: var(--cyan); background: rgba(45,216,255,0.10); }
+.q-cue-btn.is-cuing { color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
 @keyframes cueBtnPulse {
   0%, 100% { transform: scale(1);    box-shadow: 0 0 0px rgba(45,216,255,0);    color: var(--cyan); }
   50%       { transform: scale(1.18); box-shadow: 0 0 10px rgba(45,216,255,0.55); color: #fff; }
@@ -971,8 +976,8 @@ input[type=range].vol-slider:disabled {
   background: #0c0f11; flex-shrink: 0;
 }
 .queue-title-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; color: #65777d; font-weight: 800; }
-.queue-count { font-size: 13px; font-weight: 800; color: #2bd8de; letter-spacing: 0.02em; }
-.queue-duration { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700; color: #9cb5ba; }
+.queue-count { font-size: 13px; font-weight: 800; color: #2bd8de; letter-spacing: 0.02em; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); text-transform: uppercase; }
+.queue-duration { font-size: 13px; font-weight: 700; color: #9cb5ba; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); }
 .queue-refresh {
   padding: 0 12px; min-height: 32px; background: transparent;
   border: 1px solid rgba(220,239,242,0.12); border-radius: 6px;
@@ -996,76 +1001,187 @@ input[type=range].vol-slider:disabled {
 .q-sb-thumb:hover { background: rgba(45,212,200,0.58); }
 .q-sb-thumb.is-dragging { background: rgba(45,212,200,0.72); cursor: grabbing; }
 .queue-list { display: grid; gap: 10px; }
+.assist-active .queue-list { gap: 4px; }
 
 .queue-row {
   min-height: 80px;
   display: grid;
-  grid-template-columns: 58px minmax(0,1fr) 110px 86px auto;
+  grid-template-columns: 58px minmax(0,1fr) 110px 86px 51px;
   align-items: center;
+  align-content: center;
   gap: 14px;
   padding: 0 16px;
   border-radius: 12px;
-  background: #0e1f23;
-  border: 1px solid rgba(69,211,202,0.18);
-  border-left: 4px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+  /* Fase 1 — gradiente + reflexo glass */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #0e2428 0%, #091a1e 100%);
+  border: 1px solid rgba(32,230,255,0.55);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.queue-row:hover { background: #112528; border-color: rgba(69,211,202,0.30); }
-.queue-row.is-current { background: #11282c; border-color: rgba(69,211,202,0.42); border-left-color: #2dd4c8; }
-.queue-row.is-next    { border-left-color: rgba(45,212,200,0.52); }
+/* Fase 4 — hover refinado */
+.queue-row:hover {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #112b30 0%, #0b1e22 100%);
+  border-color: rgba(32,230,255,0.75);
+}
+/* Fase 4 — glow externo no item atual */
+.queue-row.is-current {
+  background:
+    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
+    linear-gradient(180deg, #0f2e33 0%, #091e22 100%);
+  border-color: #20e6ff;
+  box-shadow:
+    0 0 8px rgba(32,230,255,0.35),
+    0 0 20px rgba(32,230,255,0.18),
+    0 0 40px rgba(32,230,255,0.08);
+}
+.queue-row.is-next    { border-color: rgba(32,230,255,0.55); }
 .queue-row.is-played  { opacity: 0.38; }
-.queue-row.is-failed  { opacity: 0.5; border-left-color: var(--red); }
-.queue-row.hora-certa { background: #1a0c00; border-color: rgba(255,130,0,0.28); border-left-color: #ff7700; }
-.queue-row.hora-certa:hover { background: #201200; }
-.queue-row.vinheta { background: #110d22; border-color: rgba(122,77,255,0.28); border-left-color: #7a4dff; }
-.queue-row.vinheta:hover { background: #17102e; }
-.queue-row.vinheta .q-track-name { color: #c4b0ff; }
-.queue-row.vinheta .q-artist { color: rgba(154,120,255,0.7); }
-.queue-row.vinheta .q-time { color: #c4b0ff; }
-.queue-row.vinheta .q-status-pill { color: var(--purple-2); background: rgba(122,77,255,0.10); border-color: rgba(122,77,255,0.25); }
-.queue-row.vinheta.is-current { background: #1a1035; border-color: rgba(122,77,255,0.50); border-left-color: var(--purple-2); }
-.queue-row.vinheta .q-equalizer i { background: var(--purple-2); }
-.queue-row.vinheta .q-badge { color: var(--purple-2); background: rgba(122,77,255,0.12); border-color: rgba(122,77,255,0.25); }
+.queue-row.is-failed  { opacity: 0.5; border-color: var(--red); }
+/* Music — glass preto */
+.queue-row.music {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #181818 0%, #080808 100%);
+  border-color: rgba(32,230,255,0.55);
+}
+.queue-row.music:hover {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #222222 0%, #101010 100%);
+  border-color: rgba(32,230,255,0.75);
+}
+.queue-row.music.is-current {
+  background:
+    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
+    linear-gradient(180deg, #141414 0%, #060606 100%);
+  border-width: 1px;
+  border-color: #20e6ff;
+}
+/* Hora Certa — glasss âmbar/laranja */
+.queue-row.hora-certa {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #181818 0%, #080808 100%);
+  border-color: rgba(32,230,255,0.55);
+}
+.queue-row.hora-certa:hover {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #222222 0%, #101010 100%);
+}
+/* Vinheta — mesmo padrão visual da música */
+.queue-row.vinheta {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #181818 0%, #080808 100%);
+  border-color: rgba(32,230,255,0.55);
+}
+.queue-row.vinheta:hover {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #222222 0%, #101010 100%);
+  border-color: rgba(32,230,255,0.75);
+}
+.queue-row.vinheta.is-current {
+  background:
+    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
+    linear-gradient(180deg, #141414 0%, #060606 100%);
+  border-width: 1px;
+  border-color: #20e6ff;
+}
+/* Spot — mesmo padrão visual da música */
+.queue-row.spot {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #181818 0%, #080808 100%);
+  border-color: rgba(32,230,255,0.55);
+}
+.queue-row.spot:hover {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #222222 0%, #101010 100%);
+  border-color: rgba(32,230,255,0.75);
+}
+.queue-row.spot.is-current {
+  background:
+    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
+    linear-gradient(180deg, #141414 0%, #060606 100%);
+  border-width: 1px;
+  border-color: #20e6ff;
+}
 
 .q-index {
   display: flex; align-items: center; justify-content: center;
   color: #9de7e2; font-size: 16px; font-weight: 800; letter-spacing: 0.03em;
 }
-.q-track { min-width: 0; }
+.q-type-icon { width: 34px; height: 34px; object-fit: contain; opacity: 0.80; }
+.q-track { min-width: 0; position: relative; padding-left: 12px; }
+.q-track::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 1px; height: 24px;
+  background: rgba(255,255,255,0.12);
+}
 .q-track-name {
   display: flex; align-items: center; gap: 8px;
-  color: #e8fbfb; font-size: 16px; font-weight: 700;
+  color: #20e6ff; font-size: 16px; font-weight: 700; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .q-artist {
   display: block; margin-top: 4px; color: #77a4a3;
-  font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .q-badge {
   flex: 0 0 auto; height: 20px;
   display: inline-flex; align-items: center; padding: 0 7px;
   border-radius: 999px; color: #2dd4c8;
-  background: rgba(45,212,200,0.10); border: 1px solid rgba(45,212,200,0.18);
-  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(45,212,200,0.15); border: 1px solid rgba(45,212,200,0.35);
+  font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em;
 }
+.queue-row.hora-certa .q-badge { color: #ff8c00; background: rgba(255,110,0,0.18); border-color: rgba(255,110,0,0.42); }
+.queue-row.hora-certa.is-current .q-badge { color: #2dd4c8; background: rgba(45,212,200,0.15); border-color: rgba(45,212,200,0.35); }
 .q-status-pill {
-  min-width: 86px; height: 28px;
+  width: 100%; height: 28px;
   display: inline-flex; align-items: center; justify-content: center; padding: 0 10px;
-  border-radius: 8px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06);
-  color: #bce8e5; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: #bce8e5; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  position: relative; align-self: center;
 }
-.q-status-pill.live    { color: #2dd4c8; background: rgba(45,212,200,0.10); border-color: rgba(45,212,200,0.22); }
-.q-status-pill.waiting { color: #f3c15f; background: rgba(243,193,95,0.08); border-color: rgba(243,193,95,0.18); }
+.q-status-pill::before {
+  content: '';
+  position: absolute;
+  left: -18px; top: 50%;
+  transform: translateY(-50%);
+  width: 1px; height: 24px;
+  background: rgba(255,255,255,0.12);
+}
+.q-status-pill.live    { color: #20e6ff; background: rgba(32,230,255,0.10); border-color: rgba(32,230,255,0.55); }
+.q-status-pill.waiting { color: #20e6ff; background: rgba(32,230,255,0.06); border-color: rgba(32,230,255,0.55); }
 .q-status-pill.done    { color: #3a5a58; background: transparent; border-color: rgba(255,255,255,0.04); }
-.q-status-pill.danger  { color: var(--red); background: rgba(255,50,50,0.08); border-color: rgba(255,50,50,0.18); }
+.q-status-pill.danger  { color: var(--red); background: rgba(255,50,50,0.12); border-color: rgba(255,50,50,0.28); }
 .q-time {
   color: #d5fbf9; font-family: 'Courier New', monospace;
-  font-size: 15px; font-weight: 800; letter-spacing: 0.01em; text-align: right;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.01em; text-align: center;
+  padding-left: 12px; position: relative;
+}
+.q-time::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 1px; height: 24px;
+  background: rgba(255,255,255,0.12);
 }
 .q-progress {
-  grid-column: 2 / -1; width: 100%; height: 3px; margin-top: -10px;
-  border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden;
+  position: absolute; bottom: 6px; left: 16px; right: 16px;
+  height: 3px; border-radius: 999px; background: transparent; overflow: hidden;
 }
 .q-progress span {
   display: block; height: 100%; background: #2dd4c8;
@@ -1087,7 +1203,7 @@ input[type=range].vol-slider:disabled {
 
 /* Break group container */
 .break-group {
-  border: 1px solid rgba(230,130,10,0.38);
+  border: 1px solid rgba(230,130,10,0.75);
   border-radius: 14px;
   overflow: hidden;
   display: flex;
@@ -1096,15 +1212,15 @@ input[type=range].vol-slider:disabled {
 .break-group .queue-row {
   border-radius: 0;
   border: none;
-  border-left: 4px solid transparent;
-  border-bottom: 1px solid rgba(230,130,10,0.10);
+  grid-template-columns: 58px minmax(0,1fr) 110px 86px 51px;
 }
-.break-group .queue-row:last-child { border-bottom: none; }
-.break-group .queue-row.break-header { min-height: 52px; background: rgba(230,130,10,0.12); border-left-color: #e6820a; }
+.break-group .queue-row.break-header { min-height: 52px; background: rgba(230,130,10,0.12); }
+.break-group .queue-row.break-header .q-actions-wrap::before { display: block; }
 .break-group .queue-row.break-header:hover { background: rgba(230,130,10,0.18); }
-.break-group .queue-row.break-item   { min-height: 64px; background: rgba(230,130,10,0.04); border-left-color: rgba(230,130,10,0.35); }
+.break-group .queue-row.break-item   { min-height: 64px; background: rgba(230,130,10,0.04); }
+.break-group .queue-row.break-item .q-track-name { color: #e6820a; }
 .break-group .queue-row.break-item:hover { background: rgba(230,130,10,0.09) !important; }
-.break-group .queue-row.break-item.is-current { background: rgba(230,130,10,0.16) !important; border-left-color: #e6820a; }
+.break-group .queue-row.break-item.is-current { background: rgba(230,130,10,0.16) !important; }
 
 .queue-empty {
   padding: 40px; text-align: center; color: var(--text-dim);
@@ -1112,6 +1228,7 @@ input[type=range].vol-slider:disabled {
 }
 
 /* ─── Break Banner (Now Playing card) ───────────────────────── */
+.break-banner[hidden] { display: none; }
 .break-banner {
   display: flex;
   align-items: center;
@@ -1134,34 +1251,34 @@ input[type=range].vol-slider:disabled {
   display: none; flex-shrink: 0;
   align-items: center; gap: 14px;
   padding: 10px 18px;
-  background: rgba(122,77,255,0.10);
-  border-top: 1px solid rgba(122,77,255,0.25);
-  border-bottom: 2px solid var(--purple);
+  background: rgba(230,130,10,0.12);
+  border-top: 1px solid rgba(230,130,10,0.45);
+  border-bottom: 2px solid rgba(230,130,10,0.75);
   animation: assistPulse 3s ease-in-out infinite;
 }
 .assist-banner.visible { display: flex; }
 @keyframes panicPulse {
   0%, 100% { filter: brightness(0.85); }
-  50%       { filter: brightness(1.5) drop-shadow(0 0 10px rgba(255,32,32,0.9)); }
+  50%       { filter: brightness(1.5) drop-shadow(0 0 6px rgba(255,32,32,0.54)); }
 }
 
 @keyframes assistPulse {
-  0%, 100% { border-bottom-color: var(--purple); }
-  50%       { border-bottom-color: rgba(122,77,255,0.4); }
+  0%, 100% { border-bottom-color: rgba(230,130,10,0.75); }
+  50%       { border-bottom-color: rgba(230,130,10,0.35); }
 }
 .assist-banner-icon { font-size: 24px; flex-shrink: 0; }
 .assist-banner-body { flex: 1; min-width: 0; }
 .assist-banner-title {
   font-size: 12px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1.2px; color: var(--purple);
+  letter-spacing: 1.2px; color: #e6820a;
 }
 .assist-banner-next {
-  font-size: 13px; color: var(--text-dim); margin-top: 3px;
+  font-size: 13px; color: #ffffff; margin-top: 3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-transform: uppercase;
+  text-transform: uppercase; display: flex; align-items: center; gap: 8px;
 }
-.assist-banner-next strong { color: var(--text-hi); }
-.assist-banner-next .assist-type-tag { color: var(--purple); }
+.assist-banner-next strong { color: #ffffff; font-weight: 800; }
+.assist-banner-next .assist-type-tag { color: #e6820a; }
 
 .assist-actions {
   display: none; flex-shrink: 0; align-items: center; gap: 8px;
@@ -1226,20 +1343,27 @@ input[type=range].vol-slider:disabled {
 .btn-modal-ok:hover { background: #004d22; }
 
 /* ─── Queue reorder buttons (ASSIST only) ────────────────────── */
-.q-actions-wrap { display: flex; gap: 3px; align-items: center; min-width: 39px; justify-content: flex-end; }
-.q-actions-wrap .q-btn { display: none; }
-.assist-active .q-actions-wrap .q-btn { display: inline-flex; }
+.q-actions-wrap { display: flex; gap: 6px; align-items: center; min-width: 39px; justify-content: flex-start; padding-left: 12px; position: relative; }
+.q-actions-wrap::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 1px; height: 24px; background: rgba(255,255,255,0.12); }
+.q-reorder-btns { display: none; flex-direction: column; gap: 3px; align-items: center; padding: 6px 0; }
+.q-reorder-btns::before { content: ''; display: none; }
+.assist-active .q-reorder-btns { display: flex; }
+.assist-active .queue-row { grid-template-columns: 58px minmax(0,1fr) 110px 86px 80px; }
+.assist-active .break-group .queue-row { grid-template-columns: 58px minmax(0,1fr) 110px 86px 80px; }
 .q-btn {
-  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 3px;
-  color: var(--text-dim); font-size: 11px; font-weight: 700;
-  padding: 2px 6px; cursor: pointer; line-height: 1.4;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  background: none; border: 1px solid rgba(37,183,242,0.30); border-radius: 3px;
+  color: #25B7F2; font-size: 11px; font-weight: 700;
+  width: 22px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; line-height: 1;
+  transition: background 0.1s, border-color 0.1s;
   font-family: inherit;
 }
-.q-btn:hover { background: #222; color: var(--text-hi); border-color: #3a3a3a; }
-.q-btn.q-btn-up:hover   { color: var(--blue); border-color: #003366; }
-.q-btn.q-btn-down:hover { color: var(--blue); border-color: #003366; }
-.q-btn.q-btn-del:hover  { color: var(--red);  border-color: #550000; background: #1a0000; }
+.q-btn:hover { background: rgba(37,183,242,0.12); border-color: rgba(37,183,242,0.65); }
+.q-btn.q-btn-del { color: #25B7F2; border-color: rgba(37,183,242,0.30); }
+.q-btn.q-btn-del:hover { color: var(--red); border-color: rgba(255,50,50,0.55); background: rgba(255,50,50,0.08); }
+.break-group .q-btn { color: #e6820a; border-color: rgba(230,130,10,0.45); }
+.break-group .q-btn:hover { background: rgba(230,130,10,0.12); border-color: rgba(230,130,10,0.75); }
+.break-group .q-btn.q-btn-del:hover { color: var(--red); border-color: rgba(255,50,50,0.55); background: rgba(255,50,50,0.08); }
 
 /* ─── Preview (CUE) ──────────────────────────────────────────── */
 td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
@@ -1306,7 +1430,7 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 }
 
 /* ─── Queue ASSIST marker ────────────────────────────────────── */
-.queue-row.assist-next { border-left-color: var(--orange) !important; }
+.queue-row.assist-next { }
 .q-next-tag {
   display: inline-block; margin-left: 6px;
   font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
@@ -1591,12 +1715,14 @@ canvas.vu-canvas {
   padding: 0 18px;
   background: rgba(245, 166, 35, 0.08);
   border-top: 0px solid rgba(245, 166, 35, 0.55);
-  transition: max-height 0.4s ease, padding 0.4s ease, border-top-width 0.4s ease;
+  border-bottom: 0px solid rgba(245, 166, 35, 0.55);
+  transition: max-height 0.4s ease, padding 0.4s ease, border-top-width 0.4s ease, border-bottom-width 0.4s ease;
 }
 .next-evt-banner.visible {
   max-height: 80px;
   padding: 10px 18px;
   border-top-width: 2px;
+  border-bottom-width: 2px;
 }
 .next-evt-banner-icon {
   font-size: 22px;
@@ -1959,7 +2085,7 @@ canvas.vu-canvas {
             <button class="btn btn-hotkeys"    id="btnHotkeys"     onclick="openHotkeys()"              data-tooltip="Botoneira"><img class="btn-icon" src="icons/botoneira.svg"></button>
             <div class="controls-sep"></div>
             <button class="btn btn-assist"      id="btnEnterAssist" onclick="sendCmd('assist-enter')"   data-tooltip="ASSIST"><img class="btn-icon" src="icons/assist.svg"></button>
-            <button class="btn btn-return-auto" id="btnReturnAuto"  onclick="sendCmd('return-auto')"    data-tooltip="Voltar Auto" style="display:none">↩ AUTO</button>
+            <button class="btn btn-return-auto" id="btnReturnAuto"  onclick="sendCmd('return-auto')"    data-tooltip="Voltar Auto" style="display:none"><img class="btn-icon" src="icons/auto_mode.svg"></button>
             <button class="btn btn-panic"       id="btnPanicToggle" onclick="sendCmd('panic-toggle')"   data-tooltip="Panic"><img class="btn-icon" src="icons/panic.svg"></button>
           </div>
         </div>
@@ -1968,7 +2094,7 @@ canvas.vu-canvas {
       <!-- ASSIST Banner (visible when engine is waiting in ASSIST) -->
       <!-- ─── Banner: Próximo Evento Agendado ──────────── -->
       <div class="next-evt-banner" id="nextEvtBanner">
-        <div class="next-evt-banner-icon">🕐</div>
+        <div class="next-evt-banner-icon"><img src="icons/commercial_break.svg" style="width:34px;height:34px;object-fit:contain;filter:brightness(0) saturate(100%) invert(55%) sepia(90%) saturate(700%) hue-rotate(12deg) brightness(1.05);opacity:0.9;vertical-align:middle"></div>
         <div class="next-evt-banner-body">
           <div class="next-evt-banner-title">
             PRÓXIMO EVENTO — EM <span id="nextEvtCountdown">00:00:00</span>
@@ -1982,7 +2108,7 @@ canvas.vu-canvas {
       </div>
 
       <div class="assist-banner" id="assistBanner">
-        <div class="assist-banner-icon">🎙</div>
+        <div class="assist-banner-icon"><img src="icons/assist.svg" style="width:34px;height:34px;object-fit:contain;filter:brightness(0) saturate(100%) invert(55%) sepia(90%) saturate(700%) hue-rotate(12deg) brightness(1.05);vertical-align:middle"></div>
         <div class="assist-banner-body">
           <div class="assist-banner-title" id="assistBannerTitle">Modo ASSIST ativado</div>
           <div class="assist-banner-next" id="assistBannerNext">Fila vazia</div>
@@ -2352,13 +2478,12 @@ function msToTime(ms) {
   return m + ':' + String(s % 60).padStart(2, '0');
 }
 function msToDuration(ms) {
-  if (!ms || ms < 0) return '0:00';
+  if (!ms || ms < 0) return '00:00:00';
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
-  return m + ':' + String(sec).padStart(2, '0');
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
 }
 
 /* ─── Controls state ─────────────────────────────────────────── */
@@ -2515,7 +2640,7 @@ function renderQueue() {
     return sum + (i.duration_ms || 0);
   }, 0);
   const durEl = document.getElementById('queueDuration');
-  durEl.textContent = totalMs > 0 ? '⏱ ' + msToDuration(totalMs) : '';
+  durEl.innerHTML = totalMs > 0 ? '<span style="font-size:17px;vertical-align:middle">⏱</span> ' + msToDuration(totalMs) : '';
 
   // "A Seguir" — first pending QUEUED item
   const nextItem = queueItems.find(i => i && (i.status || '').toUpperCase() === 'QUEUED');
@@ -2566,8 +2691,8 @@ function renderQueue() {
     const nextEl   = document.getElementById('assistBannerNext');
     if (nextEl) {
       if (nextItem) {
-        const typeTag = nextItem.type ? ` <span style="color:rgba(255,119,0,0.7)">[${escHtml(nextItem.type)}]</span>` : '';
-        nextEl.innerHTML = `A seguir: <strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag"> ${typeTag}</span>` : ''}`;
+        const typeTag = '';
+        nextEl.innerHTML = `<span>A seguir:</span><strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag">${typeTag}</span>` : ''}`;
       } else {
         nextEl.textContent = 'Fila vazia';
       }
@@ -2579,7 +2704,9 @@ function renderItemRow(item) {
   if (!item) return '';
   const status   = item.status || 'QUEUED';
   const isHC      = (item.type || '').toUpperCase() === 'HORA_CERTA';
+  const isHE      = false; // reservado
   const isVinheta = (item.type || '').toUpperCase() === 'VINHETA';
+  const isMusic   = (item.type || '').toUpperCase() === 'MUSIC';
   const itemId   = item.queue_item_id || item.id || '';
   const isAssistNext = _inAssist && itemId && itemId === window._assistNextId;
   const isPlaying  = status === 'PLAYING';
@@ -2587,13 +2714,25 @@ function renderItemRow(item) {
   const isPreload  = status === 'PRELOADING';
   const isPlayed   = status === 'PLAYED' || status === 'SKIPPED';
   const isFailed   = status === 'FAILED' || status === 'MISSED';
-  const canReorder = !isPlaying && !isPlayed && !isFailed;
+  const canReorder = _inAssist && !isPlaying && !isPlayed && !isFailed;
+
+  if (isHE) {
+    const itemId2 = item.queue_item_id || item.id || '';
+    const dragAttrs2 = canReorder && itemId2
+      ? `draggable="true" ondragstart="dndStart(event,'item','${escHtml(itemId2)}')" ondragend="dndEnd()"`
+      : '';
+    return `<article class="queue-row hora-extra${isPlayed ? ' is-played' : ''}${isFailed ? ' is-failed' : ''}" data-id="${escHtml(itemId2)}" ${dragAttrs2}>
+      <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:15px;font-weight:900;color:#ff9500;text-transform:uppercase;letter-spacing:0.18em">HORA EXTRA</span>
+      </div>
+    </article>`;
+  }
 
   const rowCls = [
     isPlaying ? 'is-current' : isPreload ? 'is-next' : '',
     isPlayed  ? 'is-played'  : '',
     isFailed  ? 'is-failed'  : '',
-    isHC      ? 'hora-certa' : isVinheta ? 'vinheta' : '',
+    isHC      ? 'hora-certa' : isVinheta ? 'vinheta' : isMusic ? 'music' : (item.type||'').toUpperCase() === 'SPOT' ? 'spot' : 'music',
     isAssistNext && !isPlaying ? 'assist-next' : '',
   ].filter(Boolean).join(' ');
 
@@ -2610,19 +2749,26 @@ function renderItemRow(item) {
   }
 
   const typeStr  = (item.type || 'UNKNOWN').toUpperCase();
-  const artistStr = item.artist
-    ? `${escHtml(item.artist)} · ${typeStr}`
+  const artistStr = isHC ? ''
+    : item.artist ? `${escHtml(item.artist)} · ${typeStr}`
     : typeStr;
 
+  const typeIcon = isHC      ? 'icons/hora_certa.svg'
+                : isVinheta ? 'icons/vinheta.svg'
+                : isMusic   ? 'icons/musica.svg'
+                : (item.type||'').toUpperCase() === 'SPOT' ? 'icons/spot.svg'
+                : 'icons/musica.svg';
   const eqHTML  = isPlaying
     ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
-    : (isHC ? '🕐' : (isPlayed ? '<span style="color:#3a5a58">✓</span>' : (isFailed ? '<span style="color:var(--red)">✗</span>' : '')));
+    : isPlayed ? '<span style="color:#3a5a58">✓</span>'
+    : isFailed ? '<span style="color:var(--red)">✗</span>'
+    : `<img src="${typeIcon}" class="q-type-icon" alt="${typeStr}">`;
 
   const badgeHTML = isPlaying ? `<span class="q-badge">Atual</span>` : '';
   const nextTag   = isAssistNext && !isPlaying ? `<span class="q-next-tag">← PRÓXIMA</span>` : '';
 
   const titleHTML = isHC
-    ? `<span style="background:#ff7700;color:#000;font-size:13px;font-weight:700;padding:2px 10px;border-radius:4px">${escHtml(item.title || '—')}</span>`
+    ? `<span style="font-size:15px;font-weight:900;color:#20e6ff;letter-spacing:0.15em">HORA CERTA</span>`
     : escHtml(item.title || '—');
 
   const progressHTML = isPlaying
@@ -2638,19 +2784,21 @@ function renderItemRow(item) {
   const cueKey  = itemId || cuePath;
   if (cueKey) _queueItemMap[cueKey] = { path: cuePath, title: item.title || '—', artist: item.artist || '' };
 
-  const canCue = (status === 'QUEUED' || status === 'PRELOADING') && !!cueKey;
+  const canCue = (status === 'QUEUED' || status === 'PRELOADING' || status === 'PLAYING' || status === 'PAUSED') && !!cueKey;
   const isCuing = canCue && _cueQueueItemId === cueKey && _preview.state !== 'idle';
   const cueBtnHTML = canCue
-    ? `<button class="q-cue-btn tip-left${isCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(cueKey)}" data-tooltip="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(cueKey)}')"><img src="icons/cue_preview.svg"></button>`
+    ? `<button class="q-cue-btn tip-left${isCuing ? ' is-cuing' : ''}${isHC ? ' q-cue-btn--disabled' : ''}" data-item-id="${escHtml(cueKey)}" data-tooltip="CUE — Preview" ${isHC ? 'disabled' : `onclick="cueToggleQueueItem('${escHtml(cueKey)}')"`}><img src="icons/cue_preview.svg"></button>`
     : '';
 
   const actionsHTML = `
     <div class="q-actions-wrap">
       ${cueBtnHTML}
       ${canReorder && itemId ? `
-      <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${escHtml(itemId)}','up')">↑</button>
-      <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${escHtml(itemId)}','down')">↓</button>
-      <button class="q-btn q-btn-del"  title="Remover"          onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>` : ''}
+      <div class="q-reorder-btns">
+        <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${escHtml(itemId)}','up')">↑</button>
+        <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${escHtml(itemId)}','down')">↓</button>
+        <button class="q-btn q-btn-del"  title="Remover"          onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>
+      </div>` : ''}
     </div>`;
 
   return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
@@ -2675,21 +2823,23 @@ function renderBreakRows(brk, rows) {
   const brkStatus = brk.status || 'QUEUED';
   const cnt       = subItems.length;
   const breakId   = escHtml(brk.id || brk.break_id || '');
-  const isDraggable = brkStatus === 'QUEUED' && breakId;
+  const isDraggable = _inAssist && brkStatus === 'QUEUED' && breakId;
   const dragAttrs = isDraggable
     ? `draggable="true" ondragstart="dndStart(event,'break','${breakId}')" ondragend="dndEnd()"`
     : '';
-  const brkActionsHTML = isDraggable ? `
-    <div class="q-actions-wrap">
-      <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${breakId}','up','break')">↑</button>
-      <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${breakId}','down','break')">↓</button>
-      <button class="q-btn q-btn-del"  title="Remover bloco"    onclick="queueRemoveItem('${breakId}','break')">✕</button>
-    </div>` : '<div></div>';
+  const brkActionsHTML = `
+    <div class="q-actions-wrap">${isDraggable ? `
+      <div class="q-reorder-btns">
+        <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${breakId}','up','break')">↑</button>
+        <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${breakId}','down','break')">↓</button>
+        <button class="q-btn q-btn-del"  title="Remover bloco"    onclick="queueRemoveItem('${breakId}','break')">✕</button>
+      </div>` : ''}
+    </div>`;
 
   let html = `<div class="break-group" data-break-id="${breakId}" ${dragAttrs}>`;
 
   html += `<article class="queue-row break-header" data-break-id="${breakId}">
-    <div class="q-index" style="color:#e6820a;font-size:20px">🎙</div>
+    <div class="q-index"><img src="icons/commercial_break.svg" class="q-type-icon" alt="Bloco Comercial"></div>
     <div class="q-track">
       <div class="q-track-name" style="color:#e6820a">BLOCO: ${escHtml(brk.title || '—')}</div>
       <span class="q-artist" style="color:rgba(230,130,10,0.65)">${cnt} item${cnt !== 1 ? 's' : ''}</span>
@@ -2706,21 +2856,35 @@ function renderBreakRows(brk, rows) {
     const st      = item.status || 'QUEUED';
     const typeStr = (item.type || 'UNKNOWN').toUpperCase();
     const isPlaying = st === 'PLAYING';
+    const brkTypeIcon = typeStr === 'VINHETA' ? 'icons/vinheta.svg'
+                      : typeStr === 'SPOT'    ? 'icons/spot.svg'
+                      : typeStr === 'JINGLE'  ? 'icons/musica.svg'
+                      : 'icons/musica.svg';
     const idxHTML = isPlaying
       ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
-      : `<span style="color:rgba(230,130,10,0.7);font-size:14px">${st === 'PLAYED' ? '✓' : st === 'SKIPPED' ? '—' : st === 'FAILED' ? '✗' : roleIcon(role)}</span>`;
+      : st === 'PLAYED' ? `<span style="color:rgba(230,130,10,0.7);font-size:14px">✓</span>`
+      : st === 'SKIPPED' ? `<span style="color:rgba(230,130,10,0.7);font-size:14px">—</span>`
+      : st === 'FAILED'  ? `<span style="color:var(--red);font-size:14px">✗</span>`
+      : `<img src="${brkTypeIcon}" class="q-type-icon" alt="${typeStr}">`;
+    const brkCueKey = item.queue_item_id || item.path || '';
+    if (brkCueKey) _queueItemMap[brkCueKey] = { path: item.path || '', title: item.title || '—', artist: item.artist || '' };
+    const canBrkCue = (st === 'QUEUED' || st === 'PRELOADING') && !!brkCueKey;
+    const isBrkCuing = canBrkCue && _cueQueueItemId === brkCueKey && _preview.state !== 'idle';
+    const brkCueBtnHTML = canBrkCue
+      ? `<button class="q-cue-btn tip-left${isBrkCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(brkCueKey)}" data-tooltip="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(brkCueKey)}')"><img src="icons/cue_preview.svg"></button>`
+      : '';
     html += `<article class="queue-row break-item${isPlaying ? ' is-current' : ''}" data-id="${escHtml(item.queue_item_id || '')}" data-break-group="${breakId}">
       <div class="q-index">${idxHTML}</div>
       <div class="q-track">
         <div class="q-track-name" title="${escHtml(item.title || '')}">
           <span style="font-size:10px;color:rgba(230,130,10,0.5);text-transform:uppercase;letter-spacing:0.5px">${escHtml(role)}</span>
-          ${escHtml(item.title || '—')}
+          ${escHtml(item.title || '')}
         </div>
-        <span class="q-artist">${escHtml(item.artist || '—')} · ${typeStr}</span>
+        <span class="q-artist">${item.artist ? escHtml(item.artist) + ' · ' : ''}${typeStr}</span>
       </div>
       <div class="q-status-pill" style="color:rgba(230,130,10,0.8);border-color:rgba(230,130,10,0.2)">${st === 'QUEUED' ? 'NA FILA' : st}</div>
       <div class="q-time" style="color:rgba(230,130,10,0.8)">${msToTime(item.duration_ms)}</div>
-      <div class="q-actions-wrap"></div>
+      <div class="q-actions-wrap">${brkCueBtnHTML}</div>
     </article>`;
   });
 
@@ -3036,8 +3200,8 @@ function enterAssistUI() {
     const nextItem = queueItems.find(i => i && (i.status || '').toUpperCase() === 'QUEUED');
     const nextEl   = document.getElementById('assistBannerNext');
     if (nextItem) {
-      const typeTag = nextItem.type ? ` <span style="color:rgba(255,119,0,0.7)">[${escHtml(nextItem.type)}]</span>` : '';
-      nextEl.innerHTML = `A seguir: <strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag"> ${typeTag}</span>` : ''}`;
+      const typeTag = '';
+      nextEl.innerHTML = `<span>A seguir:</span><strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag">${typeTag}</span>` : ''}`;
     } else {
       nextEl.textContent = 'Fila vazia';
     }
@@ -3071,8 +3235,7 @@ function onAssistWaiting(p) {
   if (titleEl) titleEl.textContent = 'FILA PAUSADA — PRESSIONE PLAY PARA CONTINUAR';
   banner.classList.add('visible');
   if (p && p.next_title) {
-    const typeTag = p.next_type ? `[${escHtml(p.next_type)}]` : '';
-    nextEl.innerHTML = `A seguir: <strong>${escHtml(p.next_title)}</strong>${typeTag ? ` <span class="assist-type-tag">${typeTag}</span>` : ''}`;
+    nextEl.innerHTML = `<span>A seguir:</span><strong>${escHtml(p.next_title)}</strong>`;
   } else {
     nextEl.textContent = 'Fila vazia';
   }
