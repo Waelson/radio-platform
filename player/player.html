@@ -342,7 +342,7 @@ input[type=range].vol-slider:disabled {
 .np5-card {
   position: relative;
   background: #0c1519;
-  border: 1px solid rgba(43,216,222,0.22);
+  border: 1px solid #20e6ff;
   border-radius: 10px;
   overflow: hidden;
 }
@@ -2009,7 +2009,7 @@ canvas.vu-canvas {
                 <div class="np5-meta-row">
                   <span class="np5-icon">⊙</span>
                   <span class="np5-label">Status</span>
-                  <span class="np5-value" id="npStatusVal"><span class="np5-status-dot"></span>—</span>
+                  <span class="np5-value" id="npStatusVal">—</span>
                 </div>
                 <div class="np5-meta-row">
                   <span class="np5-icon">◈</span>
@@ -3626,6 +3626,29 @@ let npDurationMS = 0;
 let _npCurrentType = '';
 let _lastRemainingMs = 0;
 
+const _TYPE_PT = {
+  'MUSIC':      'Música',
+  'JINGLE':     'Jingle',
+  'VINHETA':    'Vinheta',
+  'SPOT':       'Spot',
+  'HORA_CERTA': 'Hora Certa',
+  'COMERCIAL':  'Comercial',
+  'EFEITO':     'Efeito',
+  'NOTICIA':    'Notícia',
+};
+function typeLabel(t) { return (_TYPE_PT[(t || '').toUpperCase()] || t || '—').toUpperCase(); }
+
+const _STATUS_PT = {
+  'PLAYING':  'TOCANDO',
+  'PAUSED':   'PAUSADO',
+  'STOPPED':  'PARADO',
+  'IDLE':     'OCIOSO',
+  'ASSIST':   'ASSIST',
+  'PANIC':    'PÂNICO',
+  'ERROR':    'ERRO',
+};
+function statusLabel(s) { return _STATUS_PT[(s || '').toUpperCase()] || (s || '—').toUpperCase(); }
+
 function onNowPlaying(p) {
   if (!p || !p.title) { setIdle(); return; }
   document.getElementById('npTitle').style.color  = '';
@@ -3633,8 +3656,8 @@ function onNowPlaying(p) {
   document.getElementById('npTitle').textContent        = p.title || '—';
   document.getElementById('npArtist').textContent       = p.artist || '';
   _npCurrentType = p.type || '';
-  document.getElementById('npTypeVal').textContent      = _npCurrentType || '—';
-  document.getElementById('npStatusVal').innerHTML      = '<span class="np5-status-dot"></span>' + (p.status || 'PLAYING');
+  document.getElementById('npTypeVal').textContent      = typeLabel(_npCurrentType);
+  document.getElementById('npStatusVal').textContent    = statusLabel(p.status || 'PLAYING');
   document.getElementById('npSampleVal').textContent    = '48 kHz / Stereo';
   if (p.duration_ms) {
     npDurationMS = p.duration_ms;
@@ -3714,10 +3737,10 @@ function onStateChange(p) {
   // Sync queue item badge and Now Playing STATUS with engine pause/resume
   if (st === 'PAUSED' && prev === 'PLAYING') {
     _syncCurrentItemStatus('PAUSED');
-    document.getElementById('npStatusVal').innerHTML = '<span class="np5-status-dot"></span>PAUSED';
+    document.getElementById('npStatusVal').textContent = statusLabel('PAUSED');
   } else if (st === 'PLAYING' && prev === 'PAUSED') {
     _syncCurrentItemStatus('PLAYING');
-    document.getElementById('npStatusVal').innerHTML = '<span class="np5-status-dot"></span>PLAYING';
+    document.getElementById('npStatusVal').textContent = statusLabel('PLAYING');
   }
   // Sync ASSIST UI when state transitions
   if (st === 'ASSIST' && !_inAssist) enterAssistUI();
@@ -3881,7 +3904,7 @@ function setIdle() {
   document.getElementById('npTitle').style.color  = 'var(--text-dim)';
   document.getElementById('npArtist').textContent = '';
   document.getElementById('npArtist').style.color = '';
-  document.getElementById('npStatusVal').innerHTML   = '<span class="np5-status-dot"></span>—';
+  document.getElementById('npStatusVal').textContent = '—';
   document.getElementById('npNextTitle').textContent = '—';
   document.getElementById('npTypeVal').textContent   = '—';
   document.getElementById('npSampleVal').textContent = '—';
