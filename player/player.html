@@ -1487,11 +1487,11 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 }
 
 .lufs-bar-fill {
-  background: linear-gradient(to right, var(--cyan), var(--blue), var(--purple), var(--purple-2));
+  background: linear-gradient(to right, var(--cyan), #00e060, var(--yellow), var(--red));
 }
 
 .bar-fill.buf {
-  background: linear-gradient(to right, var(--cyan), var(--blue));
+  background: linear-gradient(to right, var(--cyan), #00e060, var(--yellow), var(--red));
 }
 
 .silence-badge {
@@ -2288,12 +2288,12 @@ const DB_RANGE = DB_MAX - DB_MIN;
 function segColor(db, lit) {
   if (!lit) return '#0d0d1a';
   const t = Math.max(0, Math.min(1, (db - DB_MIN) / DB_RANGE));
-  // Same 4-stop gradient as LUFS bar: cyan → blue → purple → purple-2
+  // Gradient: cyan → green → yellow → red
   const stops = [
-    [0x20, 0xe6, 0xff],
-    [0x2f, 0x7b, 0xff],
-    [0x7a, 0x4d, 0xff],
-    [0x9b, 0x5c, 0xff],
+    [0x20, 0xe6, 0xff],  // cyan
+    [0x00, 0xe0, 0x60],  // green
+    [0xff, 0xdd, 0x00],  // yellow
+    [0xff, 0x20, 0x20],  // red
   ];
   const pos = t * (stops.length - 1);
   const lo = Math.floor(pos), hi = Math.min(stops.length - 1, lo + 1);
