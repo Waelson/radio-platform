@@ -263,6 +263,7 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 	},
 	state.StateAssist: {
 		commands.CmdPlay:               true, // manual advance: sends signal to waiting sessionLoop
+		commands.CmdPause:              true, // allowed while an item is playing in ASSIST mode
 		commands.CmdReturnAuto:         true,
 		commands.CmdSkip:               true,
 		commands.CmdStop:               true,

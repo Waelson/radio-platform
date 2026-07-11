@@ -111,9 +111,10 @@ type Manager struct {
 	skipCh chan struct{}
 
 	// Pause/resume — protected by pauseMu.
-	pauseMu  sync.Mutex
-	paused   bool
-	resumeCh chan struct{}
+	pauseMu        sync.Mutex
+	paused         bool
+	resumeCh       chan struct{}
+	pausedFromState state.PlayerState // state to restore on Resume
 
 	// Current item and frame counter — used by the progress loop.
 	currentMu      sync.RWMutex
@@ -286,6 +287,7 @@ func (m *Manager) HandlePause(_ context.Context, _ commands.Command) error {
 	}
 
 	prev := m.stateMgr.Snapshot().State
+	m.pausedFromState = prev
 	m.stateMgr.SetState(state.StatePaused)
 	m.evtBus.Publish(events.New(events.EvtPlayerStateChanged, events.PlayerStateChangedPayload{
 		From: string(prev),
@@ -312,6 +314,8 @@ func (m *Manager) HandleResume(_ context.Context, _ commands.Command) error {
 		}
 	}
 
+	restoreState := m.pausedFromState
+	m.pausedFromState = ""
 	m.paused = false
 	ch := m.resumeCh
 	m.resumeCh = nil
@@ -319,10 +323,15 @@ func (m *Manager) HandleResume(_ context.Context, _ commands.Command) error {
 		close(ch)
 	}
 
-	m.stateMgr.SetState(state.StatePlaying)
+	// Restore the state that was active before the pause (e.g. ASSIST or PLAYING).
+	// Fall back to PLAYING if no pre-pause state was recorded.
+	if restoreState == "" || restoreState == state.StatePaused {
+		restoreState = state.StatePlaying
+	}
+	m.stateMgr.SetState(restoreState)
 	m.evtBus.Publish(events.New(events.EvtPlayerStateChanged, events.PlayerStateChangedPayload{
 		From: string(state.StatePaused),
-		To:   string(state.StatePlaying),
+		To:   string(restoreState),
 		Mode: string(m.stateMgr.Snapshot().Mode),
 	}))
 	return nil

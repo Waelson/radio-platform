@@ -186,7 +186,7 @@ html, body {
 .badge.ERROR    { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.40); }
 .badge.STOPPING { background: rgba(26,26,26,0.6); color: #666; border-color: rgba(255,255,255,0.08); }
 .badge.STARTING { background: rgba(0,26,42,0.8); color: var(--blue); border-color: rgba(39,147,219,0.35); }
-.badge.AUTO     { background: rgba(0,22,51,0.8); color: #8fc2ff; border-color: rgba(39,147,219,0.40); }
+.badge.AUTO     { background: rgba(0,42,17,0.8); color: var(--cyan); border-color: rgba(45,216,255,0.40); box-shadow: 0 0 10px rgba(45,216,255,0.12); }
 .badge.ASSIST_MODE { background: rgba(42,24,0,0.8); color: var(--orange); border-color: rgba(255,138,0,0.35); }
 .badge.PANIC_MODE  { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.45); }
 
@@ -1480,7 +1480,11 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
   box-shadow: 0 0 8px rgba(47,123,255,.28);
 }
 
-.badge.AUTO,
+.badge.AUTO {
+  background: rgba(47,123,255,.16);
+  color: var(--cyan);
+  box-shadow: 0 0 8px rgba(47,123,255,.28);
+}
 .badge.STARTING {
   background: rgba(47,123,255,.18);
   color: #8fc2ff;
@@ -2497,7 +2501,7 @@ const BTN_ALLOWED = {
   IDLE:     ['play', 'assist-enter'],
   PLAYING:  ['pause-toggle', 'stop', 'skip', 'panic-toggle', 'assist-enter'],
   PAUSED:   ['pause-toggle', 'stop', 'panic-toggle', 'assist-enter'],
-  ASSIST:   ['play', 'stop', 'skip', 'panic-toggle', 'return-auto'],
+  ASSIST:   ['play', 'pause-toggle', 'stop', 'skip', 'panic-toggle', 'return-auto'],
   PANIC:    ['panic-toggle', 'stop'],
   ERROR:    [],
   STARTING: [],
@@ -2529,6 +2533,7 @@ function updateButtons(state) {
     if (cmd === 'play' && _enginePlaying)                                ok = false;
     if (cmd === 'stop' && _assistWaiting)                                ok = false;
     if (cmd === 'skip' && _assistWaiting)                                ok = false;
+    if (cmd === 'pause-toggle' && _assistWaiting)                        ok = false;
     if (cmd === 'panic-toggle' && (state === 'IDLE' || state === ''))    ok = false;
     if (cmd === 'return-auto' && _inAssist)                              ok = true;
     btn.disabled = !ok;
@@ -3756,6 +3761,10 @@ function onSnapshot(p) {
   if (engineId) document.getElementById('tEngineId').textContent = engineId;
   engineState = p.State || p.state || '';
   engineMode  = p.Mode || p.mode || engineMode;
+  // Restore _enginePlaying from snapshot so setStateBadge shows the correct
+  // display state (e.g. 'PLAYING' instead of 'ASSIST') after a page reload.
+  const _snapNp = p.NowPlaying || p.now_playing;
+  _enginePlaying = !!(_snapNp && (engineState === 'PLAYING' || engineState === 'ASSIST'));
   setStateBadge(engineState, engineMode);
   updateButtons(engineState);
   syncPauseToggle(engineState);
