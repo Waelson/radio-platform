@@ -1590,12 +1590,13 @@ canvas.vu-canvas {
   gap: 14px;
   padding: 0 18px;
   background: rgba(245, 166, 35, 0.08);
-  border-top: 2px solid rgba(245, 166, 35, 0.55);
-  transition: max-height 0.4s ease, padding 0.4s ease;
+  border-top: 0px solid rgba(245, 166, 35, 0.55);
+  transition: max-height 0.4s ease, padding 0.4s ease, border-top-width 0.4s ease;
 }
 .next-evt-banner.visible {
   max-height: 80px;
   padding: 10px 18px;
+  border-top-width: 2px;
 }
 .next-evt-banner-icon {
   font-size: 22px;
