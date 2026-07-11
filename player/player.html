@@ -948,6 +948,45 @@ input[type=range].vol-slider:disabled {
 .adv-prev-vol-pct { font-size: 11px; color: #ffffff; min-width: 30px; }
 .lib-status { padding: 16px 12px; font-size: 11px; color: var(--text-dim); text-align: center; }
 
+/* ─── Drawer — Aba Botoneira ─────────────────────────────── */
+.drw-hk-panel { flex-direction: column; flex: 1; min-height: 0; }
+.drw-hk-profile-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.drw-hk-profile-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .10em; color: var(--text-dim); white-space: nowrap; }
+.drw-hk-select { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-hi); font-size: 12px; font-family: inherit; padding: 5px 8px; outline: none; cursor: pointer; }
+.drw-hk-select:focus { border-color: rgba(32,230,255,0.45); }
+.drw-hk-scroll-host { position: relative; flex: 1; display: flex; overflow: hidden; }
+.drw-hk-wrap { flex: 1; overflow-y: scroll; scrollbar-width: none; padding: 10px 30px 10px 10px; }
+.drw-hk-wrap::-webkit-scrollbar { display: none; }
+.drw-hk-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+/* Button card — idêntico ao .hk de hotkeys.html */
+.drw-hk { position: relative; border-radius: 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; min-height: 108px; transition: transform .12s, box-shadow .18s, filter .15s; border: 2px solid var(--hk-border, rgba(255,255,255,0.18)); box-shadow: 0 4px 18px rgba(0,0,0,0.5), 0 0 14px var(--hk-glow, transparent); }
+.drw-hk::before { content: ''; position: absolute; inset: 0; background: var(--hk-grad); z-index: 0; }
+.drw-hk::after  { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,0.18) 0%, transparent 45%, rgba(0,0,0,0.28) 100%); z-index: 1; pointer-events: none; }
+.drw-hk:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 32px rgba(0,0,0,0.55), 0 0 28px var(--hk-glow, transparent); filter: brightness(1.12); }
+.drw-hk:active { transform: translateY(0) scale(1); filter: brightness(0.95); }
+@keyframes playGlow {
+  0%,100% { box-shadow: 0 4px 18px rgba(0,0,0,0.5), 0 0 14px var(--hk-glow, transparent), 0 0 0 2px rgba(255,255,255,0.12); }
+  50%      { box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 36px var(--hk-glow, transparent), 0 0 0 4px rgba(255,255,255,0.32); }
+}
+@keyframes iconBounce { to { transform: scale(1.16); } }
+@keyframes timePulse  { 0%,100% { opacity: 1; } 50% { opacity: 0.82; } }
+.drw-hk.playing { border-color: rgba(255,255,255,0.65); animation: playGlow 1.6s ease-in-out infinite; }
+.drw-hk-inner { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; padding: 6px 7px 0; flex: 1; }
+.drw-hk-toprow { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
+.drw-hk-slot { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.80); background: rgba(0,0,0,0.35); border-radius: 4px; padding: 1px 5px; line-height: 1.5; letter-spacing:.04em; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.drw-hk-icon { width: 45px; height: 45px; object-fit: contain; margin: 4px 0 3px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.50)) brightness(0) invert(1); transition: transform .15s; opacity: 0.90; }
+.drw-hk.playing .drw-hk-icon { animation: iconBounce .55s ease-in-out infinite alternate; }
+.drw-hk-name { font-size: 11px; font-weight: 700; color: #fff; text-align: center; line-height: 1.25; text-shadow: 0 1px 4px rgba(0,0,0,0.65); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; }
+.drw-hk-sub  { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.65); text-align: center; margin-top: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.50); }
+.drw-hk-time { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.90); text-align: center; margin-top: 2px; font-family: 'Courier New', monospace; letter-spacing:.04em; text-shadow: 0 1px 3px rgba(0,0,0,0.50); transition: font-size .2s, color .2s; }
+.drw-hk.playing .drw-hk-time { font-size: 15px; color: #00ffe5; text-shadow: 0 0 6px rgba(0,255,229,0.9), 0 0 18px rgba(0,255,229,0.5), 0 1px 3px rgba(0,0,0,0.6); animation: timePulse 1.6s ease-in-out infinite; }
+.drw-hk-bar  { height: 5px; background: rgba(0,0,0,0.35); flex-shrink: 0; position: relative; z-index: 2; margin-top: 7px; }
+.drw-hk-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.72); border-radius: 0 3px 3px 0; transition: width .22s linear; box-shadow: 0 0 6px rgba(255,255,255,0.45); }
+.drw-hk-stop { display: none; position: absolute; top: 6px; right: 6px; z-index: 10; width: 20px; height: 20px; border-radius: 5px; background: rgba(0,0,0,0.60); border: 1px solid rgba(255,255,255,0.28); align-items: center; justify-content: center; font-size: 8px; color: rgba(255,255,255,0.75); cursor: pointer; transition: all .12s; }
+.drw-hk.playing .drw-hk-stop { display: flex; }
+.drw-hk-stop:hover { background: rgba(220,40,40,0.65); border-color: #ef4444; color: #fff; }
+
 
 /* ─── Queue ──────────────────────────────────────────────────── */
 .queue-section {
@@ -2095,8 +2134,9 @@ canvas.vu-canvas {
           <button class="lib-drawer-close" onclick="toggleLibrary()" title="Fechar">✕</button>
         </div>
         <div class="lib-tabs">
-          <button class="lib-tab active" id="libTabPlaylists" onclick="libSwitchTab('playlists')">Playlists</button>
-          <button class="lib-tab"        id="libTabBreaks"    onclick="libSwitchTab('breaks')">Breaks</button>
+          <button class="lib-tab active" id="libTabPlaylists"  onclick="libSwitchTab('playlists')">Playlists</button>
+          <button class="lib-tab"        id="libTabBreaks"     onclick="libSwitchTab('breaks')">Breaks</button>
+          <button class="lib-tab"        id="libTabBotoneira"  onclick="libSwitchTab('botoneira')">Botoneira</button>
         </div>
 
         <!-- Playlists -->
@@ -2116,6 +2156,26 @@ canvas.vu-canvas {
           </div>
           <div class="lib-list" id="libBreakList">
             <div class="lib-status">Clique em Atualizar para carregar</div>
+          </div>
+        </div>
+
+        <!-- Botoneira -->
+        <div class="lib-panel drw-hk-panel" id="libPanelBotoneira">
+          <div class="drw-hk-profile-bar">
+            <label class="drw-hk-profile-label">Perfil</label>
+            <select class="drw-hk-select" id="drwHkSelect" onchange="drwHkSelectProfile(this.value)">
+              <option value="">— selecionar —</option>
+            </select>
+          </div>
+          <div class="drw-hk-scroll-host">
+            <div class="drw-hk-wrap" id="drwHkScrollPane">
+              <div class="drw-hk-grid" id="drwHkGrid">
+                <div class="lib-status">Selecione um perfil</div>
+              </div>
+            </div>
+            <div class="q-sb-track" id="drwHkSbTrack">
+              <div class="q-sb-thumb" id="drwHkSbThumb"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -3507,6 +3567,11 @@ function handleEvent({ type, payload }) {
     case 'ScheduleEntryUpdated':
       fetchNextScheduledEvent();
       break;
+    case 'CartProgress':
+    case 'CartStopped':
+    case 'CartEnded':
+      drwHkUpdateFromWs(type, payload);
+      break;
   }
 }
 
@@ -3917,6 +3982,17 @@ window.addEventListener('load', () => {
   fetchInitialVolumes();
   initSchedule();
   initQueueScrollbar();
+  // Restaura estado do drawer e aba ativa
+  const savedTab = localStorage.getItem('drawerTab');
+  if (savedTab && ['playlists', 'breaks', 'botoneira'].includes(savedTab)) {
+    libSwitchTab(savedTab);
+  }
+  if (localStorage.getItem('drawerOpen') === '1') {
+    const drawer = document.getElementById('libDrawer');
+    const btn    = document.getElementById('btnLibrary');
+    drawer.classList.add('open');
+    btn.classList.add('active');
+  }
   document.addEventListener('mouseup',  () => { _draggingMain = false; _draggingPreview = false; });
   document.addEventListener('touchend', () => { _draggingMain = false; _draggingPreview = false; });
 });
@@ -4419,17 +4495,20 @@ function toggleLibrary() {
   const btn    = document.getElementById('btnLibrary');
   const isOpen = drawer.classList.toggle('open');
   btn.classList.toggle('active', isOpen);
+  localStorage.setItem('drawerOpen', isOpen ? '1' : '0');
   if (isOpen) {
     if (!_libOnline) {
       _libOfflineMsg('libPlaylistList');
       _libOfflineMsg('libBreakList');
     } else if (_libTab === 'playlists') libLoadPlaylists();
     else if (_libTab === 'breaks') libLoadBreaks();
+    else if (_libTab === 'botoneira') drwHkInit();
   }
 }
 
 function libSwitchTab(tab) {
   _libTab = tab;
+  localStorage.setItem('drawerTab', tab);
   document.querySelectorAll('.lib-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.lib-panel').forEach(p => p.classList.remove('active'));
   const cap = tab.charAt(0).toUpperCase() + tab.slice(1);
@@ -4437,6 +4516,240 @@ function libSwitchTab(tab) {
   document.getElementById('libPanel' + cap).classList.add('active');
   if (tab === 'playlists') libLoadPlaylists();
   if (tab === 'breaks')    libLoadBreaks();
+  if (tab === 'botoneira') drwHkInit();
+}
+
+/* ─── Drawer Botoneira ───────────────────────────────────────── */
+const DRW_HK_PALETTES = [
+  { id:'purple', grad:'linear-gradient(145deg,#9b59b6,#5b2c6f)', glow:'rgba(155,89,182,0.60)',  border:'rgba(189,147,220,0.60)' },
+  { id:'teal',   grad:'linear-gradient(145deg,#17a589,#0e6655)', glow:'rgba(23,165,137,0.60)',  border:'rgba(118,215,196,0.60)' },
+  { id:'gold',   grad:'linear-gradient(145deg,#d4ac0d,#9a7d0a)', glow:'rgba(212,172,13,0.60)',  border:'rgba(249,231,159,0.60)' },
+  { id:'red',    grad:'linear-gradient(145deg,#e74c3c,#922b21)', glow:'rgba(231,76,60,0.60)',   border:'rgba(241,148,138,0.60)' },
+  { id:'green',  grad:'linear-gradient(145deg,#27ae60,#1a7040)', glow:'rgba(39,174,96,0.60)',   border:'rgba(130,224,170,0.60)' },
+  { id:'blue',   grad:'linear-gradient(145deg,#2980b9,#1a5276)', glow:'rgba(41,128,185,0.60)',  border:'rgba(133,193,233,0.60)' },
+  { id:'orange', grad:'linear-gradient(145deg,#e67e22,#a04000)', glow:'rgba(230,126,34,0.60)',  border:'rgba(240,178,122,0.60)' },
+  { id:'pink',   grad:'linear-gradient(145deg,#d63031,#8e1515)', glow:'rgba(214,48,49,0.60)',   border:'rgba(248,165,194,0.60)' },
+];
+
+let _drwHkProfiles   = [];
+let _drwHkCurId      = null;
+let _drwHkButtons    = [];
+let _drwHkInited     = false;
+let _drwHkCartBtnId  = null;
+let _drwHkCartDurMS  = 0;
+let _drwHkCartPosMS  = 0;
+
+function drwHkIconForType(type) {
+  const t = (type || '').toUpperCase();
+  if (t === 'HORA_CERTA') return 'icons/hora_certa.svg';
+  if (t === 'VINHETA')    return 'icons/vinheta.svg';
+  if (t === 'SPOT')       return 'icons/spot.svg';
+  if (t === 'JINGLE')     return 'icons/musica.svg';
+  return 'icons/musica.svg';
+}
+
+function drwHkMsToTS(ms) {
+  if (!ms) return '0:00';
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+async function drwHkInit() {
+  if (_drwHkInited) return;
+  _drwHkInited = true;
+  await drwHkLoadProfiles();
+  drwHkInitScrollbar();
+}
+
+async function drwHkLoadProfiles() {
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/hotkeys/profiles');
+    const j = await r.json();
+    _drwHkProfiles = (j.data || []).map(p => ({ id: p.id, name: p.name, buttons: [] }));
+    const sel = document.getElementById('drwHkSelect');
+    sel.innerHTML = '<option value="">— selecionar —</option>' +
+      _drwHkProfiles.map(p => `<option value="${escHtml(String(p.id))}">${escHtml(p.name)}</option>`).join('');
+
+    // Restaura último perfil do localStorage
+    const saved = localStorage.getItem('drwHkProfileId');
+    const match = _drwHkProfiles.find(p => String(p.id) === saved);
+    if (match) {
+      sel.value = String(match.id);
+      await drwHkSelectProfile(String(match.id));
+    } else if (_drwHkProfiles.length > 0) {
+      sel.value = String(_drwHkProfiles[0].id);
+      await drwHkSelectProfile(String(_drwHkProfiles[0].id));
+    }
+  } catch (e) {
+    console.error('[drwHk] loadProfiles', e);
+    document.getElementById('drwHkGrid').innerHTML = '<div class="lib-status">Erro ao carregar perfis</div>';
+  }
+}
+
+async function drwHkSelectProfile(id) {
+  if (!id) return;
+  _drwHkCurId = id;
+  localStorage.setItem('drwHkProfileId', id);
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/hotkeys/profiles/' + id);
+    const j = await r.json();
+    _drwHkButtons = (j.data && j.data.buttons) || [];
+    drwHkRenderGrid();
+  } catch (e) {
+    console.error('[drwHk] selectProfile', e);
+    document.getElementById('drwHkGrid').innerHTML = '<div class="lib-status">Erro ao carregar botões</div>';
+  }
+}
+
+function drwHkRenderGrid() {
+  const grid = document.getElementById('drwHkGrid');
+  if (!_drwHkButtons.length) {
+    grid.innerHTML = '<div class="lib-status">Nenhum botão neste perfil</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  _drwHkButtons.forEach((b, idx) => grid.appendChild(drwHkMakeCard(b, idx + 1)));
+  drwHkUpdateScrollbar();
+}
+
+function drwHkMakeCard(b, slotNum) {
+  const p        = DRW_HK_PALETTES[b.palette] || DRW_HK_PALETTES[0];
+  const isPlaying = _drwHkCartBtnId === b.id;
+  const durMS    = b.duration_ms || 0;
+  const remMS    = isPlaying ? Math.max(0, _drwHkCartDurMS - _drwHkCartPosMS) : durMS;
+  const pct      = isPlaying && _drwHkCartDurMS ? Math.min(100, (_drwHkCartPosMS / _drwHkCartDurMS) * 100) : 0;
+  const icon     = drwHkIconForType(b.track_type);
+
+  const card = document.createElement('div');
+  card.className = 'drw-hk' + (isPlaying ? ' playing' : '');
+  card.dataset.btnId = b.id;
+  card.style.setProperty('--hk-grad',   p.grad);
+  card.style.setProperty('--hk-glow',   p.glow   || 'transparent');
+  card.style.setProperty('--hk-border', p.border  || 'rgba(255,255,255,0.18)');
+
+  card.innerHTML = `
+    <div class="drw-hk-inner">
+      <div class="drw-hk-toprow">
+        <span class="drw-hk-slot">${slotNum}</span>
+      </div>
+      <img class="drw-hk-icon" src="${icon}" alt="">
+      <div class="drw-hk-name">${escHtml(b.label || b.track_title || '—')}</div>
+      <div class="drw-hk-sub">${escHtml(b.sub_label || b.track_artist || b.track_type || '')}</div>
+      <div class="drw-hk-time">${drwHkMsToTS(remMS)}</div>
+    </div>
+    <div class="drw-hk-bar"><div class="drw-hk-fill" style="width:${pct}%"></div></div>
+    <div class="drw-hk-stop" onclick="drwHkStop(event)">■</div>`;
+
+  card.addEventListener('click', () => drwHkTrigger(b));
+  return card;
+}
+
+async function drwHkTrigger(btn) {
+  if (!btn.track_path) { showToast(false, 'Botão sem áudio configurado'); return; }
+  if (_drwHkCartBtnId === btn.id) {
+    await drwHkStopCart();
+  } else {
+    await drwHkPlayCart(btn);
+  }
+}
+
+async function drwHkPlayCart(btn) {
+  try {
+    const r = await fetch(API_URL + '/v1/cart/play', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist }),
+    });
+    if (!r.ok) { showToast(false, 'Erro ao acionar botão'); return; }
+    _drwHkCartBtnId = btn.id;
+    _drwHkCartDurMS = btn.duration_ms || 0;
+    _drwHkCartPosMS = 0;
+    drwHkRenderGrid();
+  } catch (e) {
+    showToast(false, 'Sem conexão com o engine');
+  }
+}
+
+async function drwHkStopCart() {
+  try {
+    await fetch(API_URL + '/v1/cart/stop', { method: 'POST' });
+    _drwHkCartBtnId = null;
+    drwHkRenderGrid();
+  } catch (_) {}
+}
+
+function drwHkStop(e) {
+  e.stopPropagation();
+  drwHkStopCart();
+}
+
+function drwHkUpdateFromWs(type, payload) {
+  if (type === 'CartProgress') {
+    _drwHkCartPosMS = payload.position_ms || 0;
+    if (payload.duration_ms) _drwHkCartDurMS = payload.duration_ms;
+    const card = document.querySelector(`.drw-hk[data-btn-id="${_drwHkCartBtnId}"]`);
+    if (!card) return;
+    const fill = card.querySelector('.drw-hk-fill');
+    const time = card.querySelector('.drw-hk-time');
+    const pct  = _drwHkCartDurMS ? Math.min(100, (_drwHkCartPosMS / _drwHkCartDurMS) * 100) : 0;
+    if (fill) fill.style.width = pct + '%';
+    if (time) time.textContent = drwHkMsToTS(Math.max(0, _drwHkCartDurMS - _drwHkCartPosMS));
+  } else if (type === 'CartStopped' || type === 'CartEnded') {
+    _drwHkCartBtnId = null;
+    drwHkRenderGrid();
+  }
+}
+
+/* ─── Scrollbar customizada (mesma lógica da fila) ──────────── */
+function drwHkInitScrollbar() {
+  const pane  = document.getElementById('drwHkScrollPane');
+  const track = document.getElementById('drwHkSbTrack');
+  const thumb = document.getElementById('drwHkSbThumb');
+  if (!pane || !track || !thumb) return;
+
+  function updateThumb() {
+    const viewH = pane.clientHeight;
+    const fullH = pane.scrollHeight;
+    const ratio = viewH / fullH;
+    if (ratio >= 1) { track.style.opacity = '0'; track.style.pointerEvents = 'none'; pane.style.paddingRight = '10px'; return; }
+    track.style.opacity = '1'; track.style.pointerEvents = ''; pane.style.paddingRight = '30px';
+    const trackH = track.clientHeight;
+    const thumbH = Math.max(28, trackH * ratio);
+    const maxScroll = fullH - viewH;
+    const pos = maxScroll > 0 ? pane.scrollTop / maxScroll : 0;
+    const maxTop = trackH - thumbH;
+    thumb.style.height = thumbH + 'px';
+    thumb.style.top    = (pos * maxTop) + 'px';
+  }
+
+  pane.addEventListener('scroll', updateThumb);
+  new ResizeObserver(updateThumb).observe(pane);
+  new MutationObserver(updateThumb).observe(document.getElementById('drwHkGrid'), { childList: true, subtree: true });
+
+  let dragging = false, startY = 0, startTop = 0;
+  thumb.addEventListener('mousedown', e => {
+    dragging = true; startY = e.clientY;
+    startTop = parseInt(thumb.style.top) || 0;
+    thumb.classList.add('is-dragging'); e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const thumbH = thumb.offsetHeight;
+    const maxTop = track.clientHeight - thumbH;
+    const newTop = Math.max(0, Math.min(maxTop, startTop + e.clientY - startY));
+    pane.scrollTop = (newTop / (maxTop || 1)) * (pane.scrollHeight - pane.clientHeight);
+  });
+  document.addEventListener('mouseup', () => { if (dragging) { dragging = false; thumb.classList.remove('is-dragging'); } });
+  track.addEventListener('click', e => {
+    if (e.target === thumb) return;
+    const rect = track.getBoundingClientRect();
+    pane.scrollTop = ((e.clientY - rect.top) / track.clientHeight) * (pane.scrollHeight - pane.clientHeight);
+  });
+  updateThumb();
+}
+
+function drwHkUpdateScrollbar() {
+  const pane = document.getElementById('drwHkScrollPane');
+  if (pane) pane.dispatchEvent(new Event('scroll'));
 }
 
 
