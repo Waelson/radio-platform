@@ -1005,27 +1005,93 @@ input[type=range].vol-slider:disabled {
   gap: 14px;
   padding: 0 16px;
   border-radius: 12px;
-  background: #0e1f23;
-  border: 1px solid rgba(69,211,202,0.18);
+  /* Fase 1 — gradiente + reflexo glass */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #0e2428 0%, #091a1e 100%);
+  border: 1px solid rgba(69,211,202,0.28);
   border-left: 4px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  /* Fase 2 — linha âmbar na base + inset brilho topo */
+  box-shadow:
+    inset 0 -2px 0 rgba(160,115,15,0.50),
+    inset 0  1px 0 rgba(255,255,255,0.04);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.queue-row:hover { background: #112528; border-color: rgba(69,211,202,0.30); }
-.queue-row.is-current { background: #11282c; border-color: rgba(69,211,202,0.42); border-left-color: #2dd4c8; }
+/* Fase 4 — hover refinado */
+.queue-row:hover {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, #112b30 0%, #0b1e22 100%);
+  border-color: rgba(69,211,202,0.38);
+}
+/* Fase 4 — glow externo no item atual */
+.queue-row.is-current {
+  background:
+    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
+    linear-gradient(180deg, #0f2e33 0%, #091e22 100%);
+  border-color: rgba(45,212,200,0.55);
+  border-left-color: #2dd4c8;
+  box-shadow:
+    inset 0 -2px 0 rgba(45,212,200,0.45),
+    inset 0  1px 0 rgba(255,255,255,0.06),
+    0 0 0 1px rgba(45,212,200,0.18),
+    0 0 20px rgba(45,212,200,0.08);
+}
 .queue-row.is-next    { border-left-color: rgba(45,212,200,0.52); }
 .queue-row.is-played  { opacity: 0.38; }
 .queue-row.is-failed  { opacity: 0.5; border-left-color: var(--red); }
-.queue-row.hora-certa { background: #1a0c00; border-color: rgba(255,130,0,0.28); border-left-color: #ff7700; }
-.queue-row.hora-certa:hover { background: #201200; }
-.queue-row.vinheta { background: #110d22; border-color: rgba(122,77,255,0.28); border-left-color: #7a4dff; }
-.queue-row.vinheta:hover { background: #17102e; }
+/* Hora Certa — glasss âmbar/laranja */
+.queue-row.hora-certa {
+  background:
+    linear-gradient(180deg, rgba(255,160,30,0.07) 0%, rgba(255,160,30,0) 38%),
+    linear-gradient(180deg, #1c0e00 0%, #110900 100%);
+  border-color: rgba(255,130,0,0.35);
+  border-left-color: #ff7700;
+  box-shadow:
+    inset 0 -2px 0 rgba(255,120,0,0.55),
+    inset 0  1px 0 rgba(255,160,30,0.06);
+}
+.queue-row.hora-certa:hover {
+  background:
+    linear-gradient(180deg, rgba(255,160,30,0.10) 0%, rgba(255,160,30,0) 38%),
+    linear-gradient(180deg, #221100 0%, #150b00 100%);
+}
+/* Vinheta — glass roxo */
+.queue-row.vinheta {
+  background:
+    linear-gradient(180deg, rgba(122,77,255,0.09) 0%, rgba(122,77,255,0) 38%),
+    linear-gradient(180deg, #130f25 0%, #0d0a1a 100%);
+  border-color: rgba(122,77,255,0.35);
+  border-left-color: #7a4dff;
+  box-shadow:
+    inset 0 -2px 0 rgba(122,77,255,0.50),
+    inset 0  1px 0 rgba(122,77,255,0.06);
+}
+.queue-row.vinheta:hover {
+  background:
+    linear-gradient(180deg, rgba(122,77,255,0.13) 0%, rgba(122,77,255,0) 38%),
+    linear-gradient(180deg, #18122e 0%, #100d22 100%);
+}
 .queue-row.vinheta .q-track-name { color: #c4b0ff; }
 .queue-row.vinheta .q-artist { color: rgba(154,120,255,0.7); }
 .queue-row.vinheta .q-time { color: #c4b0ff; }
-.queue-row.vinheta .q-status-pill { color: var(--purple-2); background: rgba(122,77,255,0.10); border-color: rgba(122,77,255,0.25); }
-.queue-row.vinheta.is-current { background: #1a1035; border-color: rgba(122,77,255,0.50); border-left-color: var(--purple-2); }
+/* Fase 3 — status pill vinheta mais vibrante */
+.queue-row.vinheta .q-status-pill { color: var(--purple-2); background: rgba(122,77,255,0.15); border-color: rgba(122,77,255,0.38); }
+.queue-row.vinheta.is-current {
+  background:
+    linear-gradient(180deg, rgba(122,77,255,0.14) 0%, rgba(122,77,255,0) 40%),
+    linear-gradient(180deg, #1a1035 0%, #100c28 100%);
+  border-color: rgba(122,77,255,0.55);
+  border-left-color: var(--purple-2);
+  box-shadow:
+    inset 0 -2px 0 rgba(122,77,255,0.50),
+    inset 0  1px 0 rgba(255,255,255,0.05),
+    0 0 0 1px rgba(122,77,255,0.18),
+    0 0 20px rgba(122,77,255,0.08);
+}
 .queue-row.vinheta .q-equalizer i { background: var(--purple-2); }
-.queue-row.vinheta .q-badge { color: var(--purple-2); background: rgba(122,77,255,0.12); border-color: rgba(122,77,255,0.25); }
+/* Fase 3 — badge vinheta vibrante */
+.queue-row.vinheta .q-badge { color: #b39dff; background: rgba(122,77,255,0.18); border-color: rgba(122,77,255,0.40); }
 
 .q-index {
   display: flex; align-items: center; justify-content: center;
@@ -1046,19 +1112,20 @@ input[type=range].vol-slider:disabled {
   flex: 0 0 auto; height: 20px;
   display: inline-flex; align-items: center; padding: 0 7px;
   border-radius: 999px; color: #2dd4c8;
-  background: rgba(45,212,200,0.10); border: 1px solid rgba(45,212,200,0.18);
-  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(45,212,200,0.15); border: 1px solid rgba(45,212,200,0.35);
+  font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em;
 }
+.queue-row.hora-certa .q-badge { color: #ff8c00; background: rgba(255,110,0,0.18); border-color: rgba(255,110,0,0.42); }
 .q-status-pill {
   min-width: 86px; height: 28px;
   display: inline-flex; align-items: center; justify-content: center; padding: 0 10px;
-  border-radius: 8px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06);
-  color: #bce8e5; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: #bce8e5; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
 }
-.q-status-pill.live    { color: #2dd4c8; background: rgba(45,212,200,0.10); border-color: rgba(45,212,200,0.22); }
-.q-status-pill.waiting { color: #f3c15f; background: rgba(243,193,95,0.08); border-color: rgba(243,193,95,0.18); }
+.q-status-pill.live    { color: #2dd4c8; background: rgba(45,212,200,0.15); border-color: rgba(45,212,200,0.35); }
+.q-status-pill.waiting { color: #f3c15f; background: rgba(243,193,95,0.12); border-color: rgba(243,193,95,0.30); }
 .q-status-pill.done    { color: #3a5a58; background: transparent; border-color: rgba(255,255,255,0.04); }
-.q-status-pill.danger  { color: var(--red); background: rgba(255,50,50,0.08); border-color: rgba(255,50,50,0.18); }
+.q-status-pill.danger  { color: var(--red); background: rgba(255,50,50,0.12); border-color: rgba(255,50,50,0.28); }
 .q-time {
   color: #d5fbf9; font-family: 'Courier New', monospace;
   font-size: 15px; font-weight: 800; letter-spacing: 0.01em; text-align: right;
