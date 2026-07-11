@@ -276,6 +276,57 @@ func TestAssist_EvtAssistWaitingPublished(t *testing.T) {
 	}
 }
 
+// TestAssist_PauseResumeRestoresAssistState verifies that pausing while in
+// ASSIST mode and then resuming returns the engine to ASSIST (not PLAYING).
+func TestAssist_PauseResumeRestoresAssistState(t *testing.T) {
+	// Use realtime=true so the item takes real wall-clock time to finish,
+	// giving the test goroutine a window to pause mid-playback.
+	dec := &testutil.FakeDecoder{Frames: 240000} // ~5 s at 48 kHz
+	f := newFixture(t, dec, true, 0)
+
+	f.enqueue("musicas", 240000)
+	f.enterAssist(t)
+	f.play(t)
+
+	// Wait for the item to start playing (EvtItemStarted).
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		found := false
+		for _, e := range f.evtBus.Recent(200) {
+			if e.Type == events.EvtItemStarted {
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// Pause while item is playing in ASSIST mode.
+	if err := f.mgr.HandlePause(context.Background(),
+		commands.New(commands.CmdPause, commands.PausePayload{})); err != nil {
+		t.Fatalf("HandlePause: %v", err)
+	}
+	if got := f.stateMgr.Snapshot().State; got != state.StatePaused {
+		t.Errorf("state after pause = %s, want PAUSED", got)
+	}
+
+	// Resume — must return to ASSIST, not PLAYING.
+	if err := f.mgr.HandleResume(context.Background(),
+		commands.New(commands.CmdResume, commands.ResumePayload{})); err != nil {
+		t.Fatalf("HandleResume: %v", err)
+	}
+	if got := f.stateMgr.Snapshot().State; got != state.StateAssist {
+		t.Errorf("state after resume = %s, want ASSIST", got)
+	}
+
+	// Clean up.
+	f.stop(t)
+	waitState(t, f.stateMgr, state.StateIdle, 5*time.Second)
+}
+
 // TestAssist_EnterDuringPlayback verifies that setting ASSIST before the session
 // starts causes the engine to wait after the first item, leaving the second item
 // unplayed until the operator triggers it.
