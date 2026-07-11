@@ -959,33 +959,40 @@ input[type=range].vol-slider:disabled {
 .drw-hk-wrap::-webkit-scrollbar { display: none; }
 .drw-hk-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
-/* Button card — idêntico ao .hk de hotkeys.html */
-.drw-hk { position: relative; border-radius: 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; min-height: 108px; transition: transform .12s, box-shadow .18s, filter .15s; border: 2px solid var(--hk-border, rgba(255,255,255,0.18)); box-shadow: 0 4px 18px rgba(0,0,0,0.5), 0 0 14px var(--hk-glow, transparent); }
-.drw-hk::before { content: ''; position: absolute; inset: 0; background: var(--hk-grad); z-index: 0; }
-.drw-hk::after  { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,0.18) 0%, transparent 45%, rgba(0,0,0,0.28) 100%); z-index: 1; pointer-events: none; }
-.drw-hk:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 32px rgba(0,0,0,0.55), 0 0 28px var(--hk-glow, transparent); filter: brightness(1.12); }
-.drw-hk:active { transform: translateY(0) scale(1); filter: brightness(0.95); }
+/* Button card — flat, segue o padrão visual da fila de reprodução */
+.drw-hk { position: relative; border-radius: 10px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; min-height: 100px; transition: filter .15s, box-shadow .18s; background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 40%), linear-gradient(180deg, #0e2428 0%, #091a1e 100%); border: 1px solid var(--hk-border, rgba(32,230,255,0.45)); border-left: 3px solid var(--hk-border, rgba(32,230,255,0.75)); box-shadow: 0 2px 8px rgba(0,0,0,0.30); }
+.drw-hk::before { content: ''; position: absolute; inset: 0; background: var(--hk-grad); opacity: 0.34; z-index: 0; pointer-events: none; }
+.drw-hk::after  { display: none; }
+.drw-hk:hover { filter: brightness(1.10); box-shadow: 0 4px 14px rgba(0,0,0,0.40), 0 0 10px var(--hk-glow, transparent); }
+.drw-hk:active { filter: brightness(0.90); }
 @keyframes playGlow {
-  0%,100% { box-shadow: 0 4px 18px rgba(0,0,0,0.5), 0 0 14px var(--hk-glow, transparent), 0 0 0 2px rgba(255,255,255,0.12); }
-  50%      { box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 36px var(--hk-glow, transparent), 0 0 0 4px rgba(255,255,255,0.32); }
+  0%,100% { box-shadow: 0 2px 8px rgba(0,0,0,0.30), 0 0 8px var(--hk-glow, transparent); }
+  50%      { box-shadow: 0 4px 16px rgba(0,0,0,0.40), 0 0 22px var(--hk-glow, transparent); }
 }
 @keyframes iconBounce { to { transform: scale(1.16); } }
 @keyframes timePulse  { 0%,100% { opacity: 1; } 50% { opacity: 0.82; } }
-.drw-hk.playing { border-color: rgba(255,255,255,0.65); animation: playGlow 1.6s ease-in-out infinite; }
+.drw-hk.playing { border-left-color: rgba(255,255,255,0.70); animation: playGlow 1.6s ease-in-out infinite; }
+.drw-hk.playing::before { opacity: 0.48; }
 .drw-hk-inner { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; padding: 6px 7px 0; flex: 1; }
 .drw-hk-toprow { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
-.drw-hk-slot { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.80); background: rgba(0,0,0,0.35); border-radius: 4px; padding: 1px 5px; line-height: 1.5; letter-spacing:.04em; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
-.drw-hk-icon { width: 45px; height: 45px; object-fit: contain; margin: 4px 0 3px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.50)) brightness(0) invert(1); transition: transform .15s; opacity: 0.90; }
+.drw-hk-slot { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.75); background: rgba(0,0,0,0.30); border-radius: 4px; padding: 1px 5px; line-height: 1.5; letter-spacing:.04em; }
+.drw-hk-icon { width: 45px; height: 45px; object-fit: contain; margin: 4px 0 3px; filter: brightness(0) invert(1); transition: transform .15s; opacity: 0.85; }
 .drw-hk.playing .drw-hk-icon { animation: iconBounce .55s ease-in-out infinite alternate; }
-.drw-hk-name { font-size: 11px; font-weight: 700; color: #fff; text-align: center; line-height: 1.25; text-shadow: 0 1px 4px rgba(0,0,0,0.65); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; }
-.drw-hk-sub  { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.65); text-align: center; margin-top: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.50); }
-.drw-hk-time { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.90); text-align: center; margin-top: 2px; font-family: 'Courier New', monospace; letter-spacing:.04em; text-shadow: 0 1px 3px rgba(0,0,0,0.50); transition: font-size .2s, color .2s; }
-.drw-hk.playing .drw-hk-time { font-size: 15px; color: #00ffe5; text-shadow: 0 0 6px rgba(0,255,229,0.9), 0 0 18px rgba(0,255,229,0.5), 0 1px 3px rgba(0,0,0,0.6); animation: timePulse 1.6s ease-in-out infinite; }
-.drw-hk-bar  { height: 5px; background: rgba(0,0,0,0.35); flex-shrink: 0; position: relative; z-index: 2; margin-top: 7px; }
-.drw-hk-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.72); border-radius: 0 3px 3px 0; transition: width .22s linear; box-shadow: 0 0 6px rgba(255,255,255,0.45); }
-.drw-hk-stop { display: none; position: absolute; top: 6px; right: 6px; z-index: 10; width: 20px; height: 20px; border-radius: 5px; background: rgba(0,0,0,0.60); border: 1px solid rgba(255,255,255,0.28); align-items: center; justify-content: center; font-size: 8px; color: rgba(255,255,255,0.75); cursor: pointer; transition: all .12s; }
+.drw-hk-name { font-size: 11px; font-weight: 700; color: #fff; text-align: center; line-height: 1.25; text-transform: uppercase; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; }
+.drw-hk-sub  { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.55); text-align: center; margin-top: 1px; }
+.drw-hk-time { font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.85); text-align: center; margin-top: 2px; font-family: 'Courier New', monospace; letter-spacing:.04em; transition: font-size .2s, color .2s; }
+.drw-hk.playing .drw-hk-time { font-size: 13px; color: #00ffe5; text-shadow: 0 0 8px rgba(0,255,229,0.7); animation: timePulse 1.6s ease-in-out infinite; }
+.drw-hk-bar  { height: 3px; background: rgba(255,255,255,0.10); flex-shrink: 0; position: relative; z-index: 2; margin-top: 7px; }
+.drw-hk-fill { height: 100%; width: 0%; background: var(--hk-border, rgba(32,230,255,0.80)); transition: width .22s linear; }
+.drw-hk-toprow-right { display: flex; align-items: center; gap: 2px; }
+.drw-hk-stop { display: none; width: 20px; height: 20px; border-radius: 4px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.22); align-items: center; justify-content: center; font-size: 8px; color: rgba(255,255,255,0.75); cursor: pointer; transition: all .12s; flex-shrink: 0; }
 .drw-hk.playing .drw-hk-stop { display: flex; }
 .drw-hk-stop:hover { background: rgba(220,40,40,0.65); border-color: #ef4444; color: #fff; }
+.drw-hk-cue { background: none; border: none; padding: 0; width: 20px; height: 20px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s; flex-shrink: 0; }
+.drw-hk-cue img { width: 20px; height: 20px; filter: brightness(0) invert(1); opacity: 0.50; transition: opacity .12s; }
+.drw-hk-cue:hover img { opacity: 1; }
+.drw-hk-cue.is-cuing { background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
+.drw-hk-cue.is-cuing img { opacity: 1; filter: brightness(0) saturate(100%) invert(75%) sepia(80%) hue-rotate(155deg) brightness(1.1); }
 
 
 /* ─── Queue ──────────────────────────────────────────────────── */
@@ -4041,8 +4048,10 @@ function cueToggleQueueItem(itemId) {
 
 async function cueStop() {
   _cueQueueItemId = null;
+  _drwHkCueBtnId  = null;
   document.getElementById('cueFloat').classList.remove('open');
   document.querySelectorAll('.q-cue-btn').forEach(b => { b.classList.remove('is-cuing'); });
+  document.querySelectorAll('.drw-hk-cue').forEach(b => { b.classList.remove('is-cuing'); });
   await previewStop();
 }
 
@@ -4073,16 +4082,23 @@ function _updateCueFloat() {
   if (durEl)  durEl.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
   if (ppBtn)  ppBtn.textContent  = s.state === 'playing' ? '⏸' : '▶';
 
-  // Sincronizar botões CUE nas rows
+  // Sincronizar botões CUE nas rows da fila
   const isActive = _cueQueueItemId && (s.state === 'playing' || s.state === 'paused');
   document.querySelectorAll('.q-cue-btn').forEach(btn => {
     const mine = isActive && btn.dataset.itemId === _cueQueueItemId;
     btn.classList.toggle('is-cuing', mine);
   });
 
+  // Sincronizar botões CUE da botoneira do drawer
+  const isBotActive = _drwHkCueBtnId && (s.state === 'playing' || s.state === 'paused');
+  document.querySelectorAll('.drw-hk-cue').forEach(btn => {
+    btn.classList.toggle('is-cuing', isBotActive && btn.dataset.btnId === _drwHkCueBtnId);
+  });
+
   // Fechar painel se preview parou
-  if (s.state === 'idle' && _cueQueueItemId !== null) {
+  if (s.state === 'idle' && (_cueQueueItemId !== null || _drwHkCueBtnId !== null)) {
     _cueQueueItemId = null;
+    _drwHkCueBtnId  = null;
     document.getElementById('cueFloat').classList.remove('open');
   }
 }
@@ -4535,9 +4551,11 @@ let _drwHkProfiles   = [];
 let _drwHkCurId      = null;
 let _drwHkButtons    = [];
 let _drwHkInited     = false;
-let _drwHkCartBtnId  = null;
-let _drwHkCartDurMS  = 0;
-let _drwHkCartPosMS  = 0;
+let _drwHkCartBtnId     = null;
+let _drwHkPendingBtnId  = null; // btn id aguardando confirmação de switch
+let _drwHkCartDurMS     = 0;
+let _drwHkCartPosMS     = 0;
+let _drwHkCueBtnId      = null; // btn id sendo ouvido em CUE preview
 
 function drwHkIconForType(type) {
   const t = (type || '').toUpperCase();
@@ -4627,18 +4645,22 @@ function drwHkMakeCard(b, slotNum) {
   card.style.setProperty('--hk-glow',   p.glow   || 'transparent');
   card.style.setProperty('--hk-border', p.border  || 'rgba(255,255,255,0.18)');
 
+  const isCuing = _drwHkCueBtnId === b.id && _preview.state !== 'idle';
   card.innerHTML = `
     <div class="drw-hk-inner">
       <div class="drw-hk-toprow">
         <span class="drw-hk-slot">${slotNum}</span>
+        <div class="drw-hk-toprow-right">
+          <button class="drw-hk-stop" onclick="drwHkStop(event)">■</button>
+          <button class="drw-hk-cue${isCuing ? ' is-cuing' : ''}" data-btn-id="${b.id}" title="Preview (CUE)" onclick="drwHkCueToggle(event,'${b.id}')"><img src="icons/cue_preview.svg" alt="CUE"></button>
+        </div>
       </div>
       <img class="drw-hk-icon" src="${icon}" alt="">
       <div class="drw-hk-name">${escHtml(b.label || b.track_title || '—')}</div>
       <div class="drw-hk-sub">${escHtml(b.sub_label || b.track_artist || b.track_type || '')}</div>
       <div class="drw-hk-time">${drwHkMsToTS(remMS)}</div>
     </div>
-    <div class="drw-hk-bar"><div class="drw-hk-fill" style="width:${pct}%"></div></div>
-    <div class="drw-hk-stop" onclick="drwHkStop(event)">■</div>`;
+    <div class="drw-hk-bar"><div class="drw-hk-fill" style="width:${pct}%"></div></div>`;
 
   card.addEventListener('click', () => drwHkTrigger(b));
   return card;
@@ -4654,17 +4676,20 @@ async function drwHkTrigger(btn) {
 }
 
 async function drwHkPlayCart(btn) {
+  _drwHkPendingBtnId = btn.id; // marca intenção antes do fetch
   try {
     const r = await fetch(API_URL + '/v1/cart/play', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist }),
     });
-    if (!r.ok) { showToast(false, 'Erro ao acionar botão'); return; }
+    if (!r.ok) { _drwHkPendingBtnId = null; showToast(false, 'Erro ao acionar botão'); return; }
     _drwHkCartBtnId = btn.id;
     _drwHkCartDurMS = btn.duration_ms || 0;
     _drwHkCartPosMS = 0;
+    // _drwHkPendingBtnId permanece até o primeiro CartProgress confirmar o switch
     drwHkRenderGrid();
   } catch (e) {
+    _drwHkPendingBtnId = null;
     showToast(false, 'Sem conexão com o engine');
   }
 }
@@ -4682,8 +4707,27 @@ function drwHkStop(e) {
   drwHkStopCart();
 }
 
+async function drwHkCueToggle(e, btnId) {
+  e.stopPropagation();
+  const btn = _drwHkButtons.find(b => b.id === btnId);
+  if (!btn || !btn.track_path) { showToast(false, 'Botão sem áudio configurado'); return; }
+  if (_drwHkCueBtnId === btnId && _preview.state !== 'idle') { cueStop(); return; }
+  if (_preview.state !== 'idle') await previewStop();
+  _cueQueueItemId = null;
+  _drwHkCueBtnId  = btnId;
+  _preview.path   = btn.track_path;
+  document.getElementById('cueFloatTitle').textContent  = btn.label || btn.track_title || '—';
+  document.getElementById('cueFloatArtist').textContent = btn.track_artist || btn.track_type || '';
+  document.getElementById('cueFloat').classList.add('open');
+  fetch(API_URL + '/v1/preview/play', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: btn.track_path, seek_ms: 0 }),
+  }).catch(err => console.warn('[DRW-HK CUE] play error', err));
+}
+
 function drwHkUpdateFromWs(type, payload) {
   if (type === 'CartProgress') {
+    _drwHkPendingBtnId = null; // primeiro progress confirma que o switch concluiu
     _drwHkCartPosMS = payload.position_ms || 0;
     if (payload.duration_ms) _drwHkCartDurMS = payload.duration_ms;
     const card = document.querySelector(`.drw-hk[data-btn-id="${_drwHkCartBtnId}"]`);
@@ -4694,6 +4738,7 @@ function drwHkUpdateFromWs(type, payload) {
     if (fill) fill.style.width = pct + '%';
     if (time) time.textContent = drwHkMsToTS(Math.max(0, _drwHkCartDurMS - _drwHkCartPosMS));
   } else if (type === 'CartStopped' || type === 'CartEnded') {
+    if (_drwHkPendingBtnId !== null) return; // switch em andamento — ignora stop do cart anterior
     _drwHkCartBtnId = null;
     drwHkRenderGrid();
   }
