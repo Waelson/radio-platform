@@ -59,44 +59,37 @@ representa um evento futuro.
 
 ### Fonte secundária — WebSocket (atualização reativa)
 
-A lista deve ser re-buscada via REST quando um dos seguintes eventos chegar:
-
-| Evento WebSocket | Por que re-buscar |
+| Evento WebSocket | Ação |
 |---|---|
-| `ScheduleEntryFired` | Entrada disparou; re-calcula próximo evento e retrai o banner |
-| `ScheduleEntryAdded` | Nova entrada pode ser o próximo evento |
-| `ScheduleEntryRemoved` | Próximo evento pode ter sido removido |
-| `ScheduleEntryUpdated` | Entrada pode ter sido habilitada/desabilitada ou alterada |
+| `ScheduleEntryFired` | Retrai banner + re-busca próximo evento |
+| `ScheduleEntryMissed` | Toast de aviso + re-busca próximo evento |
+| `ScheduleEntryAdded` | Re-busca próximo evento |
+| `ScheduleEntryRemoved` | Re-busca próximo evento |
+| `ScheduleEntryUpdated` | Re-busca próximo evento |
 
 > `ScheduleEntryFired` e `ScheduleEntryMissed` podem ser descartados pelo engine
-> sob backpressure. Por isso o polling de segurança (ver Fase 2) é necessário.
+> sob backpressure. O tick de 1s e o polling de 60s garantem consistência mesmo
+> sem esses eventos.
 
 ---
 
-## Layout — comportamento do banner
+## Layout e comportamento
 
-### Estado normal (mais de 5 minutos para o evento)
+### Estado normal (> 5 minutos para o evento)
 
-O banner está **completamente oculto** (`max-height: 0`, invisível). A interface
-fica igual à atual — sem nenhuma adição visual.
+Banner **completamente oculto**. Interface fica igual à atual.
 
 ```
 ╔══════════════════════════════════════════════════════╗
 ║  [ PLAY ] [PAUSE] [ STOP ] [ SKIP ] ...  [ PANIC ]  ║
 ╚══════════════════════════════════════════════════════╝
-                         ↑
-              (banner não existe aqui)
+      ↑ banner não existe aqui
 ╔══════════════════════════════════════════════════════╗
-║  🎙  MODO ASSIST ATIVADO  (assist-banner existente) ║
+║  🎙  MODO ASSIST ATIVADO            (assist-banner) ║
 ╚══════════════════════════════════════════════════════╝
 ```
 
----
-
-### Estado de alerta (menos de 5 minutos — banner desce)
-
-O banner **desliza para baixo** com animação CSS suave (transition em `max-height`),
-aparecendo logo abaixo da controls-bar. Fundo âmbar escuro, borda superior âmbar.
+### Estado de alerta (< 5 minutos — banner desce suavemente)
 
 ```
 ╔══════════════════════════════════════════════════════╗
@@ -107,46 +100,39 @@ aparecendo logo abaixo da controls-bar. Fundo âmbar escuro, borda superior âmb
 ╚══════════════════════════════════════════════════════╝
 ```
 
-Referência visual do banner conforme mockup:
+Referência visual (mockup):
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ 🕐  PRÓXIMO EVENTO — EM  00:47:23                    │  ← linha 1: ícone + título + countdown
-│      Bloco Comercial 10h30   •   BREAK               │  ← linha 2: nome + tipo
+│ 🕐  PRÓXIMO EVENTO — EM  00:04:47                    │  linha 1: ícone + título + countdown
+│      Bloco Comercial 10h30   •   BREAK               │  linha 2: nome do evento + tipo
 └──────────────────────────────────────────────────────┘
 ```
 
 **Paleta âmbar:**
 - Fundo: `rgba(245, 166, 35, 0.08)`
 - Borda superior: `2px solid rgba(245, 166, 35, 0.55)`
-- Ícone e countdown: `#f5a623`
+- Countdown: `#f5a623` (monoespaçado)
 - Texto principal: `#f0d080`
 - Texto secundário: `rgba(240, 208, 128, 0.55)`
 
----
+### Estado de disparo (evento inicia — banner retrai suavemente)
 
-### Estado de disparo (evento inicia — banner retrai)
-
-Ao receber `ScheduleEntryFired` (ou quando `delta <= 0` no tick), o banner
-**desliza para cima** e some. A mesma transição CSS em `max-height` é usada,
-mas no sentido inverso — de `max-height: 80px` para `max-height: 0`.
-
----
+Ao receber `ScheduleEntryFired` ou quando `delta <= 0`, o banner **desliza para
+cima** e some. Mesma transição CSS, sentido inverso.
 
 ### Coexistência com o assist-banner
 
-O `assist-banner` (roxo) já existe abaixo da controls-bar. O banner âmbar fica
-**acima** do assist-banner — entre a controls-bar e o assist-banner. Os dois podem
-aparecer simultaneamente sem conflito.
+Os dois banners podem aparecer simultaneamente sem conflito. O âmbar fica **acima**
+do roxo (assist-banner).
 
 ```
 ╔══════════════════════════════════════════════════════╗
 ║  [ PLAY ] [PAUSE] [ STOP ] [ SKIP ] ...  [ PANIC ]  ║
 ╠══════════════════════════════════════════════════════╣
-║  🕐  PRÓXIMO EVENTO — EM  00:02:11   [âmbar]        ║
-║      Hora Certa   •   HORA_CERTA                     ║
+║  🕐  PRÓXIMO EVENTO — EM  00:02:11        [âmbar]   ║
 ╠══════════════════════════════════════════════════════╣
-║  🎙  MODO ASSIST ATIVADO             [roxo]          ║
+║  🎙  MODO ASSIST ATIVADO                  [roxo]    ║
 ╚══════════════════════════════════════════════════════╝
 ```
 
@@ -155,51 +141,45 @@ aparecer simultaneamente sem conflito.
 ## Arquitetura do fluxo
 
 ```
-[inicialização da página]
-        │
-        ▼
-fetchNextScheduledEvent()
-  GET /v1/schedule
-        │
-        ├── filtra enabled=true + next_fire_at > agora
-        ├── ordena por next_fire_at asc
-        └── guarda _nextEvent = entries[0] ou null
-                │
-                ▼
-        inicia setInterval(tickNextEvent, 1000)
+[inicialização]
+      ▼
+initSchedule()
+  ├── fetchNextScheduledEvent()   → _nextEvent = entry | null
+  └── setInterval(tickNextEvent, 1000)
+      setInterval(fetchNextScheduledEvent, 60_000)   ← polling de segurança
 
-[a cada 1 segundo — tickNextEvent()]
-        │
-        ├── calcula delta = next_fire_at - Date.now()
-        │
-        ├── delta <= 0  → fetchNextScheduledEvent() + fecharBanner()
-        │
-        ├── delta < 5min → abrirBanner() + atualiza countdown
-        │
-        └── delta >= 5min → (banner já fechado, não faz nada)
+[tick — a cada 1s]
+  delta = next_fire_at - now
+  ├── delta <= 0       → fecharBanner() + fetchNextScheduledEvent()
+  ├── delta < 5min     → abrirBanner(countdown formatado)
+  └── delta >= 5min    → fecharBanner() [já está fechado]
 
-[WebSocket: ScheduleEntryFired]
-        └── fecharBanner() → fetchNextScheduledEvent()
+[WebSocket]
+  ScheduleEntryFired   → fecharBanner() + fetchNextScheduledEvent()
+  ScheduleEntryMissed  → toast("Evento pulado: <nome>") + fetchNextScheduledEvent()
+  Entry Added/Removed/Updated → fetchNextScheduledEvent()
 
-[WebSocket: ScheduleEntryAdded | Removed | Updated]
-        └── fetchNextScheduledEvent()
-
-[polling de segurança a cada 60s]
-        └── fetchNextScheduledEvent()
+[reconexão WebSocket]
+  onSnapshot() → initSchedule()
 ```
 
 ---
 
 ## Fases de implementação
 
-### Fase 1 — HTML e CSS do banner
+---
 
-**1.1** Localizar o bloco `<div class="assist-banner">` em `player.html`.
+### Fase 1 — Estrutura visual: HTML + CSS
+
+**Objetivo:** banner presente no DOM com aparência correta, animação de slide
+funcionando. Sem lógica JS ainda.
+
+**1.1** Localizar `<div class="assist-banner">` em `player.html`.
 
 **1.2** Inserir o banner âmbar **imediatamente antes** do `assist-banner`:
 
 ```html
-<!-- ─── Banner: Próximo Evento ──────────────────────── -->
+<!-- ─── Banner: Próximo Evento Agendado ─────────────── -->
 <div class="next-evt-banner" id="nextEvtBanner">
   <div class="next-evt-banner-icon">🕐</div>
   <div class="next-evt-banner-body">
@@ -215,8 +195,7 @@ fetchNextScheduledEvent()
 </div>
 ```
 
-**1.3** Adicionar CSS — a animação usa `max-height` + `overflow: hidden` para o
-efeito de slide suave sem precisar conhecer a altura exata do banner:
+**1.3** Adicionar CSS na seção de estilos:
 
 ```css
 /* ─── Banner: Próximo Evento ─────────────────────────── */
@@ -232,17 +211,14 @@ efeito de slide suave sem precisar conhecer a altura exata do banner:
   border-top: 2px solid rgba(245, 166, 35, 0.55);
   transition: max-height 0.4s ease, padding 0.4s ease;
 }
-
 .next-evt-banner.visible {
   max-height: 80px;
   padding: 10px 18px;
 }
-
 .next-evt-banner-icon {
   font-size: 22px;
   flex-shrink: 0;
 }
-
 .next-evt-banner-title {
   font-size: 13px;
   font-weight: 900;
@@ -250,12 +226,10 @@ efeito de slide suave sem precisar conhecer a altura exata do banner:
   text-transform: uppercase;
   color: #f0d080;
 }
-
 #nextEvtCountdown {
   color: #f5a623;
   font-family: 'Courier New', monospace;
 }
-
 .next-evt-banner-sub {
   font-size: 12px;
   color: rgba(240, 208, 128, 0.55);
@@ -266,24 +240,27 @@ efeito de slide suave sem precisar conhecer a altura exata do banner:
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-
-.next-evt-dot {
-  color: rgba(245, 166, 35, 0.4);
-}
+.next-evt-dot { color: rgba(245, 166, 35, 0.4); }
 ```
 
-**Entrega:** banner renderizado no DOM mas oculto (`max-height: 0`). Adicionar
-temporariamente a classe `.visible` no HTML confirma visualmente o layout.
+**1.4** Validar visualmente: adicionar `class="next-evt-banner visible"` temporariamente
+no HTML para confirmar que layout, cores e animação estão corretos. Remover após validar.
+
+**Entrega:** banner visível com dados estáticos ao adicionar `.visible`; animação
+de slide suave ao adicionar/remover a classe no DevTools. Sem JS funcional ainda.
 
 ---
 
-### Fase 2 — Busca e seleção do próximo evento
+### Fase 2 — Busca e estado
 
-**2.1** Declarar estado global:
+**Objetivo:** implementar a lógica de busca, filtragem e seleção do próximo evento.
+Sem renderização nem animação ainda — apenas o estado `_nextEvent`.
+
+**2.1** Declarar variáveis de estado no escopo global:
 
 ```js
-let _nextEvent    = null;
-let _nextEvtTimer = null;
+let _nextEvent    = null;   // entrada selecionada ou null
+let _nextEvtTimer = null;   // handle do setInterval do countdown
 ```
 
 **2.2** Implementar `fetchNextScheduledEvent()`:
@@ -304,39 +281,49 @@ async function fetchNextScheduledEvent() {
 }
 ```
 
-**2.3** Implementar `abrirBannerEvento(countdown)`:
+**2.3** Implementar `_nextEvtTipo()` — helper que infere o tipo a exibir:
 
 ```js
-function abrirBannerEvento(countdown) {
-  const banner = document.getElementById('nextEvtBanner');
-  if (!banner) return;
-  // Inferir tipo
-  let tipo = 'ITEM';
-  if (_nextEvent.break)                            tipo = 'BREAK';
-  else if (_nextEvent.item?.type === 'HORA_CERTA') tipo = 'HORA_CERTA';
-  document.getElementById('nextEvtName').textContent     = _nextEvent.name || '—';
-  document.getElementById('nextEvtType').textContent     = tipo;
-  document.getElementById('nextEvtCountdown').textContent = countdown;
-  banner.classList.add('visible');
+function _nextEvtTipo(entry) {
+  if (!entry) return '—';
+  if (entry.break)                            return 'BREAK';
+  if (entry.item?.type === 'HORA_CERTA')      return 'HORA_CERTA';
+  return 'ITEM';
 }
 ```
 
-**2.4** Implementar `fecharBannerEvento()`:
-
-```js
-function fecharBannerEvento() {
-  const banner = document.getElementById('nextEvtBanner');
-  if (banner) banner.classList.remove('visible');
-}
-```
-
-**Entrega:** funções de controle do banner operacionais.
+**Entrega:** `fetchNextScheduledEvent()` pode ser chamada no console do DevTools e
+`_nextEvent` fica populado com a entrada correta (ou `null`). Nenhuma mudança
+visual ainda.
 
 ---
 
-### Fase 3 — Countdown e lógica de abertura/fechamento
+### Fase 3 — Countdown e animação (show/hide)
 
-**3.1** Implementar `tickNextEvent()` — chamado pelo `setInterval` a cada 1s:
+**Objetivo:** implementar as funções de abertura/fechamento do banner e o tick de
+1s que controla a lógica de exibição baseada no tempo.
+
+**3.1** Implementar `abrirBannerEvento(countdown)`:
+
+```js
+function abrirBannerEvento(countdown) {
+  if (!_nextEvent) return;
+  document.getElementById('nextEvtName').textContent      = _nextEvent.name || '—';
+  document.getElementById('nextEvtType').textContent      = _nextEvtTipo(_nextEvent);
+  document.getElementById('nextEvtCountdown').textContent = countdown;
+  document.getElementById('nextEvtBanner').classList.add('visible');
+}
+```
+
+**3.2** Implementar `fecharBannerEvento()`:
+
+```js
+function fecharBannerEvento() {
+  document.getElementById('nextEvtBanner').classList.remove('visible');
+}
+```
+
+**3.3** Implementar `tickNextEvent()` — chamado a cada 1s:
 
 ```js
 function tickNextEvent() {
@@ -351,7 +338,6 @@ function tickNextEvent() {
   }
 
   if (delta < 5 * 60 * 1000) {
-    // Formata HH:MM:SS
     const totalSec = Math.floor(delta / 1000);
     const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
     const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
@@ -363,58 +349,96 @@ function tickNextEvent() {
 }
 ```
 
-**3.2** Iniciar o timer após o primeiro fetch:
+**3.4** Implementar `initSchedule()` e conectar à inicialização da página:
 
 ```js
 async function initSchedule() {
   await fetchNextScheduledEvent();
   if (_nextEvtTimer) clearInterval(_nextEvtTimer);
   _nextEvtTimer = setInterval(tickNextEvent, 1000);
-  // Polling de segurança
-  setInterval(fetchNextScheduledEvent, 60_000);
 }
 ```
 
-Chamar `initSchedule()` na inicialização da página, após `connect()`.
+Chamar `initSchedule()` após `connect()` na inicialização da página.
 
-**Entrega:** banner desce 5 minutos antes do evento e retrai ao atingir zero.
+**Entrega:** banner desce automaticamente quando o próximo evento está a menos de
+5 minutos e retrai ao countdown zerar. Countdown atualiza a cada segundo.
 
 ---
 
-### Fase 4 — Atualização reativa via WebSocket
+### Fase 4 — Reatividade via WebSocket
 
-**4.1** Em `handleEvent(evt)`, adicionar os novos cases:
+**Objetivo:** reagir em tempo real às mudanças na grade horária publicadas
+pelo engine via WebSocket.
+
+**4.1** Adicionar os novos `case` em `handleEvent(evt)`:
 
 ```js
 case 'ScheduleEntryFired':
   fecharBannerEvento();
-  await fetchNextScheduledEvent();
-  break;
-
-case 'ScheduleEntryMissed':
-  showToast(false, 'Evento pulado: ' + (evt.payload.entry_name || ''));
-  await fetchNextScheduledEvent();
+  fetchNextScheduledEvent();
   break;
 
 case 'ScheduleEntryAdded':
 case 'ScheduleEntryRemoved':
 case 'ScheduleEntryUpdated':
-  await fetchNextScheduledEvent();
+  fetchNextScheduledEvent();
   break;
 ```
 
-**4.2** Chamar `initSchedule()` dentro de `onSnapshot(p)` (ao reconectar,
-reinicia o monitoramento com estado fresco).
+**4.2** Chamar `initSchedule()` dentro de `onSnapshot(p)` para garantir que,
+ao reconectar após queda do WebSocket, o monitoramento reinicia com estado fresco.
 
-**Entrega:** banner reage em tempo real a qualquer mudança na grade ou disparo.
+**Entrega:** banner fecha imediatamente ao receber `ScheduleEntryFired`. Ao
+adicionar, remover ou alterar entradas via API, o próximo evento exibido
+atualiza sem intervenção do operador.
+
+---
+
+### Fase 5 — Robustez: polling, reconexão e eventos perdidos
+
+**Objetivo:** garantir consistência mesmo sob backpressure e perda de eventos
+WebSocket; notificar o operador quando um evento é pulado.
+
+**5.1** Adicionar o case `ScheduleEntryMissed` em `handleEvent(evt)`:
+
+```js
+case 'ScheduleEntryMissed':
+  showToast(false, 'Evento pulado: ' + (evt.payload.entry_name || ''));
+  fetchNextScheduledEvent();
+  break;
+```
+
+**5.2** Adicionar o polling de segurança dentro de `initSchedule()`:
+
+```js
+async function initSchedule() {
+  await fetchNextScheduledEvent();
+  if (_nextEvtTimer) clearInterval(_nextEvtTimer);
+  _nextEvtTimer = setInterval(tickNextEvent, 1000);
+  setInterval(fetchNextScheduledEvent, 60_000);   // ← polling de segurança
+}
+```
+
+**5.3** Verificar que `tickNextEvent()` com `delta <= 0` fecha o banner e re-busca
+a lista mesmo sem receber `ScheduleEntryFired` — garante que o banner nunca fique
+preso com countdown negativo.
+
+**Entrega:** sistema robusto sob condições adversas — events perdidos, reconexões,
+eventos pulados por `SKIP_IF_BUSY` ou `PANIC`. Operador vê toast quando evento
+não dispara.
 
 ---
 
 ## Resumo de arquivos modificados
 
-| Arquivo | Mudanças |
-|---|---|
-| `player/player.html` | HTML: `#nextEvtBanner` antes do `assist-banner`; CSS: `.next-evt-banner`, transição `max-height`; JS: `fetchNextScheduledEvent()`, `abrirBannerEvento()`, `fecharBannerEvento()`, `tickNextEvent()`, `initSchedule()`, cases em `handleEvent()`, chamada em `onSnapshot()` |
+| Arquivo | Fase | Mudanças |
+|---|---|---|
+| `player/player.html` | 1 | HTML: `#nextEvtBanner`; CSS: `.next-evt-banner` + transição |
+| `player/player.html` | 2 | JS: `_nextEvent`, `_nextEvtTimer`, `fetchNextScheduledEvent()`, `_nextEvtTipo()` |
+| `player/player.html` | 3 | JS: `abrirBannerEvento()`, `fecharBannerEvento()`, `tickNextEvent()`, `initSchedule()` |
+| `player/player.html` | 4 | JS: cases `ScheduleEntryFired/Added/Removed/Updated` em `handleEvent()`; `initSchedule()` em `onSnapshot()` |
+| `player/player.html` | 5 | JS: case `ScheduleEntryMissed` + toast; polling 60s em `initSchedule()` |
 
 Nenhum arquivo novo. Nenhuma dependência nova. Nenhuma mudança no Playout Engine.
 
@@ -424,80 +448,89 @@ Nenhum arquivo novo. Nenhuma dependência nova. Nenhuma mudança no Playout Engi
 
 ### 1. Scheduler não configurado ou desabilitado
 
-**Risco:** `GET /v1/schedule` retorna `404` ou lista vazia quando o scheduler está
-desabilitado (`scheduler.enabled: false` no YAML do engine).
+**Risco:** `GET /v1/schedule` retorna `404` ou lista vazia.
 
-**Mitigação:** qualquer erro HTTP ou `_nextEvent = null` mantém o banner oculto
-silenciosamente. O operador não vê erro.
+**Mitigação:** `fetchNextScheduledEvent()` seta `_nextEvent = null` em qualquer
+erro ou lista vazia. `tickNextEvent()` chama `fecharBannerEvento()` — banner
+permanece oculto silenciosamente.
 
 ---
 
 ### 2. Eventos WebSocket descartados sob backpressure
 
-**Risco:** `ScheduleEntryFired` é evento de baixa prioridade e pode ser descartado
-pelo engine sob carga. Se o evento não chegar, o banner continuaria exibindo o
-countdown mesmo após o evento disparar.
+**Risco:** `ScheduleEntryFired` é de baixa prioridade e pode ser descartado.
+Banner ficaria exibindo countdown após o evento disparar.
 
-**Mitigação:** `tickNextEvent()` detecta `delta <= 0` e retrai o banner + re-busca
-a lista. No pior caso o banner fecha sozinho quando o countdown zera, sem depender
-do WebSocket.
+**Mitigação:** `tickNextEvent()` detecta `delta <= 0` e fecha o banner + re-busca.
+Polling de 60s garante consistência adicional. No pior caso, o banner fecha quando
+o countdown natural zera.
 
 ---
 
 ### 3. Diferença de relógio entre cliente e servidor
 
-**Risco:** se o relógio do computador do operador estiver adiantado ou atrasado em
-relação ao servidor do engine, o banner pode abrir cedo ou tarde demais, e o
-countdown pode exibir valor impreciso.
+**Risco:** relógio do operador adiantado/atrasado → banner abre cedo/tarde demais.
 
-**Mitigação:** aceitar como limitação nesta fase. Em geral, os dois sistemas
-estarão sincronizados via NTP. Mitigação futura: incluir `server_time` no
-`StateSnapshot` para calcular o offset de clock.
+**Mitigação:** aceitar como limitação nesta fase. Sistemas sincronizados via NTP
+em produção. Mitigação futura: usar `server_time` do `StateSnapshot` para calcular
+offset de clock.
 
 ---
 
-### 4. Entradas `fire_at` sem `next_fire_at` após disparo
+### 4. Entradas `fire_at` já disparadas
 
-**Risco:** entradas do tipo `fire_at` são auto-desabilitadas após disparar. Se o
-cliente buscar a lista com delay, pode tentar exibir um evento já ocorrido.
+**Risco:** cliente busca a lista com delay e tenta exibir evento já ocorrido.
 
-**Mitigação:** o filtro `new Date(e.next_fire_at).getTime() > now` descarta
-automaticamente entradas no passado. O `tickNextEvent()` com `delta <= 0` fecha
-o banner imediatamente.
-
----
-
-### 5. `SKIP_IF_BUSY` — countdown zera mas evento não disparou
-
-**Risco:** o countdown chega a zero, o evento era `SKIP_IF_BUSY` e o engine estava
-ocupado. O evento não disparou, mas o banner fecha como se tivesse disparado.
-
-**Mitigação:** ao receber `ScheduleEntryMissed` via WebSocket, exibir toast de
-aviso: `"Evento pulado: <nome>"`. O banner fecha normalmente (comportamento
-esperado — o evento passou, pulado ou não).
+**Mitigação:** filtro `new Date(e.next_fire_at).getTime() > now` descarta entradas
+no passado independentemente do campo `enabled`. `tickNextEvent()` com `delta <= 0`
+fecha imediatamente.
 
 ---
 
-### 6. Animação travada (banner não fecha)
+### 5. `SKIP_IF_BUSY` — evento não dispara mas countdown zera
 
-**Risco:** a transição CSS em `max-height` pode não funcionar se o valor final
-for `auto` — CSS não sabe interpolar de um valor fixo para `auto`.
+**Risco:** operador vê banner fechar sem o evento ter acontecido de fato.
 
-**Mitigação:** o plano usa `max-height: 80px` (valor fixo) no estado `.visible`,
-garantindo que a transição funcione corretamente. O banner tem altura real menor
-que 80px, então nunca é cortado.
+**Mitigação:** `ScheduleEntryMissed` via WebSocket dispara toast `"Evento pulado: <nome>"`.
+O banner fecha normalmente — o evento passou, pulado ou não.
+
+---
+
+### 6. Animação CSS travada (transição não funciona)
+
+**Risco:** `max-height: auto` não pode ser interpolado por CSS — transição não anima.
+
+**Mitigação:** o plano usa `max-height: 80px` (valor fixo e suficiente), garantindo
+interpolação correta. O conteúdo real do banner é menor que 80px, sem risco de corte.
 
 ---
 
 ## Checklist de validação
 
-- [ ] Banner permanece oculto quando o próximo evento está a mais de 5 minutos
-- [ ] Banner desce suavemente quando faltam exatamente 5 minutos
-- [ ] Countdown exibe formato `HH:MM:SS` e atualiza a cada segundo
-- [ ] Banner retrai suavemente ao receber `ScheduleEntryFired`
-- [ ] Banner retrai quando `delta <= 0` mesmo sem evento WebSocket
-- [ ] Toast de aviso aparece quando `ScheduleEntryMissed` é recebido
-- [ ] Dois banners podem coexistir: âmbar (próximo evento) + roxo (assist-banner)
-- [ ] Ao reconectar o WebSocket, o banner reflete o estado atual
-- [ ] Polling de 60s mantém consistência mesmo com eventos WebSocket perdidos
-- [ ] Scheduler desabilitado/ausente não causa erro visual — banner simplesmente não aparece
+### Fase 1
+- [ ] Banner oculto por padrão (sem `.visible`)
+- [ ] Adicionar `.visible` no DevTools faz o banner descer com animação suave
+- [ ] Remover `.visible` no DevTools faz o banner subir com animação suave
+- [ ] Cores e layout correspondem ao mockup (fundo âmbar escuro, countdown laranja)
+
+### Fase 2
+- [ ] `fetchNextScheduledEvent()` no console popula `_nextEvent` com a entrada mais próxima
+- [ ] Lista vazia ou erro HTTP resulta em `_nextEvent = null`
+- [ ] `_nextEvtTipo()` retorna `BREAK`, `HORA_CERTA` ou `ITEM` corretamente
+
+### Fase 3
+- [ ] Banner desce automaticamente quando `delta < 5min`
+- [ ] Countdown exibe `HH:MM:SS` e decrementa a cada segundo
+- [ ] Banner retrai quando countdown atinge zero
+- [ ] `initSchedule()` inicializa corretamente após `connect()`
+
+### Fase 4
+- [ ] `ScheduleEntryFired` recebido via WebSocket fecha o banner imediatamente
+- [ ] Adicionar nova entrada via API atualiza o próximo evento exibido
+- [ ] Reconexão WebSocket reinicia o monitoramento via `onSnapshot()`
+
+### Fase 5
+- [ ] Toast `"Evento pulado: <nome>"` aparece ao receber `ScheduleEntryMissed`
+- [ ] Polling de 60s mantém consistência mesmo com todos os eventos WebSocket perdidos
+- [ ] Banner nunca exibe countdown negativo
+- [ ] Dois banners coexistem corretamente: âmbar (próximo evento) acima de roxo (assist)
