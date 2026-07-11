@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" aria-labelledby="title desc" role="img">
+  <title id="title">Vinheta</title>
+  <desc id="desc">Ícone azul em outline representando vinheta de rádio</desc>
+  <g stroke="#25B7F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 26l14-6v24l-14-6v-12z"/>
+    <path d="M18 28h-5a5 5 0 0 0-5 5 5 5 0 0 0 5 5h5"/>
+    <path d="M36 24c3 2 5 5 5 9s-2 7-5 9"/>
+    <path d="M41 20c5 3 8 8 8 13s-3 10-8 13"/>
+    <path d="M48 12l2 4 4 2-4 2-2 4-2-4-4-2 4-2z"/>
+  </g>
+</svg>

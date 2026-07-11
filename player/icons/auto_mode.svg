@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     width="64"
+     height="64"
+     fill="none"
+     aria-labelledby="title desc"
+     role="img">
+  <title id="title">Operação automática do player</title>
+  <desc id="desc">Ícone azul em outline com fila de reprodução, engrenagem e play, representando operação automática do player</desc>
+
+  <g stroke="#25B7F2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- fila / playlist -->
+    <circle cx="11" cy="18" r="1.8"/>
+    <circle cx="11" cy="30" r="1.8"/>
+    <circle cx="11" cy="42" r="1.8"/>
+    <path d="M17 18h18"/>
+    <path d="M17 30h15"/>
+    <path d="M17 42h12"/>
+
+    <!-- play do player -->
+    <circle cx="45" cy="22" r="9"/>
+    <path d="M42 18l7 4-7 4z"/>
+
+    <!-- engrenagem simplificada -->
+    <circle cx="45" cy="45" r="6"/>
+    <path d="M45 34v3"/>
+    <path d="M45 53v3"/>
+    <path d="M34 45h3"/>
+    <path d="M53 45h3"/>
+    <path d="M37.8 37.8l2.2 2.2"/>
+    <path d="M50 50l2.2 2.2"/>
+    <path d="M52.2 37.8L50 40"/>
+    <path d="M40 50l-2.2 2.2"/>
+  </g>
+</svg>
