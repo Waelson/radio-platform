@@ -816,37 +816,37 @@ input[type=range].vol-slider:disabled {
 /* ── Advanced Search Modal ─────────────────────────────────────────────── */
 .adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
 .adv-backdrop.open { display: block; }
-.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 860px; height: 620px; background: var(--bg); border: 0.5px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: 0 0 32px rgba(32,230,255,0.07), 0 0 8px rgba(32,230,255,0.04); overflow: hidden; }
+.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1060px; height: 720px; background: var(--bg); border: 0.5px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: none; overflow: hidden; }
 .adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(32,230,255,0.15); background: rgba(32,230,255,0.05); flex-shrink: 0; cursor: move; user-select: none; }
 .adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
 .catalog-modal-title { font-size: 16px; font-weight: 700; color: #20e6ff; text-transform: uppercase; letter-spacing: 0.01em; }
-.adv-modal-close { background: none; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1; }
+.adv-modal-close { background: none; border: none; color: #ffffff; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1; }
 .adv-modal-close:hover { background: #1e1e1e; color: var(--text); }
 .adv-filters { padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .adv-filters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
 .adv-filter-group { display: flex; flex-direction: column; gap: 4px; }
-.adv-filter-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #ffffff; }
+.adv-filter-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #ffffff; }
 .adv-filter-input { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 4px; font-size: 15px; outline: none; }
 .adv-filter-input:focus { border-color: var(--cyan); }
-.adv-filter-input::placeholder { color: var(--text-dim); font-size: 14px; }
+.adv-filter-input::placeholder { color: var(--text-dim); font-size: 15px; }
 .adv-filter-select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 4px; font-size: 15px; outline: none; width: 100%; }
 .adv-filter-select:focus { border-color: var(--cyan); }
 .adv-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-.adv-btn-search { background: var(--cyan); color: #000; border: none; padding: 8px 20px; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; }
-.adv-btn-search:hover { opacity: 0.85; }
-.adv-btn-clear { background: none; border: 1px solid var(--border); color: var(--text-dim); padding: 8px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; }
-.adv-btn-clear:hover { color: var(--text); border-color: var(--text-dim); }
+.adv-btn-search { background: #123b40; color: #bdfcff; border: 1px solid rgba(43,216,222,0.55); padding: 8px 20px; border-radius: 7px; font-size: 15px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: background-color 0.14s, border-color 0.14s; }
+.adv-btn-search:hover { background: #174b51; border-color: rgba(43,216,222,0.8); }
+.adv-btn-clear { background: none; border: 1px solid #ffffff; color: #ffffff; padding: 8px 14px; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+.adv-btn-clear:hover { background: rgba(255,255,255,0.08); }
 .adv-results-header { padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 13px; color: #ffffff; flex-shrink: 0; }
 .adv-results-header span { color: var(--cyan); font-weight: 600; }
 .adv-results { flex: 1; overflow-y: auto; min-height: 0; }
-.adv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.adv-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
 .adv-table th { padding: 7px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #ffffff; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); }
 .adv-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
 .adv-table tbody tr:hover td { background: rgba(255,255,255,0.03); cursor: pointer; }
 .adv-td-title { font-size: 16px; font-weight: 700; color: #e8fbfb; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adv-td-artist, .adv-td-album { font-size: 12px; font-weight: 600; color: var(--text-dim); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adv-td-dur { font-size: 15px; font-weight: 800; font-family: 'Courier New', monospace; color: #d5fbf9; white-space: nowrap; }
-.adv-type-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.adv-td-artist, .adv-td-album { font-size: 16px; font-weight: 700; color: #e8fbfb; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adv-td-dur { font-size: 16px; font-weight: 700; color: #e8fbfb; white-space: nowrap; }
+.adv-type-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .adv-type-badge.music    { background: rgba(0,188,212,0.15); color: var(--cyan); }
 .adv-type-badge.vinheta  { background: rgba(156,39,176,0.2); color: #ce93d8; }
 .adv-type-badge.jingle   { background: rgba(76,175,80,0.2); color: #a5d6a7; }
@@ -918,7 +918,7 @@ input[type=range].vol-slider:disabled {
 .ctx-menu-sep { height: 1px; background: rgba(45,216,255,0.10); margin: 4px 0; }
 
 .adv-pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
-.adv-pagination button { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.adv-pagination button { background: var(--bg3); border: 1px solid #ffffff; color: #ffffff; padding: 5px 12px; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
 .adv-pagination button:hover:not(:disabled) { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-pagination button:disabled { opacity: 0.3; cursor: default; }
 .adv-pagination-info { font-size: 13px; color: #ffffff; }
@@ -940,34 +940,35 @@ input[type=range].vol-slider:disabled {
 .lib-cue-btn.active { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
 .lib-cue-btn.active img { opacity: 1; }
 .lib-preview-panel {
-  background: #241a3a; border-bottom: 2px solid #7a4dff;
-  padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+  background: #0f2025; border-top: 1px solid #20e6ff; border-bottom: 2px solid #20e6ff;
+  padding: 17px 14px; display: flex; align-items: center; gap: 10px;
 }
 .lib-preview-label {
-  font-size: 11px; color: var(--text-dim); white-space: nowrap;
+  font-size: 12px; color: #ffffff; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; max-width: 150px; flex-shrink: 0;
 }
 .lib-preview-controls { display: flex; gap: 5px; flex-shrink: 0; }
+.lib-prev-divider { width: 1px; align-self: stretch; background: rgba(43,216,222,0.25); flex-shrink: 0; margin: 0 2px; }
 .lib-prev-btn {
-  background: #1a1228; border: 1px solid #7a4dff; color: #9b5cff;
+  background: #20e6ff; border: 1px solid #20e6ff; color: #000;
   width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-size: 13px;
   display: flex; align-items: center; justify-content: center;
-  transition: background 0.12s; padding: 0;
+  transition: background 0.12s, border-color 0.12s; padding: 0;
 }
-.lib-prev-btn:hover:not(:disabled) { background: #7a4dff; color: #fff; }
+.lib-prev-btn:hover:not(:disabled) { background: #bdfcff; border-color: #bdfcff; color: #000; }
 .lib-prev-btn:disabled { opacity: 0.28; cursor: default; }
-.lib-prev-progress { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 60px; }
+.lib-prev-progress { flex: 1; display: flex; flex-direction: row; align-items: center; gap: 8px; min-width: 60px; }
 .lib-prev-track {
-  height: 6px; background: #1a1228; border-radius: 3px;
-  position: relative; cursor: pointer; border: 1px solid #2a1a3a;
+  flex: 1; height: 10px; background: #1a3a42; border-radius: 5px;
+  position: relative; cursor: pointer; border: 1px solid rgba(43,216,222,0.30);
 }
-.lib-prev-fill { height: 100%; background: #7a4dff; border-radius: 3px; pointer-events: none; transition: width 0.1s linear; position: relative; }
-.lib-prev-thumb { position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; background: #fff; border-radius: 50%; box-shadow: 0 0 3px rgba(0,0,0,0.5); pointer-events: none; }
-.lib-prev-time { font-family: 'Courier New', monospace; font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between; }
+.lib-prev-fill { height: 100%; background: #20e6ff; border-radius: 5px; pointer-events: none; transition: width 0.1s linear; position: relative; }
+.lib-prev-thumb { position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; background: #ffffff; border-radius: 50%; box-shadow: 0 0 4px rgba(32,230,255,0.6); pointer-events: none; }
+.lib-prev-time-pos, .lib-prev-time-dur { font-size: 11px; color: #ffffff; white-space: nowrap; flex-shrink: 0; }
 .adv-prev-vol { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.adv-prev-vol-label { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
-.adv-prev-vol input[type=range] { width: 80px; accent-color: #7a4dff; cursor: pointer; }
-.adv-prev-vol-pct { font-size: 10px; color: var(--text-dim); font-family: 'Courier New', monospace; min-width: 30px; }
+.adv-prev-vol-label { font-size: 11px; color: #ffffff; white-space: nowrap; }
+.adv-prev-vol input[type=range] { width: 80px; accent-color: #20e6ff; cursor: pointer; }
+.adv-prev-vol-pct { font-size: 11px; color: #ffffff; min-width: 30px; }
 .lib-status { padding: 16px 12px; font-size: 11px; color: var(--text-dim); text-align: center; }
 
 
@@ -3447,11 +3448,7 @@ function _renderPreviewPanel() {
     pos.textContent  = msToTime(s.positionMS);
     dur.textContent  = s.durationMS > 0 ? msToTime(s.durationMS) : '--:--';
 
-    // When preview stops, clear row highlight but keep panel open
-    if (s.state === 'idle' && typeof _advPreviewIdx !== 'undefined' && _advPreviewIdx >= 0) {
-      document.querySelectorAll('.adv-table tbody tr').forEach(r => r.classList.remove('adv-row--previewing'));
-      document.querySelectorAll('[id^="adv-cue-"]').forEach(b => b.classList.remove('active'));
-    }
+    // When preview stops naturally, keep row highlight and CUE button active (panel stays open)
   }
 
   // Always update CUE float panel (used when preview is triggered from queue)
@@ -4313,6 +4310,14 @@ function advRender() {
   }).join('');
 
   resultsEl.innerHTML = `<table class="adv-table">
+    <colgroup>
+      <col style="width:28%">
+      <col style="width:20%">
+      <col style="width:20%">
+      <col style="width:10%">
+      <col style="width:8%">
+      <col style="width:14%">
+    </colgroup>
     <thead><tr>
       <th>Título</th><th>Artista</th><th>Álbum</th><th>Tipo</th><th>Duração</th><th>Ações</th>
     </tr></thead>
@@ -4401,15 +4406,15 @@ function _advOpenPreviewPanel(idx) {
           <button class="lib-prev-btn" id="libPrevPause"  title="Pausar" onclick="previewPause()" disabled>⏸</button>
           <button class="lib-prev-btn" id="libPrevStop"   title="Stop"   onclick="previewStop()" disabled>■</button>
         </div>
+        <div class="lib-prev-divider"></div>
         <div class="lib-prev-progress">
+          <span class="lib-prev-time-pos" id="libPrevPos">0:00</span>
           <div class="lib-prev-track" id="libPrevTrack" onclick="previewSeekClick(event)">
             <div class="lib-prev-fill" id="libPrevFill" style="width:0%"><div class="lib-prev-thumb"></div></div>
           </div>
-          <div class="lib-prev-time">
-            <span id="libPrevPos">0:00</span>
-            <span id="libPrevDur">${dur}</span>
-          </div>
+          <span class="lib-prev-time-dur" id="libPrevDur">${dur}</span>
         </div>
+        <div class="lib-prev-divider"></div>
         <div class="adv-prev-vol">
           <span class="adv-prev-vol-label">Vol CUE</span>
           <input type="range" id="advPrevVol" min="0" max="100" step="1"
@@ -4432,12 +4437,16 @@ function _advClosePreviewPanel() {
   _advUpdatePreviewHighlight(-1);
 }
 
-function advTogglePreview(idx) {
+async function advTogglePreview(idx) {
   if (_advPreviewIdx === idx) {
     // Same row — stop and close panel
     _advClosePreviewPanel();
-    previewStop();
+    await previewStop();
     return;
+  }
+  // Stop any running preview before opening the new panel
+  if (_preview.state !== 'idle') {
+    await previewStop();
   }
   _advOpenPreviewPanel(idx);
 }
