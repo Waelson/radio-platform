@@ -16,6 +16,9 @@ var migration001 string
 //go:embed migrations/003_hotkeys.sql
 var migration003 string
 
+//go:embed migrations/004_clock_rotation.sql
+var migration004 string
+
 // Open opens (or creates) the SQLite database at path, applies required PRAGMAs,
 // runs migrations and returns a ready-to-use *sql.DB.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
@@ -90,6 +93,17 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("003_hotkeys: %w", err)
 		}
 		if err := markMigration(ctx, db, "003_hotkeys"); err != nil {
+			return err
+		}
+	}
+
+	// 004_clock_rotation: categories, clocks, clock_slots, clock_schedule,
+	// separation_rules, rotation_log tables.
+	if !migrationDone(ctx, db, "004_clock_rotation") {
+		if _, err := db.ExecContext(ctx, migration004); err != nil {
+			return fmt.Errorf("004_clock_rotation: %w", err)
+		}
+		if err := markMigration(ctx, db, "004_clock_rotation"); err != nil {
 			return err
 		}
 	}
