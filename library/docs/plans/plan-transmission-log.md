@@ -590,6 +590,7 @@ O `fileimporter` é uma goroutine do Library Service que:
 4. Lê e parseia cada linha JSONL.
 5. Insere em lote no SQLite (transação única por arquivo) — sem consultas adicionais.
 6. Move o arquivo para o subdiretório `processados/` após confirmação do COMMIT.
+7. Ao final de cada ciclo, exclui de `processados/` arquivos com `mtime` anterior a `retention_days`.
 
 > O importer é totalmente independente: não consulta `tracks`, não faz JOINs.
 > Todos os campos necessários (incluindo `isrc`, `composer`, `publisher`) chegam
@@ -669,6 +670,51 @@ Sem perda, sem duplicata.
 **Arquivo já em `processados/`:** o importer varre apenas a raiz do diretório.
 Arquivos em `processados/` nunca são reprocessados — servem como histórico auditável.
 
+### Limpeza automática de arquivos processados
+
+Ao final de cada ciclo de poll, o importer executa uma varredura em `processados/`
+e exclui os arquivos cujo `mtime` é anterior ao limite de retenção:
+
+```go
+func (imp *Importer) purgeProcessed(now time.Time) {
+    retention := imp.cfg.RetentionDaysOrDefault() // mínimo 7
+    cutoff    := now.AddDate(0, 0, -retention)
+
+    entries, err := os.ReadDir(filepath.Join(imp.cfg.Dir, "processados"))
+    if err != nil {
+        return // diretório pode não existir ainda; silencioso
+    }
+    for _, e := range entries {
+        if e.IsDir() {
+            continue
+        }
+        info, err := e.Info()
+        if err != nil {
+            continue
+        }
+        if info.ModTime().Before(cutoff) {
+            path := filepath.Join(imp.cfg.Dir, "processados", e.Name())
+            if err := os.Remove(path); err != nil {
+                imp.log.Warn("transmissionlog: purge failed", "file", e.Name(), "err", err)
+            } else {
+                imp.log.Info("transmissionlog: purged processed file", "file", e.Name())
+            }
+        }
+    }
+}
+```
+
+**Regras de retenção:**
+
+| Configuração | Comportamento |
+|---|---|
+| `retention_days` não informado | Assume `30` dias |
+| `retention_days < 7` | Elevado silenciosamente para `7` (mínimo absoluto) |
+| `retention_days >= 7` | Aplicado como configurado |
+
+O mínimo de 7 dias garante que arquivos recentes não sejam excluídos antes de uma
+eventual auditoria ou reimportação manual em caso de incidente.
+
 ### Interface do importer
 
 ```go
@@ -683,6 +729,7 @@ type Config struct {
     FileNameTemplate string        // mesmo template do Engine; ex: "transmission_{date}_{hour}.jsonl"
     PollInterval     time.Duration // default: 5min
     GracePeriod      time.Duration // default: 15min
+    RetentionDays    int           // mínimo 7; arquivos em processados/ mais antigos são excluídos
 }
 
 // New não recebe TrackQuerier — o importer não consulta outras tabelas.
@@ -740,6 +787,16 @@ type TransmissionLogConfig struct {
     FileNameTemplate string        `yaml:"file_name_template"` // deve ser idêntico ao do Engine
     PollInterval     time.Duration `yaml:"poll_interval"`      // default: 5min
     GracePeriod      time.Duration `yaml:"grace_period"`       // default: 15min
+    RetentionDays    int           `yaml:"retention_days"`     // mínimo 7; default: 30
+}
+
+// RetentionDaysOrDefault retorna o valor configurado ou o mínimo aceitável.
+// Valores abaixo de 7 são silenciosamente elevados para 7.
+func (c TransmissionLogConfig) RetentionDaysOrDefault() int {
+    if c.RetentionDays < 7 {
+        return 7
+    }
+    return c.RetentionDays
 }
 
 type StationConfig struct {
@@ -759,6 +816,7 @@ transmission_log:
   file_name_template: "transmission_{date}_{hour}.jsonl"  # deve ser idêntico ao do Engine
   poll_interval: 5m
   grace_period: 15m
+  retention_days: 30   # mínimo permitido: 7 dias; valores menores são ignorados e substituídos por 7
 
 station:
   name: "Rádio Exemplo FM"
@@ -1064,10 +1122,13 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
    - BulkInsert + `os.Rename` para `processados/` (somente após COMMIT)
 2. Iniciar importer em `main.go` (condicional a `cfg.TransmissionLog.Dir != ""`)
 3. Testes:
-   - Simular arquivos JSONL em `t.TempDir()` → verificar importação e deleção
+   - Simular arquivos JSONL em `t.TempDir()` → verificar importação e move para `processados/`
    - Grace period: arquivo com `mtime` recente → não importado
    - Idempotência: re-importar mesmo arquivo → zero duplicatas
-   - Crash simulado (arquivo não deletado) → reimportação limpa
+   - Crash simulado (arquivo não movido) → reimportação limpa
+   - Limpeza: arquivo em `processados/` com `mtime` anterior ao cutoff → excluído
+   - Limpeza: arquivo em `processados/` dentro do período de retenção → preservado
+   - `retention_days < 7` → elevado para 7 automaticamente
 
 ### Fase 5 — API e Rotas (Library Service)
 
