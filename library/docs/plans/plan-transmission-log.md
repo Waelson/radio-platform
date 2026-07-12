@@ -60,10 +60,10 @@ persiste no SQLite e os exclui após confirmação da importação.
 ```
 [Playout Engine]
   ↓ append JSONL
-[filesystem: {log_dir}/YYYY-MM-DD/{file_name_template}]
+[filesystem: {log_dir}/{file_name_template}]     ← todos os arquivos na raiz
   ↓ (leitura periódica — goroutine importador)
 [Library Service — file importer]
-  ↓ INSERT em lote
+  ↓ INSERT em lote + move para {log_dir}/processados/
 [SQLite — transmission_log]
   ↓ API REST
 [Player UI]
@@ -229,7 +229,7 @@ GET /v1/transmission-log/export/ecad?from=2026-07-01&to=2026-07-31
 [os.OpenFile(O_APPEND) + json.Marshal + f.Write + f.Sync()]
         │
         ↓
-[filesystem: {log_dir}/YYYY-MM-DD/{file_name_template}]
+[filesystem: {log_dir}/{file_name_template}]
         │
         │  Library Service — fileimporter goroutine (poll a cada 5min)
         ↓
@@ -354,8 +354,8 @@ func (w *Writer) Run(ctx context.Context) error {
 
     var (
         curFile *os.File
-        curDay  string
         curHour = -1
+        curDay  string
     )
 
     closeFile := func() {
@@ -369,18 +369,14 @@ func (w *Writer) Run(ctx context.Context) error {
     defer closeFile()
 
     writeEntry := func(entry LogEntry) {
-        day  := entry.FinishedAt.UTC().Format("2006-01-02")
-        hour := entry.FinishedAt.UTC().Hour()
+        t    := entry.FinishedAt.UTC()
+        day  := t.Format("20060102") // yyyyMMdd
+        hour := t.Hour()
 
         if curFile == nil || day != curDay || hour != curHour {
             closeFile()
-            dir := filepath.Join(w.dir, day)
-            if err := os.MkdirAll(dir, 0o755); err != nil {
-                w.log.Error("transmissionlog: mkdir failed", "err", err)
-                return
-            }
             name := buildFileName(w.cfg.FileNameTemplate, day, hour)
-            path := filepath.Join(dir, name)
+            path := filepath.Join(w.dir, name)
             f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
             if err != nil {
                 w.log.Error("transmissionlog: open failed", "path", path, "err", err)
@@ -550,22 +546,26 @@ transmission_log:
 ```
 
 O template suporta dois placeholders:
-- `{date}` — substituído por `YYYY-MM-DD` (UTC)
+- `{date}` — substituído por `yyyyMMdd` (ex: `20260720`, UTC)
 - `{hour}` — substituído por `HH` zero-preenchido (UTC)
 
-Exemplo com o template padrão:
+Todos os arquivos são gerados na **raiz** do diretório configurado — sem subdivisão
+por data. Após importação pelo Library Service, o arquivo é movido para o subdiretório
+`processados/` (criado automaticamente se não existir).
+
+Estrutura de diretório em operação:
 ```
 /var/radioflow/transmission-logs/
-  2026-07-20/
-    transmission_2026-07-20_08.jsonl
-    transmission_2026-07-20_09.jsonl
-  2026-07-21/
-    transmission_2026-07-21_00.jsonl
+  transmission_20260720_08.jsonl   ← aguardando importação
+  transmission_20260720_09.jsonl   ← aguardando importação
+  processados/
+    transmission_20260719_22.jsonl  ← já importado
+    transmission_20260720_07.jsonl  ← já importado
 ```
 
 ```go
 // buildFileName substitui os placeholders {date} e {hour} no template.
-// Ex: "transmission_{date}_{hour}.jsonl" → "transmission_2026-07-20_08.jsonl"
+// Ex: "transmission_{date}_{hour}.jsonl" → "transmission_20260720_08.jsonl"
 func buildFileName(template, date string, hour int) string {
     s := strings.ReplaceAll(template, "{date}", date)
     s  = strings.ReplaceAll(s, "{hour}", fmt.Sprintf("%02d", hour))
@@ -584,12 +584,12 @@ Sem config → sem goroutine → zero impacto no Engine.
 
 O `fileimporter` é uma goroutine do Library Service que:
 
-1. Escaneia periodicamente o diretório de logs.
-2. Identifica arquivos seguros para importação (fora do grace period).
-3. Lê e parseia cada linha JSONL.
-4. Insere em lote no SQLite (transação única por arquivo) — sem consultas adicionais.
-5. Deleta o arquivo após confirmação do COMMIT.
-6. Remove diretórios de dia vazios.
+1. Escaneia periodicamente a **raiz** do diretório de logs.
+2. Filtra apenas arquivos cujo nome satisfaz o glob derivado do `file_name_template`.
+3. Identifica arquivos seguros para importação (fora do grace period).
+4. Lê e parseia cada linha JSONL.
+5. Insere em lote no SQLite (transação única por arquivo) — sem consultas adicionais.
+6. Move o arquivo para o subdiretório `processados/` após confirmação do COMMIT.
 
 > O importer é totalmente independente: não consulta `tracks`, não faz JOINs.
 > Todos os campos necessários (incluindo `isrc`, `composer`, `publisher`) chegam
@@ -606,6 +606,8 @@ qualquer outro arquivo no diretório é ignorado silenciosamente:
 ```go
 // buildGlob converte o template em um glob para filepath.Match.
 // "transmission_{date}_{hour}.jsonl" → "transmission_*_*.jsonl"
+// O importer usa esse glob para filtrar apenas arquivos da raiz do diretório;
+// o subdiretório "processados/" e qualquer outro arquivo são ignorados.
 func buildGlob(template string) string {
     s := strings.ReplaceAll(template, "{date}", "*")
     s  = strings.ReplaceAll(s, "{hour}", "*")
@@ -626,7 +628,8 @@ time.Since(fileInfo.ModTime()) >= grace_period
 - O `mtime` do arquivo reflete a última linha escrita (última faixa que terminou).
 - Se `mtime` está há 15 min no passado, nenhuma faixa em andamento pode ter
   `FinishedAt` nesse arquivo — pois o Engine só escreve após o término da faixa.
-- O Engine fecha e reabre o arquivo a cada mudança de hora (`curHour != hour`).
+- O Engine fecha e reabre o arquivo a cada mudança de dia ou hora (`curDay != day || curHour != hour`).
+- O importer varre apenas a raiz do diretório — o subdiretório `processados/` é ignorado.
   Após a rotação, o arquivo anterior não é mais tocado.
 
 ```go
@@ -646,21 +649,25 @@ Para cada arquivo JSONL elegível:
        INSERT OR IGNORE INTO transmission_log (...) VALUES (...)
        (conflito em queue_item_id → no-op, sem erro)
   5. COMMIT
-  6. Se COMMIT OK → os.Remove(arquivo)
-  7. Se COMMIT falhar → log error + deixar arquivo (retry no próximo ciclo)
-  8. Se os.Remove falhar → log warning (próxima importação: todos INSERT OR IGNORE = no-op)
-  9. Após processar todos os arquivos de um dia: se diretório vazio → os.Remove(dir)
+  6. Se COMMIT OK → os.MkdirAll(processados/) + os.Rename(arquivo → processados/arquivo)
+  7. Se COMMIT falhar → log error + deixar arquivo na raiz (retry no próximo ciclo)
+  8. Se os.Rename falhar → log warning (arquivo permanece na raiz; próxima importação:
+     INSERT OR IGNORE = no-op; nova tentativa de mover)
 ```
 
 Nenhuma consulta ao banco é feita durante a importação. Todos os campos já chegam
-completos no JSONL — o importer apenas lê, parseia e insere.
+completos no JSONL — o importer apenas lê, parseia, insere e move.
 
 **Idempotência:** `queue_item_id` tem constraint `UNIQUE` em `transmission_log`.
 Re-importar o mesmo arquivo não gera duplicatas — `INSERT OR IGNORE` é no-op para
 linhas já existentes.
 
-**Crash entre COMMIT e Remove:** arquivo permanece. Na próxima rodada, é reimportado
-com todos os INSERTs sendo no-ops. Arquivo é então deletado. Sem perda, sem duplicata.
+**Crash entre COMMIT e Rename:** arquivo permanece na raiz. Na próxima rodada, é
+reimportado com todos os INSERTs sendo no-ops e então movido para `processados/`.
+Sem perda, sem duplicata.
+
+**Arquivo já em `processados/`:** o importer varre apenas a raiz do diretório.
+Arquivos em `processados/` nunca são reprocessados — servem como histórico auditável.
 
 ### Interface do importer
 
@@ -1054,8 +1061,7 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 1. Implementar `library/internal/fileimporter/importer.go`
    - Poll periódico com `grace_period`
    - Leitura e parse de JSONL — sem consultas adicionais
-   - BulkInsert + `os.Remove` (somente após COMMIT)
-   - Remoção de diretórios de dia vazios
+   - BulkInsert + `os.Rename` para `processados/` (somente após COMMIT)
 2. Iniciar importer em `main.go` (condicional a `cfg.TransmissionLog.Dir != ""`)
 3. Testes:
    - Simular arquivos JSONL em `t.TempDir()` → verificar importação e deleção
