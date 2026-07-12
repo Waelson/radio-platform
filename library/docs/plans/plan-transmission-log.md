@@ -51,50 +51,7 @@ A URL do Playout Engine **não existe** ainda em `Config`. Será adicionada (se�
 
 ---
 
-## Análise comparativa de abordagens arquiteturais
-
-Duas abordagens foram consideradas para a coleta do log de transmissão.
-
----
-
-### Abordagem A — WebSocket Consumer no Library Service
-
-O Library Service abre uma conexão WebSocket com o Engine e processa os eventos
-em tempo real, persistindo diretamente no SQLite.
-
-```
-[Playout Engine]
-  ↓ WebSocket (eventos)
-[Library Service — logconsumer goroutine]
-  ↓ INSERT/UPDATE
-[SQLite — transmission_log]
-  ↓ API REST
-[Player UI]
-```
-
-#### Prós
-
-| # | Vantagem |
-|---|----------|
-| 1 | **Nenhuma mudança no Playout Engine** — os eventos já são emitidos. |
-| 2 | **Log em tempo real** — status `PLAYING` disponível imediatamente. |
-| 3 | **Um único componente novo** — apenas o consumer goroutine no Library Service. |
-| 4 | **Sem gestão de arquivos** — sem locking, sem exclusão, sem risco de arquivo corrompido. |
-| 5 | **Queries imediatas** — sem etapa de importação. |
-| 6 | **Coerente com a arquitetura** — o Engine permanece sem persistência. |
-
-#### Contras
-
-| # | Desvantagem |
-|---|-------------|
-| 1 | **Perda de dados se o Library Service estiver offline** — eventos perdidos irrecuperavelmente. |
-| 2 | **Janelas cegas difíceis de auditar** — para declaração ECAD, isso é problemático. |
-| 3 | **Restart do Engine durante queda do consumer** — entrada fica sem metadados. |
-| 4 | **Acoplamento de disponibilidade** — ambos precisam estar em operação. |
-
----
-
-### Abordagem B — Arquivos append-only no Playout Engine ✅ ESCOLHIDA
+## Abordagem arquitetural — Arquivos append-only no Playout Engine
 
 O Playout Engine escreve arquivos JSONL organizados por dia e hora no filesystem local.
 Um processo importador (goroutine no Library Service) lê os arquivos de horas passadas,
@@ -132,22 +89,9 @@ persiste no SQLite e os exclui após confirmação da importação.
 | 3 | **Processo importador adicional** — nova goroutine no Library Service. |
 | 4 | **Acesso compartilhado ao filesystem** — Engine e importer precisam enxergar o mesmo diretório. |
 
-### Comparativo resumido
-
-| Critério | Abordagem A (WebSocket) | Abordagem B (Arquivos) |
-|----------|:-----------------------:|:----------------------:|
-| Durabilidade (sem Library Service) | ❌ Perde dados | ✅ Preserva dados |
-| Conformidade ECAD (completude) | ⚠️ Depende de uptime | ✅ Garantida |
-| Mudança no Playout Engine | ✅ Nenhuma | ⚠️ Necessária |
-| Log em tempo real (status PLAYING) | ✅ Sim | ❌ Não |
-| Complexidade de implementação | ✅ Baixa | ⚠️ Média |
-| Coerência com arquitetura atual | ✅ Total | ⚠️ Flexibiliza regra |
-| Operação em hosts separados | ✅ Fácil | ⚠️ Requer filesystem compartilhado |
-| Auditabilidade do log bruto | ❌ Sem rastro externo | ✅ Arquivos JSONL |
-
-> **Decisão:** Abordagem B escolhida. Conformidade ECAD sem lacunas é requisito não
-> negociável. A flexibilização da regra de "sem persistência" no Engine é pontual e
-> isolada — o LogWriter não toca o pipeline de áudio.
+> **Decisão:** conformidade ECAD sem lacunas é requisito não negociável. A
+> flexibilização da regra de "sem persistência" no Engine é pontual e isolada —
+> o LogWriter não toca o pipeline de áudio.
 
 ---
 
