@@ -28,7 +28,7 @@ Os eventos relevantes e seus payloads são:
 
 | Evento | Payload relevante |
 |--------|-------------------|
-| `NowPlayingChanged` | `queue_item_id`, `asset_id`, `path`, `title`, `artist`, `type`, `duration_ms`, `break_id`, `break_title`, `break_position`, `break_total`, `break_role` |
+| `NowPlayingChanged` | `queue_item_id`, `asset_id`, `path`, `title`, `artist`, `type`, `duration_ms`, `isrc`, `composer`, `publisher`, `break_id`, `break_title`, `break_position`, `break_total`, `break_role` |
 | `ItemFinished` | `queue_item_id`, `asset_id`, `result`, `duration_played_ms` |
 | `CartStarted` | `cart_id`, `path`, `title`, `artist`, `duration_ms` |
 | `CartStopped` | `cart_id`, `reason` |
@@ -349,6 +349,10 @@ package transmissionlog
 // LogEntry é o registro gravado em cada linha do arquivo JSONL.
 // Uma entrada representa uma faixa completamente reproduzida (ou interrompida).
 // Escrita uma única vez, após o término da faixa (ItemFinished / CartStopped).
+//
+// isrc, composer e publisher são incluídos aqui porque chegam ao Engine via
+// payload do comando ENQUEUE e são propagados no NowPlayingChangedPayload.
+// O importer os grava diretamente no SQLite — sem consultas adicionais.
 type LogEntry struct {
     StartedAt        time.Time `json:"started_at"`
     FinishedAt       time.Time `json:"finished_at"`
@@ -360,6 +364,9 @@ type LogEntry struct {
     DurationMS       int64     `json:"duration_ms"`
     DurationPlayedMS int64     `json:"duration_played_ms"`
     Result           string    `json:"result"`              // finished|skipped|failed
+    ISRC             string    `json:"isrc,omitempty"`
+    Composer         string    `json:"composer,omitempty"`
+    Publisher        string    `json:"publisher,omitempty"`
     BreakID          string    `json:"break_id,omitempty"`
     BreakTitle       string    `json:"break_title,omitempty"`
     BreakRole        string    `json:"break_role,omitempty"` // open|spot|close
@@ -384,9 +391,11 @@ func New(dir string, bus *events.Bus, log *slog.Logger) *Writer {
 }
 ```
 
-> **Nota:** `isrc`, `composer` e `publisher` não estão no LogEntry porque o Playout
-> Engine não tem acesso ao banco do Library Service. Esses campos são enriquecidos
-> pelo importer no momento da importação (via JOIN com `tracks` pelo `asset_id`).
+> **Decisão de design:** o processo de importação é totalmente independente — sem
+> consultas de enriquecimento, sem JOINs entre tabelas. Para isso, `isrc`, `composer`
+> e `publisher` devem chegar ao Engine via payload do comando `ENQUEUE` e ser
+> propagados no `NowPlayingChangedPayload`. O LogWriter os captura em `NowPlayingChanged`
+> e os grava diretamente no JSONL. O importer insere sem nenhuma consulta adicional.
 
 ### Lógica do LogWriter.run()
 
@@ -607,10 +616,13 @@ O `fileimporter` é uma goroutine do Library Service que:
 1. Escaneia periodicamente o diretório de logs.
 2. Identifica arquivos seguros para importação (fora do grace period).
 3. Lê e parseia cada linha JSONL.
-4. Enriquece entradas com `isrc`, `composer`, `publisher` via JOIN com `tracks`.
-5. Insere em lote no SQLite (transação única por arquivo).
-6. Deleta o arquivo após confirmação do COMMIT.
-7. Remove diretórios de dia vazios.
+4. Insere em lote no SQLite (transação única por arquivo) — sem consultas adicionais.
+5. Deleta o arquivo após confirmação do COMMIT.
+6. Remove diretórios de dia vazios.
+
+> O importer é totalmente independente: não consulta `tracks`, não faz JOINs.
+> Todos os campos necessários (incluindo `isrc`, `composer`, `publisher`) chegam
+> prontos no JSONL, gerados pelo Engine a partir do payload do comando `ENQUEUE`.
 
 ### Grace period — a regra de segurança
 
@@ -644,17 +656,19 @@ func isEligible(fi os.FileInfo, now time.Time, grace time.Duration) bool {
 Para cada arquivo JSONL elegível:
   1. Abrir e ler todas as linhas (bufio.Scanner)
   2. Parsear cada linha como LogEntry (linhas malformadas → log warning + skip)
-  3. Para cada entrada: buscar isrc/composer/publisher em tracks pelo asset_id
-  4. Iniciar transação SQLite
-  5. Para cada entrada válida:
+  3. Iniciar transação SQLite
+  4. Para cada entrada válida:
        INSERT OR IGNORE INTO transmission_log (...) VALUES (...)
        (conflito em queue_item_id → no-op, sem erro)
-  6. COMMIT
-  7. Se COMMIT OK → os.Remove(arquivo)
-  8. Se COMMIT falhar → log error + deixar arquivo (retry no próximo ciclo)
-  9. Se os.Remove falhar → log warning (próxima importação: todos INSERT OR IGNORE = no-op)
- 10. Após processar todos os arquivos de um dia: se diretório vazio → os.Remove(dir)
+  5. COMMIT
+  6. Se COMMIT OK → os.Remove(arquivo)
+  7. Se COMMIT falhar → log error + deixar arquivo (retry no próximo ciclo)
+  8. Se os.Remove falhar → log warning (próxima importação: todos INSERT OR IGNORE = no-op)
+  9. Após processar todos os arquivos de um dia: se diretório vazio → os.Remove(dir)
 ```
+
+Nenhuma consulta ao banco é feita durante a importação. Todos os campos já chegam
+completos no JSONL — o importer apenas lê, parseia e insere.
 
 **Idempotência:** `queue_item_id` tem constraint `UNIQUE` em `transmission_log`.
 Re-importar o mesmo arquivo não gera duplicatas — `INSERT OR IGNORE` é no-op para
@@ -668,10 +682,6 @@ com todos os INSERTs sendo no-ops. Arquivo é então deletado. Sem perda, sem du
 ```go
 // library/internal/fileimporter/importer.go
 
-type TrackQuerier interface {
-    FindByID(ctx context.Context, id string) (store.Track, error)
-}
-
 type LogStore interface {
     BulkInsert(ctx context.Context, entries []store.TransmissionLogEntry) error
 }
@@ -682,7 +692,9 @@ type Config struct {
     GracePeriod  time.Duration // default: 15min
 }
 
-func New(cfg Config, tracks TrackQuerier, store LogStore, log *slog.Logger) *Importer
+// New não recebe TrackQuerier — o importer não consulta outras tabelas.
+// Todos os campos chegam completos no JSONL.
+func New(cfg Config, store LogStore, log *slog.Logger) *Importer
 func (imp *Importer) Run(ctx context.Context) error
 ```
 
@@ -1018,34 +1030,42 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 
 ## Fases de implementação
 
-### Fase 1 — LogWriter no Playout Engine
+### Fase 1 — Extensão do protocolo de enfileiramento (Player → Engine)
+
+1. Adicionar `isrc`, `composer`, `publisher` ao payload do comando `ENQUEUE` no Engine
+2. Adicionar `isrc`, `composer`, `publisher` ao `NowPlayingChangedPayload` em `events/types.go`
+3. Atualizar o Player para incluir esses campos ao enfileirar via `POST /v1/queue/enqueue`
+   (o Player já os lê do Library Service — basta incluí-los no body do ENQUEUE)
+
+### Fase 2 — LogWriter no Playout Engine
 
 1. Criar `playout/internal/transmissionlog/writer.go`
-   - `LogEntry` e `pendingEntry` structs
+   - `LogEntry` e `pendingEntry` structs (com `isrc`, `composer`, `publisher`)
    - `Writer` com `New()` e `Run(ctx context.Context) error`
    - Lógica de pending maps, rotação de arquivo, write com Sync
 2. Adicionar `TransmissionLogConfig` em `playout/internal/config/config.go`
 3. Instanciar e iniciar `Writer` em `cmd/playout-engine/main.go` (condicional a `enabled`)
 4. Testes:
    - Publicar eventos simulados no Event Bus → verificar linhas JSONL no `t.TempDir()`
+   - Verificar que `isrc/composer/publisher` do `NowPlayingChanged` aparecem no JSONL
    - Verificar rotação: entrada com FinishedAt em hora diferente → novo arquivo
    - Verificar que canal cheio não bloqueia outros subscribers do Bus
    - Verificar shutdown limpo via context cancelado
 
-### Fase 2 — Migração e Store (Library Service)
+### Fase 3 — Migração e Store (Library Service)
 
 1. Criar `library/internal/store/migrations/005_transmission_log.sql`
 2. Registrar migration 005 em `db.go`
-3. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe
+3. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe (para `tracks`)
 4. Implementar `TransmissionLogStore` com todos os métodos
 5. Adicionar `TransmissionLogConfig` e `StationConfig` em `config.go`
 6. Testes: BulkInsert com idempotência, List com filtros, Summary, ExportECAD formato
 
-### Fase 3 — File Importer (Library Service)
+### Fase 4 — File Importer (Library Service)
 
 1. Implementar `library/internal/fileimporter/importer.go`
    - Poll periódico com `grace_period`
-   - Leitura e parse de JSONL, enriquecimento via `TrackQuerier`
+   - Leitura e parse de JSONL — sem consultas adicionais
    - BulkInsert + `os.Remove` (somente após COMMIT)
    - Remoção de diretórios de dia vazios
 2. Iniciar importer em `main.go` (condicional a `cfg.TransmissionLog.Dir != ""`)
@@ -1055,14 +1075,14 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
    - Idempotência: re-importar mesmo arquivo → zero duplicatas
    - Crash simulado (arquivo não deletado) → reimportação limpa
 
-### Fase 4 — API e Rotas (Library Service)
+### Fase 5 — API e Rotas (Library Service)
 
 1. Implementar `handlers/transmission_log.go` (4 handlers)
 2. Registrar rotas em `server.go`
 3. Injetar stores e importer em `main.go`
 4. Testes com `httptest.NewRecorder`
 
-### Fase 5 — Player UI
+### Fase 6 — Player UI
 
 1. Adicionar aba "Histórico" no drawer
 2. Implementar filtros, tabela e rodapé
@@ -1078,12 +1098,15 @@ Ocorre quando o Engine reinicia durante a reprodução de uma faixa. O `pending`
 não tem a entrada. A linha é ignorada — sem metadados suficientes para o ECAD.
 O Engine emitirá `NowPlayingChanged` para a próxima faixa normalmente.
 
-### `isrc`, `composer`, `publisher` ausentes no JSONL
+### `isrc`, `composer`, `publisher` no JSONL
 
-O LogWriter do Engine não tem acesso ao banco do Library Service. Os campos ficam
-ausentes no JSONL. O importer enriquece via `tracks.FindByID(asset_id)` antes de
-inserir. Metadados editados após a execução **não alteram** o log histórico já
-importado — o snapshot de ECAD é fixado no momento da importação.
+Esses campos chegam ao Engine via payload do comando `ENQUEUE` (enviado pelo Player,
+que os lê do Library Service antes de enfileirar). O Engine os propaga no
+`NowPlayingChangedPayload` e o LogWriter os captura ao montar a `LogEntry`.
+
+O importer insere esses valores diretamente no SQLite — sem consultas adicionais.
+O snapshot ECAD é fixado no momento da execução (valores vigentes quando o Player
+enfileirou a faixa), não no momento da exportação.
 
 ### Cart entries e `queue_item_id`
 
@@ -1110,7 +1133,7 @@ e deve constar na documentação de operações.
 - Importer respeita grace period e nunca toca arquivo recente
 - Importação é idempotente: re-importar o mesmo arquivo não gera duplicatas
 - Deleção do arquivo ocorre somente após COMMIT confirmado
-- `isrc`, `composer`, `publisher` extraídos na indexação e enriquecidos na importação
+- `isrc`, `composer`, `publisher` enviados pelo Player no `ENQUEUE`, propagados no `NowPlayingChangedPayload`, gravados no JSONL e importados diretamente — sem enriquecimento pós-importação
 - `GET /v1/transmission-log` filtra por data, tipo e busca
 - `GET /v1/transmission-log/export` gera CSV com todas as colunas
 - `GET /v1/transmission-log/export/ecad` gera arquivo no formato ECAD (H + linhas D), apenas MUSIC/JINGLE/VINHETA FINISHED
