@@ -51,6 +51,7 @@ type generatedTrackJSON struct {
 	Artist     string `json:"artist"`
 	Album      string `json:"album"`
 	DurationMS int64  `json:"duration_ms"`
+	Type       string `json:"type"`
 }
 
 // ── Separation rule handlers ──────────────────────────────────────────────────
@@ -180,6 +181,7 @@ func GenerateSchedule(svc SchedulerService) http.HandlerFunc {
 					Artist:     item.Track.Artist,
 					Album:      item.Track.Album,
 					DurationMS: item.Track.DurationMS,
+					Type:       item.Track.Type,
 				},
 			}
 		}

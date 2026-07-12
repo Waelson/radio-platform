@@ -53,6 +53,7 @@ type TrackRef struct {
 	Artist     string
 	Album      string
 	DurationMS int64
+	Type       string // MUSIC|VINHETA|JINGLE|SPOT
 	CategoryID string // may be empty; used for separation checks
 }
 
