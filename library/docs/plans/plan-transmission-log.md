@@ -16,14 +16,15 @@ O log é a base legal e operacional da emissora:
 
 **Branch:** `feature/transmission-log`
 **Base:** `main`
+**Abordagem escolhida:** B — Arquivos append-only no Playout Engine
 
 ---
 
 ## Contexto atual
 
 ### Playout Engine
-O Engine já publica eventos no WebSocket (`ws://host:8080/v1/events`) a cada transição
-de faixa. Os eventos relevantes e seus payloads são:
+O Engine já publica eventos no Event Bus (`internal/events`) a cada transição de faixa.
+Os eventos relevantes e seus payloads são:
 
 | Evento | Payload relevante |
 |--------|-------------------|
@@ -31,11 +32,10 @@ de faixa. Os eventos relevantes e seus payloads são:
 | `ItemFinished` | `queue_item_id`, `asset_id`, `result`, `duration_played_ms` |
 | `CartStarted` | `cart_id`, `path`, `title`, `artist`, `duration_ms` |
 | `CartStopped` | `cart_id`, `reason` |
-| `SpotStarted` | `break_id`, `break_title`, `queue_item_id`, `title`, `break_seq`, `break_total`, `break_role` |
-| `SpotEnded` | `break_id`, `queue_item_id`, `break_seq` |
 
-O Engine **não persiste nada** — apenas emite eventos. A persistência é responsabilidade
-do Library Service, conforme a regra de arquitetura do projeto.
+O Engine **não persiste nada** — apenas emite eventos. A Abordagem B flexibiliza essa
+regra pontualmente, introduzindo escrita de arquivos JSONL como persistência leve e
+isolada do pipeline de áudio.
 
 ### Library Service
 Já possui:
@@ -46,7 +46,8 @@ Já possui:
 - `main.go` com injeção de dependências e goroutines com shutdown via context
 
 ### Config
-A URL do Playout Engine **não existe** ainda em `Config`. Será adicionada.
+A URL do Playout Engine **não existe** ainda em `Config`. Será adicionada (seção
+`playout`) junto com o diretório de logs compartilhado.
 
 ---
 
@@ -56,11 +57,10 @@ Duas abordagens foram consideradas para a coleta do log de transmissão.
 
 ---
 
-### Abordagem A — WebSocket Consumer no Library Service (proposta original)
+### Abordagem A — WebSocket Consumer no Library Service
 
 O Library Service abre uma conexão WebSocket com o Engine e processa os eventos
-`NowPlayingChanged`, `ItemFinished`, `CartStarted` e `CartStopped` em tempo real,
-persistindo diretamente no SQLite.
+em tempo real, persistindo diretamente no SQLite.
 
 ```
 [Playout Engine]
@@ -76,25 +76,25 @@ persistindo diretamente no SQLite.
 
 | # | Vantagem |
 |---|----------|
-| 1 | **Nenhuma mudança no Playout Engine** — os eventos já são emitidos. Nenhum código novo no Engine. |
-| 2 | **Log em tempo real** — status `PLAYING` disponível imediatamente. UI pode exibir "o que está tocando agora" diretamente do log. |
+| 1 | **Nenhuma mudança no Playout Engine** — os eventos já são emitidos. |
+| 2 | **Log em tempo real** — status `PLAYING` disponível imediatamente. |
 | 3 | **Um único componente novo** — apenas o consumer goroutine no Library Service. |
 | 4 | **Sem gestão de arquivos** — sem locking, sem exclusão, sem risco de arquivo corrompido. |
-| 5 | **Queries imediatas** — sem etapa de importação. O dado chega e já está consultável. |
-| 6 | **Coerente com a arquitetura** — o Engine permanece sem persistência, conforme `CLAUDE.md`. |
+| 5 | **Queries imediatas** — sem etapa de importação. |
+| 6 | **Coerente com a arquitetura** — o Engine permanece sem persistência. |
 
 #### Contras
 
 | # | Desvantagem |
 |---|-------------|
-| 1 | **Perda de dados se o Library Service estiver offline** — eventos emitidos enquanto o consumer está desconectado são perdidos irrecuperavelmente. O Engine não os re-emite. |
-| 2 | **Janelas cegas difíceis de auditar** — não há como saber precisamente o que foi perdido durante uma queda. Para declaração ECAD, isso é problemático. |
-| 3 | **Restart do Engine durante a queda do consumer** — o evento `NowPlayingChanged` do início da faixa é perdido; a entrada fica sem metadados. |
-| 4 | **Acoplamento de disponibilidade** — Library Service e Engine precisam estar ambos em operação para que o log seja completo. |
+| 1 | **Perda de dados se o Library Service estiver offline** — eventos perdidos irrecuperavelmente. |
+| 2 | **Janelas cegas difíceis de auditar** — para declaração ECAD, isso é problemático. |
+| 3 | **Restart do Engine durante queda do consumer** — entrada fica sem metadados. |
+| 4 | **Acoplamento de disponibilidade** — ambos precisam estar em operação. |
 
 ---
 
-### Abordagem B — Arquivos append-only no Playout Engine (proposta alternativa)
+### Abordagem B — Arquivos append-only no Playout Engine ✅ ESCOLHIDA
 
 O Playout Engine escreve arquivos JSONL organizados por dia e hora no filesystem local.
 Um processo importador (goroutine no Library Service) lê os arquivos de horas passadas,
@@ -112,48 +112,25 @@ persiste no SQLite e os exclui após confirmação da importação.
 [Player UI]
 ```
 
-Estrutura dos arquivos:
-```
-logs/
-  2026-07-20/
-    00.jsonl   ← hora 00:00–00:59 (completo, importável)
-    07.jsonl   ← hora 07:00–07:59 (completo, importável)
-    08.jsonl   ← hora 08:00–08:59 (em escrita — Engine ainda na hora atual)
-```
-
-Cada linha do arquivo é um registro JSON completo, escrito **após** o término da faixa:
-
-```json
-{"started_at":"2026-07-20T08:00:00","finished_at":"2026-07-20T08:03:58","title":"Como Nossos Pais","artist":"Elis Regina","type":"MUSIC","duration_played_ms":238000,"result":"finished","isrc":"BRUM71200123","composer":"Milton Nascimento","break_id":"","break_role":""}
-```
-
-O importador processa apenas arquivos de **horas passadas** (nunca o arquivo da hora
-corrente, pois o Engine ainda pode estar escrevendo nele). Após importar com sucesso,
-o arquivo é excluído.
-
 #### Prós
 
 | # | Vantagem |
 |---|----------|
-| 1 | **Durabilidade total** — o Engine persiste localmente antes de qualquer outro serviço. O Library Service pode ficar offline por horas ou dias; os arquivos aguardam. |
-| 2 | **Zero perda de dados** — o arquivo é excluído somente após confirmação de importação bem-sucedida no SQLite (transação atômica). |
-| 3 | **Auditabilidade natural** — arquivos append-only são imutáveis; cada linha só é escrita uma vez, após o término da faixa. |
-| 4 | **Independência de rede** — Engine e Library Service podem estar em hosts diferentes sem impacto. |
-| 5 | **Reimportação pontual** — se um arquivo foi corrompido ou perdido, é possível reimportar apenas aquele período sem afetar o restante. |
-| 6 | **Backup implícito** — os arquivos JSONL podem ser copiados para armazenamento externo antes da importação. |
+| 1 | **Durabilidade total** — Engine persiste localmente. Library Service pode ficar offline por horas. |
+| 2 | **Zero perda de dados** — arquivo excluído somente após confirmação de importação bem-sucedida. |
+| 3 | **Auditabilidade natural** — arquivos append-only são imutáveis. |
+| 4 | **Independência de rede** — Engine e Library Service independentes. |
+| 5 | **Reimportação pontual** — reimportar apenas o período afetado. |
+| 6 | **Backup implícito** — arquivos JSONL podem ser copiados antes da importação. |
 
 #### Contras
 
 | # | Desvantagem |
 |---|-------------|
-| 1 | **Viola regra arquitetural do Engine** — o `CLAUDE.md` do playout define explicitamente "Não use banco de dados no Engine nesta fase". Escrita de arquivos é persistência e representa um desvio dessa regra. Requer decisão consciente de flexibilizar o princípio. |
-| 2 | **Latência no log** — o dado só aparece no SQLite após a importação (mínimo: no início da hora seguinte). A UI não pode exibir status `PLAYING` em tempo real a partir desse log. |
-| 3 | **Processo importador adicional** — nova goroutine com lógica de: polling de diretório, locking, controle de arquivos já importados, tratamento de falha parcial. |
-| 4 | **Risco na deleção** — se o arquivo for excluído antes de confirmada a gravação no SQLite (falha de energia, crash), há perda definitiva. Requer protocolo cuidadoso. |
-| 5 | **Arquivo da hora corrente** — o Engine escreve continuamente; o importador precisa saber nunca tocar o arquivo da hora atual. Exige convenção clara e testada. |
-| 6 | **Acesso compartilhado ao filesystem** — Engine e importador precisam enxergar o mesmo diretório. Complica deploy em containers separados ou hosts diferentes. |
-
----
+| 1 | **Flexibiliza regra de "sem persistência" no Engine** — decisão consciente e aceita. |
+| 2 | **Latência no log** — dado aparece no SQLite com até ~1h15min de atraso. |
+| 3 | **Processo importador adicional** — nova goroutine no Library Service. |
+| 4 | **Acesso compartilhado ao filesystem** — Engine e importer precisam enxergar o mesmo diretório. |
 
 ### Comparativo resumido
 
@@ -168,20 +145,9 @@ o arquivo é excluído.
 | Operação em hosts separados | ✅ Fácil | ⚠️ Requer filesystem compartilhado |
 | Auditabilidade do log bruto | ❌ Sem rastro externo | ✅ Arquivos JSONL |
 
-### Recomendação
-
-Para o contexto atual do RadioFlow (Engine e Library Service no mesmo host, operação
-local), a **Abordagem A** é mais simples, coerente e não requer mudanças no Engine.
-O risco de perda de dados é aceitável se o Library Service for monitorado e tiver
-restart automático (systemd, supervisor, etc.).
-
-Se a emissora exige conformidade absoluta com o ECAD — sem possibilidade de lacuna no
-log —, a **Abordagem B** oferece garantias superiores, ao custo de flexibilizar a
-regra de persistência do Engine.
-
-> **Decisão pendente:** a escolha da abordagem deve ser feita antes de iniciar a
-> implementação. O restante deste plano descreve a Abordagem A, com anotações sobre
-> as diferenças da Abordagem B onde relevante.
+> **Decisão:** Abordagem B escolhida. Conformidade ECAD sem lacunas é requisito não
+> negociável. A flexibilização da regra de "sem persistência" no Engine é pontual e
+> isolada — o LogWriter não toca o pipeline de áudio.
 
 ---
 
@@ -192,8 +158,7 @@ regra de persistência do Engine.
 O **Escritório Central de Arrecadação e Distribuição** é a entidade responsável pela
 arrecadação e distribuição de direitos autorais de execução pública no Brasil. Emissoras
 de rádio (AM, FM e Web) são obrigadas por lei (Lei nº 9.610/1998) a declarar
-mensalmente ao ECAD todas as obras musicais executadas, com informações suficientes
-para identificar a obra e calcular os royalties devidos aos autores e intérpretes.
+mensalmente ao ECAD todas as obras musicais executadas.
 
 ### Dados exigidos por execução
 
@@ -206,14 +171,12 @@ para identificar a obra e calcular os royalties devidos aos autores e intérpret
 | **Duração executada** | Obrigatório | Duração real reproduzida (`MM:SS`) |
 | **Tipo de execução** | Obrigatório | `M` = Mecânica (gravação) / `V` = Ao Vivo |
 | **Compositor(es)** | Recomendado | Necessário para distribuição correta dos royalties |
-| **ISRC** | Recomendado | Identifica univocamente a gravação; elimina ambiguidades de título |
+| **ISRC** | Recomendado | Identifica univocamente a gravação |
 | **Editora / Publisher** | Opcional | Nome da editora musical |
 
-> **Nota sobre tipos:** o ECAD é relevante apenas para **obras musicais** — tipos
-> `MUSIC`, `JINGLE` e `VINHETA` com composição identificável. Spots comerciais (`SPOT`)
-> são veiculação publicitária, regida pelo CENP/Conar, não pelo ECAD. Hora Certa
-> (`HORA_CERTA`) não contém obra musical. A exportação ECAD deve filtrar apenas os
-> tipos relevantes.
+> **Nota sobre tipos:** o ECAD é relevante apenas para tipos `MUSIC`, `JINGLE` e
+> `VINHETA`. Spots (`SPOT`) são veiculação publicitária (CENP/Conar). A exportação
+> ECAD filtra automaticamente apenas os tipos relevantes.
 
 ### Dados da emissora (cabeçalho do arquivo)
 
@@ -227,39 +190,27 @@ para identificar a obra e calcular os royalties devidos aos autores e intérpret
 | UF | Estado (sigla) |
 | Período declarado | Mês/ano de referência |
 
-Esses dados são fixos por instalação e devem ser configuráveis no Library Service
-(`config.yaml`, seção `station`).
+Esses dados são fixos por instalação e configuráveis em `config.yaml`, seção `station`.
 
 ### Campos adicionais na tabela `tracks`
 
-Para suportar o ECAD, a tabela `tracks` precisa de campos que a indexação atual
-não captura. Serão adicionados na **migration 005**:
+Adicionados na **migration 005**:
 
 ```sql
-ALTER TABLE tracks ADD COLUMN isrc     TEXT NOT NULL DEFAULT '';
-ALTER TABLE tracks ADD COLUMN composer TEXT NOT NULL DEFAULT '';
+ALTER TABLE tracks ADD COLUMN isrc      TEXT NOT NULL DEFAULT '';
+ALTER TABLE tracks ADD COLUMN composer  TEXT NOT NULL DEFAULT '';
 ALTER TABLE tracks ADD COLUMN publisher TEXT NOT NULL DEFAULT '';
 ```
 
-- `isrc` — lido da tag ID3 `TSRC` ou Vorbis `ISRC` via ffprobe
-- `composer` — lido da tag ID3 `TCOM` ou Vorbis `COMPOSER` via ffprobe
-- `publisher` — lido da tag ID3 `TPUB` ou Vorbis `ORGANIZATION` via ffprobe
-
-O scanner deve extrair esses campos na indexação. Faixas já indexadas recebem os
-valores ao próximo re-scan ou manualmente via `PATCH /v1/tracks/{id}`.
+- `isrc` — tag ID3 `TSRC` ou Vorbis `ISRC` via ffprobe
+- `composer` — tag ID3 `TCOM` ou Vorbis `COMPOSER` via ffprobe
+- `publisher` — tag ID3 `TPUB` ou Vorbis `ORGANIZATION` via ffprobe
 
 ### Formato do arquivo de declaração ECAD
 
-O ECAD aceita declaração eletrônica via seu portal (ECAD Online) em formato CSV com
-separador ponto-e-vírgula (`; `), encoding UTF-8 sem BOM.
+CSV com separador ponto-e-vírgula (`;`), encoding UTF-8 sem BOM.
 
-#### Estrutura do arquivo
-
-```
-logs/ecad/YYYY-MM_declaracao.csv
-```
-
-#### Linha de cabeçalho do arquivo (registro tipo `H`)
+#### Linha de cabeçalho (registro tipo `H`)
 
 ```
 H;NOME_EMISSORA;CNPJ;MUNICIPIO;UF;FREQUENCIA;TIPO_EMISSORA;PERIODO_INI;PERIODO_FIM
@@ -270,7 +221,7 @@ H;NOME_EMISSORA;CNPJ;MUNICIPIO;UF;FREQUENCIA;TIPO_EMISSORA;PERIODO_INI;PERIODO_F
 H;Radio Exemplo FM;12.345.678/0001-90;São Paulo;SP;98.5 MHz;FM;01/07/2026;31/07/2026
 ```
 
-#### Linhas de detalhe (registro tipo `D`) — uma por execução musical
+#### Linhas de detalhe (registro tipo `D`)
 
 ```
 D;DATA;HORA_INICIO;DURACAO;TITULO;ARTISTA;COMPOSITOR;ISRC;TIPO_EXECUCAO;TIPO_UTILIZACAO
@@ -293,9 +244,8 @@ D;DATA;HORA_INICIO;DURACAO;TITULO;ARTISTA;COMPOSITOR;ISRC;TIPO_EXECUCAO;TIPO_UTI
 ```csv
 H;Radio Exemplo FM;12.345.678/0001-90;São Paulo;SP;98.5 MHz;FM;01/07/2026;31/07/2026
 D;20/07/2026;08:00:00;03:58;Como Nossos Pais;Elis Regina;Milton Nascimento;BR-UM7-12-00123;M;R
-D;20/07/2026;08:04:02;00:28;Vinheta Manhã;Radio Exemplo;;; M;R
+D;20/07/2026;08:04:02;00:28;Vinheta Manhã;Radio Exemplo;;;M;R
 D;20/07/2026;08:10:30;04:22;Garota de Ipanema;Tom Jobim;Tom Jobim / Vinícius de Moraes;BR-ABC-63-00001;M;R
-D;20/07/2026;08:15:00;03:11;Águas de Março;Elis Regina / Tom Jobim;Tom Jobim;;M;R
 ```
 
 #### Endpoint de exportação ECAD
@@ -306,29 +256,511 @@ GET /v1/transmission-log/export/ecad?from=2026-07-01&to=2026-07-31
 
 - `Content-Type: text/csv; charset=utf-8`
 - `Content-Disposition: attachment; filename="ecad_2026-07_declaracao.csv"`
-- Filtra automaticamente apenas tipos `MUSIC`, `JINGLE` e `VINHETA`
-- Ordena por `started_at` ASC
-- Inclui apenas entradas com `status=FINISHED` (duração real > 0)
-- Junta com tabela `tracks` para obter `isrc`, `composer`, `publisher`
+- Filtra: `type IN ('MUSIC','JINGLE','VINHETA')`, `status = 'FINISHED'`, `duration_played_ms > 0`
+- Ordena por `started_at ASC`
 
 ---
 
-## Estratégia de coleta (Abordagem A)
+## Estratégia de coleta — Abordagem B (Arquivos append-only)
 
-O Library Service iniciará um **log consumer** — goroutine com cliente WebSocket que
-subscreve ao stream de eventos do Engine. A correlação entre início e fim de cada faixa
-é feita por `queue_item_id` (fila principal) ou `cart_id` (botoneira):
+### Visão geral do fluxo completo
 
 ```
-NowPlayingChanged  →  INSERT entry (status=PLAYING, started_at=now)
-ItemFinished       →  UPDATE entry WHERE queue_item_id (status=FINISHED/SKIPPED/FAILED)
-CartStarted        →  INSERT entry (type=CART, status=PLAYING)
-CartStopped        →  UPDATE entry WHERE cart_id (status=FINISHED/STOPPED)
+[Audio Pipeline — hot path]
+        │
+        │  bus.Publish() — já existe, sem mudança
+        ↓
+[Event Bus — bus.go]
+        │
+        │  select { case ch <- evt: default: drop }  ← nunca bloqueia
+        ↓
+[LogWriter.ch — chan Event, buffer 256]
+        │
+        │  goroutine dedicada LogWriter.run()
+        ↓
+[In-memory pending map: queue_item_id → PendingEntry]
+        │
+        │  ao receber ItemFinished → entrada completa
+        ↓
+[os.OpenFile(O_APPEND) + json.Marshal + f.Write + f.Sync()]
+        │
+        ↓
+[filesystem: {log_dir}/YYYY-MM-DD/HH.jsonl]
+        │
+        │  Library Service — fileimporter goroutine (poll a cada 5min)
+        ↓
+[SQLite — transmission_log]
+        │
+        ↓
+[API REST + Player UI]
 ```
 
-Entradas sem `ItemFinished` correspondente (Engine reiniciado, crash) ficam com
-`status=INTERRUPTED` após restart do consumer, detectado por `finished_at IS NULL`
-com `started_at` mais antiga que o tempo de reconexão.
+---
+
+## Detalhamento técnico — LogWriter (Playout Engine)
+
+### Por que o hot path não é afetado
+
+Esta é a garantia central do design. Três camadas de isolamento protegem o áudio:
+
+#### Camada 1 — O Event Bus já é não-bloqueante
+
+O código existente em `internal/events/bus.go` já garante:
+
+```go
+// Publish — código existente, sem modificação necessária
+for _, s := range subs {
+    select {
+    case s.ch <- evt:   // entrega ao subscriber
+    default:            // subscriber lento → descarta silenciosamente
+        if IsCritical(evt.Type) && b.log != nil {
+            b.log.Warn("event bus: slow consumer dropped critical event", ...)
+        }
+    }
+}
+```
+
+O LogWriter é apenas mais um subscriber registrado via `bus.Subscribe(256)`. Se o
+canal do LogWriter estiver cheio (disco lento, falha de I/O), o evento é descartado
+com `default`. O áudio continua sem nenhum impacto.
+
+#### Camada 2 — `ItemFinished` não é publicado no hot path de áudio
+
+O hot path do Engine é a goroutine que decodifica samples PCM e escreve no output
+device. `ItemFinished` é publicado pelo **PlaybackManager** ao detectar EOF do
+decoder — em uma goroutine de controle separada da goroutine de áudio. Mesmo que
+houvesse alguma latência no Publish, o impacto seria no controle, nunca no áudio.
+
+#### Camada 3 — File I/O ocorre exclusivamente na goroutine LogWriter.run()
+
+A goroutine `LogWriter.run()` é a única proprietária dos handles de arquivo. Nenhuma
+outra goroutine do Engine acessa esses `*os.File`. Portanto:
+- Sem mutex para acesso ao arquivo corrente.
+- Sem contenção entre a goroutine de áudio e a goroutine de log.
+- Disco lento bloqueia apenas o LogWriter — que consome da sua própria fila de eventos.
+
+### Estrutura de dados
+
+```go
+// playout/internal/transmissionlog/writer.go
+
+package transmissionlog
+
+// LogEntry é o registro gravado em cada linha do arquivo JSONL.
+// Uma entrada representa uma faixa completamente reproduzida (ou interrompida).
+// Escrita uma única vez, após o término da faixa (ItemFinished / CartStopped).
+type LogEntry struct {
+    StartedAt        time.Time `json:"started_at"`
+    FinishedAt       time.Time `json:"finished_at"`
+    QueueItemID      string    `json:"queue_item_id"`
+    AssetID          string    `json:"asset_id"`
+    Title            string    `json:"title"`
+    Artist           string    `json:"artist"`
+    Type             string    `json:"type"`                // MUSIC|JINGLE|VINHETA|SPOT|CART
+    DurationMS       int64     `json:"duration_ms"`
+    DurationPlayedMS int64     `json:"duration_played_ms"`
+    Result           string    `json:"result"`              // finished|skipped|failed
+    BreakID          string    `json:"break_id,omitempty"`
+    BreakTitle       string    `json:"break_title,omitempty"`
+    BreakRole        string    `json:"break_role,omitempty"` // open|spot|close
+    BreakPosition    int       `json:"break_position,omitempty"`
+}
+
+// pendingEntry é mantido em memória entre NowPlayingChanged e ItemFinished.
+// Acessado exclusivamente pela goroutine run() — sem mutex necessário.
+type pendingEntry struct {
+    startedAt time.Time
+    meta      events.NowPlayingChangedPayload
+}
+
+type Writer struct {
+    dir string
+    bus *events.Bus
+    log *slog.Logger
+}
+
+func New(dir string, bus *events.Bus, log *slog.Logger) *Writer {
+    return &Writer{dir: dir, bus: bus, log: log}
+}
+```
+
+> **Nota:** `isrc`, `composer` e `publisher` não estão no LogEntry porque o Playout
+> Engine não tem acesso ao banco do Library Service. Esses campos são enriquecidos
+> pelo importer no momento da importação (via JOIN com `tracks` pelo `asset_id`).
+
+### Lógica do LogWriter.run()
+
+```go
+func (w *Writer) Run(ctx context.Context) error {
+    ch, cancel := w.bus.Subscribe(256)
+    defer cancel()
+
+    // Estado interno — exclusivo desta goroutine, sem mutex
+    pending     := make(map[string]pendingEntry) // queue_item_id → pendingEntry
+    cartPending := make(map[string]pendingEntry) // cart_id → pendingEntry
+
+    var (
+        curFile *os.File
+        curDay  string
+        curHour = -1
+    )
+
+    closeFile := func() {
+        if curFile != nil {
+            curFile.Sync()
+            curFile.Close()
+            curFile = nil
+            curHour = -1
+        }
+    }
+    defer closeFile()
+
+    writeEntry := func(entry LogEntry) {
+        day  := entry.FinishedAt.UTC().Format("2006-01-02")
+        hour := entry.FinishedAt.UTC().Hour()
+
+        if curFile == nil || day != curDay || hour != curHour {
+            closeFile()
+            dir := filepath.Join(w.dir, day)
+            if err := os.MkdirAll(dir, 0o755); err != nil {
+                w.log.Error("transmissionlog: mkdir failed", "err", err)
+                return
+            }
+            path := filepath.Join(dir, fmt.Sprintf("%02d.jsonl", hour))
+            f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+            if err != nil {
+                w.log.Error("transmissionlog: open failed", "path", path, "err", err)
+                return // descarta esta entrada; próximas tentarão reabrir
+            }
+            curFile = f
+            curDay  = day
+            curHour = hour
+        }
+
+        line, _ := json.Marshal(entry)
+        line = append(line, '\n')
+        if _, err := curFile.Write(line); err != nil {
+            w.log.Error("transmissionlog: write failed", "err", err)
+            closeFile() // força reabertura na próxima entrada
+            return
+        }
+        if err := curFile.Sync(); err != nil {
+            w.log.Warn("transmissionlog: sync failed", "err", err)
+        }
+    }
+
+    for {
+        select {
+        case <-ctx.Done():
+            return nil
+
+        case evt := <-ch:
+            switch evt.Type {
+
+            case events.EvtNowPlayingChanged:
+                p, ok := evt.Payload.(events.NowPlayingChangedPayload)
+                if !ok || p.QueueItemID == "" || p.Title == "" {
+                    continue // engine transitando para IDLE
+                }
+                pending[p.QueueItemID] = pendingEntry{
+                    startedAt: evt.Timestamp,
+                    meta:      p,
+                }
+
+            case events.EvtItemFinished:
+                p, ok := evt.Payload.(events.ItemFinishedPayload)
+                if !ok {
+                    continue
+                }
+                pe, found := pending[p.QueueItemID]
+                if !found {
+                    // Engine reiniciou durante a faixa — sem NowPlayingChanged anterior.
+                    // Sem metadados suficientes para o ECAD; entrada ignorada.
+                    continue
+                }
+                delete(pending, p.QueueItemID)
+                writeEntry(LogEntry{
+                    StartedAt:        pe.startedAt,
+                    FinishedAt:       evt.Timestamp,
+                    QueueItemID:      p.QueueItemID,
+                    AssetID:          p.AssetID,
+                    Title:            pe.meta.Title,
+                    Artist:           pe.meta.Artist,
+                    Type:             pe.meta.Type,
+                    DurationMS:       pe.meta.DurationMS,
+                    DurationPlayedMS: p.DurationPlayedMS,
+                    Result:           p.Result,
+                    BreakID:          pe.meta.BreakID,
+                    BreakTitle:       pe.meta.BreakTitle,
+                    BreakRole:        pe.meta.BreakRole,
+                    BreakPosition:    pe.meta.BreakPosition,
+                })
+
+            case events.EvtCartStarted:
+                p, ok := evt.Payload.(events.CartStartedPayload)
+                if !ok {
+                    continue
+                }
+                cartPending[p.CartID] = pendingEntry{
+                    startedAt: evt.Timestamp,
+                    meta: events.NowPlayingChangedPayload{
+                        QueueItemID: p.CartID,
+                        AssetID:     p.CartID,
+                        Title:       p.Title,
+                        Artist:      p.Artist,
+                        Type:        "CART",
+                        DurationMS:  p.DurationMS,
+                    },
+                }
+
+            case events.EvtCartStopped:
+                p, ok := evt.Payload.(events.CartStoppedPayload)
+                if !ok {
+                    continue
+                }
+                pe, found := cartPending[p.CartID]
+                if !found {
+                    continue
+                }
+                delete(cartPending, p.CartID)
+                result := "finished"
+                if p.Reason == "manual" {
+                    result = "skipped"
+                }
+                writeEntry(LogEntry{
+                    StartedAt:        pe.startedAt,
+                    FinishedAt:       evt.Timestamp,
+                    QueueItemID:      pe.meta.QueueItemID,
+                    AssetID:          pe.meta.AssetID,
+                    Title:            pe.meta.Title,
+                    Artist:           pe.meta.Artist,
+                    Type:             "CART",
+                    DurationMS:       pe.meta.DurationMS,
+                    DurationPlayedMS: evt.Timestamp.Sub(pe.startedAt).Milliseconds(),
+                    Result:           result,
+                })
+            }
+        }
+    }
+}
+```
+
+### Segurança das escritas em arquivo
+
+| Mecanismo | Garantia |
+|-----------|----------|
+| `O_APPEND\|O_CREATE\|O_WRONLY` | Kernel posiciona o cursor no fim antes de cada `Write()` — garantia POSIX. Sem risco de sobrescrever dados anteriores. |
+| Goroutine única escrevendo | Sem concorrência no arquivo corrente. Sem mutex necessário. |
+| `f.Sync()` por linha | Dado chega ao disco antes de retornar. Em crash imediato após Write, a linha está durável. |
+| Rotação de arquivo | Ao mudar de hora, fecha (Sync + Close) e abre novo. Cada `HH.jsonl` é um segmento completo e fechado. |
+| Falha de Write/Sync → closeFile() | Força reabertura na próxima entrada. A entrada com falha é perdida; as seguintes são gravadas normalmente. |
+| Canal cheio → drop silencioso | Event Bus descarta via `default`. Audio continua. Warning logado. |
+
+> **Por que `Sync()` por linha e não `bufio.Writer`:** um buffer acumula várias linhas
+> antes do syscall. Em crash entre o buffer e o flush, linhas são perdidas sem rastro.
+> Na frequência de um rádio (1 faixa a cada 3–5 min), o custo de um `Sync()` por
+> linha é inferior a 1ms — irrelevante. A durabilidade garante o compromisso com o ECAD.
+
+### Determinação do arquivo pelo `FinishedAt`
+
+O arquivo recebe entradas pelo **horário em que a faixa terminou** (`FinishedAt`):
+
+```
+faixa começa às 08:58 → NowPlayingChanged (startedAt = 08:58)
+faixa termina às 09:02 → ItemFinished (finishedAt = 09:02)
+→ linha gravada em 09.jsonl (hora de finished_at)
+```
+
+Consequência: `started_at` pode ser de uma hora diferente do arquivo que a contém.
+Isso é correto — o nome do arquivo é apenas um mecanismo de particionamento. O campo
+`started_at` dentro da linha contém o horário real de início, que é o que importa
+para o ECAD.
+
+### Configuração no Playout Engine
+
+```go
+// playout/internal/config/config.go — adição
+type TransmissionLogConfig struct {
+    Enabled bool   `yaml:"enabled"` // false por padrão — opt-in explícito
+    Dir     string `yaml:"dir"`     // default: "./transmission-logs"
+}
+```
+
+```yaml
+# playout/config.yaml — nova seção
+transmission_log:
+  enabled: true
+  dir: "/var/radioflow/transmission-logs"
+```
+
+O `Writer` só é instanciado e iniciado se `cfg.TransmissionLog.Enabled == true`.
+Sem config → sem goroutine → zero impacto no Engine.
+
+---
+
+## Detalhamento técnico — File Importer (Library Service)
+
+### Responsabilidades
+
+O `fileimporter` é uma goroutine do Library Service que:
+
+1. Escaneia periodicamente o diretório de logs.
+2. Identifica arquivos seguros para importação (fora do grace period).
+3. Lê e parseia cada linha JSONL.
+4. Enriquece entradas com `isrc`, `composer`, `publisher` via JOIN com `tracks`.
+5. Insere em lote no SQLite (transação única por arquivo).
+6. Deleta o arquivo após confirmação do COMMIT.
+7. Remove diretórios de dia vazios.
+
+### Grace period — a regra de segurança
+
+O importer nunca toca um arquivo que pode ainda estar sendo escrito pelo Engine.
+
+**Regra:** um arquivo `HH.jsonl` só é importado quando:
+
+```
+time.Since(fileInfo.ModTime()) >= grace_period
+```
+
+`grace_period` padrão: **15 minutos**.
+
+**Por que 15 minutos é suficiente:**
+- Faixas de rádio têm duração típica de 3–5 minutos.
+- O `mtime` do arquivo reflete a última linha escrita (última faixa que terminou).
+- Se `mtime` está há 15 min no passado, nenhuma faixa em andamento pode ter
+  `FinishedAt` nesse arquivo — pois o Engine só escreve após o término da faixa.
+- O Engine fecha e reabre o arquivo a cada mudança de hora (`curHour != hour`).
+  Após a rotação, o arquivo anterior não é mais tocado.
+
+```go
+func isEligible(fi os.FileInfo, now time.Time, grace time.Duration) bool {
+    return now.Sub(fi.ModTime()) >= grace
+}
+```
+
+### Protocolo de importação — zero perda de dados
+
+```
+Para cada arquivo JSONL elegível:
+  1. Abrir e ler todas as linhas (bufio.Scanner)
+  2. Parsear cada linha como LogEntry (linhas malformadas → log warning + skip)
+  3. Para cada entrada: buscar isrc/composer/publisher em tracks pelo asset_id
+  4. Iniciar transação SQLite
+  5. Para cada entrada válida:
+       INSERT OR IGNORE INTO transmission_log (...) VALUES (...)
+       (conflito em queue_item_id → no-op, sem erro)
+  6. COMMIT
+  7. Se COMMIT OK → os.Remove(arquivo)
+  8. Se COMMIT falhar → log error + deixar arquivo (retry no próximo ciclo)
+  9. Se os.Remove falhar → log warning (próxima importação: todos INSERT OR IGNORE = no-op)
+ 10. Após processar todos os arquivos de um dia: se diretório vazio → os.Remove(dir)
+```
+
+**Idempotência:** `queue_item_id` tem constraint `UNIQUE` em `transmission_log`.
+Re-importar o mesmo arquivo não gera duplicatas — `INSERT OR IGNORE` é no-op para
+linhas já existentes.
+
+**Crash entre COMMIT e Remove:** arquivo permanece. Na próxima rodada, é reimportado
+com todos os INSERTs sendo no-ops. Arquivo é então deletado. Sem perda, sem duplicata.
+
+### Interface do importer
+
+```go
+// library/internal/fileimporter/importer.go
+
+type TrackQuerier interface {
+    FindByID(ctx context.Context, id string) (store.Track, error)
+}
+
+type LogStore interface {
+    BulkInsert(ctx context.Context, entries []store.TransmissionLogEntry) error
+}
+
+type Config struct {
+    Dir          string        // mesmo dir que o Engine escreve
+    PollInterval time.Duration // default: 5min
+    GracePeriod  time.Duration // default: 15min
+}
+
+func New(cfg Config, tracks TrackQuerier, store LogStore, log *slog.Logger) *Importer
+func (imp *Importer) Run(ctx context.Context) error
+```
+
+### Exemplo de `BulkInsert`
+
+```go
+func (s *TransmissionLogStore) BulkInsert(ctx context.Context, entries []TransmissionLogEntry) error {
+    tx, err := s.db.BeginTx(ctx, nil)
+    if err != nil {
+        return fmt.Errorf("transmission_log bulk_insert: begin: %w", err)
+    }
+    defer tx.Rollback()
+
+    stmt, err := tx.PrepareContext(ctx, `
+        INSERT OR IGNORE INTO transmission_log
+            (id, queue_item_id, asset_id, title, artist, type,
+             duration_ms, duration_played_ms, result, status,
+             started_at, finished_at,
+             break_id, break_title, break_role, break_position,
+             isrc, composer, publisher)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `)
+    if err != nil {
+        return fmt.Errorf("transmission_log bulk_insert: prepare: %w", err)
+    }
+    defer stmt.Close()
+
+    for _, e := range entries {
+        if _, err := stmt.ExecContext(ctx,
+            e.ID, e.QueueItemID, e.AssetID, e.Title, e.Artist, e.Type,
+            e.DurationMS, e.DurationPlayedMS, e.Result, "FINISHED",
+            e.StartedAt, e.FinishedAt,
+            e.BreakID, e.BreakTitle, e.BreakRole, e.BreakPosition,
+            e.ISRC, e.Composer, e.Publisher,
+        ); err != nil {
+            return fmt.Errorf("transmission_log bulk_insert: exec: %w", err)
+        }
+    }
+    return tx.Commit()
+}
+```
+
+### Configuração no Library Service
+
+```go
+// library/internal/config/config.go — adições
+
+type TransmissionLogConfig struct {
+    Dir          string        `yaml:"dir"`           // mesmo dir do Engine
+    PollInterval time.Duration `yaml:"poll_interval"` // default: 5min
+    GracePeriod  time.Duration `yaml:"grace_period"`  // default: 15min
+}
+
+type StationConfig struct {
+    Name      string `yaml:"name"`
+    CNPJ      string `yaml:"cnpj"`
+    Frequency string `yaml:"frequency"`
+    Type      string `yaml:"type"`  // FM | AM | WEB
+    City      string `yaml:"city"`
+    State     string `yaml:"state"`
+}
+```
+
+```yaml
+# library/config.yaml — novas seções
+transmission_log:
+  dir: "/var/radioflow/transmission-logs"
+  poll_interval: 5m
+  grace_period: 15m
+
+station:
+  name: "Rádio Exemplo FM"
+  cnpj: "12.345.678/0001-90"
+  frequency: "98.5 MHz"
+  type: "FM"
+  city: "São Paulo"
+  state: "SP"
+```
 
 ---
 
@@ -336,7 +768,7 @@ com `started_at` mais antiga que o tempo de reconexão.
 
 ### Migration 005 — transmission_log + campos ECAD em tracks
 
-Arquivo: `internal/store/migrations/005_transmission_log.sql`
+Arquivo: `library/internal/store/migrations/005_transmission_log.sql`
 
 ```sql
 -- Campos adicionais na tabela tracks para suporte ao ECAD
@@ -345,21 +777,22 @@ ALTER TABLE tracks ADD COLUMN composer  TEXT NOT NULL DEFAULT '';
 ALTER TABLE tracks ADD COLUMN publisher TEXT NOT NULL DEFAULT '';
 
 -- Log de transmissão
+-- queue_item_id é UNIQUE: garante idempotência no BulkInsert (INSERT OR IGNORE)
 CREATE TABLE IF NOT EXISTS transmission_log (
     id                 TEXT     PRIMARY KEY,
-    queue_item_id      TEXT     NOT NULL DEFAULT '',
+    queue_item_id      TEXT     NOT NULL DEFAULT '' UNIQUE,
     asset_id           TEXT     NOT NULL DEFAULT '',
     path               TEXT     NOT NULL DEFAULT '',
     title              TEXT     NOT NULL DEFAULT '',
     artist             TEXT     NOT NULL DEFAULT '',
-    type               TEXT     NOT NULL DEFAULT '',   -- MUSIC|JINGLE|VINHETA|SPOT|CART|HORA_CERTA
-    isrc               TEXT     NOT NULL DEFAULT '',   -- copiado de tracks.isrc no momento da execução
-    composer           TEXT     NOT NULL DEFAULT '',   -- copiado de tracks.composer
-    publisher          TEXT     NOT NULL DEFAULT '',   -- copiado de tracks.publisher
+    type               TEXT     NOT NULL DEFAULT '',   -- MUSIC|JINGLE|VINHETA|SPOT|CART
+    isrc               TEXT     NOT NULL DEFAULT '',   -- enriquecido pelo importer
+    composer           TEXT     NOT NULL DEFAULT '',   -- enriquecido pelo importer
+    publisher          TEXT     NOT NULL DEFAULT '',   -- enriquecido pelo importer
     duration_ms        INTEGER  NOT NULL DEFAULT 0,
     duration_played_ms INTEGER  NOT NULL DEFAULT 0,
-    result             TEXT     NOT NULL DEFAULT '',   -- finished|skipped|failed|interrupted
-    status             TEXT     NOT NULL DEFAULT 'PLAYING', -- PLAYING|FINISHED|SKIPPED|FAILED|INTERRUPTED
+    result             TEXT     NOT NULL DEFAULT '',   -- finished|skipped|failed
+    status             TEXT     NOT NULL DEFAULT 'FINISHED',
     started_at         DATETIME NOT NULL,
     finished_at        DATETIME,
     break_id           TEXT     NOT NULL DEFAULT '',
@@ -374,51 +807,41 @@ CREATE INDEX IF NOT EXISTS idx_transmission_log_status     ON transmission_log(s
 CREATE INDEX IF NOT EXISTS idx_transmission_log_asset_id   ON transmission_log(asset_id);
 ```
 
-> `isrc`, `composer` e `publisher` são copiados da tabela `tracks` no momento da
-> abertura da entrada (`OpenEntry`). Isso garante que a declaração ECAD reflita os
-> metadados vigentes na data da execução, mesmo que a faixa seja editada depois.
-
 ---
 
-## Estrutura de pacotes novos
+## Estrutura de pacotes
+
+### Playout Engine (mudanças)
+
+```
+playout/
+  internal/
+    transmissionlog/
+      writer.go          ← LogWriter: subscriber do Event Bus, escrita JSONL
+      writer_test.go
+    config/
+      config.go          ← adicionar TransmissionLogConfig
+  cmd/playout-engine/
+    main.go              ← instanciar e iniciar Writer se enabled=true
+```
+
+### Library Service (mudanças)
 
 ```
 library/
   internal/
     config/
-      config.go                        ← adicionar PlayoutConfig + StationConfig
+      config.go                        ← adicionar TransmissionLogConfig + StationConfig
     store/
       migrations/
         005_transmission_log.sql       ← migration com ALTER TABLE + CREATE TABLE
       transmission_log_store.go        ← TransmissionLogStore
-    logconsumer/
-      consumer.go                      ← goroutine WebSocket client
-      consumer_test.go
+    fileimporter/
+      importer.go                      ← goroutine de importação periódica
+      importer_test.go
     api/
       handlers/
         transmission_log.go            ← handlers GET + exportações
-```
-
----
-
-## Config — novas seções
-
-```go
-// PlayoutConfig holds connection settings for the Playout Engine.
-type PlayoutConfig struct {
-    URL            string        `yaml:"url"`             // ws://127.0.0.1:8080
-    ReconnectDelay time.Duration `yaml:"reconnect_delay"` // default: 5s
-}
-
-// StationConfig holds broadcast station identification for regulatory reports.
-type StationConfig struct {
-    Name      string `yaml:"name"`       // ex: "Rádio Exemplo FM"
-    CNPJ      string `yaml:"cnpj"`       // ex: "12.345.678/0001-90"
-    Frequency string `yaml:"frequency"`  // ex: "98.5 MHz"
-    Type      string `yaml:"type"`       // FM | AM | WEB
-    City      string `yaml:"city"`
-    State     string `yaml:"state"`      // sigla UF
-}
 ```
 
 ---
@@ -459,65 +882,11 @@ type TransmissionLogQuery struct {
     Offset int
 }
 
-func (s *TransmissionLogStore) OpenEntry(ctx context.Context, e TransmissionLogEntry) error
-func (s *TransmissionLogStore) CloseEntry(ctx context.Context, queueItemID, result string, durationPlayedMS int64, finishedAt time.Time) error
-func (s *TransmissionLogStore) CloseCartEntry(ctx context.Context, cartID, result string, finishedAt time.Time) error
-func (s *TransmissionLogStore) MarkInterrupted(ctx context.Context, beforeTime time.Time) error
+func (s *TransmissionLogStore) BulkInsert(ctx context.Context, entries []TransmissionLogEntry) error
 func (s *TransmissionLogStore) List(ctx context.Context, q TransmissionLogQuery) ([]TransmissionLogEntry, int, error)
+func (s *TransmissionLogStore) Summary(ctx context.Context, date time.Time) (TransmissionLogSummary, error)
 func (s *TransmissionLogStore) ExportCSV(ctx context.Context, from, to time.Time, w io.Writer) error
 func (s *TransmissionLogStore) ExportECAD(ctx context.Context, from, to time.Time, station config.StationConfig, w io.Writer) error
-```
-
----
-
-## Log Consumer
-
-```go
-package logconsumer
-
-type TransmissionStore interface {
-    OpenEntry(ctx context.Context, e store.TransmissionLogEntry) error
-    CloseEntry(ctx context.Context, queueItemID, result string, durationPlayedMS int64, finishedAt time.Time) error
-    CloseCartEntry(ctx context.Context, cartID, result string, finishedAt time.Time) error
-    MarkInterrupted(ctx context.Context, beforeTime time.Time) error
-}
-
-func New(cfg config.PlayoutConfig, store TransmissionStore, log *slog.Logger) *Consumer
-func (c *Consumer) Run(ctx context.Context) error
-```
-
-### Lógica de processamento de eventos
-
-```go
-switch event.Type {
-case "NowPlayingChanged":
-    // ignora se title e path estão vazios (engine idle)
-    // busca isrc, composer, publisher em tracks WHERE asset_id
-    // INSERT OR IGNORE entry (idempotência no reconnect)
-case "ItemFinished":
-    // UPDATE WHERE queue_item_id → status, duration_played_ms, finished_at
-case "CartStarted":
-    // INSERT entry (type=CART, status=PLAYING)
-case "CartStopped":
-    // UPDATE WHERE asset_id=cart_id → FINISHED/STOPPED
-}
-```
-
-### Reconexão com backoff
-
-```go
-delay := cfg.ReconnectDelay  // 5s
-for {
-    connectTime := time.Now()
-    err := c.connect(ctx)
-    if ctx.Err() != nil { return nil }
-    c.store.MarkInterrupted(ctx, connectTime) // fecha entradas orfãs
-    select {
-    case <-ctx.Done(): return nil
-    case <-time.After(delay):
-    }
-    delay = min(delay*2, 60*time.Second)
-}
 ```
 
 ---
@@ -606,9 +975,7 @@ GET /v1/transmission-log/summary?date=2026-07-20
 }
 ```
 
----
-
-## Registro de rotas
+### Registro de rotas
 
 ```go
 mux.HandleFunc("GET /v1/transmission-log",              handlers.ListTransmissionLog(s.tls))
@@ -636,8 +1003,9 @@ INÍCIO    TÍTULO              ARTISTA        TIPO     DURAÇÃO  STATUS
 08:04:30  Anúncio X          —              SPOT     0:30     ✅
 ```
 
-- Ícone de tipo (padrão da fila)
-- Status: verde (FINISHED), amarelo (SKIPPED), vermelho (FAILED/INTERRUPTED), ciano pulsante (PLAYING)
+- Status: verde (FINISHED), amarelo (SKIPPED), vermelho (FAILED)
+- Sem status PLAYING em tempo real — o log reflete entradas já importadas (~1h15min de atraso)
+- Para ver a faixa atual, o operador usa a fila principal do player
 
 **Rodapé:**
 ```
@@ -646,83 +1014,104 @@ INÍCIO    TÍTULO              ARTISTA        TIPO     DURAÇÃO  STATUS
 
 O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrado.
 
-**Atualização em tempo real:** ao receber `NowPlayingChanged` via WebSocket, re-busca
-o log se o filtro de data for o dia atual.
-
 ---
 
 ## Fases de implementação
 
-### Fase 1 — Migração e Store
+### Fase 1 — LogWriter no Playout Engine
 
-1. Criar `internal/store/migrations/005_transmission_log.sql`
-   - `ALTER TABLE tracks ADD COLUMN isrc/composer/publisher`
-   - `CREATE TABLE transmission_log`
+1. Criar `playout/internal/transmissionlog/writer.go`
+   - `LogEntry` e `pendingEntry` structs
+   - `Writer` com `New()` e `Run(ctx context.Context) error`
+   - Lógica de pending maps, rotação de arquivo, write com Sync
+2. Adicionar `TransmissionLogConfig` em `playout/internal/config/config.go`
+3. Instanciar e iniciar `Writer` em `cmd/playout-engine/main.go` (condicional a `enabled`)
+4. Testes:
+   - Publicar eventos simulados no Event Bus → verificar linhas JSONL no `t.TempDir()`
+   - Verificar rotação: entrada com FinishedAt em hora diferente → novo arquivo
+   - Verificar que canal cheio não bloqueia outros subscribers do Bus
+   - Verificar shutdown limpo via context cancelado
+
+### Fase 2 — Migração e Store (Library Service)
+
+1. Criar `library/internal/store/migrations/005_transmission_log.sql`
 2. Registrar migration 005 em `db.go`
-3. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` das tags ID3 via ffprobe
-4. Implementar `TransmissionLogStore` com todos os métodos, incluindo `ExportECAD`
-5. Adicionar `StationConfig` em `config.go`
-6. Testes: open/close, MarkInterrupted, List com filtros, ExportCSV, ExportECAD
+3. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe
+4. Implementar `TransmissionLogStore` com todos os métodos
+5. Adicionar `TransmissionLogConfig` e `StationConfig` em `config.go`
+6. Testes: BulkInsert com idempotência, List com filtros, Summary, ExportECAD formato
 
-### Fase 2 — Log Consumer
+### Fase 3 — File Importer (Library Service)
 
-1. Adicionar `PlayoutConfig` em `config.go`
-2. Implementar `internal/logconsumer/consumer.go`
-3. Testes com mock do store e canal de eventos simulado
+1. Implementar `library/internal/fileimporter/importer.go`
+   - Poll periódico com `grace_period`
+   - Leitura e parse de JSONL, enriquecimento via `TrackQuerier`
+   - BulkInsert + `os.Remove` (somente após COMMIT)
+   - Remoção de diretórios de dia vazios
+2. Iniciar importer em `main.go` (condicional a `cfg.TransmissionLog.Dir != ""`)
+3. Testes:
+   - Simular arquivos JSONL em `t.TempDir()` → verificar importação e deleção
+   - Grace period: arquivo com `mtime` recente → não importado
+   - Idempotência: re-importar mesmo arquivo → zero duplicatas
+   - Crash simulado (arquivo não deletado) → reimportação limpa
 
-### Fase 3 — API e Rotas
+### Fase 4 — API e Rotas (Library Service)
 
 1. Implementar `handlers/transmission_log.go` (4 handlers)
-2. Definir interface `TransmissionLogStore` no pacote `handlers`
-3. Registrar rotas em `server.go`
-4. Injetar stores e consumer em `main.go`
-5. Testes com `httptest.NewRecorder`
+2. Registrar rotas em `server.go`
+3. Injetar stores e importer em `main.go`
+4. Testes com `httptest.NewRecorder`
 
-### Fase 4 — Player UI
+### Fase 5 — Player UI
 
 1. Adicionar aba "Histórico" no drawer
 2. Implementar filtros, tabela e rodapé
 3. Botões de exportação CSV e ECAD
-4. Atualização em tempo real via WebSocket
 
 ---
 
 ## Pontos de atenção
 
-### `NowPlayingChanged` vs `ItemStarted`
-`ItemStartedPayload` não tem título nem artista. O consumer abre entradas via
-`NowPlayingChanged`, que contém todos os metadados.
+### `ItemFinished` sem `NowPlayingChanged` correspondente
 
-### Idempotência no reconnect
-Ao reconectar, o Engine emite `NowPlayingChanged` com a faixa em reprodução. Usar
-`INSERT OR IGNORE` com `queue_item_id` para evitar entrada duplicada.
+Ocorre quando o Engine reinicia durante a reprodução de uma faixa. O `pending` map
+não tem a entrada. A linha é ignorada — sem metadados suficientes para o ECAD.
+O Engine emitirá `NowPlayingChanged` para a próxima faixa normalmente.
 
-### Snapshot de metadados ECAD
-`isrc`, `composer` e `publisher` são copiados para `transmission_log` no momento da
-execução — não buscados em `tracks` na hora da exportação. Garante que edições
-posteriores na faixa não alterem declarações passadas.
+### `isrc`, `composer`, `publisher` ausentes no JSONL
 
-### Consumer opcional
-Se `cfg.Playout.URL` estiver vazio, o consumer não é iniciado. Serviço funciona
-normalmente sem log de transmissão ativo.
+O LogWriter do Engine não tem acesso ao banco do Library Service. Os campos ficam
+ausentes no JSONL. O importer enriquece via `tracks.FindByID(asset_id)` antes de
+inserir. Metadados editados após a execução **não alteram** o log histórico já
+importado — o snapshot de ECAD é fixado no momento da importação.
 
-### Abordagem B — diferenças de implementação
-Se a decisão for pela Abordagem B (arquivos), as mudanças são:
-- Playout Engine: goroutine de escrita de JSONL por hora em `internal/transmissionlog/`
-- Library Service: substituir `logconsumer` por `fileimporter` (polling de diretório, importação de arquivos de horas passadas, exclusão após confirmação)
-- O restante (store, API, Player UI) permanece idêntico
+### Cart entries e `queue_item_id`
+
+Carts são reproduzidos fora da fila principal (sem `queue_item_id`). O `cart_id`
+é usado como substituto no campo `queue_item_id` do LogEntry e da tabela
+`transmission_log`. O UNIQUE constraint garante idempotência normalmente.
+
+### Engine e Library Service no mesmo host
+
+Para a implantação atual (processo local), ambos acessam o mesmo diretório via path
+local. Para deploy em containers separados, o diretório deve ser um volume
+compartilhado (bind mount ou NFS). Isso é uma restrição conhecida da Abordagem B
+e deve constar na documentação de operações.
 
 ---
 
 ## Definição de pronto
 
-- `go test ./...` passa sem erros
+- `go test ./...` passa sem erros (playout + library)
 - `go vet ./...` sem avisos
 - `go test -race ./...` sem data races
-- Consumer reconecta e marca entradas como INTERRUPTED
+- LogWriter subscreve o Event Bus sem alterar comportamento dos outros subscribers
+- Arquivos JSONL criados, populados e rotacionados corretamente por hora
+- Importer respeita grace period e nunca toca arquivo recente
+- Importação é idempotente: re-importar o mesmo arquivo não gera duplicatas
+- Deleção do arquivo ocorre somente após COMMIT confirmado
+- `isrc`, `composer`, `publisher` extraídos na indexação e enriquecidos na importação
 - `GET /v1/transmission-log` filtra por data, tipo e busca
 - `GET /v1/transmission-log/export` gera CSV com todas as colunas
-- `GET /v1/transmission-log/export/ecad` gera arquivo no formato ECAD com cabeçalho H e linhas D, apenas para MUSIC/JINGLE/VINHETA com FINISHED
-- Player UI exibe histórico do dia atual com atualização em tempo real
-- Botão ECAD exporta o mês corrente do filtro ativo
-- `isrc`, `composer`, `publisher` extraídos na indexação e registrados no log
+- `GET /v1/transmission-log/export/ecad` gera arquivo no formato ECAD (H + linhas D), apenas MUSIC/JINGLE/VINHETA FINISHED
+- Player UI exibe histórico com filtros e botões de exportação
