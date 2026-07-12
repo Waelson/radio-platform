@@ -60,7 +60,7 @@ persiste no SQLite e os exclui após confirmação da importação.
 ```
 [Playout Engine]
   ↓ append JSONL
-[filesystem: logs/YYYY-MM-DD/HH.jsonl]
+[filesystem: {log_dir}/YYYY-MM-DD/{file_name_template}]
   ↓ (leitura periódica — goroutine importador)
 [Library Service — file importer]
   ↓ INSERT em lote
@@ -229,7 +229,7 @@ GET /v1/transmission-log/export/ecad?from=2026-07-01&to=2026-07-31
 [os.OpenFile(O_APPEND) + json.Marshal + f.Write + f.Sync()]
         │
         ↓
-[filesystem: {log_dir}/YYYY-MM-DD/HH.jsonl]
+[filesystem: {log_dir}/YYYY-MM-DD/{file_name_template}]
         │
         │  Library Service — fileimporter goroutine (poll a cada 5min)
         ↓
@@ -379,7 +379,8 @@ func (w *Writer) Run(ctx context.Context) error {
                 w.log.Error("transmissionlog: mkdir failed", "err", err)
                 return
             }
-            path := filepath.Join(dir, fmt.Sprintf("%02d.jsonl", hour))
+            name := buildFileName(w.cfg.FileNameTemplate, day, hour)
+            path := filepath.Join(dir, name)
             f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
             if err != nil {
                 w.log.Error("transmissionlog: open failed", "path", path, "err", err)
@@ -505,7 +506,7 @@ func (w *Writer) Run(ctx context.Context) error {
 | `O_APPEND\|O_CREATE\|O_WRONLY` | Kernel posiciona o cursor no fim antes de cada `Write()` — garantia POSIX. Sem risco de sobrescrever dados anteriores. |
 | Goroutine única escrevendo | Sem concorrência no arquivo corrente. Sem mutex necessário. |
 | `f.Sync()` por linha | Dado chega ao disco antes de retornar. Em crash imediato após Write, a linha está durável. |
-| Rotação de arquivo | Ao mudar de hora, fecha (Sync + Close) e abre novo. Cada `HH.jsonl` é um segmento completo e fechado. |
+| Rotação de arquivo | Ao mudar de hora, fecha (Sync + Close) e abre novo. Cada arquivo gerado pelo template é um segmento completo e fechado. |
 | Falha de Write/Sync → closeFile() | Força reabertura na próxima entrada. A entrada com falha é perdida; as seguintes são gravadas normalmente. |
 | Canal cheio → drop silencioso | Event Bus descarta via `default`. Audio continua. Warning logado. |
 
@@ -534,8 +535,9 @@ para o ECAD.
 ```go
 // playout/internal/config/config.go — adição
 type TransmissionLogConfig struct {
-    Enabled bool   `yaml:"enabled"` // false por padrão — opt-in explícito
-    Dir     string `yaml:"dir"`     // default: "./transmission-logs"
+    Enabled          bool   `yaml:"enabled"`            // false por padrão — opt-in explícito
+    Dir              string `yaml:"dir"`                // default: "./transmission-logs"
+    FileNameTemplate string `yaml:"file_name_template"` // default: "transmission_{date}_{hour}.jsonl"
 }
 ```
 
@@ -544,6 +546,31 @@ type TransmissionLogConfig struct {
 transmission_log:
   enabled: true
   dir: "/var/radioflow/transmission-logs"
+  file_name_template: "transmission_{date}_{hour}.jsonl"
+```
+
+O template suporta dois placeholders:
+- `{date}` — substituído por `YYYY-MM-DD` (UTC)
+- `{hour}` — substituído por `HH` zero-preenchido (UTC)
+
+Exemplo com o template padrão:
+```
+/var/radioflow/transmission-logs/
+  2026-07-20/
+    transmission_2026-07-20_08.jsonl
+    transmission_2026-07-20_09.jsonl
+  2026-07-21/
+    transmission_2026-07-21_00.jsonl
+```
+
+```go
+// buildFileName substitui os placeholders {date} e {hour} no template.
+// Ex: "transmission_{date}_{hour}.jsonl" → "transmission_2026-07-20_08.jsonl"
+func buildFileName(template, date string, hour int) string {
+    s := strings.ReplaceAll(template, "{date}", date)
+    s  = strings.ReplaceAll(s, "{hour}", fmt.Sprintf("%02d", hour))
+    return s
+}
 ```
 
 O `Writer` só é instanciado e iniciado se `cfg.TransmissionLog.Enabled == true`.
@@ -572,7 +599,21 @@ O `fileimporter` é uma goroutine do Library Service que:
 
 O importer nunca toca um arquivo que pode ainda estar sendo escrito pelo Engine.
 
-**Regra:** um arquivo `HH.jsonl` só é importado quando:
+O importer deriva um glob a partir do template configurado, substituindo os
+placeholders por `*`. Apenas arquivos cujo nome satisfaz o glob são processados —
+qualquer outro arquivo no diretório é ignorado silenciosamente:
+
+```go
+// buildGlob converte o template em um glob para filepath.Match.
+// "transmission_{date}_{hour}.jsonl" → "transmission_*_*.jsonl"
+func buildGlob(template string) string {
+    s := strings.ReplaceAll(template, "{date}", "*")
+    s  = strings.ReplaceAll(s, "{hour}", "*")
+    return s
+}
+```
+
+**Regra:** um arquivo elegível (nome bate com o glob) só é importado quando:
 
 ```
 time.Since(fileInfo.ModTime()) >= grace_period
@@ -631,9 +672,10 @@ type LogStore interface {
 }
 
 type Config struct {
-    Dir          string        // mesmo dir que o Engine escreve
-    PollInterval time.Duration // default: 5min
-    GracePeriod  time.Duration // default: 15min
+    Dir              string        // mesmo dir que o Engine escreve
+    FileNameTemplate string        // mesmo template do Engine; ex: "transmission_{date}_{hour}.jsonl"
+    PollInterval     time.Duration // default: 5min
+    GracePeriod      time.Duration // default: 15min
 }
 
 // New não recebe TrackQuerier — o importer não consulta outras tabelas.
@@ -687,9 +729,10 @@ func (s *TransmissionLogStore) BulkInsert(ctx context.Context, entries []Transmi
 // library/internal/config/config.go — adições
 
 type TransmissionLogConfig struct {
-    Dir          string        `yaml:"dir"`           // mesmo dir do Engine
-    PollInterval time.Duration `yaml:"poll_interval"` // default: 5min
-    GracePeriod  time.Duration `yaml:"grace_period"`  // default: 15min
+    Dir              string        `yaml:"dir"`                // mesmo dir do Engine
+    FileNameTemplate string        `yaml:"file_name_template"` // deve ser idêntico ao do Engine
+    PollInterval     time.Duration `yaml:"poll_interval"`      // default: 5min
+    GracePeriod      time.Duration `yaml:"grace_period"`       // default: 15min
 }
 
 type StationConfig struct {
@@ -706,6 +749,7 @@ type StationConfig struct {
 # library/config.yaml — novas seções
 transmission_log:
   dir: "/var/radioflow/transmission-logs"
+  file_name_template: "transmission_{date}_{hour}.jsonl"  # deve ser idêntico ao do Engine
   poll_interval: 5m
   grace_period: 15m
 
