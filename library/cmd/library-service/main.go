@@ -14,6 +14,7 @@ import (
 	"github.com/Waelson/radio-library-service/internal/indexsvc"
 	"github.com/Waelson/radio-library-service/internal/logging"
 	"github.com/Waelson/radio-library-service/internal/scanner"
+	"github.com/Waelson/radio-library-service/internal/scheduler"
 	"github.com/Waelson/radio-library-service/internal/store"
 )
 
@@ -92,7 +93,21 @@ func run(args []string) error {
 	playlistStore := store.NewPlaylistStore(db)
 	breakStore := store.NewBreakStore(db)
 	hotkeyStore := store.NewHotkeyStore(db)
-	srv := api.New(cfg.API, trackStore, playlistStore, breakStore, hotkeyStore, idxSvc, logging.With(log, "api"))
+	categoryStore := store.NewCategoryStore(db)
+	clockStore := store.NewClockStore(db)
+	separationStore := store.NewSeparationRuleStore(db)
+	rotationLogStore := store.NewRotationLogStore(db)
+
+	gen := scheduler.New(
+		&scheduler.ClockStoreAdapter{S: clockStore},
+		&scheduler.TrackStoreAdapter{S: trackStore, C: categoryStore},
+		&scheduler.SeparationRuleStoreAdapter{S: separationStore},
+		&scheduler.RotationLogStoreAdapter{S: rotationLogStore},
+	)
+
+	srv := api.New(cfg.API, trackStore, playlistStore, breakStore, hotkeyStore, idxSvc,
+		categoryStore, clockStore, separationStore, rotationLogStore, gen,
+		logging.With(log, "api"))
 	go func() {
 		if err := srv.Start(ctx); err != nil {
 			slog.Error("API server error", "error", err)

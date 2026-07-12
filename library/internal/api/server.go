@@ -22,13 +22,32 @@ type Server struct {
 	bs   handlers.BreakStore
 	hs   handlers.HotkeyStore
 	ix   handlers.IndexService
+	cs   handlers.CategoryStore
+	cls  handlers.ClockStore
+	ss   handlers.SeparationRuleStore
+	rls  handlers.RotationLogStore
+	svc  handlers.SchedulerService
 	log  *slog.Logger
 	http *http.Server
 }
 
 // New creates a Server ready to be started.
-func New(cfg config.APIConfig, ts handlers.TrackStore, ps handlers.PlaylistStore, bs handlers.BreakStore, hs handlers.HotkeyStore, ix handlers.IndexService, log *slog.Logger) *Server {
-	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix, log: log}
+func New(
+	cfg config.APIConfig,
+	ts handlers.TrackStore,
+	ps handlers.PlaylistStore,
+	bs handlers.BreakStore,
+	hs handlers.HotkeyStore,
+	ix handlers.IndexService,
+	cs handlers.CategoryStore,
+	cls handlers.ClockStore,
+	ss handlers.SeparationRuleStore,
+	rls handlers.RotationLogStore,
+	svc handlers.SchedulerService,
+	log *slog.Logger,
+) *Server {
+	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix,
+		cs: cs, cls: cls, ss: ss, rls: rls, svc: svc, log: log}
 	s.http = &http.Server{
 		Addr:         net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
 		Handler:      s.routes(),
@@ -99,6 +118,45 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("PUT /v1/hotkeys/profiles/{id}/buttons/reorder",     handlers.ReorderHotkeyButtons(s.hs))
 	mux.HandleFunc("PATCH /v1/hotkeys/buttons/{id}",                    handlers.PatchHotkeyButton(s.hs))
 	mux.HandleFunc("DELETE /v1/hotkeys/buttons/{id}",                   handlers.DeleteHotkeyButton(s.hs))
+
+	// Categories
+	mux.HandleFunc("GET /v1/categories",                                handlers.ListCategories(s.cs))
+	mux.HandleFunc("POST /v1/categories",                               handlers.CreateCategory(s.cs))
+	mux.HandleFunc("GET /v1/categories/{id}",                           handlers.GetCategory(s.cs))
+	mux.HandleFunc("PUT /v1/categories/{id}",                           handlers.UpdateCategory(s.cs))
+	mux.HandleFunc("DELETE /v1/categories/{id}",                        handlers.DeleteCategory(s.cs))
+	mux.HandleFunc("GET /v1/categories/{id}/tracks",                    handlers.ListCategoryTracks(s.cs))
+	mux.HandleFunc("POST /v1/categories/{id}/tracks",                   handlers.AddCategoryTracks(s.cs))
+	mux.HandleFunc("DELETE /v1/categories/{id}/tracks/{track_id}",      handlers.RemoveCategoryTrack(s.cs))
+	mux.HandleFunc("PUT /v1/tracks/{id}/categories",                    handlers.SetTrackCategories(s.cs))
+
+	// Clocks
+	mux.HandleFunc("GET /v1/clocks",                                    handlers.ListClocks(s.cls))
+	mux.HandleFunc("POST /v1/clocks",                                   handlers.CreateClock(s.cls))
+	mux.HandleFunc("GET /v1/clocks/{id}",                               handlers.GetClock(s.cls))
+	mux.HandleFunc("PUT /v1/clocks/{id}",                               handlers.UpdateClock(s.cls))
+	mux.HandleFunc("DELETE /v1/clocks/{id}",                            handlers.DeleteClock(s.cls))
+	mux.HandleFunc("POST /v1/clocks/{id}/slots",                        handlers.AddClockSlot(s.cls))
+	mux.HandleFunc("PUT /v1/clocks/{id}/slots/reorder",                 handlers.ReorderClockSlots(s.cls))
+	mux.HandleFunc("PUT /v1/clocks/{id}/slots/{slot_id}",               handlers.UpdateClockSlot(s.cls))
+	mux.HandleFunc("DELETE /v1/clocks/{id}/slots/{slot_id}",            handlers.DeleteClockSlot(s.cls))
+
+	// Schedule grid
+	mux.HandleFunc("GET /v1/schedule/clock-grid",                       handlers.GetClockGrid(s.cls))
+	mux.HandleFunc("PUT /v1/schedule/clock-grid",                       handlers.SetClockGrid(s.cls))
+
+	// Separation rules
+	mux.HandleFunc("GET /v1/schedule/separation-rules",                 handlers.ListSeparationRules(s.ss))
+	mux.HandleFunc("POST /v1/schedule/separation-rules",                handlers.CreateSeparationRule(s.ss))
+	mux.HandleFunc("PUT /v1/schedule/separation-rules/{id}",            handlers.UpdateSeparationRule(s.ss))
+	mux.HandleFunc("DELETE /v1/schedule/separation-rules/{id}",         handlers.DeleteSeparationRule(s.ss))
+
+	// Playlist generator
+	mux.HandleFunc("POST /v1/schedule/generate",                        handlers.GenerateSchedule(s.svc))
+
+	// Rotation log
+	mux.HandleFunc("POST /v1/rotation-log",                             handlers.AppendRotationLog(s.rls))
+	mux.HandleFunc("GET /v1/rotation-log",                              handlers.GetRotationLog(s.rls))
 
 	return corsMiddleware(s.cfg.CORS.AllowedOrigins, mux)
 }
