@@ -1026,6 +1026,10 @@ input[type=range].vol-slider:disabled {
 .rot-cat-remove { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 10px; padding: 0 3px; }
 .rot-cat-remove:hover { color: #ef4444; }
 .rot-cat-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.rot-cat-search-bar { display: flex; gap: 6px; align-items: center; padding: 6px 8px 2px; border-top: 1px solid var(--border); }
+.rot-cat-search-results { max-height: 140px; overflow-y: auto; padding: 2px 8px 6px; border-top: 1px solid rgba(255,255,255,0.05); }
+.rot-cat-result-row { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text); padding: 3px 2px; }
+.rot-cat-result-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Clock list */
 .rot-clock-list { display: flex; flex-direction: column; gap: 6px; }
 .rot-clock-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -1053,6 +1057,9 @@ input[type=range].vol-slider:disabled {
 .rot-grid-cell { width: 100%; background: none; border: none; padding: 4px 4px; color: var(--text-dim); font-size: 9px; font-family: inherit; cursor: pointer; text-align: left; transition: background .12s, color .12s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .rot-grid-cell.has-clock { color: var(--cyan); background: rgba(32,230,255,0.06); }
 .rot-grid-cell:hover { background: rgba(32,230,255,0.12); color: var(--text-hi); }
+.rot-grid-pick-opt { display: block; width: 100%; background: none; border: none; color: var(--text); font-size: 11px; font-family: inherit; text-align: left; padding: 7px 14px; cursor: pointer; transition: background .1s; }
+.rot-grid-pick-opt:hover { background: rgba(32,230,255,0.12); color: var(--text-hi); }
+.rot-grid-pick-opt.clear-opt { color: var(--text-dim); }
 /* Rules */
 .rot-rules-list { display: flex; flex-direction: column; gap: 6px; }
 .rot-rule-row { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
@@ -2321,16 +2328,20 @@ canvas.vu-canvas {
           </div>
 
           <!-- Pane: Grade 24x7 -->
-          <div class="rot-pane" id="rotPaneGrade">
+          <div class="rot-pane" id="rotPaneGrade" style="position:relative;">
             <div class="rot-action-bar">
               <button class="rot-btn-sm" onclick="rotGridLoad()">↺ Atualizar</button>
               <span style="font-size:9px;color:var(--text-dim)">Clique em uma célula para atribuir um clock</span>
             </div>
-            <div class="rot-grid-wrap">
+            <div class="rot-grid-wrap" id="rotGridWrap">
               <table class="rot-grid-table" id="rotGridTable">
                 <thead id="rotGridHead"></thead>
                 <tbody id="rotGridBody"></tbody>
               </table>
+            </div>
+            <!-- floating clock picker -->
+            <div id="rotGridPicker" style="display:none;position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:6px 0;min-width:160px;box-shadow:0 6px 24px rgba(0,0,0,.6);overflow:hidden;">
+              <div id="rotGridPickerList"></div>
             </div>
           </div>
 
@@ -2365,13 +2376,31 @@ canvas.vu-canvas {
           <div class="rot-pane" id="rotPaneGerar" style="display:none;flex-direction:column;">
             <div class="rot-gen-form">
               <div class="rot-gen-row">
-                <span class="rot-gen-label">De:</span>
-                <input class="rot-input" id="rotGenFrom" type="datetime-local" style="flex:1;">
+                <span class="rot-gen-label">Dia:</span>
+                <input class="rot-input" id="rotGenDate" type="date" style="flex:1;" oninput="rotGenUpdatePreview()">
+              </div>
+              <div class="rot-gen-row">
+                <span class="rot-gen-label">Hora:</span>
+                <select class="rot-select" id="rotGenHour" style="width:90px;" onchange="rotGenUpdatePreview()">
+                  <option value="0">00:00</option><option value="1">01:00</option>
+                  <option value="2">02:00</option><option value="3">03:00</option>
+                  <option value="4">04:00</option><option value="5">05:00</option>
+                  <option value="6">06:00</option><option value="7">07:00</option>
+                  <option value="8">08:00</option><option value="9">09:00</option>
+                  <option value="10">10:00</option><option value="11">11:00</option>
+                  <option value="12">12:00</option><option value="13">13:00</option>
+                  <option value="14">14:00</option><option value="15">15:00</option>
+                  <option value="16">16:00</option><option value="17">17:00</option>
+                  <option value="18">18:00</option><option value="19">19:00</option>
+                  <option value="20">20:00</option><option value="21">21:00</option>
+                  <option value="22">22:00</option><option value="23">23:00</option>
+                </select>
               </div>
               <div class="rot-gen-row">
                 <span class="rot-gen-label">Horas:</span>
-                <input class="rot-input" id="rotGenHours" type="number" min="1" max="24" value="4" style="width:60px;">
+                <input class="rot-input" id="rotGenHours" type="number" min="1" max="24" value="4" style="width:60px;" oninput="rotGenUpdatePreview()">
               </div>
+              <div id="rotGenPreview" style="font-size:10px;color:var(--accent);padding:2px 0 4px;min-height:14px;"></div>
               <button class="rot-btn-sm" style="align-self:flex-start" onclick="rotGenerate()">Gerar Playlist</button>
             </div>
             <div class="rot-gen-result" id="rotGenResult">
@@ -5086,9 +5115,12 @@ function rotCatRender() {
       </div>
       <div class="rot-cat-body">
         <div class="rot-cat-tracks" id="rotCatTracks_${c.id}"><div class="lib-status" style="font-size:10px">Carregando…</div></div>
-        <div class="rot-cat-actions">
-          <button class="rot-btn-sm" onclick="rotCatAddTrackPrompt('${c.id}')">+ Adicionar faixas</button>
+        <div class="rot-cat-search-bar">
+          <input class="rot-input" id="rotCatQ_${c.id}" type="text" placeholder="Buscar faixa por título ou artista…" style="flex:1;"
+            onkeydown="if(event.key==='Enter')rotCatSearch('${c.id}')">
+          <button class="rot-btn-sm" onclick="rotCatSearch('${c.id}')">Buscar</button>
         </div>
+        <div class="rot-cat-search-results" id="rotCatResults_${c.id}" style="display:none;"></div>
       </div>
     </div>`).join('');
 }
@@ -5164,25 +5196,58 @@ async function rotCatRemoveTrack(catId, trackId, btn) {
   if (countEl && cat) countEl.textContent = cat.track_count + ' faixas';
 }
 
-async function rotCatAddTrackPrompt(catId) {
-  const q = prompt('Buscar faixa (título ou artista):');
+async function rotCatSearch(catId) {
+  const q = (document.getElementById('rotCatQ_' + catId) || {}).value?.trim();
+  const resultsEl = document.getElementById('rotCatResults_' + catId);
   if (!q) return;
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim);padding:4px">Buscando…</div>';
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/tracks?q=' + encodeURIComponent(q) + '&limit=10');
+    const r = await fetch(LIBRARY_URL + '/v1/tracks?q=' + encodeURIComponent(q) + '&limit=12');
     const j = await r.json();
     const tracks = j.tracks || j.data || [];
-    if (tracks.length === 0) { alert('Nenhuma faixa encontrada'); return; }
-    const names = tracks.map((t, i) => (i+1) + '. ' + (t.artist ? t.artist + ' — ' : '') + t.title).join('\n');
-    const sel = prompt('Escolha o número:\n' + names);
-    const idx = parseInt(sel) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= tracks.length) return;
-    await fetch(LIBRARY_URL + '/v1/categories/' + catId + '/tracks', {
+    if (tracks.length === 0) {
+      resultsEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim);padding:4px">Nenhuma faixa encontrada.</div>';
+      return;
+    }
+    resultsEl.innerHTML = tracks.map(t => `
+      <div class="rot-cat-result-row">
+        <span class="rot-cat-result-name">${escHtml(t.artist ? t.artist + ' — ' + t.title : t.title)}</span>
+        <button class="rot-btn-sm" onclick="rotCatAddTrack('${catId}','${t.id}',this)">+</button>
+      </div>`).join('');
+  } catch(e) {
+    resultsEl.innerHTML = '<div style="font-size:10px;color:#ef4444;padding:4px">Erro ao buscar faixas.</div>';
+  }
+}
+
+async function rotCatAddTrack(catId, trackId, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/categories/' + catId + '/tracks', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({track_ids: [tracks[idx].id]})
+      body: JSON.stringify({track_ids: [trackId]})
     });
-    rotCatToggle(catId); // refresh
-    rotCatToggle(catId);
-  } catch(e) { alert('Erro ao buscar faixas'); }
+    if (!r.ok) { btn.disabled = false; btn.textContent = '+'; return; }
+    btn.textContent = '✓';
+    btn.style.background = 'var(--accent)';
+    // refresh track list
+    const tracksEl = document.getElementById('rotCatTracks_' + catId);
+    const cat = _rotCategories.find(c => c.id === catId);
+    const tr2 = await fetch(LIBRARY_URL + '/v1/categories/' + catId + '/tracks?limit=100');
+    const j2  = await tr2.json();
+    const tracks = j2.data || [];
+    if (cat) { cat.track_count = tracks.length; }
+    const countEl = document.querySelector('#rotCat_' + catId + ' .rot-cat-count');
+    if (countEl) countEl.textContent = tracks.length + ' faixas';
+    tracksEl.innerHTML = tracks.length === 0
+      ? '<div style="font-size:10px;color:var(--text-dim)">Nenhuma faixa nesta categoria.</div>'
+      : tracks.map(t => `
+        <div class="rot-cat-track">
+          <span class="rot-cat-track-name" title="${escHtml(t.path)}">${escHtml(t.artist ? t.artist + ' — ' + t.title : t.title)}</span>
+          <button class="rot-cat-remove" title="Remover da categoria" onclick="rotCatRemoveTrack('${catId}','${t.id}',this)">✕</button>
+        </div>`).join('');
+  } catch(e) { btn.disabled = false; btn.textContent = '+'; }
 }
 
 /* ── Clocks ──────────────────────────────────────────────────── */
@@ -5301,27 +5366,56 @@ async function rotClockDelete(id, name) {
   setTimeout(rotClockRender, 200);
 }
 
+async function rotClockRefreshSlots(clockId) {
+  const slotsEl = document.getElementById('rotSlotsList_' + clockId);
+  if (!slotsEl) return;
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/clocks/' + clockId);
+    const j = await r.json();
+    const slots = (j.data && j.data.slots) || [];
+    if (slots.length === 0) {
+      slotsEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim)">Nenhum slot. Adicione um abaixo.</div>';
+    } else {
+      slotsEl.innerHTML = slots.map(s => `
+        <div class="rot-slot-row" id="rotSlotRow_${s.id}">
+          <span class="rot-slot-pos">${s.position}</span>
+          <span class="rot-slot-badge">${s.slot_type}</span>
+          <span class="rot-slot-cat">${s.category_name || s.slot_type}</span>
+          <button class="rot-slot-del" onclick="rotSlotDelete('${clockId}','${s.id}')">✕</button>
+        </div>`).join('');
+    }
+    // Update slot count badge in header
+    const badge = document.querySelector('#rotClock_' + clockId + ' .rot-clock-slot-count');
+    if (badge) badge.textContent = slots.length + ' slots';
+    // Update in-memory list
+    const clk = _rotClocks.find(c => c.id === clockId);
+    if (clk) clk.slot_count = slots.length;
+  } catch(e) {}
+}
+
 async function rotSlotAdd(clockId) {
-  const type   = document.getElementById('rotSlotType_' + clockId).value;
-  const catEl  = document.getElementById('rotSlotCat_' + clockId);
-  const catId  = (type === 'CATEGORY' && catEl) ? catEl.value : '';
-  const body   = {slot_type: type, category_id: catId};
+  const type  = document.getElementById('rotSlotType_' + clockId).value;
+  const catEl = document.getElementById('rotSlotCat_' + clockId);
+  const catId = (type === 'CATEGORY' && catEl) ? catEl.value : '';
   const r = await fetch(LIBRARY_URL + '/v1/clocks/' + clockId + '/slots', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(body)
+    body: JSON.stringify({slot_type: type, category_id: catId})
   });
   if (!r.ok) { alert('Erro ao adicionar slot'); return; }
-  // Refresh the expanded clock
-  rotClockToggle(clockId);
-  rotClockToggle(clockId);
-  rotClockLoad();
+  rotClockRefreshSlots(clockId);
 }
 
 async function rotSlotDelete(clockId, slotId) {
   const r = await fetch(LIBRARY_URL + '/v1/clocks/' + clockId + '/slots/' + slotId, {method: 'DELETE'});
   if (!r.ok) { alert('Erro ao remover slot'); return; }
   document.getElementById('rotSlotRow_' + slotId)?.remove();
-  rotClockLoad();
+  // Renum positions and update badge without re-render
+  const rows = document.querySelectorAll('#rotSlotsList_' + clockId + ' .rot-slot-row');
+  rows.forEach((row, i) => { const pos = row.querySelector('.rot-slot-pos'); if (pos) pos.textContent = i + 1; });
+  const badge = document.querySelector('#rotClock_' + clockId + ' .rot-clock-slot-count');
+  if (badge) badge.textContent = rows.length + ' slots';
+  const clk = _rotClocks.find(c => c.id === clockId);
+  if (clk) clk.slot_count = rows.length;
 }
 
 /* ── Grade 24x7 ──────────────────────────────────────────────── */
@@ -5354,24 +5448,75 @@ function rotGridRender() {
       const cell = lookup[d + '_' + h];
       const label = cell && cell.clock_id ? cell.clock_name || cell.clock_id : '—';
       const hasClock = cell && cell.clock_id ? 'has-clock' : '';
-      rows += `<td><button class="rot-grid-cell ${hasClock}" onclick="rotGridCellClick(${d},${h})" title="${escHtml(label)}">${escHtml(label.length > 10 ? label.slice(0,9)+'…' : label)}</button></td>`;
+      rows += `<td><button class="rot-grid-cell ${hasClock}" onclick="rotGridCellClick(${d},${h},this)" title="${escHtml(label)}">${escHtml(label.length > 10 ? label.slice(0,9)+'…' : label)}</button></td>`;
     }
     rows += '</tr>';
   }
   body.innerHTML = rows;
 }
 
-async function rotGridCellClick(weekday, hour) {
-  if (_rotClocks.length === 0) { alert('Crie um clock primeiro.'); return; }
-  const options = ['(limpar)'].concat(_rotClocks.map(c => c.name));
-  const sel = prompt('Clock para ' + DAYS[weekday] + ' ' + String(hour).padStart(2,'0') + 'h:\n' +
-    options.map((o, i) => i + '. ' + o).join('\n'));
-  const idx = parseInt(sel);
-  if (isNaN(idx) || idx < 0 || idx >= options.length) return;
-  const clockId = idx === 0 ? '' : _rotClocks[idx-1].id;
+let _rotGridPickerCtx = null; // {weekday, hour}
+let _rotGridPickerListener = null;
+
+function rotGridCellClick(weekday, hour, btnEl) {
+  if (_rotClocks.length === 0) { showToast('Crie um clock primeiro.', 'warn'); return; }
+  const picker  = document.getElementById('rotGridPicker');
+  const list    = document.getElementById('rotGridPickerList');
+
+  // Toggle: same cell while open → close
+  if (_rotGridPickerCtx && _rotGridPickerCtx.weekday === weekday && _rotGridPickerCtx.hour === hour && picker.style.display !== 'none') {
+    rotGridClosePicker(); return;
+  }
+  // Close any open picker first (without re-triggering listener)
+  rotGridClosePicker();
+
+  _rotGridPickerCtx = {weekday, hour};
+
+  list.innerHTML =
+    `<div style="font-size:9px;font-weight:700;color:var(--text-dim);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.07em;">${DAYS[weekday]} ${String(hour).padStart(2,'0')}h</div>` +
+    `<button class="rot-grid-pick-opt clear-opt" onclick="rotGridPickSelect('')">— Limpar</button>` +
+    _rotClocks.map(c =>
+      `<button class="rot-grid-pick-opt" onclick="rotGridPickSelect('${c.id}')">${escHtml(c.name)}</button>`
+    ).join('');
+
+  // Position near clicked cell
+  const rect = btnEl.getBoundingClientRect();
+  picker.style.display = 'block';
+  const pw = picker.offsetWidth || 180;
+  const ph = picker.offsetHeight || 160;
+  let left = rect.left;
+  let top  = rect.bottom + 4;
+  if (left + pw > window.innerWidth - 8)  left = window.innerWidth - pw - 8;
+  if (top  + ph > window.innerHeight - 8) top  = rect.top - ph - 4;
+  picker.style.left = left + 'px';
+  picker.style.top  = top  + 'px';
+
+  // Close when clicking outside — deferred so current event doesn't trigger it
+  setTimeout(() => {
+    _rotGridPickerListener = (e) => {
+      if (!picker.contains(e.target)) rotGridClosePicker();
+    };
+    document.addEventListener('click', _rotGridPickerListener);
+  }, 0);
+}
+
+function rotGridClosePicker() {
+  const picker = document.getElementById('rotGridPicker');
+  if (picker) picker.style.display = 'none';
+  _rotGridPickerCtx = null;
+  if (_rotGridPickerListener) {
+    document.removeEventListener('click', _rotGridPickerListener);
+    _rotGridPickerListener = null;
+  }
+}
+
+async function rotGridPickSelect(clockId) {
+  const ctx = _rotGridPickerCtx;
+  rotGridClosePicker();
+  if (!ctx) return;
   await fetch(LIBRARY_URL + '/v1/schedule/clock-grid', {
     method: 'PUT', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify([{weekday, hour, clock_id: clockId}])
+    body: JSON.stringify([{weekday: ctx.weekday, hour: ctx.hour, clock_id: clockId}])
   });
   rotGridLoad();
 }
@@ -5433,17 +5578,45 @@ async function rotRuleDelete(id) {
 }
 
 /* ── Gerar Playlist ──────────────────────────────────────────── */
+const _DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
 function rotGenInitForm() {
-  const fromEl = document.getElementById('rotGenFrom');
-  if (!fromEl.value) {
+  const dateEl = document.getElementById('rotGenDate');
+  const hourEl = document.getElementById('rotGenHour');
+  if (!dateEl.value) {
     const now = new Date();
-    now.setMinutes(0, 0, 0);
-    fromEl.value = now.toISOString().slice(0,16);
+    const pad = n => String(n).padStart(2,'0');
+    dateEl.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    hourEl.value = String(now.getHours());
   }
+  rotGenUpdatePreview();
+}
+
+function rotGenUpdatePreview() {
+  const dateVal = document.getElementById('rotGenDate').value;
+  const hour    = parseInt(document.getElementById('rotGenHour').value) || 0;
+  const hours   = parseInt(document.getElementById('rotGenHours').value) || 1;
+  const prev    = document.getElementById('rotGenPreview');
+  if (!dateVal) { prev.textContent = ''; return; }
+  const [y,m,d] = dateVal.split('-').map(Number);
+  const start   = new Date(y, m-1, d, hour);
+  const end     = new Date(start.getTime() + hours * 3600000);
+  const pad     = n => String(n).padStart(2,'0');
+  const fmtDate = dt => `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+  const fmtHour = dt => `${pad(dt.getHours())}:00`;
+  const dayName = _DAYS_PT[start.getDay()];
+  prev.textContent = `${dayName} ${fmtDate(start)} · ${fmtHour(start)} → ${fmtHour(end)}${end.getDate()!==start.getDate()?' ('+fmtDate(end)+')':''}`;
+}
+
+function _rotBuildFromStr() {
+  const dateVal = document.getElementById('rotGenDate').value;
+  const hour    = parseInt(document.getElementById('rotGenHour').value) || 0;
+  if (!dateVal) return null;
+  return `${dateVal}T${String(hour).padStart(2,'0')}:00:00`;
 }
 
 async function rotGenerate() {
-  const fromStr = document.getElementById('rotGenFrom').value;
+  const fromStr = _rotBuildFromStr();
   const hours   = parseInt(document.getElementById('rotGenHours').value) || 1;
   const resultEl = document.getElementById('rotGenResult');
   const warnEl   = document.getElementById('rotGenWarnings');
@@ -5456,7 +5629,7 @@ async function rotGenerate() {
   try {
     const r = await fetch(LIBRARY_URL + '/v1/schedule/generate', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({from: fromStr ? fromStr.replace('T',' ').slice(0,19) : undefined, hours})
+      body: JSON.stringify({from: fromStr || undefined, hours})
     });
     const j = await r.json();
     if (!j.ok) { resultEl.innerHTML = '<div class="lib-status" style="color:#ef4444">' + escHtml(j.message||'Erro') + '</div>'; return; }
@@ -5488,7 +5661,7 @@ async function rotGenerate() {
 
 async function rotEnqueue() {
   if (_rotGenItems.length === 0) return;
-  const PLAYOUT_URL = typeof PLAYER_URL !== 'undefined' ? PLAYER_URL : (window._playerUrl || 'http://localhost:9000');
+  const PLAYOUT_URL = typeof PLAYER_URL !== 'undefined' ? PLAYER_URL : (window._playerUrl || 'http://localhost:8080');
   let enqueued = 0;
   const logEntries = [];
   const now = new Date();
@@ -5498,10 +5671,13 @@ async function rotEnqueue() {
       const r = await fetch(PLAYOUT_URL + '/v1/queue/enqueue', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
-          path:     item.track.path,
-          title:    item.track.title,
-          artist:   item.track.artist,
-          duration: item.track.duration_ms
+          items: [{
+            path:        item.track.path,
+            title:       item.track.title,
+            artist:      item.track.artist,
+            duration_ms: item.track.duration_ms,
+            type:        item.slot_type || 'MUSIC'
+          }]
         })
       });
       if (r.ok) {

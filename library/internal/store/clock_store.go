@@ -13,6 +13,7 @@ import (
 type Clock struct {
 	ID        string
 	Name      string
+	SlotCount int
 	Slots     []ClockSlot
 	CreatedAt time.Time
 }
@@ -52,7 +53,11 @@ func NewClockStore(db *sql.DB) *ClockStore {
 // List returns all clocks without their slots.
 func (s *ClockStore) List(ctx context.Context) ([]Clock, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, name, created_at FROM clocks ORDER BY name ASC`)
+		`SELECT c.id, c.name, c.created_at, COUNT(cs.id) AS slot_count
+		 FROM clocks c
+		 LEFT JOIN clock_slots cs ON cs.clock_id = c.id
+		 GROUP BY c.id
+		 ORDER BY c.name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("clock list: %w", err)
 	}
@@ -398,7 +403,7 @@ type clockRowScanner interface {
 func scanClockRow(rows *sql.Rows) (Clock, error) {
 	var c Clock
 	var createdAt string
-	if err := rows.Scan(&c.ID, &c.Name, &createdAt); err != nil {
+	if err := rows.Scan(&c.ID, &c.Name, &createdAt, &c.SlotCount); err != nil {
 		return Clock{}, err
 	}
 	c.CreatedAt, _ = time.Parse("2006-01-02T15:04:05Z", createdAt)

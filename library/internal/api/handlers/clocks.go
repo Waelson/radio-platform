@@ -60,8 +60,12 @@ type scheduleCellJSON struct {
 }
 
 func toClockSummary(c store.Clock) clockSummaryJSON {
+	slotCount := c.SlotCount
+	if len(c.Slots) > slotCount {
+		slotCount = len(c.Slots)
+	}
 	return clockSummaryJSON{
-		ID: c.ID, Name: c.Name, SlotCount: len(c.Slots), CreatedAt: c.CreatedAt,
+		ID: c.ID, Name: c.Name, SlotCount: slotCount, CreatedAt: c.CreatedAt,
 	}
 }
 
