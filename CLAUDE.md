@@ -59,3 +59,7 @@ O `go.work` permite importar módulos locais entre si durante desenvolvimento. N
 - `playout/CLAUDE.md` — arquitetura obrigatória, regras de áudio, estados, comandos
 - `library/` — serviço de catálogo; SQLite; REST API para tracks, playlists e breaks
 - `player/` — vazio por enquanto; futuro Electron app
+
+## Regras de Git
+
+- **Nunca fazer commit nem push diretamente na branch `main`.** Todo trabalho deve ser feito em uma branch dedicada e integrado via Pull Request.
