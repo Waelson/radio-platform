@@ -177,7 +177,7 @@ func (s *PlaylistStore) AddItem(ctx context.Context, playlistID, trackID string)
 	var track Track
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at
 		FROM tracks WHERE id = ?`, trackID)
 	track, err = scanTrack(row)
 	if errors.Is(err, ErrNotFound) {

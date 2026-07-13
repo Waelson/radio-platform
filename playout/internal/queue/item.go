@@ -68,6 +68,9 @@ type QueueItem struct {
 	Type        AssetType
 	Title       string
 	Artist      string
+	ISRC        string
+	Composer    string
+	Publisher   string
 	DurationMS  int64
 	CueInMS     int64
 	CueOutMS    int64 // 0 means use DurationMS

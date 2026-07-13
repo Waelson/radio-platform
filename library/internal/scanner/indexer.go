@@ -124,6 +124,11 @@ func (ix *Indexer) IndexFile(ctx context.Context, path, assetType string) error 
 		Type:       assetType,
 		DurationMS: meta.DurationMS,
 		Category:   category,
+		// ECAD fields — always extracted from tags regardless of MetadataSource,
+		// since ISRC/composer/publisher are never encoded in the filename.
+		ISRC:      meta.ISRC,
+		Composer:  meta.Composer,
+		Publisher: meta.Publisher,
 	}
 
 	if err := ix.store.Upsert(ctx, t); err != nil {

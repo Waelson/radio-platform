@@ -4,20 +4,21 @@ package config
 // Config is the root configuration for the Playout Engine.
 // Precedence (highest to lowest): CLI flags > env vars > YAML file > defaults.
 type Config struct {
-	Engine    EngineConfig    `yaml:"engine"     json:"engine"`
-	API       APIConfig       `yaml:"api"        json:"api"`
-	Audio     AudioConfig     `yaml:"audio"      json:"audio"`
-	Playback  PlaybackConfig  `yaml:"playback"   json:"playback"`
-	Health    HealthConfig    `yaml:"health"     json:"health"`
-	Panic     PanicConfig     `yaml:"panic"      json:"panic"`
-	Logging   LoggingConfig   `yaml:"logging"    json:"logging"`
-	Security  SecurityConfig  `yaml:"security"   json:"security"`
-	Admin     AdminConfig     `yaml:"admin"      json:"admin"`
-	Queue     QueueConfig     `yaml:"queue"      json:"queue"`
-	HoraCerta HoraCertaConfig `yaml:"hora_certa" json:"hora_certa"`
-	Preview   PreviewConfig   `yaml:"preview"    json:"preview"`
-	Scheduler SchedulerConfig `yaml:"scheduler"  json:"scheduler"`
-	Cart      CartConfig      `yaml:"cart"       json:"cart"`
+	Engine          EngineConfig          `yaml:"engine"           json:"engine"`
+	API             APIConfig             `yaml:"api"              json:"api"`
+	Audio           AudioConfig           `yaml:"audio"            json:"audio"`
+	Playback        PlaybackConfig        `yaml:"playback"         json:"playback"`
+	Health          HealthConfig          `yaml:"health"           json:"health"`
+	Panic           PanicConfig           `yaml:"panic"            json:"panic"`
+	Logging         LoggingConfig         `yaml:"logging"          json:"logging"`
+	Security        SecurityConfig        `yaml:"security"         json:"security"`
+	Admin           AdminConfig           `yaml:"admin"            json:"admin"`
+	Queue           QueueConfig           `yaml:"queue"            json:"queue"`
+	HoraCerta       HoraCertaConfig       `yaml:"hora_certa"       json:"hora_certa"`
+	Preview         PreviewConfig         `yaml:"preview"          json:"preview"`
+	Scheduler       SchedulerConfig       `yaml:"scheduler"        json:"scheduler"`
+	Cart            CartConfig            `yaml:"cart"             json:"cart"`
+	TransmissionLog TransmissionLogConfig `yaml:"transmission_log" json:"transmission_log"`
 }
 
 // EngineConfig holds process-level settings.
@@ -196,4 +197,29 @@ type PreviewConfig struct {
 	// Leave empty to use the driver's default device.
 	// Examples: "BlackHole 2ch" (macOS), "hw:1,0" (ALSA/Linux).
 	OutputDevice string `yaml:"output_device" json:"output_device"`
+}
+
+// TransmissionLogConfig configures the append-only JSONL log writer that records
+// every played track for ECAD compliance and spot audit purposes.
+// The Writer is only started when Enabled = true; when false there is zero
+// overhead — no goroutine, no file handles, no event subscriptions.
+type TransmissionLogConfig struct {
+	// Enabled controls whether the LogWriter goroutine is started.
+	// Set to true in production to activate transmission logging.
+	// Default: false (opt-in).
+	Enabled bool `yaml:"enabled" json:"enabled"`
+
+	// Dir is the directory where hourly JSONL files are written.
+	// Must be readable by the Library Service importer (shared volume in production).
+	// Default: "./transmission-logs"
+	Dir string `yaml:"dir" json:"dir"`
+
+	// FileNameTemplate is the filename pattern for log files.
+	// Placeholders:
+	//   {date} → yyyyMMdd  (UTC)
+	//   {hour} → HH        (UTC, zero-padded)
+	// The Library Service importer uses this same template to derive the
+	// glob pattern for file discovery.
+	// Default: "transmission_{date}_{hour}.jsonl"
+	FileNameTemplate string `yaml:"file_name_template" json:"file_name_template"`
 }

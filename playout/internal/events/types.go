@@ -137,6 +137,9 @@ type NowPlayingChangedPayload struct {
 	Path        string `json:"path"`
 	Title       string `json:"title"`
 	Artist      string `json:"artist"`
+	ISRC        string `json:"isrc,omitempty"`
+	Composer    string `json:"composer,omitempty"`
+	Publisher   string `json:"publisher,omitempty"`
 	Type        string `json:"type"`
 	DurationMS  int64  `json:"duration_ms"`
 

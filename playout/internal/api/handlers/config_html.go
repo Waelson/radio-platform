@@ -326,6 +326,7 @@ var configPageTpl = `<!DOCTYPE html>
     <div class="nav-item"         data-s="preview">Preview</div>
     <div class="nav-item"         data-s="scheduler">Scheduler</div>
     <div class="nav-item"         data-s="cart">Cart</div>
+    <div class="nav-item"         data-s="transmission">Log Transmissão</div>
   </nav>
 
   <main class="content">
@@ -724,6 +725,31 @@ var configPageTpl = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- LOG DE TRANSMISSÃO -->
+    <div id="p-transmission" class="panel">
+      <div class="section-title">Log de Transmissão</div>
+      <label class="check-row">
+        <input id="tl-enabled" type="checkbox" />
+        <div>
+          <div class="check-lbl">Habilitar log de transmissão</div>
+          <div class="check-desc">Registra cada faixa tocada em arquivos JSONL horários para conformidade ECAD e auditoria de spots. Quando desabilitado, zero overhead — nenhuma goroutine, nenhum arquivo aberto.</div>
+        </div>
+      </label>
+      <div class="field" style="margin-top:16px">
+        <label class="lbl">Diretório dos logs</label>
+        <div class="picker-row">
+          <input id="tl-dir" type="text" placeholder="./transmission-logs" />
+          <button class="btn-browse" onclick="browse('tl-dir','dir')">Procurar pasta</button>
+        </div>
+        <div class="hint">Deve ser acessível pelo Library Service (volume compartilhado em produção). Padrão: <code style="font-family:var(--mono);font-size:11px">./transmission-logs</code></div>
+      </div>
+      <div class="field">
+        <label class="lbl">Template do nome do arquivo</label>
+        <input id="tl-template" type="text" placeholder="transmission_{date}_{hour}.jsonl" />
+        <div class="hint">Placeholders: <code style="font-family:var(--mono);font-size:11px">{date}</code> → yyyyMMdd (UTC) &nbsp;|&nbsp; <code style="font-family:var(--mono);font-size:11px">{hour}</code> → HH (UTC, dois dígitos). O Library Service usa o mesmo template para descobrir os arquivos.</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -964,6 +990,11 @@ var configPageTpl = `<!DOCTYPE html>
     var ct = cfg.cart || {};
     setCheck('cart-enabled', ct.enabled);
     cartDeviceID = (ct.output && ct.output.device_id) || '';
+
+    var tl = cfg.transmission_log || {};
+    setCheck('tl-enabled', tl.enabled);
+    setVal('tl-dir', tl.dir);
+    setVal('tl-template', tl.file_name_template);
   }
 
   // ── Load devices ─────────────────────────────────────────────
@@ -1083,6 +1114,11 @@ var configPageTpl = `<!DOCTYPE html>
         output: {
           device_id: getVal('cart-device')
         }
+      },
+      transmission_log: {
+        enabled:            getCheck('tl-enabled'),
+        dir:                getVal('tl-dir'),
+        file_name_template: getVal('tl-template')
       }
     };
   }

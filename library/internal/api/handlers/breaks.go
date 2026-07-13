@@ -52,6 +52,7 @@ type breakItemJSON struct {
 // enginePayloadTrack is the track shape expected by the playout engine's
 // POST /v1/queue/enqueue-break endpoint.
 type enginePayloadTrack struct {
+	ID         string `json:"id"`
 	Path       string `json:"path"`
 	Title      string `json:"title"`
 	Artist     string `json:"artist,omitempty"`
@@ -98,7 +99,7 @@ func toBreakDetail(b store.Break) breakDetailJSON {
 
 func toEngineTrack(t store.Track) enginePayloadTrack {
 	return enginePayloadTrack{
-		Path: t.Path, Title: t.Title, Artist: t.Artist,
+		ID: t.ID, Path: t.Path, Title: t.Title, Artist: t.Artist,
 		Type: t.Type, DurationMS: t.DurationMS,
 	}
 }

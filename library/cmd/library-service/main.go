@@ -11,6 +11,7 @@ import (
 
 	"github.com/Waelson/radio-library-service/internal/api"
 	"github.com/Waelson/radio-library-service/internal/config"
+	"github.com/Waelson/radio-library-service/internal/fileimporter"
 	"github.com/Waelson/radio-library-service/internal/indexsvc"
 	"github.com/Waelson/radio-library-service/internal/logging"
 	"github.com/Waelson/radio-library-service/internal/scanner"
@@ -68,6 +69,9 @@ func run(args []string) error {
 	log.Info("database ready", "path", cfg.DB.Path)
 
 	// 5. Build stores and scanner.
+	settingsStore := store.NewSettingsStore(db)
+	tlStore := store.NewTransmissionLogStore(db)
+	ilStore := store.NewTransmissionImportLogStore(db)
 	trackStore := store.NewTrackStore(db)
 	indexer := scanner.NewIndexer(cfg.Scanner, trackStore, logging.With(log, "scanner"))
 	idxSvc := indexsvc.New(indexer, trackStore, logging.With(log, "indexsvc"))
@@ -89,7 +93,16 @@ func run(args []string) error {
 		log.Info("filesystem watcher started")
 	}
 
-	// 8. Start HTTP API server.
+	// 8. Start file importer (reads config from DB each cycle).
+	imp := fileimporter.New(settingsStore, tlStore, ilStore, logging.With(log, "fileimporter"))
+	go func() {
+		if err := imp.Run(ctx); err != nil {
+			slog.Error("fileimporter stopped with error", "error", err)
+		}
+	}()
+	log.Info("transmission log importer started")
+
+	// 10. Start HTTP API server.
 	playlistStore := store.NewPlaylistStore(db)
 	breakStore := store.NewBreakStore(db)
 	hotkeyStore := store.NewHotkeyStore(db)
@@ -107,6 +120,7 @@ func run(args []string) error {
 
 	srv := api.New(cfg.API, trackStore, playlistStore, breakStore, hotkeyStore, idxSvc,
 		categoryStore, clockStore, separationStore, rotationLogStore, gen,
+		tlStore, ilStore, settingsStore, settingsStore,
 		logging.With(log, "api"))
 	go func() {
 		if err := srv.Start(ctx); err != nil {
@@ -116,13 +130,13 @@ func run(args []string) error {
 
 	log.Info("library service ready")
 
-	// 9. Block until shutdown signal.
+	// 11. Block until shutdown signal.
 	<-ctx.Done()
 	log.Info("shutdown signal received", "reason", ctx.Err().Error())
 
 	stop() // release OS signal resources
 
-	// 10. Graceful shutdown with timeout.
+	// 12. Graceful shutdown with timeout.
 	_, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 

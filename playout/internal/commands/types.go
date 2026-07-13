@@ -252,6 +252,9 @@ type QueueItemInput struct {
 	Type       string
 	Title      string
 	Artist     string
+	ISRC       string
+	Composer   string
+	Publisher  string
 	DurationMS int64
 	CueInMS    int64
 	CueOutMS   int64

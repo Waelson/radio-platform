@@ -263,3 +263,19 @@ scheduler:
   # este tempo (ex: engine foi reiniciado), ele é marcado como MISSED
   # em vez de disparar com atraso.
   missed_threshold_ms: 5000
+# -----------------------------------------------------------------------------
+# Log de Transmissão
+# -----------------------------------------------------------------------------
+transmission_log:
+  # Habilita o LogWriter. Quando false, nenhuma goroutine é iniciada e nenhum
+  # arquivo é criado — zero overhead no pipeline de áudio.
+  enabled: false
+
+  # Diretório onde os arquivos JSONL são gravados (um arquivo por hora UTC).
+  # Em produção, deve ser um volume compartilhado com o Library Service.
+  dir: "./transmission-logs"
+
+  # Template do nome dos arquivos. Placeholders suportados:
+  #   {date} → yyyyMMdd (UTC)
+  #   {hour} → HH zero-preenchido (UTC)
+  file_name_template: "transmission_{date}_{hour}.jsonl"
