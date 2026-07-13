@@ -1173,76 +1173,210 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 
 ## Fases de implementação
 
-### Fase 1 — Extensão do protocolo de enfileiramento (Player → Engine)
+---
 
-1. Adicionar `isrc`, `composer`, `publisher` ao payload do comando `ENQUEUE` no Engine
-2. Adicionar `isrc`, `composer`, `publisher` ao `NowPlayingChangedPayload` em `events/types.go`
-3. Atualizar o Player para incluir esses campos ao enfileirar via `POST /v1/queue/enqueue`
-   (o Player já os lê do Library Service — basta incluí-los no body do ENQUEUE)
+### Fase 1 — Extensão do protocolo ENQUEUE (Playout Engine)
 
-### Fase 2 — LogWriter no Playout Engine
+**1.1 — Payload do comando ENQUEUE**
+- Adicionar campos `isrc`, `composer`, `publisher` à struct do comando `ENQUEUE`
+- Testes: comando desserializado com e sem esses campos (retrocompatível)
 
-1. Criar `playout/internal/transmissionlog/writer.go`
-   - `LogEntry` e `pendingEntry` structs (com `isrc`, `composer`, `publisher`)
-   - `Writer` com `New()` e `Run(ctx context.Context) error`
-   - Lógica de pending maps, rotação de arquivo, write com Sync
-2. Adicionar `TransmissionLogConfig` em `playout/internal/config/config.go`
-3. Instanciar e iniciar `Writer` em `cmd/playout-engine/main.go` (condicional a `enabled`)
-4. Testes:
-   - Publicar eventos simulados no Event Bus → verificar linhas JSONL no `t.TempDir()`
-   - Verificar que `isrc/composer/publisher` do `NowPlayingChanged` aparecem no JSONL
-   - Verificar rotação: entrada com FinishedAt em hora diferente → novo arquivo
-   - Verificar que canal cheio não bloqueia outros subscribers do Bus
-   - Verificar shutdown limpo via context cancelado
+**1.2 — Propagação em `NowPlayingChangedPayload`**
+- Adicionar `isrc`, `composer`, `publisher` em `events/types.go` → `NowPlayingChangedPayload`
+- Testes: publicar evento com os campos; verificar que subscribers recebem os valores
 
-### Fase 3 — Migração e Stores (Library Service)
+**1.3 — Atualização do Player**
+- Ao enfileirar via `POST /v1/queue/enqueue`, incluir `isrc`, `composer`, `publisher`
+  lidos do Library Service junto com os demais metadados da faixa
 
-1. Criar `library/internal/store/migrations/005_transmission_log.sql`
-2. Criar `library/internal/store/migrations/006_transmission_import_log.sql`
-3. Criar `library/internal/store/migrations/007_settings.sql` com tabela e valores padrão
-4. Registrar migrations 005, 006 e 007 em `db.go`
-5. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe (para `tracks`)
-6. Implementar `TransmissionLogStore` com todos os métodos
-7. Implementar `TransmissionImportLogStore` com `StartImport`, `FinishImport`, `FailImport`
-8. Implementar `SettingsStore` com `Get`, `Set` e helpers tipados para transmission log
-9. Testes: BulkInsert com idempotência, List com filtros, Summary, ExportECAD formato
-10. Testes: ImportLogStore — registro de success, failed e retry
-11. Testes: SettingsStore Get/Set, helpers tipados, fallback para valores padrão
+---
 
-### Fase 4 — File Importer (Library Service)
+### Fase 2 — LogWriter (Playout Engine)
 
-1. Implementar `library/internal/fileimporter/importer.go`
-   - Poll periódico com `grace_period`
-   - Leitura e parse de JSONL — sem consultas adicionais
-   - `StartImport` antes de processar, `FinishImport`/`FailImport` ao concluir
-   - BulkInsert + `os.Rename` para `processados/` (somente após COMMIT)
-2. Iniciar importer em `main.go` (condicional a `cfg.TransmissionLog.Dir != ""`)
-3. Testes:
-   - Simular arquivos JSONL em `t.TempDir()` → verificar importação e move para `processados/`
-   - Grace period: arquivo com `mtime` recente → não importado
-   - Idempotência: re-importar mesmo arquivo → zero duplicatas
-   - Crash simulado (arquivo não movido) → reimportação limpa
-   - Limpeza: arquivo em `processados/` com `mtime` anterior ao cutoff → excluído
-   - Limpeza: arquivo em `processados/` dentro do período de retenção → preservado
-   - `retention_days < 7` → elevado para 7 automaticamente
+**2.1 — Structs e tipos**
+- Criar `playout/internal/transmissionlog/writer.go`
+- Definir `LogEntry` (com todos os campos incluindo `isrc`, `composer`, `publisher`)
+- Definir `pendingEntry` (estado em memória entre `NowPlayingChanged` e `ItemFinished`)
 
-### Fase 5 — API e Rotas (Library Service)
+**2.2 — Processamento de eventos**
+- Implementar `Writer.Run(ctx)` com subscriber no Event Bus (buffer 256)
+- Lógica dos pending maps: `NowPlayingChanged` → insert; `ItemFinished` → pop + write
+- Lógica dos cart pending maps: `CartStarted` → insert; `CartStopped` → pop + write
+- Testes: publicar sequência de eventos → verificar linhas JSONL em `t.TempDir()`
+- Testes: `ItemFinished` sem `NowPlayingChanged` correspondente → linha ignorada
+- Testes: canal cheio não bloqueia outros subscribers do Bus
 
-1. Implementar `handlers/transmission_log.go` (4 handlers)
-2. Implementar `handlers/transmission_import_log.go` (`GET /v1/transmission-log/imports`)
-3. Implementar `handlers/settings.go` (3 handlers: List, Get, Update)
-   - `PUT /v1/settings/transmission_log.retention_days` valida `value >= 7` antes de salvar
-3. Registrar todas as rotas em `server.go`
-4. Injetar stores e importer em `main.go`
-5. Testes com `httptest.NewRecorder`
-   - Validação: `retention_days < 7` → 400
-   - Chave desconhecida: `PUT /v1/settings/chave_invalida` → 404 ou 400 (decisão de implementação)
+**2.3 — Rotação de arquivo e escrita**
+- Implementar `buildFileName(template, date, hour)` com placeholders `{date}` e `{hour}`
+- Implementar `openFile`, `closeFile`, rotação por hora (`curDay != day || curHour != hour`)
+- Escrita com `O_APPEND|O_CREATE|O_WRONLY` + `Sync()` por linha
+- Testes: entrada com `FinishedAt` em hora diferente → novo arquivo criado
+- Testes: falha de I/O → `closeFile()` + próxima entrada reabre sem panic
 
-### Fase 6 — Player UI
+**2.4 — Config e integração**
+- Adicionar `TransmissionLogConfig` (`enabled`, `dir`, `file_name_template`) em `config.go`
+- Instanciar e iniciar `Writer` em `main.go` somente se `enabled = true`
+- Testes: shutdown limpo via context cancelado + `Sync()+Close()` no arquivo corrente
 
-1. Adicionar aba "Histórico" no drawer
-2. Implementar filtros, tabela e rodapé
-3. Botões de exportação CSV e ECAD
+---
+
+### Fase 3 — Migrations (Library Service)
+
+**3.1 — Migration 005: `transmission_log` + campos ECAD em `tracks`**
+- `ALTER TABLE tracks ADD COLUMN isrc/composer/publisher`
+- `CREATE TABLE transmission_log` com `UNIQUE(queue_item_id)` e campo `import_file_name`
+- Índices em `started_at`, `type`, `status`, `asset_id`
+- Registrar em `db.go`
+
+**3.2 — Migration 006: `transmission_import_log`**
+- `CREATE TABLE transmission_import_log` (`id`, `file_name`, `started_at`, `finished_at`, `status`, `records_total`, `records_imported`, `error_message`)
+- Índices em `started_at`, `status`
+- Registrar em `db.go`
+
+**3.3 — Migration 007: `settings`**
+- `CREATE TABLE settings` (`key`, `value`, `updated_at`)
+- `INSERT OR IGNORE` dos valores padrão para todas as chaves de `transmission_log.*` e `station.*`
+- Registrar em `db.go`
+
+---
+
+### Fase 4 — Stores (Library Service)
+
+**4.1 — `TransmissionLogStore`**
+- `BulkInsert` com `INSERT OR IGNORE` e `import_file_name`
+- `List` com filtros (`from`, `to`, `type`, `status`, `search`, `limit`, `offset`)
+- `Summary` por data (total + by_type + total_played_ms)
+- `ExportCSV` (writer streaming, sem carregar tudo em memória)
+- `ExportECAD` (filtro automático MUSIC/JINGLE/VINHETA + header H + linhas D)
+- Testes: BulkInsert idempotente, List com cada filtro, ExportECAD formato correto
+
+**4.2 — `TransmissionImportLogStore`**
+- `StartImport(fileName)` → INSERT com `status=running`, retorna `id`
+- `FinishImport(id, recordsTotal, recordsImported)` → UPDATE `status=success`
+- `FailImport(id, recordsTotal, errMsg)` → UPDATE `status=failed`
+- `List(limit, offset)` → listagem paginada para o endpoint de histórico
+- Testes: sequência start→finish, start→fail, múltiplos retries do mesmo arquivo
+
+**4.3 — `SettingsStore`**
+- `Get(key)` e `Set(key, value)` genéricos
+- Helpers tipados: `TransmissionLogDir`, `TransmissionLogFileNameTemplate`, `TransmissionLogPollInterval`, `TransmissionLogGracePeriod`, `TransmissionLogRetentionDays`
+- `RetentionDaysOrDefault()` — eleva valores `< 7` para `7`
+- Helpers para `station.*` (usados em `ExportECAD`)
+- Testes: Get/Set, fallback ao padrão quando chave não existe, RetentionDaysOrDefault
+
+**4.4 — Scanner: extração de ISRC, composer, publisher**
+- Extrair tags `TSRC` (ISRC), `TCOM` (composer), `TPUB` (publisher) via ffprobe
+- Persistir em `tracks.isrc`, `tracks.composer`, `tracks.publisher`
+- Testes: fixture com arquivo contendo as tags → verificar extração correta
+
+---
+
+### Fase 5 — File Importer (Library Service)
+
+**5.1 — Filtro e elegibilidade**
+- `buildGlob(template)` — converte template em glob (`transmission_*_*.jsonl`)
+- Varredura da raiz do diretório — ignorar `processados/` e arquivos que não batem o glob
+- `isEligible(fi, now, grace)` — `time.Since(mtime) >= gracePeriod`
+- Testes: arquivo recente → não elegível; arquivo antigo → elegível; `processados/` → ignorado
+
+**5.2 — Parse de JSONL**
+- Leitura linha a linha com `bufio.Scanner`
+- Parse de cada linha como `LogEntry`; linhas malformadas → log warning + skip
+- Preenchimento de `entry.ImportFileName` com o nome do arquivo
+- Testes: arquivo com linhas válidas, inválidas e mistas
+
+**5.3 — Protocolo de importação**
+- `StartImport` → BulkInsert (transação) → Rename para `processados/` → `FinishImport`
+- Em falha no COMMIT → `FailImport` + arquivo permanece na raiz
+- Em falha no Rename após COMMIT → `FailImport` + arquivo permanece na raiz (retry no próximo ciclo: INSERT OR IGNORE = no-op)
+- Testes: importação completa, falha no COMMIT, falha no Rename, retry idempotente
+
+**5.4 — Limpeza de `processados/`**
+- `purgeProcessed(now)` — lista `processados/`, exclui arquivos com `mtime < cutoff`
+- Executado ao final de cada ciclo de poll
+- `cutoff = now - RetentionDaysOrDefault() * 24h`
+- Testes: arquivo expirado → excluído; arquivo dentro da retenção → preservado
+
+**5.5 — Loop principal e integração**
+- `Run(ctx)` com ticker de `PollInterval` (lido do `SettingsStore` a cada ciclo)
+- Iniciar importer em `main.go` somente se `transmission_log.dir` configurado no banco
+- Testes: shutdown limpo via context; ciclo completo end-to-end com arquivos reais
+
+---
+
+### Fase 6 — API: Log de Transmissão (Library Service)
+
+**6.1 — `GET /v1/transmission-log`**
+- Handler com query params: `from`, `to`, `type`, `status`, `q`, `limit`, `offset`
+- Resposta paginada com `total`
+- Testes: filtros individuais e combinados
+
+**6.2 — `GET /v1/transmission-log/summary`**
+- Handler com query param `date`
+- Resposta: `total`, `by_type`, `total_played_ms`
+- Testes: dia com e sem registros
+
+**6.3 — `GET /v1/transmission-log/export`**
+- Streaming CSV com `Content-Disposition`
+- Todas as colunas incluindo `import_file_name`
+- Testes: CSV gerado com cabeçalho e linhas corretas
+
+**6.4 — `GET /v1/transmission-log/export/ecad`**
+- Streaming CSV no formato ECAD (linha H + linhas D)
+- Filtro automático: MUSIC/JINGLE/VINHETA, FINISHED, `duration_played_ms > 0`
+- Dados da emissora lidos do `SettingsStore` (`station.*`)
+- Testes: formato H/D, filtro de tipos, ordenação por `started_at`
+
+**6.5 — `GET /v1/transmission-log/imports`**
+- Listagem paginada do `transmission_import_log`
+- Query params: `status`, `limit`, `offset`
+- Testes: listagem com e sem filtro de status
+
+**6.6 — Registro de rotas e injeção**
+- Registrar todas as rotas em `server.go`
+- Injetar `TransmissionLogStore`, `TransmissionImportLogStore` e `SettingsStore` em `main.go`
+
+---
+
+### Fase 7 — API: Settings (Library Service)
+
+**7.1 — `GET /v1/settings`**
+- Lista todas as chaves e valores com `updated_at`
+- Testes: retorna todas as chaves pré-populadas pela migration
+
+**7.2 — `GET /v1/settings/{key}`**
+- Retorna valor de uma chave; `404` se chave não existir
+- Testes: chave existente, chave inexistente
+
+**7.3 — `PUT /v1/settings/{key}`**
+- Atualiza valor; valida `retention_days >= 7` antes de salvar
+- `400` se valor inválido; `404` se chave desconhecida
+- Testes: atualização válida, `retention_days = 3` → 400, chave inexistente → 404
+
+**7.4 — Registro de rotas**
+- Registrar em `server.go`; injetar `SettingsStore`
+
+---
+
+### Fase 8 — Player UI
+
+**8.1 — Aba "Histórico"**
+- Nova aba no drawer após "Rotação"
+- Tabela com colunas: início, título, artista, tipo, duração, status
+- Ícone de tipo (padrão da fila); cor de status (verde/amarelo/vermelho)
+
+**8.2 — Filtros e paginação**
+- Barra: data, tipo, busca por título/artista
+- Paginação ou scroll infinito
+- Rodapé: total de entradas + duração total reproduzida
+
+**8.3 — Exportação**
+- Botão `↓ CSV` → `GET /v1/transmission-log/export` com filtros ativos
+- Botão `↓ ECAD` → `GET /v1/transmission-log/export/ecad` com o mês do filtro ativo
+
+**8.4 — Histórico de importações**
+- Sub-seção ou modal mostrando as últimas tentativas de importação
+- Colunas: arquivo, início, status, registros importados, erro (se houver)
 
 ---
 
@@ -1281,16 +1415,36 @@ e deve constar na documentação de operações.
 
 ## Definição de pronto
 
-- `go test ./...` passa sem erros (playout + library)
-- `go vet ./...` sem avisos
+### Playout Engine
+- `go test ./...` e `go vet ./...` sem erros
 - `go test -race ./...` sem data races
+- `isrc`, `composer`, `publisher` aceitos no ENQUEUE e propagados em `NowPlayingChangedPayload`
 - LogWriter subscreve o Event Bus sem alterar comportamento dos outros subscribers
-- Arquivos JSONL criados, populados e rotacionados corretamente por hora
-- Importer respeita grace period e nunca toca arquivo recente
-- Importação é idempotente: re-importar o mesmo arquivo não gera duplicatas
-- Deleção do arquivo ocorre somente após COMMIT confirmado
-- `isrc`, `composer`, `publisher` enviados pelo Player no `ENQUEUE`, propagados no `NowPlayingChangedPayload`, gravados no JSONL e importados diretamente — sem enriquecimento pós-importação
-- `GET /v1/transmission-log` filtra por data, tipo e busca
-- `GET /v1/transmission-log/export` gera CSV com todas as colunas
-- `GET /v1/transmission-log/export/ecad` gera arquivo no formato ECAD (H + linhas D), apenas MUSIC/JINGLE/VINHETA FINISHED
-- Player UI exibe histórico com filtros e botões de exportação
+- Arquivos JSONL criados na raiz do diretório com nome derivado do template configurado
+- Rotação correta ao mudar de hora — arquivo anterior fechado com Sync+Close
+- Canal cheio não bloqueia o pipeline de áudio
+
+### Library Service
+- `go test ./...` e `go vet ./...` sem erros
+- `go test -race ./...` sem data races
+- Migrations 005, 006 e 007 aplicadas corretamente em banco limpo e em banco existente
+- Scanner extrai `isrc`, `composer`, `publisher` via ffprobe e persiste em `tracks`
+- `BulkInsert` idempotente: re-importar o mesmo arquivo não gera duplicatas (`UNIQUE queue_item_id`)
+- `import_file_name` preenchido em todas as linhas de `transmission_log`
+- Toda tentativa de importação registrada em `transmission_import_log` (success ou failed)
+- Arquivo movido para `processados/` somente após COMMIT confirmado
+- Importer respeita grace period e ignora arquivo da hora corrente
+- `purgeProcessed()` exclui apenas arquivos além do `retention_days` (mínimo 7)
+- Configurações lidas do banco a cada ciclo — mudanças via API têm efeito sem restart
+- `GET /v1/transmission-log` filtra por data, tipo, status e busca
+- `GET /v1/transmission-log/summary` retorna totais por tipo e duração
+- `GET /v1/transmission-log/export` gera CSV completo com streaming
+- `GET /v1/transmission-log/export/ecad` gera formato ECAD (H + linhas D), apenas MUSIC/JINGLE/VINHETA FINISHED
+- `GET /v1/transmission-log/imports` lista histórico de tentativas de importação
+- `PUT /v1/settings/transmission_log.retention_days` com valor `< 7` retorna 400
+- Spots auditáveis via filtro `type=SPOT` nos endpoints de log e exportação
+
+### Player UI
+- Aba "Histórico" exibe log com filtros e paginação
+- Exportação CSV e ECAD funcionais com filtros ativos
+- Histórico de importações visível (últimas tentativas com status e erro)
