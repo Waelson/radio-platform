@@ -144,8 +144,8 @@ Este documento compara o RadioFlow com as principais soluções de automação d
 
 | Feature | RadioFlow | RadioPro | EBRcart2 | RCS Zetta | RadioBOSS | mAirList | PlayIt Live | RadioDJ |
 |---------|:---------:|:--------:|:--------:|:---------:|:---------:|:--------:|:-----------:|:-------:|
-| Log de transmissão (o que tocou e quando) | 🔲 | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Relatório ECAD (direitos autorais) | 🔲 | ✅ | — | — | — | — | — | — |
+| Log de transmissão (o que tocou e quando) | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Relatório ECAD (direitos autorais) | ✅ | ✅ | — | — | — | — | — | — |
 | Prova de veiculação (declaração de comerciais) | 🔲 | ✅ | — | ✅ | ✅ | ✅ | 🔲 | — |
 | Gestão de contratos comerciais | 🔲 | ✅ | — | ✅ | 🔲 | ✅ | 🔲 | — |
 | Relatório de programação futura | 🔲 | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
@@ -194,7 +194,7 @@ As lacunas abaixo foram identificadas como mais impactantes para adoção em emi
 
 | # | Lacuna | Justificativa |
 |---|--------|---------------|
-| 1 | **Log de transmissão** | Obrigatório para prestação de contas a anunciantes e ECAD. Todo concorrente tem. |
+| ~~1~~ | ~~**Log de transmissão**~~ | ~~Obrigatório para prestação de contas a anunciantes e ECAD. Todo concorrente tem.~~ ✅ **Implementado no Playout Engine + Library Service.** |
 | 2 | **Integração com streaming (Icecast/SHOUTcast)** | Emissoras de internet dependem disso. RadioPro, RadioBOSS e PlayIt Live têm. |
 | ~~3~~ | ~~**Importação automática de pasta**~~ | ~~Sem isso, adicionar áudios ao catálogo é manual — inviável para operação contínua.~~ ✅ **Já implementado no Library Service.** |
 | 4 | **Normalização automática de volume** | Sem normalização, o volume varia faixa a faixa — problema grave em emissoras. |
@@ -206,7 +206,12 @@ As lacunas abaixo foram identificadas como mais impactantes para adoção em emi
 
 ---
 
-##### 1. Log de transmissão
+##### ~~1. Log de transmissão~~ ✅ Já implementado
+
+> **Este item foi removido das lacunas.** O pipeline completo de log de transmissão está implementado e em produção. O detalhamento abaixo é mantido como referência do que foi entregue.
+
+**O que foi implementado:**
+O Playout Engine escreve um arquivo JSONL por hora em disco (`transmission_{date}_{hour}.jsonl`) com cada faixa tocada, incluindo `engine_id`, `asset_id`, `path`, `title`, `artist`, `type`, `isrc`, `composer`, `publisher`, `duration_ms`, `duration_played_ms`, `result`, campos de break e timestamps. O Library Service importa esses arquivos automaticamente via polling com grace period configurável, persiste na tabela `transmission_log` (SQLite) e expõe API REST com filtros, paginação, exportação CSV e exportação ECAD. O Player exibe o histórico na aba **Histórico** com filtros por período, tipo, status e busca por título/artista.
 
 **O que é:**
 Registro automático e persistente de tudo que foi ao ar: cada faixa tocada, horário de início, horário de término, duração real, tipo de áudio e operador responsável. Funciona como um "diário de bordo" da emissora.
