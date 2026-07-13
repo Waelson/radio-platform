@@ -5870,7 +5870,7 @@ async function rotEnqueue() {
             composer:    item.track.composer || '',
             publisher:   item.track.publisher || '',
             duration_ms: item.track.duration_ms,
-            type:        item.slot_type || 'MUSIC'
+            type:        item.track.type || 'MUSIC'
           }]
         })
       });

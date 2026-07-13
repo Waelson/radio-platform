@@ -32,6 +32,7 @@ type LogEntry struct {
 	EngineID         string    `json:"engine_id"`
 	QueueItemID      string    `json:"queue_item_id"`
 	AssetID          string    `json:"asset_id"`
+	Path             string    `json:"path"`
 	Title            string    `json:"title"`
 	Artist           string    `json:"artist"`
 	Type             string    `json:"type"`             // MUSIC|JINGLE|VINHETA|SPOT|CART
@@ -197,6 +198,7 @@ func (w *Writer) Run(ctx context.Context) error {
 					EngineID:         w.cfg.EngineID,
 					QueueItemID:      p.QueueItemID,
 					AssetID:          p.AssetID,
+					Path:             pe.meta.Path,
 					Title:            pe.meta.Title,
 					Artist:           pe.meta.Artist,
 					Type:             pe.meta.Type,
@@ -222,6 +224,7 @@ func (w *Writer) Run(ctx context.Context) error {
 					meta: events.NowPlayingChangedPayload{
 						QueueItemID: p.CartID,
 						AssetID:     p.CartID,
+						Path:        p.Path,
 						Title:       p.Title,
 						Artist:      p.Artist,
 						Type:        "CART",
@@ -249,6 +252,7 @@ func (w *Writer) Run(ctx context.Context) error {
 					EngineID:         w.cfg.EngineID,
 					QueueItemID:      pe.meta.QueueItemID,
 					AssetID:          pe.meta.AssetID,
+					Path:             pe.meta.Path,
 					Title:            pe.meta.Title,
 					Artist:           pe.meta.Artist,
 					Type:             "CART",

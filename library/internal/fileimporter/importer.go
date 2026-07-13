@@ -56,6 +56,7 @@ type logEntry struct {
 	EngineID         string    `json:"engine_id"`
 	QueueItemID      string    `json:"queue_item_id"`
 	AssetID          string    `json:"asset_id"`
+	Path             string    `json:"path"`
 	Title            string    `json:"title"`
 	Artist           string    `json:"artist"`
 	Type             string    `json:"type"`
@@ -255,6 +256,7 @@ func (imp *Importer) parseJSONL(path, fileName string) ([]store.TransmissionLogE
 			EngineID:         le.EngineID,
 			QueueItemID:      le.QueueItemID,
 			AssetID:          le.AssetID,
+			Path:             le.Path,
 			Title:            le.Title,
 			Artist:           le.Artist,
 			Type:             le.Type,
