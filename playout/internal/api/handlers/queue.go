@@ -55,6 +55,9 @@ type queueItemInput struct {
 	Type       string            `json:"type"`
 	Title      string            `json:"title"`
 	Artist     string            `json:"artist"`
+	ISRC       string            `json:"isrc,omitempty"`
+	Composer   string            `json:"composer,omitempty"`
+	Publisher  string            `json:"publisher,omitempty"`
 	DurationMS int64             `json:"duration_ms"`
 	CueInMS    int64             `json:"cue_in_ms"`
 	CueOutMS   int64             `json:"cue_out_ms"`
@@ -137,6 +140,9 @@ func toCommandItem(inp queueItemInput) commands.QueueItemInput {
 		Type:       inp.Type,
 		Title:      inp.Title,
 		Artist:     inp.Artist,
+		ISRC:       inp.ISRC,
+		Composer:   inp.Composer,
+		Publisher:  inp.Publisher,
 		DurationMS: inp.DurationMS,
 		CueInMS:    inp.CueInMS,
 		CueOutMS:   inp.CueOutMS,

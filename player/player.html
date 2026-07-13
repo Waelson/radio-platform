@@ -1103,6 +1103,57 @@ input[type=range].vol-slider:disabled {
 @keyframes rotSpin  { to { transform: rotate(360deg); } }
 @keyframes rotPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
+/* ─── Drawer — Aba Histórico ─────────────────────────────────── */
+.hist-panel { flex-direction: column; flex: 1; min-height: 0; }
+.hist-filter-bar { display: flex; gap: 5px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+.hist-filter-bar input[type="date"],
+.hist-filter-bar select,
+.hist-filter-bar input[type="search"] {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 11px; padding: 4px 6px; font-family: inherit;
+}
+.hist-filter-bar input[type="date"] { width: 120px; }
+.hist-filter-bar input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; cursor: pointer; }
+.hist-filter-bar select { max-width: 90px; }
+.hist-filter-bar input[type="search"] { flex: 1; min-width: 80px; }
+.hist-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); font-size: 10px; padding: 4px 8px; cursor: pointer; font-family: inherit; text-transform: uppercase; white-space: nowrap; }
+.hist-btn:hover { color: var(--text-hi); border-color: rgba(32,230,255,0.35); }
+.hist-btn.accent { background: rgba(32,230,255,0.08); border-color: rgba(32,230,255,0.30); color: var(--cyan); }
+.hist-btn.accent:hover { background: rgba(32,230,255,0.18); }
+.hist-scroll-host { position: relative; flex: 1; display: flex; overflow: hidden; }
+.hist-scroll { flex: 1; overflow-y: scroll; scrollbar-width: none; }
+.hist-scroll::-webkit-scrollbar { display: none; }
+.hist-entry { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.hist-entry:hover { background: rgba(255,255,255,0.025); }
+.hist-time { font-size: 10px; font-weight: 700; color: var(--text-dim); width: 46px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.hist-info { flex: 1; min-width: 0; }
+.hist-title { font-size: 11px; font-weight: 600; color: var(--text-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-artist { font-size: 10px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.hist-type { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 5px; border-radius: 3px; background: rgba(32,230,255,0.10); color: var(--cyan); }
+.hist-dur  { font-size: 9px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.hist-status { font-size: 13px; flex-shrink: 0; width: 18px; text-align: center; }
+.hist-footer { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
+.hist-footer-info { flex: 1; font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 700; letter-spacing: .04em; }
+.hist-load-more { display: flex; justify-content: center; padding: 10px; }
+/* imports sub-panel */
+.hist-imp-toggle { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-top: 1px solid var(--border); flex-shrink: 0; cursor: pointer; }
+.hist-imp-toggle:hover { background: rgba(255,255,255,0.025); }
+.hist-imp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); flex: 1; }
+.hist-imp-chevron { font-size: 9px; color: var(--text-dim); transition: transform .15s; }
+.hist-imp-chevron.open { transform: rotate(180deg); }
+.hist-imp-list { display: none; flex-direction: column; max-height: 160px; overflow-y: auto; border-top: 1px solid var(--border); background: rgba(0,0,0,0.12); scrollbar-width: none; }
+.hist-imp-list.open { display: flex; }
+.hist-imp-list::-webkit-scrollbar { display: none; }
+.hist-imp-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 10px; }
+.hist-imp-row:last-child { border-bottom: none; }
+.hist-imp-file { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-imp-stat { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
+.hist-imp-stat.success { background: rgba(34,197,94,0.15); color: #4ade80; }
+.hist-imp-stat.failed  { background: rgba(239,68,68,0.15);  color: #f87171; }
+.hist-imp-stat.running { background: rgba(234,179,8,0.15);  color: #facc15; }
+.hist-imp-count { color: var(--text-dim); flex-shrink: 0; }
+
 /* ─── Queue ──────────────────────────────────────────────────── */
 .queue-section {
   flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
@@ -2252,6 +2303,7 @@ canvas.vu-canvas {
           <button class="lib-tab"        id="libTabBreaks"     onclick="libSwitchTab('breaks')">Breaks</button>
           <button class="lib-tab"        id="libTabBotoneira"  onclick="libSwitchTab('botoneira')">Botoneira</button>
           <button class="lib-tab"        id="libTabRotacao"    onclick="libSwitchTab('rotacao')">Rotação</button>
+          <button class="lib-tab"        id="libTabHistorico"  onclick="libSwitchTab('historico')">Histórico</button>
         </div>
 
         <!-- Playlists -->
@@ -2441,6 +2493,44 @@ canvas.vu-canvas {
           </div>
 
         </div><!-- /libPanelRotacao -->
+
+        <!-- Histórico -->
+        <div class="lib-panel hist-panel" id="libPanelHistorico">
+          <!-- Filter bar -->
+          <div class="hist-filter-bar">
+            <input type="date"   id="histDate"   oninput="histSearch()">
+            <select id="histType" onchange="histSearch()">
+              <option value="">Todos</option>
+              <option value="MUSIC">Música</option>
+              <option value="VINHETA">Vinheta</option>
+              <option value="JINGLE">Jingle</option>
+              <option value="SPOT">Spot</option>
+              <option value="CART">Cart</option>
+            </select>
+            <input type="search" id="histQ" placeholder="título ou artista…" onkeydown="if(event.key==='Enter')histSearch()">
+            <button class="hist-btn accent" onclick="histSearch()">↺</button>
+          </div>
+          <!-- Entry list -->
+          <div class="hist-scroll-host">
+            <div class="hist-scroll" id="histScroll">
+              <div class="lib-status" id="histStatus">Selecione uma data e clique em ↺</div>
+            </div>
+          </div>
+          <!-- Footer: totals + exports -->
+          <div class="hist-footer" id="histFooter" style="display:none;">
+            <span class="hist-footer-info" id="histFooterInfo"></span>
+            <button class="hist-btn" title="Baixar CSV" onclick="histExportCSV()">↓ CSV</button>
+            <button class="hist-btn accent" title="Baixar declaração ECAD" onclick="histExportECAD()">↓ ECAD</button>
+          </div>
+          <!-- Import log sub-panel -->
+          <div class="hist-imp-toggle" id="histImpToggle" onclick="histToggleImports()">
+            <span class="hist-imp-label">Importações</span>
+            <span class="hist-imp-chevron" id="histImpChevron">▼</span>
+          </div>
+          <div class="hist-imp-list" id="histImpList">
+            <div class="lib-status" style="padding:8px 10px;font-size:10px;">Carregando…</div>
+          </div>
+        </div><!-- /libPanelHistorico -->
 
       </div>
     </div><!-- /lib-drawer -->
@@ -4734,7 +4824,7 @@ async function advEnqueue(idx) {
     const r = await fetch(API_URL + '/v1/queue/enqueue', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [{ path: t.path, type: t.type, title: t.title, artist: t.artist || '', duration_ms: t.duration_ms || 0 }] }),
+      body: JSON.stringify({ items: [{ asset_id: t.id || '', path: t.path, type: t.type, title: t.title, artist: t.artist || '', isrc: t.isrc || '', composer: t.composer || '', publisher: t.publisher || '', duration_ms: t.duration_ms || 0 }] }),
     });
     const j  = await r.json();
     const ok = j.ok !== false && j.accepted !== false;
@@ -4827,6 +4917,7 @@ function libSwitchTab(tab) {
   if (tab === 'breaks')    libLoadBreaks();
   if (tab === 'botoneira') drwHkInit();
   if (tab === 'rotacao')   rotInit();
+  if (tab === 'historico') histInit();
 }
 
 /* ─── Drawer Botoneira ───────────────────────────────────────── */
@@ -5771,11 +5862,15 @@ async function rotEnqueue() {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
           items: [{
+            asset_id:    item.track.id || '',
             path:        item.track.path,
             title:       item.track.title,
             artist:      item.track.artist,
+            isrc:        item.track.isrc || '',
+            composer:    item.track.composer || '',
+            publisher:   item.track.publisher || '',
             duration_ms: item.track.duration_ms,
-            type:        item.slot_type || 'MUSIC'
+            type:        item.track.type || 'MUSIC'
           }]
         })
       });
@@ -5880,6 +5975,7 @@ async function libEnqueuePlaylist(idx) {
     const data = await res.json();
     const items = (data.items || [])
       .map(it => ({
+        asset_id:    it.track?.id           || '',
         path:        it.track?.path        || '',
         type:        it.track?.type        || 'MUSIC',
         title:       it.track?.title       || '',
@@ -5910,10 +6006,10 @@ async function libEnqueueBreak(idx) {
     if (!data.spots || !data.spots.length) { showToast(false, 'Break sem spots cadastrados'); return; }
     const body = {
       title: data.name || b.name || 'Break',
-      spots: data.spots.map(s => ({ path: s.path, type: s.type, title: s.title, artist: s.artist || '', duration_ms: s.duration_ms || 0 })),
+      spots: data.spots.map(s => ({ asset_id: s.id || '', path: s.path, type: s.type, title: s.title, artist: s.artist || '', duration_ms: s.duration_ms || 0 })),
     };
-    if (data.open)  body.open  = { path: data.open.path,  type: data.open.type,  title: data.open.title,  artist: data.open.artist  || '', duration_ms: data.open.duration_ms  || 0 };
-    if (data.close) body.close = { path: data.close.path, type: data.close.type, title: data.close.title, artist: data.close.artist || '', duration_ms: data.close.duration_ms || 0 };
+    if (data.open)  body.open  = { asset_id: data.open.id  || '', path: data.open.path,  type: data.open.type,  title: data.open.title,  artist: data.open.artist  || '', duration_ms: data.open.duration_ms  || 0 };
+    if (data.close) body.close = { asset_id: data.close.id || '', path: data.close.path, type: data.close.type, title: data.close.title, artist: data.close.artist || '', duration_ms: data.close.duration_ms || 0 };
     const r = await fetch(API_URL + '/v1/queue/enqueue-break', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -5924,6 +6020,226 @@ async function libEnqueueBreak(idx) {
     showToast(ok, ok ? `📢 Break "${body.title}" enfileirado` : (j.reason || 'Comando rejeitado'));
     if (ok) fetchQueue();
   } catch(e) { showToast(false, 'Erro de rede'); }
+}
+
+/* ─── Drawer Histórico ───────────────────────────────────────── */
+let _histInited       = false;
+let _histEntries      = [];
+let _histTotal        = 0;
+let _histOffset       = 0;
+const HIST_LIMIT      = 100;
+let _histImpOpen      = false;
+
+function histInit() {
+  if (_histInited) return;
+  _histInited = true;
+  // Pre-fill date with today (local)
+  const today = new Date();
+  const iso   = today.getFullYear() + '-'
+    + String(today.getMonth()+1).padStart(2,'0') + '-'
+    + String(today.getDate()).padStart(2,'0');
+  document.getElementById('histDate').value = iso;
+  histSearch();
+}
+
+function histSearch() {
+  _histOffset  = 0;
+  _histEntries = [];
+  _histTotal   = 0;
+  histLoad(true);
+}
+
+async function histLoad(replace) {
+  const date = document.getElementById('histDate').value;
+  const type = document.getElementById('histType').value;
+  const q    = document.getElementById('histQ').value.trim();
+
+  const scroll  = document.getElementById('histScroll');
+  const status  = document.getElementById('histStatus');
+  const footer  = document.getElementById('histFooter');
+
+  if (replace) {
+    scroll.innerHTML = '<div class="lib-status">Carregando…</div>';
+    footer.style.display = 'none';
+  }
+
+  const params = new URLSearchParams({ limit: HIST_LIMIT, offset: _histOffset });
+  if (date) { params.set('from', date); params.set('to', date); }
+  if (type) params.set('type', type);
+  if (q)    params.set('q', q);
+
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/transmission-log?' + params);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const data    = j.data || {};
+    const entries = data.entries || [];
+    _histTotal    = data.total  || 0;
+    _histOffset  += entries.length;
+
+    if (replace) _histEntries = entries;
+    else         _histEntries = _histEntries.concat(entries);
+
+    histRender(replace, date);
+  } catch(e) {
+    scroll.innerHTML = `<div class="lib-status">Erro: ${e.message}</div>`;
+  }
+}
+
+function histRender(replace, date) {
+  const scroll = document.getElementById('histScroll');
+  const footer = document.getElementById('histFooter');
+
+  if (_histEntries.length === 0) {
+    scroll.innerHTML = '<div class="lib-status">Nenhuma entrada encontrada</div>';
+    footer.style.display = 'none';
+    return;
+  }
+
+  let html = '';
+  for (const e of _histEntries) {
+    html += histEntryHTML(e);
+  }
+
+  // Load-more button
+  if (_histOffset < _histTotal) {
+    html += `<div class="hist-load-more">
+      <button class="hist-btn" onclick="histLoadMore()">Carregar mais (${_histTotal - _histOffset} restantes)</button>
+    </div>`;
+  }
+
+  scroll.innerHTML = html;
+
+  // Footer info
+  const totalDurMs  = _histEntries.reduce((s, e) => s + (e.duration_played_ms || 0), 0);
+  const totalDurStr = histFmtDuration(totalDurMs);
+  document.getElementById('histFooterInfo').textContent =
+    `${_histTotal} entradas · ${totalDurStr}`;
+  footer.style.display = 'flex';
+}
+
+function histEntryHTML(e) {
+  const time   = e.started_at ? histFmtTime(e.started_at) : '—';
+  const dur    = histFmtMs(e.duration_played_ms);
+  const status = histStatusIcon(e.result);
+  const title  = histEsc(e.title  || '—');
+  const artist = histEsc(e.artist || '');
+  const type   = histEsc(e.type   || '');
+  return `<div class="hist-entry">
+    <span class="hist-time">${time}</span>
+    <div class="hist-info">
+      <div class="hist-title" title="${title}">${title}</div>
+      ${artist ? `<div class="hist-artist">${artist}</div>` : ''}
+    </div>
+    <div class="hist-meta">
+      <span class="hist-type">${type}</span>
+      <span class="hist-dur">${dur}</span>
+    </div>
+    <span class="hist-status" title="${histEsc(e.result || '')}">${status}</span>
+  </div>`;
+}
+
+function histLoadMore() {
+  histLoad(false);
+}
+
+function histExportCSV() {
+  const date = document.getElementById('histDate').value;
+  const type = document.getElementById('histType').value;
+  const q    = document.getElementById('histQ').value.trim();
+  const p    = new URLSearchParams();
+  if (date) { p.set('from', date); p.set('to', date); }
+  if (type) p.set('type', type);
+  if (q)    p.set('q', q);
+  window.open(LIBRARY_URL + '/v1/transmission-log/export?' + p, '_blank');
+}
+
+function histExportECAD() {
+  const date = document.getElementById('histDate').value;
+  if (!date) { showToast(false, 'Selecione uma data para o ECAD'); return; }
+  // Use start/end of the month for ECAD
+  const [y, m] = date.split('-');
+  const from   = `${y}-${m}-01`;
+  const last   = new Date(+y, +m, 0).getDate();
+  const to     = `${y}-${m}-${String(last).padStart(2,'0')}`;
+  window.open(LIBRARY_URL + `/v1/transmission-log/export/ecad?from=${from}&to=${to}`, '_blank');
+}
+
+async function histToggleImports() {
+  _histImpOpen = !_histImpOpen;
+  const list    = document.getElementById('histImpList');
+  const chevron = document.getElementById('histImpChevron');
+  list.classList.toggle('open', _histImpOpen);
+  chevron.classList.toggle('open', _histImpOpen);
+  if (_histImpOpen) await histLoadImports();
+}
+
+async function histLoadImports() {
+  const list = document.getElementById('histImpList');
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/transmission-log/imports?limit=20');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j       = await r.json();
+    const entries = (j.data || {}).entries || [];
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="lib-status" style="padding:8px 10px;font-size:10px;">Nenhuma importação registrada</div>';
+      return;
+    }
+    let html = '';
+    for (const e of entries) {
+      const statCls = e.status === 'success' ? 'success' : e.status === 'failed' ? 'failed' : 'running';
+      const statLbl = e.status === 'success' ? 'OK' : e.status === 'failed' ? 'Falha' : '…';
+      const count   = e.status === 'success'
+        ? `${e.records_imported}/${e.records_total}`
+        : (e.records_total > 0 ? `${e.records_total}` : '');
+      html += `<div class="hist-imp-row">
+        <span class="hist-imp-file" title="${histEsc(e.file_name)}">${histEsc(e.file_name)}</span>
+        ${count ? `<span class="hist-imp-count">${count}</span>` : ''}
+        <span class="hist-imp-stat ${statCls}">${statLbl}</span>
+      </div>`;
+    }
+    list.innerHTML = html;
+  } catch(e) {
+    list.innerHTML = `<div class="lib-status" style="padding:8px 10px;font-size:10px;">Erro: ${e.message}</div>`;
+  }
+}
+
+/* ── helpers ── */
+function histFmtTime(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
+  } catch { return '—'; }
+}
+
+function histFmtMs(ms) {
+  if (!ms) return '0:00';
+  const s   = Math.floor(ms / 1000);
+  const min = Math.floor(s / 60);
+  const sec = String(s % 60).padStart(2, '0');
+  return `${min}:${sec}`;
+}
+
+function histFmtDuration(ms) {
+  const s   = Math.floor(ms / 1000);
+  const h   = Math.floor(s / 3600);
+  const min = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${String(min).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`;
+  return `${min}m ${String(sec).padStart(2,'0')}s`;
+}
+
+function histStatusIcon(result) {
+  if (!result) return '';
+  const r = result.toLowerCase();
+  if (r === 'finished') return '✅';
+  if (r === 'skipped')  return '⚠️';
+  if (r === 'failed')   return '❌';
+  return '';
+}
+
+function histEsc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 

@@ -35,6 +35,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/queue"
 	"github.com/Waelson/radio-playout-engine/internal/scheduler"
 	"github.com/Waelson/radio-playout-engine/internal/state"
+	"github.com/Waelson/radio-playout-engine/internal/transmissionlog"
 )
 
 // Version is injected at build time:
@@ -421,6 +422,26 @@ func run(args []string) error {
 			"timezone", cfg.Scheduler.Timezone,
 			"store", schedStorePath,
 			"missed_threshold_ms", cfg.Scheduler.MissedThresholdMS,
+		)
+	}
+
+	if cfg.TransmissionLog.Enabled {
+		tlCfg := transmissionlog.Config{
+			EngineID:         cfg.Engine.ID,
+			Dir:              cfg.TransmissionLog.Dir,
+			FileNameTemplate: cfg.TransmissionLog.FileNameTemplate,
+		}
+		if tlCfg.FileNameTemplate == "" {
+			tlCfg.FileNameTemplate = "transmission_{date}_{hour}.jsonl"
+		}
+		if tlCfg.Dir == "" {
+			tlCfg.Dir = "./transmission-logs"
+		}
+		tlWriter := transmissionlog.New(tlCfg, evtBus, log)
+		go tlWriter.Run(ctx) //nolint:errcheck
+		log.Info("transmission log writer started",
+			"dir", tlCfg.Dir,
+			"template", tlCfg.FileNameTemplate,
 		)
 	}
 

@@ -49,6 +49,7 @@ func EnsureFirstRun() (string, error) {
 		filepath.Join("media", "hora_certa", "hours_dir"),
 		filepath.Join("media", "hora_certa", "minutes_dir"),
 		"logs",
+		"transmission-logs",
 	} {
 		if err := os.MkdirAll(filepath.Join(dir, sub), 0755); err != nil {
 			return "", fmt.Errorf("firstrun: mkdir %s: %w", sub, err)
@@ -68,6 +69,7 @@ func defaultConfig(dir string) string {
 	schedulePath := filepath.Join(dir, "schedule.json")
 	hoursDir := filepath.Join(dir, "media", "hora_certa", "hours_dir")
 	minutesDir := filepath.Join(dir, "media", "hora_certa", "minutes_dir")
+	transmissionLogsDir := filepath.Join(dir, "transmission-logs")
 	driver := DefaultAudioDriver()
 
 	return fmt.Sprintf(`# =============================================================================
@@ -236,7 +238,25 @@ cart:
   # Exemplos: "BlackHole 2ch" (macOS), "hw:1,0" (ALSA/Linux)
   output:
     device_id: ""
-`, driver, queuePath, hoursDir, minutesDir, schedulePath)
+
+# -----------------------------------------------------------------------------
+# Log de Transmissão (conformidade ECAD / prova de veiculação)
+# -----------------------------------------------------------------------------
+transmission_log:
+  # Habilita o LogWriter. Quando false, nenhuma goroutine é iniciada e nenhum
+  # arquivo é criado — zero overhead no pipeline de áudio.
+  # Ative em produção para registrar todas as faixas reproduzidas.
+  enabled: false
+
+  # Diretório onde os arquivos JSONL são gravados (um arquivo por hora UTC).
+  # Em produção, deve ser visível também pelo Library Service (volume compartilhado).
+  dir: %q
+
+  # Template do nome dos arquivos. Placeholders:
+  #   {date} → yyyyMMdd (UTC)   {hour} → HH zero-preenchido (UTC)
+  # O Library Service usa o mesmo template para descobrir arquivos a importar.
+  file_name_template: "transmission_{date}_{hour}.jsonl"
+`, driver, queuePath, hoursDir, minutesDir, schedulePath, transmissionLogsDir)
 }
 
 // DefaultAudioDriver returns the recommended output driver for the current OS.

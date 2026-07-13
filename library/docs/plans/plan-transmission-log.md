@@ -1266,6 +1266,15 @@ sqlite3 library.db "SELECT * FROM schema_migrations ORDER BY version;"
 - Instanciar e iniciar `Writer` em `main.go` somente se `enabled = true`
 - Testes: shutdown limpo via context cancelado + `Sync()+Close()` no arquivo corrente
 
+**2.5 — Atualizar `firstrun.go`**
+- Arquivo: `playout/cmd/playout-engine/engine/firstrun.go`
+- Função: `defaultConfig(dir string) string`
+- Adicionar a seção `transmission_log` ao template gerado no primeiro boot:
+  - Criar o subdiretório `transmission-logs/` dentro de `RadioflowDir()` na lista de `os.MkdirAll`
+  - Incluir no template a seção com `enabled: false`, `dir` apontando para `{RadioflowDir}/transmission-logs`, `file_name_template: "transmission_{date}_{hour}.jsonl"`
+- **Por que é importante:** o arquivo `playout-engine.yaml` gerado automaticamente no primeiro boot é a única fonte de configuração para instalações novas. Sem esta etapa, o operador não veria a seção `transmission_log` no YAML e não saberia como habilitá-la.
+- Testes: verificar que `defaultConfig()` gera uma string contendo a chave `transmission_log` com os campos esperados
+
 ---
 
 ### Fase 3 — Migrations (Library Service)

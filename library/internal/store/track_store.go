@@ -22,6 +22,9 @@ type Track struct {
 	Artist     string
 	Album      string // optional
 	Type       string // MUSIC | VINHETA | JINGLE | SPOT
+	ISRC       string // optional — from TSRC/ISRC tag
+	Composer   string // optional — from TCOM/COMPOSER tag
+	Publisher  string // optional — from TPUB/ORGANIZATION tag
 	DurationMS int64
 	Category   string
 	IndexedAt  time.Time
@@ -41,10 +44,13 @@ type SearchQuery struct {
 // TrackPatch carries the fields that may be updated via PATCH.
 // A nil pointer means "do not change this field".
 type TrackPatch struct {
-	Title    *string
-	Artist   *string
-	Category *string
-	Type     *string
+	Title     *string
+	Artist    *string
+	Category  *string
+	Type      *string
+	ISRC      *string
+	Composer  *string
+	Publisher *string
 }
 
 // TrackStore manages track rows in SQLite.
@@ -72,10 +78,11 @@ func (s *TrackStore) Upsert(ctx context.Context, t Track) error {
 		_, err = s.db.ExecContext(ctx, `
 			UPDATE tracks
 			SET title = ?, artist = ?, album = ?, type = ?, duration_ms = ?,
-			    category = ?, indexed_at = datetime('now')
+			    category = ?, isrc = ?, composer = ?, publisher = ?,
+			    indexed_at = datetime('now')
 			WHERE id = ?`,
 			t.Title, t.Artist, t.Album, t.Type, t.DurationMS,
-			nullableStr(t.Category), existingID,
+			nullableStr(t.Category), t.ISRC, t.Composer, t.Publisher, existingID,
 		)
 		return err
 
@@ -85,10 +92,10 @@ func (s *TrackStore) Upsert(ctx context.Context, t Track) error {
 			t.ID = newID()
 		}
 		_, err = s.db.ExecContext(ctx, `
-			INSERT INTO tracks(id, path, title, artist, album, type, duration_ms, category)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			INSERT INTO tracks(id, path, title, artist, album, type, duration_ms, category, isrc, composer, publisher)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			t.ID, t.Path, t.Title, t.Artist, t.Album, t.Type, t.DurationMS,
-			nullableStr(t.Category),
+			nullableStr(t.Category), t.ISRC, t.Composer, t.Publisher,
 		)
 		return err
 
@@ -101,7 +108,7 @@ func (s *TrackStore) Upsert(ctx context.Context, t Track) error {
 func (s *TrackStore) FindByID(ctx context.Context, id string) (Track, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at
 		FROM tracks WHERE id = ?`, id)
 	return scanTrack(row)
 }
@@ -110,7 +117,7 @@ func (s *TrackStore) FindByID(ctx context.Context, id string) (Track, error) {
 func (s *TrackStore) FindByPath(ctx context.Context, path string) (Track, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at
 		FROM tracks WHERE path = ?`, path)
 	return scanTrack(row)
 }
@@ -157,7 +164,7 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 
 	query := fmt.Sprintf(`
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at
 		FROM tracks %s
 		ORDER BY title ASC
 		LIMIT ? OFFSET ?`, clause)
@@ -281,6 +288,18 @@ func (s *TrackStore) UpdateMeta(ctx context.Context, id string, patch TrackPatch
 		setClauses = append(setClauses, "type = ?")
 		args = append(args, *patch.Type)
 	}
+	if patch.ISRC != nil {
+		setClauses = append(setClauses, "isrc = ?")
+		args = append(args, *patch.ISRC)
+	}
+	if patch.Composer != nil {
+		setClauses = append(setClauses, "composer = ?")
+		args = append(args, *patch.Composer)
+	}
+	if patch.Publisher != nil {
+		setClauses = append(setClauses, "publisher = ?")
+		args = append(args, *patch.Publisher)
+	}
 	if len(setClauses) == 0 {
 		return nil // nothing to update
 	}
@@ -315,7 +334,7 @@ func scanTrack(row *sql.Row) (Track, error) {
 	var indexedAt string
 	err := row.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
-		&t.DurationMS, &t.Category, &indexedAt,
+		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Track{}, ErrNotFound
@@ -324,6 +343,9 @@ func scanTrack(row *sql.Row) (Track, error) {
 		return Track{}, err
 	}
 	t.IndexedAt, _ = time.Parse("2006-01-02T15:04:05Z", indexedAt)
+	if t.IndexedAt.IsZero() {
+		t.IndexedAt, _ = time.Parse("2006-01-02 15:04:05", indexedAt)
+	}
 	return t, nil
 }
 
@@ -332,12 +354,15 @@ func scanTrackRow(rows *sql.Rows) (Track, error) {
 	var indexedAt string
 	err := rows.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
-		&t.DurationMS, &t.Category, &indexedAt,
+		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
 	)
 	if err != nil {
 		return Track{}, err
 	}
 	t.IndexedAt, _ = time.Parse("2006-01-02T15:04:05Z", indexedAt)
+	if t.IndexedAt.IsZero() {
+		t.IndexedAt, _ = time.Parse("2006-01-02 15:04:05", indexedAt)
+	}
 	return t, nil
 }
 

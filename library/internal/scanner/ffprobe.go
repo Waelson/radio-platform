@@ -15,6 +15,9 @@ type Metadata struct {
 	Artist     string
 	Album      string // from "album" tag
 	Genre      string // from "genre" tag — used as category in "tags" strategy
+	ISRC       string // from TSRC (ID3) or ISRC (Vorbis)
+	Composer   string // from TCOM (ID3) or COMPOSER (Vorbis)
+	Publisher  string // from TPUB (ID3) or ORGANIZATION (Vorbis)
 	DurationMS int64
 }
 
@@ -67,8 +70,23 @@ func Probe(ctx context.Context, ffprobePath, filePath string) (Metadata, error) 
 	meta.Artist = strings.TrimSpace(tags["artist"])
 	meta.Album = strings.TrimSpace(tags["album"])
 	meta.Genre = strings.TrimSpace(tags["genre"])
+	// ECAD fields — ID3 tag names are lowercased; ffprobe may emit them as
+	// "tsrc"/"tcom"/"tpub" (ID3v2) or "isrc"/"composer"/"organization" (Vorbis).
+	meta.ISRC = strings.TrimSpace(firstNonEmpty(tags["tsrc"], tags["isrc"]))
+	meta.Composer = strings.TrimSpace(firstNonEmpty(tags["tcom"], tags["composer"]))
+	meta.Publisher = strings.TrimSpace(firstNonEmpty(tags["tpub"], tags["organization"]))
 
 	return meta, nil
+}
+
+// firstNonEmpty returns the first non-empty string from the arguments.
+func firstNonEmpty(ss ...string) string {
+	for _, s := range ss {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 // parseDurationMS converts a duration string in seconds (e.g. "214.293") to

@@ -27,6 +27,10 @@ type Server struct {
 	ss   handlers.SeparationRuleStore
 	rls  handlers.RotationLogStore
 	svc  handlers.SchedulerService
+	tls  handlers.TransmissionLogStore
+	ils  handlers.TransmissionImportLogStore
+	stg  handlers.SettingsStore
+	srw  handlers.SettingsReadWriter
 	log  *slog.Logger
 	http *http.Server
 }
@@ -44,10 +48,15 @@ func New(
 	ss handlers.SeparationRuleStore,
 	rls handlers.RotationLogStore,
 	svc handlers.SchedulerService,
+	tls handlers.TransmissionLogStore,
+	ils handlers.TransmissionImportLogStore,
+	stg handlers.SettingsStore,
+	srw handlers.SettingsReadWriter,
 	log *slog.Logger,
 ) *Server {
 	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix,
-		cs: cs, cls: cls, ss: ss, rls: rls, svc: svc, log: log}
+		cs: cs, cls: cls, ss: ss, rls: rls, svc: svc,
+		tls: tls, ils: ils, stg: stg, srw: srw, log: log}
 	s.http = &http.Server{
 		Addr:         net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
 		Handler:      s.routes(),
@@ -157,6 +166,18 @@ func (s *Server) routes() http.Handler {
 	// Rotation log
 	mux.HandleFunc("POST /v1/rotation-log",                             handlers.AppendRotationLog(s.rls))
 	mux.HandleFunc("GET /v1/rotation-log",                              handlers.GetRotationLog(s.rls))
+
+	// Settings
+	mux.HandleFunc("GET /v1/settings",                                  handlers.ListSettings(s.srw))
+	mux.HandleFunc("GET /v1/settings/{key}",                            handlers.GetSetting(s.srw))
+	mux.HandleFunc("PUT /v1/settings/{key}",                            handlers.UpdateSetting(s.srw))
+
+	// Transmission log — order matters: more specific paths first
+	mux.HandleFunc("GET /v1/transmission-log/export/ecad",              handlers.ExportECAD(s.tls, s.stg))
+	mux.HandleFunc("GET /v1/transmission-log/export",                   handlers.ExportTransmissionLog(s.tls))
+	mux.HandleFunc("GET /v1/transmission-log/summary",                  handlers.GetTransmissionLogSummary(s.tls))
+	mux.HandleFunc("GET /v1/transmission-log/imports",                  handlers.ListImportLog(s.ils))
+	mux.HandleFunc("GET /v1/transmission-log",                          handlers.ListTransmissionLog(s.tls))
 
 	return corsMiddleware(s.cfg.CORS.AllowedOrigins, mux)
 }

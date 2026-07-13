@@ -30,6 +30,9 @@ type trackJSON struct {
 	Artist     string    `json:"artist"`
 	Album      string    `json:"album"`
 	Type       string    `json:"type"`
+	ISRC       string    `json:"isrc"`
+	Composer   string    `json:"composer"`
+	Publisher  string    `json:"publisher"`
 	DurationMS int64     `json:"duration_ms"`
 	Category   string    `json:"category"`
 	IndexedAt  time.Time `json:"indexed_at"`
@@ -43,6 +46,9 @@ func toTrackJSON(t store.Track) trackJSON {
 		Artist:     t.Artist,
 		Album:      t.Album,
 		Type:       t.Type,
+		ISRC:       t.ISRC,
+		Composer:   t.Composer,
+		Publisher:  t.Publisher,
 		DurationMS: t.DurationMS,
 		Category:   t.Category,
 		IndexedAt:  t.IndexedAt,
@@ -132,10 +138,13 @@ func PatchTrack(ts TrackStore) http.HandlerFunc {
 		}
 
 		var body struct {
-			Title    *string `json:"title"`
-			Artist   *string `json:"artist"`
-			Category *string `json:"category"`
-			Type     *string `json:"type"`
+			Title     *string `json:"title"`
+			Artist    *string `json:"artist"`
+			Category  *string `json:"category"`
+			Type      *string `json:"type"`
+			ISRC      *string `json:"isrc"`
+			Composer  *string `json:"composer"`
+			Publisher *string `json:"publisher"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON body")
@@ -154,10 +163,13 @@ func PatchTrack(ts TrackStore) http.HandlerFunc {
 		}
 
 		patch := store.TrackPatch{
-			Title:    body.Title,
-			Artist:   body.Artist,
-			Category: body.Category,
-			Type:     body.Type,
+			Title:     body.Title,
+			Artist:    body.Artist,
+			Category:  body.Category,
+			Type:      body.Type,
+			ISRC:      body.ISRC,
+			Composer:  body.Composer,
+			Publisher: body.Publisher,
 		}
 
 		if err := ts.UpdateMeta(r.Context(), id, patch); errors.Is(err, store.ErrNotFound) {

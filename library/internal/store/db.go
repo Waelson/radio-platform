@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -18,6 +19,18 @@ var migration003 string
 
 //go:embed migrations/004_clock_rotation.sql
 var migration004 string
+
+//go:embed migrations/005_transmission_log.sql
+var migration005 string
+
+//go:embed migrations/006_transmission_import_log.sql
+var migration006 string
+
+//go:embed migrations/007_settings.sql
+var migration007 string
+
+//go:embed migrations/008_transmission_log_engine_id.sql
+var migration008 string
 
 // Open opens (or creates) the SQLite database at path, applies required PRAGMAs,
 // runs migrations and returns a ready-to-use *sql.DB.
@@ -108,7 +121,108 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		}
 	}
 
+	// 005_transmission_log: isrc/composer/publisher em tracks + tabela transmission_log.
+	if !migrationDone(ctx, db, "005_transmission_log") {
+		if err := applyMigration005(ctx, db); err != nil {
+			return fmt.Errorf("005_transmission_log: %w", err)
+		}
+		if err := markMigration(ctx, db, "005_transmission_log"); err != nil {
+			return err
+		}
+	}
+
+	// 006_transmission_import_log: registro de tentativas de importação.
+	if !migrationDone(ctx, db, "006_transmission_import_log") {
+		if _, err := db.ExecContext(ctx, migration006); err != nil {
+			return fmt.Errorf("006_transmission_import_log: %w", err)
+		}
+		if err := markMigration(ctx, db, "006_transmission_import_log"); err != nil {
+			return err
+		}
+	}
+
+	// 007_settings: tabela key→value com valores padrão de configuração.
+	if !migrationDone(ctx, db, "007_settings") {
+		if _, err := db.ExecContext(ctx, migration007); err != nil {
+			return fmt.Errorf("007_settings: %w", err)
+		}
+		if err := markMigration(ctx, db, "007_settings"); err != nil {
+			return err
+		}
+	}
+
+	// 008_transmission_log_engine_id: adiciona engine_id à tabela transmission_log.
+	if !migrationDone(ctx, db, "008_transmission_log_engine_id") {
+		if _, err := db.ExecContext(ctx, migration008); err != nil {
+			if !isDuplicateColumn(err) {
+				return fmt.Errorf("008_transmission_log_engine_id: %w", err)
+			}
+		}
+		if err := markMigration(ctx, db, "008_transmission_log_engine_id"); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+// applyMigration005 adds isrc, composer, publisher to tracks and creates the
+// transmission_log table. Each ALTER TABLE is applied individually so that a
+// "duplicate column" error (partial previous run) is safely ignored.
+func applyMigration005(ctx context.Context, db *sql.DB) error {
+	// Apply each ALTER TABLE separately — SQLite has no ADD COLUMN IF NOT EXISTS.
+	for _, col := range []string{"isrc", "composer", "publisher"} {
+		stmt := fmt.Sprintf("ALTER TABLE tracks ADD COLUMN %s TEXT NOT NULL DEFAULT ''", col)
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			// Ignore "duplicate column name" — column already exists from a
+			// partial previous run.
+			if !isDuplicateColumn(err) {
+				return fmt.Errorf("add column %s: %w", col, err)
+			}
+		}
+	}
+
+	// Create transmission_log table and indexes (all idempotent via IF NOT EXISTS).
+	createStmts := []string{
+		`CREATE TABLE IF NOT EXISTS transmission_log (
+			id                 TEXT     PRIMARY KEY,
+			queue_item_id      TEXT     NOT NULL DEFAULT '' UNIQUE,
+			asset_id           TEXT     NOT NULL DEFAULT '',
+			path               TEXT     NOT NULL DEFAULT '',
+			title              TEXT     NOT NULL DEFAULT '',
+			artist             TEXT     NOT NULL DEFAULT '',
+			type               TEXT     NOT NULL DEFAULT '',
+			isrc               TEXT     NOT NULL DEFAULT '',
+			composer           TEXT     NOT NULL DEFAULT '',
+			publisher          TEXT     NOT NULL DEFAULT '',
+			duration_ms        INTEGER  NOT NULL DEFAULT 0,
+			duration_played_ms INTEGER  NOT NULL DEFAULT 0,
+			result             TEXT     NOT NULL DEFAULT '',
+			status             TEXT     NOT NULL DEFAULT 'FINISHED',
+			started_at         DATETIME NOT NULL,
+			finished_at        DATETIME,
+			break_id           TEXT     NOT NULL DEFAULT '',
+			break_title        TEXT     NOT NULL DEFAULT '',
+			break_role         TEXT     NOT NULL DEFAULT '',
+			break_position     INTEGER  NOT NULL DEFAULT 0,
+			import_file_name   TEXT     NOT NULL DEFAULT ''
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_transmission_log_started_at ON transmission_log(started_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_transmission_log_type       ON transmission_log(type)`,
+		`CREATE INDEX IF NOT EXISTS idx_transmission_log_status     ON transmission_log(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_transmission_log_asset_id   ON transmission_log(asset_id)`,
+	}
+	for _, stmt := range createStmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("transmission_log schema: %w", err)
+		}
+	}
+	return nil
+}
+
+// isDuplicateColumn reports whether err is a SQLite "duplicate column name" error.
+func isDuplicateColumn(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "duplicate column name")
 }
 
 // applyMigration002 recreates the tracks table to add EFEITOS to the CHECK
