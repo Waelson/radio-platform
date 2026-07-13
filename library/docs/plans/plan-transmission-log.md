@@ -648,20 +648,21 @@ Para cada arquivo JSONL elegível:
   1. INSERT em transmission_import_log (status=running, started_at=now, file_name=nome)
   2. Abrir e ler todas as linhas (bufio.Scanner) → records_total = nº de linhas lidas
   3. Parsear cada linha como LogEntry (linhas malformadas → log warning + skip)
-  4. Iniciar transação SQLite
-  5. Para cada entrada válida:
+  4. Preencher entry.ImportFileName = nome do arquivo (ex: "transmission_20260720_08.jsonl")
+  5. Iniciar transação SQLite
+  6. Para cada entrada válida:
        INSERT OR IGNORE INTO transmission_log (...) VALUES (...)
        (conflito em queue_item_id → no-op; não incrementa records_imported)
-  6. COMMIT
-  7. Se COMMIT OK:
+  7. COMMIT
+  8. Se COMMIT OK:
        → os.MkdirAll(processados/) + os.Rename(arquivo → processados/arquivo)
        → UPDATE transmission_import_log SET status=success, finished_at=now,
                                             records_imported=N, error_message=''
-  8. Se COMMIT falhar:
+  9. Se COMMIT falhar:
        → deixar arquivo na raiz (retry no próximo ciclo)
        → UPDATE transmission_import_log SET status=failed, finished_at=now,
                                             error_message=err.Error()
-  9. Se os.Rename falhar após COMMIT:
+ 10. Se os.Rename falhar após COMMIT:
        → UPDATE transmission_import_log SET status=failed, finished_at=now,
                                             records_imported=N, error_message=err.Error()
        (arquivo permanece na raiz; na próxima rodada INSERT OR IGNORE = no-op, Rename é re-tentado)
@@ -771,8 +772,8 @@ func (s *TransmissionLogStore) BulkInsert(ctx context.Context, entries []Transmi
              duration_ms, duration_played_ms, result, status,
              started_at, finished_at,
              break_id, break_title, break_role, break_position,
-             isrc, composer, publisher)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             isrc, composer, publisher, import_file_name)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `)
     if err != nil {
         return fmt.Errorf("transmission_log bulk_insert: prepare: %w", err)
@@ -785,7 +786,7 @@ func (s *TransmissionLogStore) BulkInsert(ctx context.Context, entries []Transmi
             e.DurationMS, e.DurationPlayedMS, e.Result, "FINISHED",
             e.StartedAt, e.FinishedAt,
             e.BreakID, e.BreakTitle, e.BreakRole, e.BreakPosition,
-            e.ISRC, e.Composer, e.Publisher,
+            e.ISRC, e.Composer, e.Publisher, e.ImportFileName,
         ); err != nil {
             return fmt.Errorf("transmission_log bulk_insert: exec: %w", err)
         }
@@ -915,7 +916,8 @@ CREATE TABLE IF NOT EXISTS transmission_log (
     break_id           TEXT     NOT NULL DEFAULT '',
     break_title        TEXT     NOT NULL DEFAULT '',
     break_role         TEXT     NOT NULL DEFAULT '',   -- open|spot|close
-    break_position     INTEGER  NOT NULL DEFAULT 0
+    break_position     INTEGER  NOT NULL DEFAULT 0,
+    import_file_name   TEXT     NOT NULL DEFAULT ''    -- nome do arquivo JSONL de origem
 );
 
 CREATE INDEX IF NOT EXISTS idx_transmission_log_started_at ON transmission_log(started_at);
@@ -990,6 +992,7 @@ type TransmissionLogEntry struct {
     BreakTitle       string
     BreakRole        string
     BreakPosition    int
+    ImportFileName   string // nome do arquivo JSONL que originou esta entrada
 }
 
 type TransmissionLogQuery struct {
