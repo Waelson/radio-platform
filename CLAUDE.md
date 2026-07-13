@@ -63,3 +63,4 @@ O `go.work` permite importar módulos locais entre si durante desenvolvimento. N
 ## Regras de Git
 
 - **Nunca fazer commit nem push diretamente na branch `main`.** Todo trabalho deve ser feito em uma branch dedicada e integrado via Pull Request.
+- **Nunca criar branches sem aprovação prévia.** Sempre sugerir o nome e propósito da branch e aguardar confirmação antes de criá-la.
