@@ -587,10 +587,12 @@ O `fileimporter` é uma goroutine do Library Service que:
 1. Escaneia periodicamente a **raiz** do diretório de logs.
 2. Filtra apenas arquivos cujo nome satisfaz o glob derivado do `file_name_template`.
 3. Identifica arquivos seguros para importação (fora do grace period).
-4. Lê e parseia cada linha JSONL.
-5. Insere em lote no SQLite (transação única por arquivo) — sem consultas adicionais.
-6. Move o arquivo para o subdiretório `processados/` após confirmação do COMMIT.
-7. Ao final de cada ciclo, exclui de `processados/` arquivos com `mtime` anterior a `retention_days`.
+4. Para cada arquivo: registra o início da tentativa em `transmission_import_log`.
+5. Lê e parseia cada linha JSONL.
+6. Insere em lote no SQLite (transação única por arquivo) — sem consultas adicionais.
+7. Move o arquivo para `processados/` após COMMIT confirmado.
+8. Atualiza o registro de `transmission_import_log` com resultado final (`success` ou `failed`).
+9. Ao final de cada ciclo, exclui de `processados/` arquivos com `mtime` anterior a `retention_days`.
 
 > O importer é totalmente independente: não consulta `tracks`, não faz JOINs.
 > Todos os campos necessários (incluindo `isrc`, `composer`, `publisher`) chegam
@@ -643,17 +645,26 @@ func isEligible(fi os.FileInfo, now time.Time, grace time.Duration) bool {
 
 ```
 Para cada arquivo JSONL elegível:
-  1. Abrir e ler todas as linhas (bufio.Scanner)
-  2. Parsear cada linha como LogEntry (linhas malformadas → log warning + skip)
-  3. Iniciar transação SQLite
-  4. Para cada entrada válida:
+  1. INSERT em transmission_import_log (status=running, started_at=now, file_name=nome)
+  2. Abrir e ler todas as linhas (bufio.Scanner) → records_total = nº de linhas lidas
+  3. Parsear cada linha como LogEntry (linhas malformadas → log warning + skip)
+  4. Iniciar transação SQLite
+  5. Para cada entrada válida:
        INSERT OR IGNORE INTO transmission_log (...) VALUES (...)
-       (conflito em queue_item_id → no-op, sem erro)
-  5. COMMIT
-  6. Se COMMIT OK → os.MkdirAll(processados/) + os.Rename(arquivo → processados/arquivo)
-  7. Se COMMIT falhar → log error + deixar arquivo na raiz (retry no próximo ciclo)
-  8. Se os.Rename falhar → log warning (arquivo permanece na raiz; próxima importação:
-     INSERT OR IGNORE = no-op; nova tentativa de mover)
+       (conflito em queue_item_id → no-op; não incrementa records_imported)
+  6. COMMIT
+  7. Se COMMIT OK:
+       → os.MkdirAll(processados/) + os.Rename(arquivo → processados/arquivo)
+       → UPDATE transmission_import_log SET status=success, finished_at=now,
+                                            records_imported=N, error_message=''
+  8. Se COMMIT falhar:
+       → deixar arquivo na raiz (retry no próximo ciclo)
+       → UPDATE transmission_import_log SET status=failed, finished_at=now,
+                                            error_message=err.Error()
+  9. Se os.Rename falhar após COMMIT:
+       → UPDATE transmission_import_log SET status=failed, finished_at=now,
+                                            records_imported=N, error_message=err.Error()
+       (arquivo permanece na raiz; na próxima rodada INSERT OR IGNORE = no-op, Rename é re-tentado)
 ```
 
 Nenhuma consulta ao banco é feita durante a importação. Todos os campos já chegam
@@ -724,6 +735,12 @@ type LogStore interface {
     BulkInsert(ctx context.Context, entries []store.TransmissionLogEntry) error
 }
 
+type ImportLogStore interface {
+    StartImport(ctx context.Context, fileName string) (id string, err error)
+    FinishImport(ctx context.Context, id string, recordsTotal, recordsImported int) error
+    FailImport(ctx context.Context, id string, recordsTotal int, errMsg string) error
+}
+
 type Settings interface {
     TransmissionLogDir(ctx context.Context) (string, error)
     TransmissionLogFileNameTemplate(ctx context.Context) (string, error)
@@ -734,7 +751,7 @@ type Settings interface {
 
 // New não recebe TrackQuerier — o importer não consulta outras tabelas.
 // Configurações são lidas do banco a cada ciclo via Settings.
-func New(settings Settings, store LogStore, log *slog.Logger) *Importer
+func New(settings Settings, store LogStore, importLog ImportLogStore, log *slog.Logger) *Importer
 func (imp *Importer) Run(ctx context.Context) error
 ```
 
@@ -815,9 +832,33 @@ como segunda linha de defesa.
 
 Arquivo: `library/internal/store/migrations/005_transmission_log.sql`
 
-### Migration 006 — settings (key → value)
+### Migration 006 — transmission_import_log (registro de tentativas de importação)
 
-Arquivo: `library/internal/store/migrations/006_settings.sql`
+Arquivo: `library/internal/store/migrations/006_transmission_import_log.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS transmission_import_log (
+    id              TEXT     PRIMARY KEY,
+    file_name       TEXT     NOT NULL,
+    started_at      DATETIME NOT NULL,
+    finished_at     DATETIME,
+    status          TEXT     NOT NULL DEFAULT 'running', -- running|success|failed
+    records_total   INTEGER  NOT NULL DEFAULT 0,         -- linhas lidas no arquivo
+    records_imported INTEGER NOT NULL DEFAULT 0,         -- INSERTs efetivados (excluindo OR IGNORE)
+    error_message   TEXT     NOT NULL DEFAULT ''         -- preenchido apenas em status=failed
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_log_started_at ON transmission_import_log(started_at);
+CREATE INDEX IF NOT EXISTS idx_import_log_status     ON transmission_import_log(status);
+```
+
+> Cada tentativa de processar um arquivo gera uma linha nesta tabela, independentemente
+> do resultado. Tentativas repetidas do mesmo arquivo (retry após falha) geram linhas
+> distintas — o histórico completo de tentativas é preservado.
+
+### Migration 007 — settings (key → value)
+
+Arquivo: `library/internal/store/migrations/007_settings.sql`
 
 ```sql
 CREATE TABLE IF NOT EXISTS settings (
@@ -909,8 +950,10 @@ library/
     store/
       migrations/
         005_transmission_log.sql       ← migration com ALTER TABLE + CREATE TABLE
-        006_settings.sql               ← tabela settings com valores padrão
+        006_transmission_import_log.sql ← registro de tentativas de importação
+        007_settings.sql               ← tabela settings com valores padrão
       transmission_log_store.go        ← TransmissionLogStore
+      transmission_import_log_store.go ← TransmissionImportLogStore (Start/Finish/Fail)
       settings_store.go                ← SettingsStore (Get/Set + helpers tipados)
     fileimporter/
       importer.go                      ← goroutine de importação periódica
@@ -1087,6 +1130,7 @@ mux.HandleFunc("GET /v1/transmission-log",              handlers.ListTransmissio
 mux.HandleFunc("GET /v1/transmission-log/export",       handlers.ExportTransmissionLog(s.tls))
 mux.HandleFunc("GET /v1/transmission-log/export/ecad",  handlers.ExportECAD(s.tls, s.settings))
 mux.HandleFunc("GET /v1/transmission-log/summary",      handlers.GetTransmissionLogSummary(s.tls))
+mux.HandleFunc("GET /v1/transmission-log/imports",      handlers.ListImportLog(s.ils))
 mux.HandleFunc("GET /v1/settings",                      handlers.ListSettings(s.settings))
 mux.HandleFunc("GET /v1/settings/{key}",                handlers.GetSetting(s.settings))
 mux.HandleFunc("PUT /v1/settings/{key}",                handlers.UpdateSetting(s.settings))
@@ -1151,19 +1195,23 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 ### Fase 3 — Migração e Stores (Library Service)
 
 1. Criar `library/internal/store/migrations/005_transmission_log.sql`
-2. Criar `library/internal/store/migrations/006_settings.sql` com tabela e valores padrão
-3. Registrar migrations 005 e 006 em `db.go`
-4. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe (para `tracks`)
-5. Implementar `TransmissionLogStore` com todos os métodos
-6. Implementar `SettingsStore` com `Get`, `Set` e helpers tipados para transmission log
-7. Testes: BulkInsert com idempotência, List com filtros, Summary, ExportECAD formato
-8. Testes: SettingsStore Get/Set, helpers tipados, fallback para valores padrão
+2. Criar `library/internal/store/migrations/006_transmission_import_log.sql`
+3. Criar `library/internal/store/migrations/007_settings.sql` com tabela e valores padrão
+4. Registrar migrations 005, 006 e 007 em `db.go`
+5. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe (para `tracks`)
+6. Implementar `TransmissionLogStore` com todos os métodos
+7. Implementar `TransmissionImportLogStore` com `StartImport`, `FinishImport`, `FailImport`
+8. Implementar `SettingsStore` com `Get`, `Set` e helpers tipados para transmission log
+9. Testes: BulkInsert com idempotência, List com filtros, Summary, ExportECAD formato
+10. Testes: ImportLogStore — registro de success, failed e retry
+11. Testes: SettingsStore Get/Set, helpers tipados, fallback para valores padrão
 
 ### Fase 4 — File Importer (Library Service)
 
 1. Implementar `library/internal/fileimporter/importer.go`
    - Poll periódico com `grace_period`
    - Leitura e parse de JSONL — sem consultas adicionais
+   - `StartImport` antes de processar, `FinishImport`/`FailImport` ao concluir
    - BulkInsert + `os.Rename` para `processados/` (somente após COMMIT)
 2. Iniciar importer em `main.go` (condicional a `cfg.TransmissionLog.Dir != ""`)
 3. Testes:
@@ -1178,7 +1226,8 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 ### Fase 5 — API e Rotas (Library Service)
 
 1. Implementar `handlers/transmission_log.go` (4 handlers)
-2. Implementar `handlers/settings.go` (3 handlers: List, Get, Update)
+2. Implementar `handlers/transmission_import_log.go` (`GET /v1/transmission-log/imports`)
+3. Implementar `handlers/settings.go` (3 handlers: List, Get, Update)
    - `PUT /v1/settings/transmission_log.retention_days` valida `value >= 7` antes de salvar
 3. Registrar todas as rotas em `server.go`
 4. Injetar stores e importer em `main.go`
