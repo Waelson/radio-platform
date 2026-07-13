@@ -128,7 +128,11 @@ func (s *CategoryStore) ListTracks(ctx context.Context, categoryID string, limit
 		limit = 50
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT t.id, t.path, t.title, t.artist, t.album, t.type, t.duration_ms, COALESCE(t.category,''), t.isrc, t.composer, t.publisher, t.indexed_at
+		SELECT t.id, t.path, t.title, t.artist, COALESCE(t.album,''), t.type, t.duration_ms,
+		       COALESCE(t.category,''), t.isrc, t.composer, t.publisher, t.indexed_at,
+		       t.loudness_lufs, t.true_peak_dbtp,
+		       COALESCE(t.loudness_status,'pending'), COALESCE(t.loudness_error,''),
+		       t.loudness_analyzed_at
 		FROM tracks t
 		JOIN track_categories tc ON tc.track_id = t.id
 		WHERE tc.category_id = ?

@@ -28,6 +28,14 @@ type Track struct {
 	DurationMS int64
 	Category   string
 	IndexedAt  time.Time
+
+	// Loudness analysis fields (populated by migration 009).
+	// LoudnessLUFS and TruePeakDBTP are nil when not yet analyzed.
+	LoudnessLUFS       *float64   // integrated loudness in LUFS (EBU R128)
+	TruePeakDBTP       *float64   // true peak in dBTP
+	LoudnessStatus     string     // pending | analyzing | done | error
+	LoudnessError      string     // error message when LoudnessStatus = "error"
+	LoudnessAnalyzedAt *time.Time // timestamp of last successful analysis
 }
 
 // SearchQuery holds optional filters for track searches.
@@ -108,7 +116,10 @@ func (s *TrackStore) Upsert(ctx context.Context, t Track) error {
 func (s *TrackStore) FindByID(ctx context.Context, id string) (Track, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), isrc, composer, publisher, indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
+		       loudness_lufs, true_peak_dbtp,
+		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
+		       loudness_analyzed_at
 		FROM tracks WHERE id = ?`, id)
 	return scanTrack(row)
 }
@@ -117,7 +128,10 @@ func (s *TrackStore) FindByID(ctx context.Context, id string) (Track, error) {
 func (s *TrackStore) FindByPath(ctx context.Context, path string) (Track, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), isrc, composer, publisher, indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
+		       loudness_lufs, true_peak_dbtp,
+		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
+		       loudness_analyzed_at
 		FROM tracks WHERE path = ?`, path)
 	return scanTrack(row)
 }
@@ -164,7 +178,10 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 
 	query := fmt.Sprintf(`
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), isrc, composer, publisher, indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
+		       loudness_lufs, true_peak_dbtp,
+		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
+		       loudness_analyzed_at
 		FROM tracks %s
 		ORDER BY title ASC
 		LIMIT ? OFFSET ?`, clause)
@@ -327,14 +344,100 @@ func (s *TrackStore) DeleteByPath(ctx context.Context, path string) error {
 	return err
 }
 
+// --- loudness methods --------------------------------------------------------
+
+// UpdateLoudness sets the measured loudness values and marks the track as done.
+func (s *TrackStore) UpdateLoudness(ctx context.Context, id string, lufs float64, truePeak float64) error {
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE tracks
+		SET loudness_lufs        = ?,
+		    true_peak_dbtp       = ?,
+		    loudness_status      = 'done',
+		    loudness_error       = '',
+		    loudness_analyzed_at = datetime('now')
+		WHERE id = ?`, lufs, truePeak, id)
+	if err != nil {
+		return fmt.Errorf("update loudness: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// UpdateLoudnessStatus sets the loudness_status for a track and, optionally,
+// an error message (pass empty string when not in error state).
+func (s *TrackStore) UpdateLoudnessStatus(ctx context.Context, id string, status string, errMsg string) error {
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE tracks SET loudness_status = ?, loudness_error = ? WHERE id = ?`,
+		status, errMsg, id)
+	if err != nil {
+		return fmt.Errorf("update loudness status: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// CountByLoudnessStatus returns a map of loudness_status → count for all tracks.
+func (s *TrackStore) CountByLoudnessStatus(ctx context.Context) (map[string]int, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT COALESCE(loudness_status,'pending'), COUNT(*) FROM tracks GROUP BY loudness_status`)
+	if err != nil {
+		return nil, fmt.Errorf("count by loudness status: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]int)
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		result[status] = count
+	}
+	return result, rows.Err()
+}
+
+// ListPendingLoudness returns IDs of tracks with loudness_status IN ('pending', 'error'),
+// up to limit entries, ordered by rowid (insertion order).
+func (s *TrackStore) ListPendingLoudness(ctx context.Context, limit int) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id FROM tracks
+		WHERE loudness_status IN ('pending', 'error')
+		ORDER BY rowid ASC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list pending loudness: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // --- helpers -----------------------------------------------------------------
 
 func scanTrack(row *sql.Row) (Track, error) {
 	var t Track
 	var indexedAt string
+	var lufs, truePeak sql.NullFloat64
+	var loudnessAnalyzedAt sql.NullString
 	err := row.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
 		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
+		&lufs, &truePeak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Track{}, ErrNotFound
@@ -346,15 +449,30 @@ func scanTrack(row *sql.Row) (Track, error) {
 	if t.IndexedAt.IsZero() {
 		t.IndexedAt, _ = time.Parse("2006-01-02 15:04:05", indexedAt)
 	}
+	if lufs.Valid {
+		t.LoudnessLUFS = &lufs.Float64
+	}
+	if truePeak.Valid {
+		t.TruePeakDBTP = &truePeak.Float64
+	}
+	if loudnessAnalyzedAt.Valid && loudnessAnalyzedAt.String != "" {
+		ts := parseSQLiteTime(loudnessAnalyzedAt.String)
+		if !ts.IsZero() {
+			t.LoudnessAnalyzedAt = &ts
+		}
+	}
 	return t, nil
 }
 
 func scanTrackRow(rows *sql.Rows) (Track, error) {
 	var t Track
 	var indexedAt string
+	var lufs, truePeak sql.NullFloat64
+	var loudnessAnalyzedAt sql.NullString
 	err := rows.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
 		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
+		&lufs, &truePeak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
 	)
 	if err != nil {
 		return Track{}, err
@@ -363,7 +481,27 @@ func scanTrackRow(rows *sql.Rows) (Track, error) {
 	if t.IndexedAt.IsZero() {
 		t.IndexedAt, _ = time.Parse("2006-01-02 15:04:05", indexedAt)
 	}
+	if lufs.Valid {
+		t.LoudnessLUFS = &lufs.Float64
+	}
+	if truePeak.Valid {
+		t.TruePeakDBTP = &truePeak.Float64
+	}
+	if loudnessAnalyzedAt.Valid && loudnessAnalyzedAt.String != "" {
+		ts := parseSQLiteTime(loudnessAnalyzedAt.String)
+		if !ts.IsZero() {
+			t.LoudnessAnalyzedAt = &ts
+		}
+	}
 	return t, nil
+}
+
+func parseSQLiteTime(s string) time.Time {
+	t, _ := time.Parse("2006-01-02T15:04:05Z", s)
+	if t.IsZero() {
+		t, _ = time.Parse("2006-01-02 15:04:05", s)
+	}
+	return t
 }
 
 // nullableStr returns nil for empty strings so SQLite stores NULL instead of "".
