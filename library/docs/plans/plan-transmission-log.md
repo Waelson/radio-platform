@@ -18,6 +18,14 @@ O log é a base legal e operacional da emissora:
 **Base:** `main`
 **Abordagem escolhida:** B — Arquivos append-only no Playout Engine
 
+> Antes de qualquer alteração de código, criar a branch a partir de `main`:
+> ```bash
+> git checkout main && git pull
+> git checkout -b feature/transmission-log
+> ```
+> Todo o trabalho das Fases 1 a 8 deve ser desenvolvido nessa branch.
+> Nunca implementar diretamente na `main`.
+
 ---
 
 ## Contexto atual
