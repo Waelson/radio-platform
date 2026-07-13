@@ -1269,6 +1269,12 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 - Persistir em `tracks.isrc`, `tracks.composer`, `tracks.publisher`
 - Testes: fixture com arquivo contendo as tags → verificar extração correta
 
+**4.4.1 — Exposição nos endpoints existentes de tracks**
+- Adicionar `ISRC`, `Composer`, `Publisher` à struct `Track` no store
+- Atualizar mapeamento nos handlers `GET /v1/tracks`, `GET /v1/tracks/{id}` e `PATCH /v1/tracks/{id}` para incluir os novos campos na resposta e aceitar atualização via PATCH
+- A partir desta etapa o Player consegue ler `isrc/composer/publisher` do Library Service e incluí-los no payload do `ENQUEUE` (prerequisito da Fase 1.3)
+- Testes: `GET /v1/tracks/{id}` retorna `isrc`, `composer`, `publisher`; `PATCH` atualiza corretamente
+
 ---
 
 ### Fase 5 — File Importer (Library Service)
