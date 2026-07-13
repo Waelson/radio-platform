@@ -75,12 +75,15 @@ func (a *Analyzer) Analyze(ctx context.Context, filePath string) (Result, error)
 }
 
 // parseEbur128 extracts integrated loudness and true peak from ffmpeg output.
+// Uses the last match of each pattern to get the final summary values, not the
+// intermediate per-frame measurements printed during analysis.
 // Handles -inf values (completely silent audio).
 func parseEbur128(output string) (Result, error) {
-	m := reLUFS.FindStringSubmatch(output)
-	if m == nil {
+	all := reLUFS.FindAllStringSubmatch(output, -1)
+	if all == nil {
 		return Result{}, fmt.Errorf("integrated loudness not found in ffmpeg output")
 	}
+	m := all[len(all)-1]
 	lufs, err := parseFloatOrInf(m[1])
 	if err != nil {
 		return Result{}, fmt.Errorf("parse LUFS %q: %w", m[1], err)
@@ -88,7 +91,8 @@ func parseEbur128(output string) (Result, error) {
 
 	// True peak is optional — very short or silent files may not report it.
 	truePeak := math.Inf(-1)
-	if mp := reTruePeak.FindStringSubmatch(output); mp != nil {
+	if allP := reTruePeak.FindAllStringSubmatch(output, -1); allP != nil {
+		mp := allP[len(allP)-1]
 		if v, e := parseFloatOrInf(mp[1]); e == nil {
 			truePeak = v
 		}

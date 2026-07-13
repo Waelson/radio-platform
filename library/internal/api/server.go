@@ -74,13 +74,6 @@ func New(
 	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix,
 		cs: cs, cls: cls, ss: ss, rls: rls, svc: svc,
 		tls: tls, ils: ils, stg: stg, srw: srw, log: log}
-	s.http = &http.Server{
-		Addr:         net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
-		Handler:      s.routes(),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
 	return s
 }
 
@@ -95,6 +88,14 @@ func (s *Server) Start(ctx context.Context) error {
 			s.log.Error("server shutdown error", "error", err)
 		}
 	}()
+
+	s.http = &http.Server{
+		Addr:         net.JoinHostPort(s.cfg.Host, strconv.Itoa(s.cfg.Port)),
+		Handler:      s.routes(),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
 	s.log.Info("API server listening", "addr", s.http.Addr)
 	if err := s.http.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -137,7 +138,7 @@ func (s *Server) routes() http.Handler {
 
 	mux.HandleFunc("GET /v1/hotkeys/profiles",                          handlers.ListHotkeyProfiles(s.hs))
 	mux.HandleFunc("POST /v1/hotkeys/profiles",                         handlers.CreateHotkeyProfile(s.hs))
-	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}",                     handlers.GetHotkeyProfile(s.hs))
+	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}",                     handlers.GetHotkeyProfile(s.hs, s.nr))
 	mux.HandleFunc("PUT /v1/hotkeys/profiles/{id}",                     handlers.UpdateHotkeyProfile(s.hs))
 	mux.HandleFunc("DELETE /v1/hotkeys/profiles/{id}",                  handlers.DeleteHotkeyProfile(s.hs))
 	mux.HandleFunc("POST /v1/hotkeys/profiles/{id}/buttons",            handlers.AddHotkeyButton(s.hs))

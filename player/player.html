@@ -4824,7 +4824,7 @@ async function advEnqueue(idx) {
     const r = await fetch(API_URL + '/v1/queue/enqueue', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [{ asset_id: t.id || '', path: t.path, type: t.type, title: t.title, artist: t.artist || '', isrc: t.isrc || '', composer: t.composer || '', publisher: t.publisher || '', duration_ms: t.duration_ms || 0 }] }),
+      body: JSON.stringify({ items: [{ asset_id: t.id || '', path: t.path, type: t.type, title: t.title, artist: t.artist || '', isrc: t.isrc || '', composer: t.composer || '', publisher: t.publisher || '', duration_ms: t.duration_ms || 0, gain_db: t.gain_db || 0 }] }),
     });
     const j  = await r.json();
     const ok = j.ok !== false && j.accepted !== false;
@@ -5870,7 +5870,8 @@ async function rotEnqueue() {
             composer:    item.track.composer || '',
             publisher:   item.track.publisher || '',
             duration_ms: item.track.duration_ms,
-            type:        item.track.type || 'MUSIC'
+            type:        item.track.type || 'MUSIC',
+            gain_db:     item.track.gain_db || 0
           }]
         })
       });
@@ -5981,6 +5982,7 @@ async function libEnqueuePlaylist(idx) {
         title:       it.track?.title       || '',
         artist:      it.track?.artist      || '',
         duration_ms: it.track?.duration_ms || 0,
+        gain_db:     it.track?.gain_db     || 0,
       }))
       .filter(it => it.path);
     if (!items.length) { showToast(false, 'Playlist vazia ou sem arquivos indexados'); return; }
@@ -6006,10 +6008,10 @@ async function libEnqueueBreak(idx) {
     if (!data.spots || !data.spots.length) { showToast(false, 'Break sem spots cadastrados'); return; }
     const body = {
       title: data.name || b.name || 'Break',
-      spots: data.spots.map(s => ({ asset_id: s.id || '', path: s.path, type: s.type, title: s.title, artist: s.artist || '', duration_ms: s.duration_ms || 0 })),
+      spots: data.spots.map(s => ({ asset_id: s.id || '', path: s.path, type: s.type, title: s.title, artist: s.artist || '', duration_ms: s.duration_ms || 0, gain_db: s.gain_db || 0 })),
     };
-    if (data.open)  body.open  = { asset_id: data.open.id  || '', path: data.open.path,  type: data.open.type,  title: data.open.title,  artist: data.open.artist  || '', duration_ms: data.open.duration_ms  || 0 };
-    if (data.close) body.close = { asset_id: data.close.id || '', path: data.close.path, type: data.close.type, title: data.close.title, artist: data.close.artist || '', duration_ms: data.close.duration_ms || 0 };
+    if (data.open)  body.open  = { asset_id: data.open.id  || '', path: data.open.path,  type: data.open.type,  title: data.open.title,  artist: data.open.artist  || '', duration_ms: data.open.duration_ms  || 0, gain_db: data.open.gain_db  || 0 };
+    if (data.close) body.close = { asset_id: data.close.id || '', path: data.close.path, type: data.close.type, title: data.close.title, artist: data.close.artist || '', duration_ms: data.close.duration_ms || 0, gain_db: data.close.gain_db || 0 };
     const r = await fetch(API_URL + '/v1/queue/enqueue-break', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
