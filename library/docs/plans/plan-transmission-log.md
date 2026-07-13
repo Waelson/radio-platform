@@ -134,7 +134,7 @@ mensalmente ao ECAD todas as obras musicais executadas.
 | UF | Estado (sigla) |
 | Período declarado | Mês/ano de referência |
 
-Esses dados são fixos por instalação e configuráveis em `config.yaml`, seção `station`.
+Esses dados são fixos por instalação e mantidos na tabela `settings` do banco de dados.
 
 ### Campos adicionais na tabela `tracks`
 
@@ -724,17 +724,17 @@ type LogStore interface {
     BulkInsert(ctx context.Context, entries []store.TransmissionLogEntry) error
 }
 
-type Config struct {
-    Dir              string        // mesmo dir que o Engine escreve
-    FileNameTemplate string        // mesmo template do Engine; ex: "transmission_{date}_{hour}.jsonl"
-    PollInterval     time.Duration // default: 5min
-    GracePeriod      time.Duration // default: 15min
-    RetentionDays    int           // mínimo 7; arquivos em processados/ mais antigos são excluídos
+type Settings interface {
+    TransmissionLogDir(ctx context.Context) (string, error)
+    TransmissionLogFileNameTemplate(ctx context.Context) (string, error)
+    TransmissionLogPollInterval(ctx context.Context) (time.Duration, error)
+    TransmissionLogGracePeriod(ctx context.Context) (time.Duration, error)
+    TransmissionLogRetentionDays(ctx context.Context) (int, error)
 }
 
 // New não recebe TrackQuerier — o importer não consulta outras tabelas.
-// Todos os campos chegam completos no JSONL.
-func New(cfg Config, store LogStore, log *slog.Logger) *Importer
+// Configurações são lidas do banco a cada ciclo via Settings.
+func New(settings Settings, store LogStore, log *slog.Logger) *Importer
 func (imp *Importer) Run(ctx context.Context) error
 ```
 
@@ -779,53 +779,33 @@ func (s *TransmissionLogStore) BulkInsert(ctx context.Context, entries []Transmi
 
 ### Configuração no Library Service
 
+As configurações do log de transmissão **não ficam em `config.yaml`** — são mantidas
+na tabela `settings` do banco de dados (ver Migration 006). Isso permite alterá-las
+em tempo de execução sem reiniciar o serviço.
+
 ```go
-// library/internal/config/config.go — adições
+// library/internal/store/settings_store.go
 
-type TransmissionLogConfig struct {
-    Dir              string        `yaml:"dir"`                // mesmo dir do Engine
-    FileNameTemplate string        `yaml:"file_name_template"` // deve ser idêntico ao do Engine
-    PollInterval     time.Duration `yaml:"poll_interval"`      // default: 5min
-    GracePeriod      time.Duration `yaml:"grace_period"`       // default: 15min
-    RetentionDays    int           `yaml:"retention_days"`     // mínimo 7; default: 30
-}
+// SettingsStore fornece acesso tipado à tabela key→value.
+type SettingsStore struct{ db *sql.DB }
 
-// RetentionDaysOrDefault retorna o valor configurado ou o mínimo aceitável.
-// Valores abaixo de 7 são silenciosamente elevados para 7.
-func (c TransmissionLogConfig) RetentionDaysOrDefault() int {
-    if c.RetentionDays < 7 {
-        return 7
-    }
-    return c.RetentionDays
-}
+func (s *SettingsStore) Get(ctx context.Context, key string) (string, error)
+func (s *SettingsStore) Set(ctx context.Context, key, value string) error
 
-type StationConfig struct {
-    Name      string `yaml:"name"`
-    CNPJ      string `yaml:"cnpj"`
-    Frequency string `yaml:"frequency"`
-    Type      string `yaml:"type"`  // FM | AM | WEB
-    City      string `yaml:"city"`
-    State     string `yaml:"state"`
-}
+// Helpers tipados para as configurações do log de transmissão.
+func (s *SettingsStore) TransmissionLogDir(ctx context.Context) (string, error)
+func (s *SettingsStore) TransmissionLogFileNameTemplate(ctx context.Context) (string, error)
+func (s *SettingsStore) TransmissionLogPollInterval(ctx context.Context) (time.Duration, error)
+func (s *SettingsStore) TransmissionLogGracePeriod(ctx context.Context) (time.Duration, error)
+func (s *SettingsStore) TransmissionLogRetentionDays(ctx context.Context) (int, error)
 ```
 
-```yaml
-# library/config.yaml — novas seções
-transmission_log:
-  dir: "/var/radioflow/transmission-logs"
-  file_name_template: "transmission_{date}_{hour}.jsonl"  # deve ser idêntico ao do Engine
-  poll_interval: 5m
-  grace_period: 15m
-  retention_days: 30   # mínimo permitido: 7 dias; valores menores são ignorados e substituídos por 7
+O importer carrega as configurações do banco **a cada ciclo de poll** — mudanças
+feitas via API têm efeito sem restart.
 
-station:
-  name: "Rádio Exemplo FM"
-  cnpj: "12.345.678/0001-90"
-  frequency: "98.5 MHz"
-  type: "FM"
-  city: "São Paulo"
-  state: "SP"
-```
+**Regra de retenção:** `retention_days` com valor abaixo de `7` é rejeitado na
+camada da API com erro `400 Bad Request`. O `SettingsStore` aplica a mesma validação
+como segunda linha de defesa.
 
 ---
 
@@ -834,6 +814,37 @@ station:
 ### Migration 005 — transmission_log + campos ECAD em tracks
 
 Arquivo: `library/internal/store/migrations/005_transmission_log.sql`
+
+### Migration 006 — settings (key → value)
+
+Arquivo: `library/internal/store/migrations/006_settings.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL DEFAULT '',
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Valores padrão das configurações do log de transmissão
+INSERT OR IGNORE INTO settings (key, value) VALUES
+    ('transmission_log.dir',                '/var/radioflow/transmission-logs'),
+    ('transmission_log.file_name_template', 'transmission_{date}_{hour}.jsonl'),
+    ('transmission_log.poll_interval',      '5m'),
+    ('transmission_log.grace_period',       '15m'),
+    ('transmission_log.retention_days',     '30'),
+    ('station.name',                        ''),
+    ('station.cnpj',                        ''),
+    ('station.frequency',                   ''),
+    ('station.type',                        'FM'),
+    ('station.city',                        ''),
+    ('station.state',                       '');
+```
+
+> A tabela `settings` é genérica e extensível — qualquer futura configuração
+> operacional pode ser adicionada com um novo par `key/value` sem nova migration.
+
+---
 
 ```sql
 -- Campos adicionais na tabela tracks para suporte ao ECAD
@@ -885,7 +896,7 @@ playout/
       writer.go          ← LogWriter: subscriber do Event Bus, escrita JSONL
       writer_test.go
     config/
-      config.go          ← adicionar TransmissionLogConfig
+      config.go          ← adicionar TransmissionLogConfig (dir + file_name_template + enabled)
   cmd/playout-engine/
     main.go              ← instanciar e iniciar Writer se enabled=true
 ```
@@ -895,18 +906,19 @@ playout/
 ```
 library/
   internal/
-    config/
-      config.go                        ← adicionar TransmissionLogConfig + StationConfig
     store/
       migrations/
         005_transmission_log.sql       ← migration com ALTER TABLE + CREATE TABLE
+        006_settings.sql               ← tabela settings com valores padrão
       transmission_log_store.go        ← TransmissionLogStore
+      settings_store.go                ← SettingsStore (Get/Set + helpers tipados)
     fileimporter/
       importer.go                      ← goroutine de importação periódica
       importer_test.go
     api/
       handlers/
         transmission_log.go            ← handlers GET + exportações
+        settings.go                    ← handlers GET/PUT /v1/settings
 ```
 
 ---
@@ -1040,13 +1052,44 @@ GET /v1/transmission-log/summary?date=2026-07-20
 }
 ```
 
+### Endpoints de settings
+
+```
+GET  /v1/settings                    → lista todas as chaves e valores
+GET  /v1/settings/{key}              → retorna o valor de uma chave
+PUT  /v1/settings/{key}              → atualiza o valor de uma chave
+```
+
+**Exemplo — leitura:**
+```json
+GET /v1/settings/transmission_log.retention_days
+{
+  "ok": true,
+  "data": { "key": "transmission_log.retention_days", "value": "30", "updated_at": "2026-07-13T10:00:00Z" }
+}
+```
+
+**Exemplo — atualização:**
+```json
+PUT /v1/settings/transmission_log.retention_days
+Body: { "value": "60" }
+
+200 → { "ok": true }
+400 → { "ok": false, "error": "invalid_value", "message": "retention_days mínimo é 7" }
+```
+
+A validação de `retention_days >= 7` é aplicada no handler antes de chamar o store.
+
 ### Registro de rotas
 
 ```go
 mux.HandleFunc("GET /v1/transmission-log",              handlers.ListTransmissionLog(s.tls))
 mux.HandleFunc("GET /v1/transmission-log/export",       handlers.ExportTransmissionLog(s.tls))
-mux.HandleFunc("GET /v1/transmission-log/export/ecad",  handlers.ExportECAD(s.tls, s.cfg.Station))
+mux.HandleFunc("GET /v1/transmission-log/export/ecad",  handlers.ExportECAD(s.tls, s.settings))
 mux.HandleFunc("GET /v1/transmission-log/summary",      handlers.GetTransmissionLogSummary(s.tls))
+mux.HandleFunc("GET /v1/settings",                      handlers.ListSettings(s.settings))
+mux.HandleFunc("GET /v1/settings/{key}",                handlers.GetSetting(s.settings))
+mux.HandleFunc("PUT /v1/settings/{key}",                handlers.UpdateSetting(s.settings))
 ```
 
 ---
@@ -1105,14 +1148,16 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
    - Verificar que canal cheio não bloqueia outros subscribers do Bus
    - Verificar shutdown limpo via context cancelado
 
-### Fase 3 — Migração e Store (Library Service)
+### Fase 3 — Migração e Stores (Library Service)
 
 1. Criar `library/internal/store/migrations/005_transmission_log.sql`
-2. Registrar migration 005 em `db.go`
-3. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe (para `tracks`)
-4. Implementar `TransmissionLogStore` com todos os métodos
-5. Adicionar `TransmissionLogConfig` e `StationConfig` em `config.go`
-6. Testes: BulkInsert com idempotência, List com filtros, Summary, ExportECAD formato
+2. Criar `library/internal/store/migrations/006_settings.sql` com tabela e valores padrão
+3. Registrar migrations 005 e 006 em `db.go`
+4. Atualizar scanner para extrair `TSRC`, `TCOM`, `TPUB` via ffprobe (para `tracks`)
+5. Implementar `TransmissionLogStore` com todos os métodos
+6. Implementar `SettingsStore` com `Get`, `Set` e helpers tipados para transmission log
+7. Testes: BulkInsert com idempotência, List com filtros, Summary, ExportECAD formato
+8. Testes: SettingsStore Get/Set, helpers tipados, fallback para valores padrão
 
 ### Fase 4 — File Importer (Library Service)
 
@@ -1133,9 +1178,13 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 ### Fase 5 — API e Rotas (Library Service)
 
 1. Implementar `handlers/transmission_log.go` (4 handlers)
-2. Registrar rotas em `server.go`
-3. Injetar stores e importer em `main.go`
-4. Testes com `httptest.NewRecorder`
+2. Implementar `handlers/settings.go` (3 handlers: List, Get, Update)
+   - `PUT /v1/settings/transmission_log.retention_days` valida `value >= 7` antes de salvar
+3. Registrar todas as rotas em `server.go`
+4. Injetar stores e importer em `main.go`
+5. Testes com `httptest.NewRecorder`
+   - Validação: `retention_days < 7` → 400
+   - Chave desconhecida: `PUT /v1/settings/chave_invalida` → 404 ou 400 (decisão de implementação)
 
 ### Fase 6 — Player UI
 
