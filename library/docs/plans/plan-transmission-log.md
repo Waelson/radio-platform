@@ -1183,6 +1183,46 @@ O botão **ECAD** abre `GET /v1/transmission-log/export/ecad` com o mês filtrad
 
 ---
 
+### Fase 0 — Preparação e Backup
+
+**0.1 — Criação da feature branch**
+```bash
+git checkout main && git pull
+git checkout -b feature/transmission-log
+```
+
+**0.2 — Backup do banco de dados**
+
+As migrations 005, 006 e 007 alteram o schema do banco com `ALTER TABLE` e `CREATE TABLE`.
+Antes de qualquer execução, fazer backup do arquivo SQLite do Library Service:
+
+```bash
+# Com o serviço parado (recomendado):
+cp library.db library.db.bak-$(date +%Y%m%d_%H%M%S)
+
+# Com o serviço em execução (SQLite online backup — seguro):
+sqlite3 library.db ".backup library.db.bak-$(date +%Y%m%d_%H%M%S)"
+```
+
+Incluir também os arquivos auxiliares do WAL, se existirem:
+```bash
+cp library.db-wal  library.db-wal.bak-$(date +%Y%m%d_%H%M%S)  2>/dev/null || true
+cp library.db-shm  library.db-shm.bak-$(date +%Y%m%d_%H%M%S)  2>/dev/null || true
+```
+
+> Os arquivos de backup devem ser mantidos até que todas as migrations sejam
+> validadas em produção. Em caso de rollback, basta substituir o `.db` pelo backup.
+
+**0.3 — Verificação do schema atual**
+
+Confirmar o estado atual do banco antes de aplicar as migrations:
+```bash
+sqlite3 library.db ".schema"
+sqlite3 library.db "SELECT * FROM schema_migrations ORDER BY version;"
+```
+
+---
+
 ### Fase 1 — Extensão do protocolo ENQUEUE (Playout Engine)
 
 **1.1 — Payload do comando ENQUEUE**
