@@ -47,6 +47,11 @@ type SearchQuery struct {
 	Category string
 	Limit    int // default 50, max 200
 	Offset   int
+
+	// Loudness filters (all optional).
+	LoudnessStatus string   // filter by loudness_status (pending|analyzing|done|error)
+	LoudnessMin    *float64 // tracks with loudness_lufs >= value
+	LoudnessMax    *float64 // tracks with loudness_lufs <= value
 }
 
 // TrackPatch carries the fields that may be updated via PATCH.
@@ -170,6 +175,18 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 		where = append(where, "category = ?")
 		args = append(args, q.Category)
 	}
+	if q.LoudnessStatus != "" {
+		where = append(where, "COALESCE(loudness_status,'pending') = ?")
+		args = append(args, q.LoudnessStatus)
+	}
+	if q.LoudnessMin != nil {
+		where = append(where, "loudness_lufs >= ?")
+		args = append(args, *q.LoudnessMin)
+	}
+	if q.LoudnessMax != nil {
+		where = append(where, "loudness_lufs <= ?")
+		args = append(args, *q.LoudnessMax)
+	}
 
 	clause := ""
 	if len(where) > 0 {
@@ -238,6 +255,18 @@ func (s *TrackStore) CountFiltered(ctx context.Context, q SearchQuery) (int, err
 	if q.Category != "" {
 		where = append(where, "category = ?")
 		args = append(args, q.Category)
+	}
+	if q.LoudnessStatus != "" {
+		where = append(where, "COALESCE(loudness_status,'pending') = ?")
+		args = append(args, q.LoudnessStatus)
+	}
+	if q.LoudnessMin != nil {
+		where = append(where, "loudness_lufs >= ?")
+		args = append(args, *q.LoudnessMin)
+	}
+	if q.LoudnessMax != nil {
+		where = append(where, "loudness_lufs <= ?")
+		args = append(args, *q.LoudnessMax)
 	}
 
 	clause := ""

@@ -53,6 +53,9 @@ type ScannerConfig struct {
 	Extensions []string `yaml:"extensions"`
 	// FFprobePath is the path to the ffprobe binary. Defaults to "ffprobe" (PATH lookup).
 	FFprobePath string `yaml:"ffprobe_path"`
+	// FFmpegPath is the path to the ffmpeg binary used for loudness analysis.
+	// Defaults to "ffmpeg" (PATH lookup).
+	FFmpegPath string `yaml:"ffmpeg_path"`
 	// WatchEnabled enables automatic re-indexing via filesystem events.
 	WatchEnabled bool `yaml:"watch_enabled"`
 	// MetadataSource controls where title, artist, album and category are extracted from.
@@ -94,6 +97,7 @@ func defaults() Config {
 			},
 			Extensions:     []string{".mp3", ".wav", ".flac", ".ogg", ".aac"},
 			FFprobePath:    "ffprobe",
+			FFmpegPath:     "ffmpeg",
 			WatchEnabled:   true,
 			MetadataSource: "filename",
 		},

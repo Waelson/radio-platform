@@ -108,6 +108,20 @@ func (f *fakeTrackStore) UpdateMeta(_ context.Context, id string, patch store.Tr
 	return store.ErrNotFound
 }
 
+// ─── fake normalization reader ────────────────────────────────────────────────
+
+type fakeNormalizationReader struct{}
+
+func (f *fakeNormalizationReader) NormalizationSettings(_ context.Context) (store.NormalizationSettings, error) {
+	return store.NormalizationSettings{
+		Enabled:    true,
+		TargetLUFS: -16.0,
+		MaxGainDB:  12.0,
+	}, nil
+}
+
+var fakeNR = &fakeNormalizationReader{}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 func seedStore() *fakeTrackStore {
@@ -147,7 +161,7 @@ func decodeBody(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
 // ─── SearchTracks ────────────────────────────────────────────────────────────
 
 func TestSearchTracks_All(t *testing.T) {
-	w := do(t, handlers.SearchTracks(seedStore()), "GET", "/v1/tracks", "")
+	w := do(t, handlers.SearchTracks(seedStore(), fakeNR), "GET", "/v1/tracks", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
@@ -161,7 +175,7 @@ func TestSearchTracks_All(t *testing.T) {
 func TestSearchTracks_FilterByType(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/tracks?type=MUSIC", nil)
 	w := httptest.NewRecorder()
-	handlers.SearchTracks(seedStore())(w, req)
+	handlers.SearchTracks(seedStore(), fakeNR)(w, req)
 	body := decodeBody(t, w)
 	tracks := body["tracks"].([]any)
 	if len(tracks) != 2 {
@@ -172,7 +186,7 @@ func TestSearchTracks_FilterByType(t *testing.T) {
 func TestSearchTracks_FilterByQ(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/tracks?q=abertura", nil)
 	w := httptest.NewRecorder()
-	handlers.SearchTracks(seedStore())(w, req)
+	handlers.SearchTracks(seedStore(), fakeNR)(w, req)
 	body := decodeBody(t, w)
 	tracks := body["tracks"].([]any)
 	if len(tracks) != 1 {
@@ -182,7 +196,7 @@ func TestSearchTracks_FilterByQ(t *testing.T) {
 
 func TestSearchTracks_StoreError(t *testing.T) {
 	fs := &fakeTrackStore{err: fmt.Errorf("db down")}
-	w := do(t, handlers.SearchTracks(fs), "GET", "/v1/tracks", "")
+	w := do(t, handlers.SearchTracks(fs, fakeNR), "GET", "/v1/tracks", "")
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("want 500, got %d", w.Code)
 	}
@@ -194,7 +208,7 @@ func TestGetTrack_Found(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/tracks/id1", nil)
 	req.SetPathValue("id", "id1")
 	w := httptest.NewRecorder()
-	handlers.GetTrack(seedStore())(w, req)
+	handlers.GetTrack(seedStore(), fakeNR)(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
@@ -212,7 +226,7 @@ func TestGetTrack_NotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/tracks/ghost", nil)
 	req.SetPathValue("id", "ghost")
 	w := httptest.NewRecorder()
-	handlers.GetTrack(seedStore())(w, req)
+	handlers.GetTrack(seedStore(), fakeNR)(w, req)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("want 404, got %d", w.Code)
@@ -228,7 +242,7 @@ func TestPatchTrack_Success(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.SetPathValue("id", "id1")
 	w := httptest.NewRecorder()
-	handlers.PatchTrack(fs)(w, req)
+	handlers.PatchTrack(fs, fakeNR)(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d — body: %s", w.Code, w.Body.String())
@@ -252,7 +266,7 @@ func TestPatchTrack_InvalidType(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.SetPathValue("id", "id1")
 	w := httptest.NewRecorder()
-	handlers.PatchTrack(seedStore())(w, req)
+	handlers.PatchTrack(seedStore(), fakeNR)(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("want 400, got %d", w.Code)
@@ -265,7 +279,7 @@ func TestPatchTrack_NotFound(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.SetPathValue("id", "ghost")
 	w := httptest.NewRecorder()
-	handlers.PatchTrack(seedStore())(w, req)
+	handlers.PatchTrack(seedStore(), fakeNR)(w, req)
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("want 404, got %d", w.Code)
@@ -278,7 +292,7 @@ func TestPatchTrack_BadJSON(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.SetPathValue("id", "id1")
 	w := httptest.NewRecorder()
-	handlers.PatchTrack(seedStore())(w, req)
+	handlers.PatchTrack(seedStore(), fakeNR)(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("want 400, got %d", w.Code)

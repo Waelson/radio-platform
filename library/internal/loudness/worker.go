@@ -65,6 +65,18 @@ func (w *Worker) Enqueue(id string) {
 // IsRunning reports whether the worker goroutine pool is active.
 func (w *Worker) IsRunning() bool { return w.running.Load() }
 
+// DrainQueue discards all IDs currently buffered in the queue channel.
+// In-flight analyses already dispatched to goroutines are not cancelled.
+func (w *Worker) DrainQueue() {
+	for {
+		select {
+		case <-w.queue:
+		default:
+			return
+		}
+	}
+}
+
 // Status returns per-status track counts from the database.
 func (w *Worker) Status(ctx context.Context) (map[string]int, error) {
 	return w.store.CountByLoudnessStatus(ctx)

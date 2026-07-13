@@ -47,14 +47,15 @@ type TrackQuerier interface {
 
 // TrackRef is the generator's view of a track.
 type TrackRef struct {
-	ID         string
-	Path       string
-	Title      string
-	Artist     string
-	Album      string
-	DurationMS int64
-	Type       string // MUSIC|VINHETA|JINGLE|SPOT
-	CategoryID string // may be empty; used for separation checks
+	ID           string
+	Path         string
+	Title        string
+	Artist       string
+	Album        string
+	DurationMS   int64
+	Type         string   // MUSIC|VINHETA|JINGLE|SPOT
+	CategoryID   string   // may be empty; used for separation checks
+	LoudnessLUFS *float64 // nil when not yet analyzed
 }
 
 // SeparationQuerier retrieves the active separation rules.

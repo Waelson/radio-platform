@@ -47,16 +47,15 @@ var (
 )
 
 // Analyze runs ffmpeg ebur128=peak=true on filePath and returns the measurement.
-// ffmpeg writes the summary to stderr; a non-zero exit code is expected because
-// the null output muxer always exits with an error — we rely on parse success
-// instead of the exit code.
+// ffmpeg writes the summary to stderr; we rely on parse success rather than
+// the exit code because the null muxer may return non-zero.
 func (a *Analyzer) Analyze(ctx context.Context, filePath string) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
 
 	// CombinedOutput captures both stdout and stderr (ebur128 summary is on stderr).
 	out, _ := exec.CommandContext(ctx, a.ffmpegPath,
-		"-hide_banner", "-nostats",
+		"-hide_banner",
 		"-i", filePath,
 		"-af", "ebur128=peak=true",
 		"-f", "null", "-",
@@ -64,7 +63,13 @@ func (a *Analyzer) Analyze(ctx context.Context, filePath string) (Result, error)
 
 	res, err := parseEbur128(string(out))
 	if err != nil {
-		return Result{}, fmt.Errorf("analyze %q: %w", filePath, err)
+		// Include the first 512 bytes of ffmpeg output in the error so that
+		// callers can log it for diagnosis without reading the whole buffer.
+		snippet := string(out)
+		if len(snippet) > 512 {
+			snippet = snippet[:512]
+		}
+		return Result{}, fmt.Errorf("analyze %q: %w\nffmpeg output: %s", filePath, err, snippet)
 	}
 	return res, nil
 }

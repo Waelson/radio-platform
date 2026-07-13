@@ -78,7 +78,7 @@ func run(args []string) error {
 
 	// 5a. Build loudness worker and attach to indexer.
 	loudnessWorker := loudness.NewWorker(
-		loudness.NewAnalyzer(cfg.Scanner.FFprobePath, 0),
+		loudness.NewAnalyzer(cfg.Scanner.FFmpegPath, 0),
 		trackStore,
 		0, // concurrency from settings default (2); Phase 5 will read from settings
 		logging.With(log, "loudness"),
@@ -147,6 +147,8 @@ func run(args []string) error {
 		categoryStore, clockStore, separationStore, rotationLogStore, gen,
 		tlStore, ilStore, settingsStore, settingsStore,
 		logging.With(log, "api"))
+	srv.SetLoudnessWorker(loudnessWorker, trackStore)
+	srv.SetNormalizationReader(settingsStore)
 	go func() {
 		if err := srv.Start(ctx); err != nil {
 			slog.Error("API server error", "error", err)

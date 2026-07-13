@@ -52,7 +52,7 @@ func (a *TrackStoreAdapter) TracksByCategory(ctx context.Context, categoryID str
 		out[i] = TrackRef{
 			ID: t.ID, Path: t.Path, Title: t.Title,
 			Artist: t.Artist, Album: t.Album, DurationMS: t.DurationMS,
-			Type: t.Type,
+			Type: t.Type, LoudnessLUFS: t.LoudnessLUFS,
 		}
 	}
 	return out, nil
@@ -72,7 +72,7 @@ func (a *TrackStoreAdapter) TracksByType(ctx context.Context, trackType string) 
 			all = append(all, TrackRef{
 				ID: t.ID, Path: t.Path, Title: t.Title,
 				Artist: t.Artist, Album: t.Album, DurationMS: t.DurationMS,
-				Type: t.Type,
+				Type: t.Type, LoudnessLUFS: t.LoudnessLUFS,
 			})
 		}
 		if len(tracks) < pageSize {
@@ -91,7 +91,7 @@ func (a *TrackStoreAdapter) TrackByID(ctx context.Context, id string) (TrackRef,
 	return TrackRef{
 		ID: t.ID, Path: t.Path, Title: t.Title,
 		Artist: t.Artist, Album: t.Album, DurationMS: t.DurationMS,
-		Type: t.Type,
+		Type: t.Type, LoudnessLUFS: t.LoudnessLUFS,
 	}, nil
 }
 

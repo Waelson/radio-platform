@@ -31,8 +31,25 @@ type Server struct {
 	ils  handlers.TransmissionImportLogStore
 	stg  handlers.SettingsStore
 	srw  handlers.SettingsReadWriter
+	lw   handlers.LoudnessWorker
+	lts  handlers.LoudnessTrackStore
+	nr   handlers.NormalizationReader
 	log  *slog.Logger
 	http *http.Server
+}
+
+// SetLoudnessWorker attaches the loudness worker and its backing store so
+// the server can register the /v1/loudness/* routes. Must be called before
+// Start.
+func (s *Server) SetLoudnessWorker(lw handlers.LoudnessWorker, lts handlers.LoudnessTrackStore) {
+	s.lw = lw
+	s.lts = lts
+}
+
+// SetNormalizationReader attaches the normalization settings reader used by
+// track and break handlers to compute gain_db. Must be called before Start.
+func (s *Server) SetNormalizationReader(nr handlers.NormalizationReader) {
+	s.nr = nr
 }
 
 // New creates a Server ready to be started.
@@ -93,9 +110,9 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /v1/health", s.handleHealth)
 
 	mux.HandleFunc("GET /v1/tracks/artists", handlers.ListArtists(s.ts))
-	mux.HandleFunc("GET /v1/tracks/{id}", handlers.GetTrack(s.ts))
-	mux.HandleFunc("GET /v1/tracks", handlers.SearchTracks(s.ts))
-	mux.HandleFunc("PATCH /v1/tracks/{id}", handlers.PatchTrack(s.ts))
+	mux.HandleFunc("GET /v1/tracks/{id}", handlers.GetTrack(s.ts, s.nr))
+	mux.HandleFunc("GET /v1/tracks", handlers.SearchTracks(s.ts, s.nr))
+	mux.HandleFunc("PATCH /v1/tracks/{id}", handlers.PatchTrack(s.ts, s.nr))
 
 	mux.HandleFunc("GET /v1/playlists", handlers.ListPlaylists(s.ps))
 	mux.HandleFunc("POST /v1/playlists", handlers.CreatePlaylist(s.ps))
@@ -108,7 +125,7 @@ func (s *Server) routes() http.Handler {
 
 	mux.HandleFunc("GET /v1/breaks", handlers.ListBreaks(s.bs))
 	mux.HandleFunc("POST /v1/breaks", handlers.CreateBreak(s.bs))
-	mux.HandleFunc("GET /v1/breaks/{id}", handlers.GetBreak(s.bs))
+	mux.HandleFunc("GET /v1/breaks/{id}", handlers.GetBreak(s.bs, s.nr))
 	mux.HandleFunc("PUT /v1/breaks/{id}", handlers.UpdateBreak(s.bs))
 	mux.HandleFunc("DELETE /v1/breaks/{id}", handlers.DeleteBreak(s.bs))
 	mux.HandleFunc("POST /v1/breaks/{id}/items", handlers.AddBreakItem(s.bs))
@@ -161,7 +178,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("DELETE /v1/schedule/separation-rules/{id}",         handlers.DeleteSeparationRule(s.ss))
 
 	// Playlist generator
-	mux.HandleFunc("POST /v1/schedule/generate",                        handlers.GenerateSchedule(s.svc))
+	mux.HandleFunc("POST /v1/schedule/generate",                        handlers.GenerateSchedule(s.svc, s.nr))
 
 	// Rotation log
 	mux.HandleFunc("POST /v1/rotation-log",                             handlers.AppendRotationLog(s.rls))
@@ -171,6 +188,14 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /v1/settings",                                  handlers.ListSettings(s.srw))
 	mux.HandleFunc("GET /v1/settings/{key}",                            handlers.GetSetting(s.srw))
 	mux.HandleFunc("PUT /v1/settings/{key}",                            handlers.UpdateSetting(s.srw))
+
+	// Loudness analysis
+	if s.lw != nil {
+		mux.HandleFunc("GET /v1/loudness/status",          handlers.GetLoudnessStatus(s.lw))
+		mux.HandleFunc("POST /v1/loudness/analyze/{id}",   handlers.ReanalyzeTrack(s.lw, s.lts))
+		mux.HandleFunc("POST /v1/loudness/analyze",        handlers.ReanalyzeAll(s.lw, s.lts))
+		mux.HandleFunc("DELETE /v1/loudness/analyze",      handlers.CancelLoudness(s.lw))
+	}
 
 	// Transmission log — order matters: more specific paths first
 	mux.HandleFunc("GET /v1/transmission-log/export/ecad",              handlers.ExportECAD(s.tls, s.stg))

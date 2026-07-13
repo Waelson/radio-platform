@@ -265,7 +265,7 @@ func TestCreateBreak_EmptyName(t *testing.T) {
 func TestGetBreak_Found(t *testing.T) {
 	fs := newFakeBreakStore()
 	brk, _ := fs.Create(context.Background(), "Break", "", "")
-	w := doBreak(t, handlers.GetBreak(fs), "GET", "/v1/breaks/"+brk.ID, "",
+	w := doBreak(t, handlers.GetBreak(fs, fakeNR), "GET", "/v1/breaks/"+brk.ID, "",
 		map[string]string{"id": brk.ID})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
@@ -273,7 +273,7 @@ func TestGetBreak_Found(t *testing.T) {
 }
 
 func TestGetBreak_NotFound(t *testing.T) {
-	w := doBreak(t, handlers.GetBreak(newFakeBreakStore()), "GET", "/v1/breaks/ghost", "",
+	w := doBreak(t, handlers.GetBreak(newFakeBreakStore(), fakeNR), "GET", "/v1/breaks/ghost", "",
 		map[string]string{"id": "ghost"})
 	if w.Code != http.StatusNotFound {
 		t.Errorf("want 404, got %d", w.Code)
@@ -288,7 +288,7 @@ func TestGetBreak_EnginePayload(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/breaks/"+brk.ID+"?format=engine-payload", nil)
 	req.SetPathValue("id", brk.ID)
 	w := httptest.NewRecorder()
-	handlers.GetBreak(fs)(w, req)
+	handlers.GetBreak(fs, fakeNR)(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d — %s", w.Code, w.Body.String())
@@ -328,7 +328,7 @@ func TestGetBreak_EnginePayload_NullOpenClose(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/breaks/"+brk.ID+"?format=engine-payload", nil)
 	req.SetPathValue("id", brk.ID)
 	w := httptest.NewRecorder()
-	handlers.GetBreak(fs)(w, req)
+	handlers.GetBreak(fs, fakeNR)(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
