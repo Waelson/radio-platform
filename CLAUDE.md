@@ -51,6 +51,7 @@ O `go.work` permite importar módulos locais entre si durante desenvolvimento. N
 ## Autonomia operacional
 
 - Ferramentas de leitura (Read, Glob, Grep, Bash somente leitura) podem ser usadas sem pedir autorização prévia.
+- O comando `sed` pode ser executado sem autorização explícita para edições pontuais em arquivos.
 - Comandos que não alteram estado (`git status`, `git log`, `git diff`, `go test`, `curl GET`) podem ser executados sem confirmação.
 - Confirmação é necessária apenas para: commits, pushes, criação/exclusão de branches, escrita em arquivos e comandos destrutivos.
 
