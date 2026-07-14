@@ -532,23 +532,44 @@ func TestCuePoints_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "cue_in >= intro",
+			name:    "cue_in > intro",
 			cp:      store.CuePoints{CueInMS: ptrI(15000), IntroMS: ptrI(500)},
 			wantErr: true,
 		},
 		{
-			name:    "intro >= outro",
+			name: "cue_in == intro (both zero) is valid",
+			cp:   store.CuePoints{CueInMS: ptrI(0), IntroMS: ptrI(0)},
+		},
+		{
+			name: "cue_in == intro (non-zero) is valid",
+			cp:   store.CuePoints{CueInMS: ptrI(500), IntroMS: ptrI(500)},
+		},
+		{
+			name:    "intro > outro",
 			cp:      store.CuePoints{IntroMS: ptrI(200000), OutroMS: ptrI(15000)},
 			wantErr: true,
 		},
 		{
-			name:    "outro >= cue_out",
+			name: "intro == outro is valid",
+			cp:   store.CuePoints{IntroMS: ptrI(15000), OutroMS: ptrI(15000)},
+		},
+		{
+			name:    "outro > cue_out",
 			cp:      store.CuePoints{OutroMS: ptrI(213000), CueOutMS: ptrI(200000)},
 			wantErr: true,
 		},
 		{
+			name: "outro == cue_out is valid",
+			cp:   store.CuePoints{OutroMS: ptrI(200000), CueOutMS: ptrI(200000)},
+		},
+		{
 			name:    "cue_in >= cue_out (no intro/outro)",
 			cp:      store.CuePoints{CueInMS: ptrI(213000), CueOutMS: ptrI(500)},
+			wantErr: true,
+		},
+		{
+			name:    "cue_in == cue_out is invalid (zero playable region)",
+			cp:      store.CuePoints{CueInMS: ptrI(500), CueOutMS: ptrI(500)},
 			wantErr: true,
 		},
 	}

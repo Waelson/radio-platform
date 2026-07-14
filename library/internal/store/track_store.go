@@ -71,7 +71,11 @@ type CuePoints struct {
 
 // Validate checks that the cue point values are internally consistent:
 //   - all non-nil values must be >= 0
-//   - when multiple markers are set: cue_in < intro < outro < cue_out
+//   - when multiple markers are set they must not contradict each other:
+//     cue_in <= intro <= outro <= cue_out, with cue_in strictly < cue_out.
+//
+// Equal values between adjacent markers are allowed (e.g. cue_in == intro == 0
+// means vocals start at the very beginning of the playable region).
 func (cp CuePoints) Validate() error {
 	check := func(name string, v *int64) error {
 		if v != nil && *v < 0 {
@@ -91,19 +95,19 @@ func (cp CuePoints) Validate() error {
 	if err := check("cue_out_ms", cp.CueOutMS); err != nil {
 		return err
 	}
-	// Ordering: cue_in < intro
-	if cp.CueInMS != nil && cp.IntroMS != nil && *cp.CueInMS >= *cp.IntroMS {
-		return fmt.Errorf("cue_in_ms (%d) must be less than intro_ms (%d)", *cp.CueInMS, *cp.IntroMS)
+	// Ordering: cue_in <= intro
+	if cp.CueInMS != nil && cp.IntroMS != nil && *cp.CueInMS > *cp.IntroMS {
+		return fmt.Errorf("cue_in_ms (%d) must be <= intro_ms (%d)", *cp.CueInMS, *cp.IntroMS)
 	}
-	// intro < outro
-	if cp.IntroMS != nil && cp.OutroMS != nil && *cp.IntroMS >= *cp.OutroMS {
-		return fmt.Errorf("intro_ms (%d) must be less than outro_ms (%d)", *cp.IntroMS, *cp.OutroMS)
+	// intro <= outro
+	if cp.IntroMS != nil && cp.OutroMS != nil && *cp.IntroMS > *cp.OutroMS {
+		return fmt.Errorf("intro_ms (%d) must be <= outro_ms (%d)", *cp.IntroMS, *cp.OutroMS)
 	}
-	// outro < cue_out
-	if cp.OutroMS != nil && cp.CueOutMS != nil && *cp.OutroMS >= *cp.CueOutMS {
-		return fmt.Errorf("outro_ms (%d) must be less than cue_out_ms (%d)", *cp.OutroMS, *cp.CueOutMS)
+	// outro <= cue_out
+	if cp.OutroMS != nil && cp.CueOutMS != nil && *cp.OutroMS > *cp.CueOutMS {
+		return fmt.Errorf("outro_ms (%d) must be <= cue_out_ms (%d)", *cp.OutroMS, *cp.CueOutMS)
 	}
-	// cue_in < cue_out (even when intro/outro absent)
+	// cue_in strictly < cue_out (defines a non-zero playable region)
 	if cp.CueInMS != nil && cp.CueOutMS != nil && *cp.CueInMS >= *cp.CueOutMS {
 		return fmt.Errorf("cue_in_ms (%d) must be less than cue_out_ms (%d)", *cp.CueInMS, *cp.CueOutMS)
 	}
