@@ -20,6 +20,7 @@ type TrackStore interface {
 	CountFiltered(ctx context.Context, q store.SearchQuery) (int, error)
 	ListArtists(ctx context.Context, trackType string) ([]string, error)
 	UpdateMeta(ctx context.Context, id string, patch store.TrackPatch) error
+	SaveCuePoints(ctx context.Context, id string, cp store.CuePoints) error
 }
 
 // NormalizationReader reads loudness-normalization settings from the store.

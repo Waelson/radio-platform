@@ -60,6 +60,56 @@ type SearchQuery struct {
 	LoudnessMax    *float64 // tracks with loudness_lufs <= value
 }
 
+// CuePoints holds the four cue point markers for a track.
+// A nil pointer means "clear this marker" (store NULL).
+type CuePoints struct {
+	CueInMS  *int64 `json:"cue_in_ms"`
+	IntroMS  *int64 `json:"intro_ms"`
+	OutroMS  *int64 `json:"outro_ms"`
+	CueOutMS *int64 `json:"cue_out_ms"`
+}
+
+// Validate checks that the cue point values are internally consistent:
+//   - all non-nil values must be >= 0
+//   - when multiple markers are set: cue_in < intro < outro < cue_out
+func (cp CuePoints) Validate() error {
+	check := func(name string, v *int64) error {
+		if v != nil && *v < 0 {
+			return fmt.Errorf("%s must be >= 0, got %d", name, *v)
+		}
+		return nil
+	}
+	if err := check("cue_in_ms", cp.CueInMS); err != nil {
+		return err
+	}
+	if err := check("intro_ms", cp.IntroMS); err != nil {
+		return err
+	}
+	if err := check("outro_ms", cp.OutroMS); err != nil {
+		return err
+	}
+	if err := check("cue_out_ms", cp.CueOutMS); err != nil {
+		return err
+	}
+	// Ordering: cue_in < intro
+	if cp.CueInMS != nil && cp.IntroMS != nil && *cp.CueInMS >= *cp.IntroMS {
+		return fmt.Errorf("cue_in_ms (%d) must be less than intro_ms (%d)", *cp.CueInMS, *cp.IntroMS)
+	}
+	// intro < outro
+	if cp.IntroMS != nil && cp.OutroMS != nil && *cp.IntroMS >= *cp.OutroMS {
+		return fmt.Errorf("intro_ms (%d) must be less than outro_ms (%d)", *cp.IntroMS, *cp.OutroMS)
+	}
+	// outro < cue_out
+	if cp.OutroMS != nil && cp.CueOutMS != nil && *cp.OutroMS >= *cp.CueOutMS {
+		return fmt.Errorf("outro_ms (%d) must be less than cue_out_ms (%d)", *cp.OutroMS, *cp.CueOutMS)
+	}
+	// cue_in < cue_out (even when intro/outro absent)
+	if cp.CueInMS != nil && cp.CueOutMS != nil && *cp.CueInMS >= *cp.CueOutMS {
+		return fmt.Errorf("cue_in_ms (%d) must be less than cue_out_ms (%d)", *cp.CueInMS, *cp.CueOutMS)
+	}
+	return nil
+}
+
 // TrackPatch carries the fields that may be updated via PATCH.
 // A nil pointer means "do not change this field".
 type TrackPatch struct {
@@ -380,6 +430,31 @@ func (s *TrackStore) UpdateMeta(ctx context.Context, id string, patch TrackPatch
 func (s *TrackStore) DeleteByPath(ctx context.Context, path string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM tracks WHERE path = ?`, path)
 	return err
+}
+
+// --- cue point methods -------------------------------------------------------
+
+// SaveCuePoints updates the four cue point markers for the track with id.
+// Nil fields are stored as NULL (marker removed). Returns ErrNotFound when
+// no track with that id exists.
+func (s *TrackStore) SaveCuePoints(ctx context.Context, id string, cp CuePoints) error {
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE tracks
+		SET cue_in_ms  = ?,
+		    intro_ms   = ?,
+		    outro_ms   = ?,
+		    cue_out_ms = ?
+		WHERE id = ?`,
+		cp.CueInMS, cp.IntroMS, cp.OutroMS, cp.CueOutMS, id,
+	)
+	if err != nil {
+		return fmt.Errorf("save cue points: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // --- loudness methods --------------------------------------------------------

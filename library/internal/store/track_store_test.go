@@ -502,3 +502,120 @@ func TestDeleteByPath_Idempotent(t *testing.T) {
 		t.Errorf("want ErrNotFound after delete, got %v", err)
 	}
 }
+
+// ─── CuePoints ───────────────────────────────────────────────────────────────
+
+func ptrI(v int64) *int64 { return &v }
+
+func TestCuePoints_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		cp      store.CuePoints
+		wantErr bool
+	}{
+		{
+			name: "all nil is valid",
+			cp:   store.CuePoints{},
+		},
+		{
+			name: "all set in order is valid",
+			cp: store.CuePoints{
+				CueInMS:  ptrI(500),
+				IntroMS:  ptrI(15000),
+				OutroMS:  ptrI(200000),
+				CueOutMS: ptrI(213000),
+			},
+		},
+		{
+			name:    "negative cue_in_ms",
+			cp:      store.CuePoints{CueInMS: ptrI(-1)},
+			wantErr: true,
+		},
+		{
+			name:    "cue_in >= intro",
+			cp:      store.CuePoints{CueInMS: ptrI(15000), IntroMS: ptrI(500)},
+			wantErr: true,
+		},
+		{
+			name:    "intro >= outro",
+			cp:      store.CuePoints{IntroMS: ptrI(200000), OutroMS: ptrI(15000)},
+			wantErr: true,
+		},
+		{
+			name:    "outro >= cue_out",
+			cp:      store.CuePoints{OutroMS: ptrI(213000), CueOutMS: ptrI(200000)},
+			wantErr: true,
+		},
+		{
+			name:    "cue_in >= cue_out (no intro/outro)",
+			cp:      store.CuePoints{CueInMS: ptrI(213000), CueOutMS: ptrI(500)},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cp.Validate()
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestSaveCuePoints(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	if err := ts.Upsert(ctx, store.Track{
+		Path: "/m/cue.mp3", Title: "Cue Test", Type: "MUSIC", DurationMS: 220000,
+	}); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	track, _ := ts.FindByPath(ctx, "/m/cue.mp3")
+
+	cp := store.CuePoints{
+		CueInMS:  ptrI(500),
+		IntroMS:  ptrI(18000),
+		OutroMS:  ptrI(210000),
+		CueOutMS: ptrI(218000),
+	}
+	if err := ts.SaveCuePoints(ctx, track.ID, cp); err != nil {
+		t.Fatalf("SaveCuePoints: %v", err)
+	}
+
+	got, err := ts.FindByID(ctx, track.ID)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+	if got.CueInMS == nil || *got.CueInMS != 500 {
+		t.Errorf("CueInMS = %v, want 500", got.CueInMS)
+	}
+	if got.IntroMS == nil || *got.IntroMS != 18000 {
+		t.Errorf("IntroMS = %v, want 18000", got.IntroMS)
+	}
+	if got.OutroMS == nil || *got.OutroMS != 210000 {
+		t.Errorf("OutroMS = %v, want 210000", got.OutroMS)
+	}
+	if got.CueOutMS == nil || *got.CueOutMS != 218000 {
+		t.Errorf("CueOutMS = %v, want 218000", got.CueOutMS)
+	}
+
+	// Clearing a marker by passing nil.
+	if err := ts.SaveCuePoints(ctx, track.ID, store.CuePoints{}); err != nil {
+		t.Fatalf("SaveCuePoints (clear): %v", err)
+	}
+	got2, _ := ts.FindByID(ctx, track.ID)
+	if got2.CueInMS != nil {
+		t.Errorf("CueInMS should be nil after clear, got %v", got2.CueInMS)
+	}
+}
+
+func TestSaveCuePoints_NotFound(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	err := ts.SaveCuePoints(ctx, "nonexistent", store.CuePoints{})
+	if err != store.ErrNotFound {
+		t.Errorf("want ErrNotFound, got %v", err)
+	}
+}

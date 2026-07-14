@@ -114,6 +114,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /v1/tracks/{id}", handlers.GetTrack(s.ts, s.nr))
 	mux.HandleFunc("GET /v1/tracks", handlers.SearchTracks(s.ts, s.nr))
 	mux.HandleFunc("PATCH /v1/tracks/{id}", handlers.PatchTrack(s.ts, s.nr))
+	mux.HandleFunc("PUT /v1/tracks/{id}/cuepoints", handlers.SaveCuePoints(s.ts))
 
 	mux.HandleFunc("GET /v1/playlists", handlers.ListPlaylists(s.ps))
 	mux.HandleFunc("POST /v1/playlists", handlers.CreatePlaylist(s.ps))
@@ -236,7 +237,7 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Add("Vary", "Origin")
 			}
-			w.Header().Set("Access-Control-Allow-Methods", "GET, PATCH, POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, PATCH, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		}
 
