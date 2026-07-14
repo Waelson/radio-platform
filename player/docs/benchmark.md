@@ -110,7 +110,7 @@ Este documento compara o RadioFlow com as principais soluções de automação d
 | Múltiplos tipos de áudio | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Importação automática de pasta | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Extração automática de metadados (ID3 + nome de arquivo) | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Análise de loudness na importação | 🔲 | 🔲 | — | ✅ | ✅ | ✅ | 🔲 | 🔲 |
+| Análise de loudness na importação | ✅ | 🔲 | — | ✅ | ✅ | ✅ | 🔲 | 🔲 |
 | Gerador automático de playlist | 🔲 | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
 
 ### 3.6 Áudio técnico e monitoramento
@@ -121,7 +121,7 @@ Este documento compara o RadioFlow com as principais soluções de automação d
 | Loudness EBU R128 (LUFS) | ✅ | 🔲 | — | ✅ | ✅ | ✅ | 🔲 | 🔲 |
 | Controle de volume principal | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Controle de volume CUE separado | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔲 | ✅ |
-| Normalização automática de volume | 🔲 | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
+| Normalização automática de volume | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Detecção de silêncio | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Underrun / saúde do buffer | ✅ | 🔲 | — | ✅ | 🔲 | ✅ | 🔲 | 🔲 |
 | Equalização / processamento de áudio | 🔲 | 🔲 | — | ✅ | ✅ | ✅ | 🔲 | 🔲 |
@@ -197,7 +197,7 @@ As lacunas abaixo foram identificadas como mais impactantes para adoção em emi
 | ~~1~~ | ~~**Log de transmissão**~~ | ~~Obrigatório para prestação de contas a anunciantes e ECAD. Todo concorrente tem.~~ ✅ **Implementado no Playout Engine + Library Service.** |
 | 2 | **Integração com streaming (Icecast/SHOUTcast)** | Emissoras de internet dependem disso. RadioPro, RadioBOSS e PlayIt Live têm. |
 | ~~3~~ | ~~**Importação automática de pasta**~~ | ~~Sem isso, adicionar áudios ao catálogo é manual — inviável para operação contínua.~~ ✅ **Já implementado no Library Service.** |
-| 4 | **Normalização automática de volume** | Sem normalização, o volume varia faixa a faixa — problema grave em emissoras. |
+| ~~4~~ | ~~**Normalização automática de volume**~~ | ~~Sem normalização, o volume varia faixa a faixa — problema grave em emissoras.~~ ✅ **Implementado no Library Service + Playout Engine (EBU R128, por tipo de áudio, gain_db propagado end-to-end até o PCM do cart player).** |
 | 5 | **Marcadores de intro/outro/cue** | Permite crossfade preciso e hora certa sincronizada com a entrada da voz do locutor. |
 
 ---
@@ -285,7 +285,12 @@ A extração de metadados suporta dois modos, configuráveis por pasta:
 
 ---
 
-##### 4. Normalização automática de volume
+##### ~~4. Normalização automática de volume~~ ✅ Já implementado
+
+> **Este item foi removido das lacunas.** A normalização EBU R128 end-to-end está implementada e em produção. O detalhamento abaixo é mantido como referência do que foi entregue.
+
+**O que foi implementado:**
+O Library Service analisa cada faixa com `ffmpeg ebur128` e armazena `loudness_lufs` e `true_peak_dbtp` na tabela `tracks`. A análise é disparada automaticamente na importação e pode ser re-executada via `POST /v1/loudness/analyze`. As configurações de normalização (target por tipo de áudio, ceiling dBTP, habilitado/desabilitado) ficam na tabela `normalization_settings` e são gerenciadas via `GET/PUT /v1/normalization/settings`. O `gain_db` é calculado dinamicamente (target − loudness, limitado ao max_gain_db) e retornado em todos os endpoints que produzem faixas para reprodução: `/v1/schedule/generate` (fila principal), `/v1/hotkeys/profile/:id` (botoneira). O player envia o `gain_db` ao Playout Engine, que o aplica como multiplicador linear (`10^(dB/20)`) no hot path de PCM — tanto no pipeline principal quanto no cart player da botoneira. Targets configuráveis por tipo: MUSIC, JINGLE, VINHETA, SPOT.
 
 **O que é:**
 Ajuste automático do ganho de reprodução de cada faixa para que todas soem no mesmo nível de volume percebido, independentemente de como foram gravadas ou masterizadas. O padrão de referência adotado pelo mercado de broadcast é o **EBU R128**, que define o loudness em LUFS (Loudness Units Full Scale). Targets comuns: −23 LUFS (broadcast europeu), −16 LUFS (rádio AM/FM), −14 LUFS (plataformas de streaming).
