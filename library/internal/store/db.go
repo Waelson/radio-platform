@@ -38,6 +38,9 @@ var migration009 string
 //go:embed migrations/010_normalization_settings.sql
 var migration010 string
 
+//go:embed migrations/011_cue_points.sql
+var migration011 string
+
 // Open opens (or creates) the SQLite database at path, applies required PRAGMAs,
 // runs migrations and returns a ready-to-use *sql.DB.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
@@ -189,6 +192,16 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		}
 	}
 
+	// 011_cue_points: adiciona colunas de cue points (cue_in_ms, intro_ms, outro_ms, cue_out_ms).
+	if !migrationDone(ctx, db, "011_cue_points") {
+		if err := applyMigration011(ctx, db); err != nil {
+			return fmt.Errorf("011_cue_points: %w", err)
+		}
+		if err := markMigration(ctx, db, "011_cue_points"); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -268,6 +281,26 @@ func applyMigration009(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_tracks_loudness_status ON tracks(loudness_status)`,
 	); err != nil {
 		return fmt.Errorf("create loudness index: %w", err)
+	}
+	return nil
+}
+
+// applyMigration011 adds cue point columns to the tracks table, ignoring
+// "duplicate column" errors so the migration is safe to re-run on a DB that
+// already has some columns (e.g. from a partial previous run).
+func applyMigration011(ctx context.Context, db *sql.DB) error {
+	alterStmts := []string{
+		`ALTER TABLE tracks ADD COLUMN cue_in_ms  INTEGER DEFAULT NULL`,
+		`ALTER TABLE tracks ADD COLUMN intro_ms   INTEGER DEFAULT NULL`,
+		`ALTER TABLE tracks ADD COLUMN outro_ms   INTEGER DEFAULT NULL`,
+		`ALTER TABLE tracks ADD COLUMN cue_out_ms INTEGER DEFAULT NULL`,
+	}
+	for _, stmt := range alterStmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			if !isDuplicateColumn(err) {
+				return fmt.Errorf("%s: %w", stmt, err)
+			}
+		}
 	}
 	return nil
 }

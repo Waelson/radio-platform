@@ -78,6 +78,12 @@ type trackJSON struct {
 	// GainDB is the gain adjustment (dB) the playout engine must apply so this
 	// track reaches the configured loudness target. 0.0 means no adjustment.
 	GainDB float64 `json:"gain_db"`
+
+	// Cue point fields (null when not set — playout engine falls back to defaults).
+	CueInMS  *int64 `json:"cue_in_ms"`  // seek start (ms)
+	IntroMS  *int64 `json:"intro_ms"`   // vocal intro end / announcer window (ms)
+	OutroMS  *int64 `json:"outro_ms"`   // crossfade trigger (ms)
+	CueOutMS *int64 `json:"cue_out_ms"` // playback stop (ms)
 }
 
 func toTrackJSON(t store.Track) trackJSON {
@@ -98,6 +104,10 @@ func toTrackJSON(t store.Track) trackJSON {
 		TruePeakDBTP:       t.TruePeakDBTP,
 		LoudnessStatus:     t.LoudnessStatus,
 		LoudnessAnalyzedAt: t.LoudnessAnalyzedAt,
+		CueInMS:            t.CueInMS,
+		IntroMS:            t.IntroMS,
+		OutroMS:            t.OutroMS,
+		CueOutMS:           t.CueOutMS,
 	}
 }
 

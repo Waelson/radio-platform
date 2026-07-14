@@ -76,11 +76,13 @@ func (s *BreakStore) FindByID(ctx context.Context, id string) (Break, error) {
 		           ot.loudness_lufs, ot.true_peak_dbtp,
 		           COALESCE(ot.loudness_status,'pending'), COALESCE(ot.loudness_error,''),
 		           ot.loudness_analyzed_at,
+		           ot.cue_in_ms, ot.intro_ms, ot.outro_ms, ot.cue_out_ms,
 		       ct.id, ct.path, ct.title, ct.artist, ct.type, ct.duration_ms,
 		           COALESCE(ct.category,''), ct.indexed_at,
 		           ct.loudness_lufs, ct.true_peak_dbtp,
 		           COALESCE(ct.loudness_status,'pending'), COALESCE(ct.loudness_error,''),
-		           ct.loudness_analyzed_at
+		           ct.loudness_analyzed_at,
+		           ct.cue_in_ms, ct.intro_ms, ct.outro_ms, ct.cue_out_ms
 		FROM breaks b
 		LEFT JOIN tracks ot ON ot.id = b.open_track_id
 		LEFT JOIN tracks ct ON ct.id = b.close_track_id
@@ -190,7 +192,8 @@ func (s *BreakStore) AddItem(ctx context.Context, breakID, trackID string) (Brea
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks WHERE id = ?`, trackID)
 	track, err := scanTrack(row)
 	if errors.Is(err, ErrNotFound) {
@@ -296,18 +299,22 @@ func scanBreakRow(row *sql.Row) (Break, error) {
 	var otDuration sql.NullInt64
 	var otLUFS, otPeak sql.NullFloat64
 	var otLoudnessStatus, otLoudnessError, otLoudnessAnalyzedAt sql.NullString
+	var otCueInMS, otIntroMS, otOutroMS, otCueOutMS sql.NullInt64
 	// Nullable close-track columns.
 	var ctID, ctPath, ctTitle, ctArtist, ctType, ctCategory, ctIndexedAt sql.NullString
 	var ctDuration sql.NullInt64
 	var ctLUFS, ctPeak sql.NullFloat64
 	var ctLoudnessStatus, ctLoudnessError, ctLoudnessAnalyzedAt sql.NullString
+	var ctCueInMS, ctIntroMS, ctOutroMS, ctCueOutMS sql.NullInt64
 
 	err := row.Scan(
 		&brk.ID, &brk.Name, &createdAt, &updatedAt,
 		&otID, &otPath, &otTitle, &otArtist, &otType, &otDuration, &otCategory, &otIndexedAt,
 		&otLUFS, &otPeak, &otLoudnessStatus, &otLoudnessError, &otLoudnessAnalyzedAt,
+		&otCueInMS, &otIntroMS, &otOutroMS, &otCueOutMS,
 		&ctID, &ctPath, &ctTitle, &ctArtist, &ctType, &ctDuration, &ctCategory, &ctIndexedAt,
 		&ctLUFS, &ctPeak, &ctLoudnessStatus, &ctLoudnessError, &ctLoudnessAnalyzedAt,
+		&ctCueInMS, &ctIntroMS, &ctOutroMS, &ctCueOutMS,
 	)
 	if err != nil {
 		return Break{}, err
@@ -337,6 +344,18 @@ func scanBreakRow(row *sql.Row) (Break, error) {
 				t.LoudnessAnalyzedAt = &ts
 			}
 		}
+		if otCueInMS.Valid {
+			t.CueInMS = &otCueInMS.Int64
+		}
+		if otIntroMS.Valid {
+			t.IntroMS = &otIntroMS.Int64
+		}
+		if otOutroMS.Valid {
+			t.OutroMS = &otOutroMS.Int64
+		}
+		if otCueOutMS.Valid {
+			t.CueOutMS = &otCueOutMS.Int64
+		}
 		brk.OpenTrack = t
 	}
 	if ctID.Valid {
@@ -360,6 +379,18 @@ func scanBreakRow(row *sql.Row) (Break, error) {
 				t.LoudnessAnalyzedAt = &ts
 			}
 		}
+		if ctCueInMS.Valid {
+			t.CueInMS = &ctCueInMS.Int64
+		}
+		if ctIntroMS.Valid {
+			t.IntroMS = &ctIntroMS.Int64
+		}
+		if ctOutroMS.Valid {
+			t.OutroMS = &ctOutroMS.Int64
+		}
+		if ctCueOutMS.Valid {
+			t.CueOutMS = &ctCueOutMS.Int64
+		}
 		brk.CloseTrack = t
 	}
 	return brk, nil
@@ -372,7 +403,8 @@ func (s *BreakStore) listItems(ctx context.Context, breakID string) ([]BreakItem
 		       t.duration_ms, COALESCE(t.category,''), t.indexed_at,
 		       t.loudness_lufs, t.true_peak_dbtp,
 		       COALESCE(t.loudness_status,'pending'), COALESCE(t.loudness_error,''),
-		       t.loudness_analyzed_at
+		       t.loudness_analyzed_at,
+		       t.cue_in_ms, t.intro_ms, t.outro_ms, t.cue_out_ms
 		FROM break_items bi
 		JOIN tracks t ON t.id = bi.track_id
 		WHERE bi.break_id = ?
@@ -389,11 +421,13 @@ func (s *BreakStore) listItems(ctx context.Context, breakID string) ([]BreakItem
 		var indexedAt string
 		var lufs, peak sql.NullFloat64
 		var loudnessAnalyzedAt sql.NullString
+		var cueInMS, introMS, outroMS, cueOutMS sql.NullInt64
 		if err := rows.Scan(
 			&item.ID, &item.TrackID, &item.Position,
 			&t.ID, &t.Path, &t.Title, &t.Artist, &t.Type,
 			&t.DurationMS, &t.Category, &indexedAt,
 			&lufs, &peak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
+			&cueInMS, &introMS, &outroMS, &cueOutMS,
 		); err != nil {
 			return nil, fmt.Errorf("break items scan: %w", err)
 		}
@@ -409,6 +443,18 @@ func (s *BreakStore) listItems(ctx context.Context, breakID string) ([]BreakItem
 			if !ts.IsZero() {
 				t.LoudnessAnalyzedAt = &ts
 			}
+		}
+		if cueInMS.Valid {
+			t.CueInMS = &cueInMS.Int64
+		}
+		if introMS.Valid {
+			t.IntroMS = &introMS.Int64
+		}
+		if outroMS.Valid {
+			t.OutroMS = &outroMS.Int64
+		}
+		if cueOutMS.Valid {
+			t.CueOutMS = &cueOutMS.Int64
 		}
 		item.Track = t
 		out = append(out, item)

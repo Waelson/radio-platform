@@ -132,7 +132,8 @@ func (s *CategoryStore) ListTracks(ctx context.Context, categoryID string, limit
 		       COALESCE(t.category,''), t.isrc, t.composer, t.publisher, t.indexed_at,
 		       t.loudness_lufs, t.true_peak_dbtp,
 		       COALESCE(t.loudness_status,'pending'), COALESCE(t.loudness_error,''),
-		       t.loudness_analyzed_at
+		       t.loudness_analyzed_at,
+		       t.cue_in_ms, t.intro_ms, t.outro_ms, t.cue_out_ms
 		FROM tracks t
 		JOIN track_categories tc ON tc.track_id = t.id
 		WHERE tc.category_id = ?

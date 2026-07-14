@@ -36,6 +36,12 @@ type Track struct {
 	LoudnessStatus     string     // pending | analyzing | done | error
 	LoudnessError      string     // error message when LoudnessStatus = "error"
 	LoudnessAnalyzedAt *time.Time // timestamp of last successful analysis
+
+	// Cue point fields (populated by migration 011). All nil = use defaults.
+	CueInMS  *int64 // playback seek start (ms) — silence-trimmed head
+	IntroMS  *int64 // vocal intro end (ms) — announcer window countdown
+	OutroMS  *int64 // outro start (ms) — crossfade trigger
+	CueOutMS *int64 // playback stop (ms) — silence-trimmed tail
 }
 
 // SearchQuery holds optional filters for track searches.
@@ -124,7 +130,8 @@ func (s *TrackStore) FindByID(ctx context.Context, id string) (Track, error) {
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks WHERE id = ?`, id)
 	return scanTrack(row)
 }
@@ -136,7 +143,8 @@ func (s *TrackStore) FindByPath(ctx context.Context, path string) (Track, error)
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks WHERE path = ?`, path)
 	return scanTrack(row)
 }
@@ -198,7 +206,8 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks %s
 		ORDER BY title ASC
 		LIMIT ? OFFSET ?`, clause)
@@ -463,10 +472,12 @@ func scanTrack(row *sql.Row) (Track, error) {
 	var indexedAt string
 	var lufs, truePeak sql.NullFloat64
 	var loudnessAnalyzedAt sql.NullString
+	var cueInMS, introMS, outroMS, cueOutMS sql.NullInt64
 	err := row.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
 		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
 		&lufs, &truePeak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
+		&cueInMS, &introMS, &outroMS, &cueOutMS,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Track{}, ErrNotFound
@@ -490,6 +501,18 @@ func scanTrack(row *sql.Row) (Track, error) {
 			t.LoudnessAnalyzedAt = &ts
 		}
 	}
+	if cueInMS.Valid {
+		t.CueInMS = &cueInMS.Int64
+	}
+	if introMS.Valid {
+		t.IntroMS = &introMS.Int64
+	}
+	if outroMS.Valid {
+		t.OutroMS = &outroMS.Int64
+	}
+	if cueOutMS.Valid {
+		t.CueOutMS = &cueOutMS.Int64
+	}
 	return t, nil
 }
 
@@ -498,10 +521,12 @@ func scanTrackRow(rows *sql.Rows) (Track, error) {
 	var indexedAt string
 	var lufs, truePeak sql.NullFloat64
 	var loudnessAnalyzedAt sql.NullString
+	var cueInMS, introMS, outroMS, cueOutMS sql.NullInt64
 	err := rows.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
 		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
 		&lufs, &truePeak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
+		&cueInMS, &introMS, &outroMS, &cueOutMS,
 	)
 	if err != nil {
 		return Track{}, err
@@ -521,6 +546,18 @@ func scanTrackRow(rows *sql.Rows) (Track, error) {
 		if !ts.IsZero() {
 			t.LoudnessAnalyzedAt = &ts
 		}
+	}
+	if cueInMS.Valid {
+		t.CueInMS = &cueInMS.Int64
+	}
+	if introMS.Valid {
+		t.IntroMS = &introMS.Int64
+	}
+	if outroMS.Valid {
+		t.OutroMS = &outroMS.Int64
+	}
+	if cueOutMS.Valid {
+		t.CueOutMS = &cueOutMS.Int64
 	}
 	return t, nil
 }
