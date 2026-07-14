@@ -619,3 +619,59 @@ func TestSaveCuePoints_NotFound(t *testing.T) {
 		t.Errorf("want ErrNotFound, got %v", err)
 	}
 }
+
+func TestListNullCueIn(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	// Insert 3 tracks; set cue_in_ms on 1 of them.
+	for i, path := range []string{"/a.mp3", "/b.mp3", "/c.mp3"} {
+		if err := ts.Upsert(ctx, store.Track{Path: path, Title: path, Type: "MUSIC", DurationMS: int64(i+1) * 1000}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	trA, err := ts.FindByPath(ctx, "/a.mp3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.SetCueIn(ctx, trA.ID, 200); err != nil {
+		t.Fatal(err)
+	}
+
+	ids, err := ts.ListNullCueIn(ctx, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 2 {
+		t.Errorf("ListNullCueIn returned %d ids, want 2", len(ids))
+	}
+}
+
+func TestCountCueInStatus(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	for _, path := range []string{"/x.mp3", "/y.mp3", "/z.mp3"} {
+		if err := ts.Upsert(ctx, store.Track{Path: path, Title: path, Type: "MUSIC", DurationMS: 3000}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	trX, err := ts.FindByPath(ctx, "/x.mp3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.SetCueIn(ctx, trX.ID, 100); err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := ts.CountCueInStatus(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counts["pending"] != 2 {
+		t.Errorf("pending = %d, want 2", counts["pending"])
+	}
+	if counts["done"] != 1 {
+		t.Errorf("done = %d, want 1", counts["done"])
+	}
+}

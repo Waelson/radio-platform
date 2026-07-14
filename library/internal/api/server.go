@@ -33,6 +33,8 @@ type Server struct {
 	srw  handlers.SettingsReadWriter
 	lw   handlers.LoudnessWorker
 	lts  handlers.LoudnessTrackStore
+	ciw  handlers.CueInWorker
+	cits handlers.CueInTrackStore
 	nr   handlers.NormalizationReader
 	log  *slog.Logger
 	http *http.Server
@@ -44,6 +46,14 @@ type Server struct {
 func (s *Server) SetLoudnessWorker(lw handlers.LoudnessWorker, lts handlers.LoudnessTrackStore) {
 	s.lw = lw
 	s.lts = lts
+}
+
+// SetCueInWorker attaches the cue_in worker and its backing store so the
+// server can register the /v1/tracks/reanalyze-cuepoints routes. Must be
+// called before Start.
+func (s *Server) SetCueInWorker(cw handlers.CueInWorker, cits handlers.CueInTrackStore) {
+	s.ciw = cw
+	s.cits = cits
 }
 
 // SetNormalizationReader attaches the normalization settings reader used by
@@ -197,6 +207,13 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("POST /v1/loudness/analyze/{id}",   handlers.ReanalyzeTrack(s.lw, s.lts))
 		mux.HandleFunc("POST /v1/loudness/analyze",        handlers.ReanalyzeAll(s.lw, s.lts))
 		mux.HandleFunc("DELETE /v1/loudness/analyze",      handlers.CancelLoudness(s.lw))
+	}
+
+	// CueIn reanalysis
+	if s.ciw != nil {
+		mux.HandleFunc("GET /v1/tracks/reanalyze-cuepoints/status", handlers.GetCueInReanalyzeStatus(s.ciw))
+		mux.HandleFunc("POST /v1/tracks/reanalyze-cuepoints",       handlers.TriggerCueInReanalyze(s.ciw, s.cits))
+		mux.HandleFunc("DELETE /v1/tracks/reanalyze-cuepoints",     handlers.CancelCueInReanalyze(s.ciw))
 	}
 
 	// Transmission log — order matters: more specific paths first

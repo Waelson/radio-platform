@@ -11,6 +11,7 @@ import (
 
 	"github.com/Waelson/radio-library-service/internal/api"
 	"github.com/Waelson/radio-library-service/internal/config"
+	"github.com/Waelson/radio-library-service/internal/cuein"
 	"github.com/Waelson/radio-library-service/internal/fileimporter"
 	"github.com/Waelson/radio-library-service/internal/indexsvc"
 	"github.com/Waelson/radio-library-service/internal/logging"
@@ -99,6 +100,28 @@ func run(args []string) error {
 		log.Info("loudness: re-enqueued pending tracks", "count", len(pendingIDs))
 	}
 
+	// 5c. Build cue_in worker.
+	cueinWorker := cuein.NewWorker(
+		cfg.Scanner.FFmpegPath,
+		trackStore,
+		0, // default concurrency (2)
+		logging.With(log, "cuein"),
+	)
+	go func() {
+		cueinWorker.Start(ctx)
+	}()
+	log.Info("cuein worker started")
+
+	// 5d. Re-enqueue tracks with cue_in_ms NULL from previous runs.
+	if pendingCueIn, err := trackStore.ListNullCueIn(ctx, 10_000); err != nil {
+		log.Warn("cuein: could not list pending tracks", "error", err)
+	} else if len(pendingCueIn) > 0 {
+		for _, id := range pendingCueIn {
+			cueinWorker.Enqueue(id)
+		}
+		log.Info("cuein: re-enqueued pending tracks", "count", len(pendingCueIn))
+	}
+
 	idxSvc := indexsvc.New(indexer, trackStore, logging.With(log, "indexsvc"))
 
 	// 6. Initial library scan (non-blocking; state tracked via idxSvc).
@@ -148,6 +171,7 @@ func run(args []string) error {
 		tlStore, ilStore, settingsStore, settingsStore,
 		logging.With(log, "api"))
 	srv.SetLoudnessWorker(loudnessWorker, trackStore)
+	srv.SetCueInWorker(cueinWorker, trackStore)
 	srv.SetNormalizationReader(settingsStore)
 	go func() {
 		if err := srv.Start(ctx); err != nil {

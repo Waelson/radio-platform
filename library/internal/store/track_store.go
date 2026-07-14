@@ -556,6 +556,44 @@ func (s *TrackStore) ListPendingLoudness(ctx context.Context, limit int) ([]stri
 	return ids, rows.Err()
 }
 
+// ListNullCueIn returns IDs of tracks where cue_in_ms is NULL (not yet detected).
+func (s *TrackStore) ListNullCueIn(ctx context.Context, limit int) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id FROM tracks
+		WHERE cue_in_ms IS NULL
+		ORDER BY rowid ASC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list null cue_in: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// CountCueInStatus returns counts of tracks with and without cue_in_ms set.
+// The returned map has keys "pending" (NULL) and "done" (NOT NULL).
+func (s *TrackStore) CountCueInStatus(ctx context.Context) (map[string]int, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(SUM(CASE WHEN cue_in_ms IS NULL     THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN cue_in_ms IS NOT NULL THEN 1 ELSE 0 END), 0)
+		FROM tracks`)
+	var pending, done int
+	if err := row.Scan(&pending, &done); err != nil {
+		return nil, fmt.Errorf("count cue_in status: %w", err)
+	}
+	return map[string]int{"pending": pending, "done": done}, nil
+}
+
 // --- helpers -----------------------------------------------------------------
 
 func scanTrack(row *sql.Row) (Track, error) {
