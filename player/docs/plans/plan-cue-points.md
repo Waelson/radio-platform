@@ -2,7 +2,7 @@
 
 **Data:** julho de 2026
 **Branch:** `feature/cue-points`
-**Status:** Em planejamento
+**Status:** ✅ Implementado (Fases 1–9 concluídas)
 
 ---
 
@@ -92,7 +92,7 @@ Sem marcadores de intro, o programador precisa ouvir cada música do início par
 ```
 1. Programador abre a aba "Catálogo" no Player
 2. Seleciona uma faixa na lista
-3. Clica no botão de edição de cue points [CUE] ou pressiona a tecla C
+3. Clica no botão de edição de cue points [✂] ou pressiona a tecla M
 4. Modal "Editor de Cue Points" abre com a waveform da faixa
 5. Sistema sugere automaticamente cue_in (detectado na importação)
 6. Programador ajusta visualmente os marcadores arrastando as linhas:
@@ -481,7 +481,20 @@ Duração mínima: `0.1 s` (100 ms) — evita detectar micro-silêncios entre no
 ```
 
 - `—` indica que `intro_ms` não foi definido para a faixa.
-- Ícone de lápis [CUE] ao final de cada linha para abrir o editor.
+- Ícone `[✂]` (markers/edit) ao final de cada linha para abrir o editor de cue points.
+- O botão `[CUE]` existente **não é alterado** — ele continua sendo exclusivamente o preview de áudio (cue/audição antecipada). Os dois botões coexistem na coluna de ações.
+
+#### Seleção de linha na tabela do catálogo
+
+A tabela do catálogo não possui seleção de linha atualmente. Para suportar o atalho `M`, será implementado o seguinte mecanismo:
+
+1. Adicionar estado `_selectedTrackId` (ID da faixa selecionada no momento).
+2. Ao clicar em qualquer célula de uma linha, marcar aquela linha como selecionada com highlight visual via classe CSS (ex.: `adv-row--selected`).
+3. O listener global de teclado verifica se há uma linha selecionada antes de abrir o modal:
+   ```javascript
+   if (e.key === 'M' && _selectedTrackId) openCueEditor(_selectedTrackId)
+   ```
+4. Clicar fora da tabela ou pressionar `Escape` deseleciona a linha e limpa `_selectedTrackId`.
 
 ### 6.3 Modal — Editor de Cue Points (tela nova)
 
@@ -1163,7 +1176,11 @@ Atualizar `player.html` e `hotkeys.html` para incluir `cue_in_ms`, `intro_ms`, `
 4. Implementar drag de marcadores com atualização em tempo real dos campos de tempo.
 5. Implementar botões CAPTURAR, LIMPAR e TOCAR DO X.
 6. Implementar chamada `PUT /v1/tracks/:id/cuepoints` ao salvar.
-7. Implementar abertura do modal via ícone [CUE] na lista e atalho de teclado `C`.
+7. Implementar seleção de linha na tabela do catálogo:
+   - Adicionar estado `_selectedTrackId`.
+   - Clicar em qualquer célula de uma linha aplica classe `adv-row--selected` e atualiza `_selectedTrackId`.
+   - Clicar fora da tabela ou pressionar `Escape` deseleciona.
+8. Implementar abertura do modal via ícone `[✂]` na coluna de ações e via atalho de teclado `M` (age sobre `_selectedTrackId`). O botão `[CUE]` existente não é tocado — é exclusivo para preview de áudio.
 8. Testar manualmente com faixas de diferentes formatos (MP3, FLAC, WAV).
 
 **Entregável:** Editor de cue points visual completo e funcional.

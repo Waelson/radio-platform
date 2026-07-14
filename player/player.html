@@ -401,6 +401,19 @@ input[type=range].vol-slider:disabled {
   margin-right: 7px;
   vertical-align: middle;
 }
+/* Intro countdown row */
+.np5-intro-row { display: none; border-top: 1px solid rgba(255,255,255,0.06); }
+.np5-intro-row.intro-visible { display: flex; }
+.np5-intro-icon { font-size: 14px; width: 26px; text-align: center; flex-shrink: 0; }
+.np5-intro-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; min-width: 52px; flex-shrink: 0; }
+.np5-intro-value { font-size: 15px; font-weight: 800; letter-spacing: 0.06em; font-family: 'Courier New', monospace; }
+.np5-intro-row.intro-ok   .np5-intro-icon,
+.np5-intro-row.intro-ok   .np5-intro-label,
+.np5-intro-row.intro-ok   .np5-intro-value  { color: #f5c542; }
+.np5-intro-row.intro-urgent .np5-intro-icon,
+.np5-intro-row.intro-urgent .np5-intro-label,
+.np5-intro-row.intro-urgent .np5-intro-value { color: #ef5350; animation: intro-blink 0.6s ease-in-out infinite alternate; }
+@keyframes intro-blink { from { opacity: 1; } to { opacity: 0.45; } }
 
 /* Right column: title + artist */
 .np5-title-area {
@@ -789,7 +802,7 @@ input[type=range].vol-slider:disabled {
 /* ── Advanced Search Modal ─────────────────────────────────────────────── */
 .adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
 .adv-backdrop.open { display: block; }
-.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1060px; height: 720px; background: var(--bg); border: 0.5px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: none; overflow: hidden; }
+.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1160px; height: 720px; background: var(--bg); border: 0.5px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: none; overflow: hidden; }
 .adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(32,230,255,0.15); background: rgba(32,230,255,0.05); flex-shrink: 0; cursor: move; user-select: none; }
 .adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
 .catalog-modal-title { font-size: 16px; font-weight: 700; color: #20e6ff; text-transform: uppercase; letter-spacing: 0.01em; }
@@ -820,6 +833,8 @@ input[type=range].vol-slider:disabled {
 .adv-td-title { font-size: 16px; font-weight: 700; color: #e8fbfb; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adv-td-artist, .adv-td-album { font-size: 16px; font-weight: 700; color: #e8fbfb; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adv-td-dur { font-size: 16px; font-weight: 700; color: #e8fbfb; white-space: nowrap; }
+.adv-td-intro { font-size: 16px; font-weight: 700; color: #f5c542; white-space: nowrap; font-family: 'Courier New', monospace; letter-spacing: 0.04em; text-align: center; }
+.adv-td-intro:empty::after, .adv-td-intro:contains('—') { color: var(--text-dim); }
 .adv-type-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .adv-type-badge.music    { background: rgba(0,188,212,0.15); color: var(--cyan); }
 .adv-type-badge.vinheta  { background: rgba(156,39,176,0.2); color: #ce93d8; }
@@ -849,8 +864,10 @@ input[type=range].vol-slider:disabled {
 .cue-ed-close  { background: none; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; line-height: 1; padding: 0 2px; }
 .cue-ed-close:hover { color: #fff; }
 /* Timeline / Waveform */
-.cue-ed-timeline-wrap { position: relative; height: 144px; background: rgba(6,18,24,0.90); border: 1px solid rgba(45,216,255,0.18); border-radius: 6px; cursor: crosshair; overflow: hidden; user-select: none; }
+.cue-ed-timeline-wrap { position: relative; height: 130px; background: rgba(6,18,24,0.90); border: 1px solid rgba(45,216,255,0.18); border-radius: 6px; cursor: crosshair; overflow: hidden; user-select: none; }
 .cue-ed-timeline-wrap.cue-selecting { cursor: col-resize; }
+.cue-ed-timeline-wrap.cue-panning  { cursor: grab; }
+.cue-ed-timeline-wrap.cue-panning-active { cursor: grabbing; }
 .cue-ed-timeline-wrap canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; }
 .cue-ed-timeline-head { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 5px rgba(255,255,255,0.9); pointer-events: none; transform: translateX(-50%); z-index: 2; }
 .cue-ed-timeline-pin { position: absolute; top: 0; bottom: 0; width: 2px; background: repeating-linear-gradient(to bottom, #f5c542 0 6px, transparent 6px 10px); pointer-events: none; transform: translateX(-50%); z-index: 3; display: none; }
@@ -863,11 +880,11 @@ input[type=range].vol-slider:disabled {
 .cue-ed-marker.intro   { background: #81c784; box-shadow: 0 0 6px rgba(129,199,132,0.8); }
 .cue-ed-marker.outro   { background: #ffb74d; box-shadow: 0 0 6px rgba(255,183,77,0.8); }
 .cue-ed-marker.cue-out { background: #ef5350; box-shadow: 0 0 6px rgba(239,83,80,0.8); }
-.cue-ed-times { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 10px; font-family: 'Courier New', monospace; color: var(--text-dim); }
+.cue-ed-times { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; font-family: 'Courier New', monospace; color: #fff; }
 .cue-ed-zoom { display: flex; align-items: center; gap: 5px; }
 .cue-ed-zoom button { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); color: #ccc; font-size: 13px; font-weight: 700; width: 22px; height: 18px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
 .cue-ed-zoom button:hover { background: rgba(255,255,255,0.14); color: #fff; }
-.cue-ed-zoom-level { font-size: 10px; color: var(--text-dim); min-width: 24px; text-align: center; }
+.cue-ed-zoom-level { font-size: 11px; color: #fff; min-width: 24px; text-align: center; }
 /* Marker panels */
 .cue-ed-markers-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
 .cue-ed-marker-panel { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -2246,6 +2263,11 @@ canvas.vu-canvas {
                   <span class="np5-icon">≋</span>
                   <span class="np5-label">Áudio</span>
                   <span class="np5-value" id="npSampleVal">48 kHz / Stereo</span>
+                </div>
+                <div class="np5-meta-row np5-intro-row" id="npIntroRow">
+                  <span class="np5-intro-icon">▶</span>
+                  <span class="np5-intro-label">Intro</span>
+                  <span class="np5-intro-value" id="npIntroVal">00:00</span>
                 </div>
               </div>
 
@@ -3927,7 +3949,8 @@ function handleEvent({ type, payload }) {
   switch (type) {
     case 'VUMeter':            applyVU(payload); break;
     case 'AudioHealthChanged': onHealth(payload); break;
-    case 'NowPlayingChanged':  onNowPlaying(payload); break;
+    case 'NowPlayingChanged':  onNowPlaying(payload); clearIntroCountdown(); break;
+    case 'IntroCountdown':     onIntroCountdown(payload); break;
     case 'ProgressChanged':    onProgress(payload); break;
     case 'PlayerStateChanged': onStateChange(payload); break;
     case 'EngineStarted':      onEngineStarted(payload); break;
@@ -3939,7 +3962,7 @@ function handleEvent({ type, payload }) {
     case 'PreviewVolumeChanged':  if (!_draggingPreview) setVolDisplay('preview', payload.level); break;
     case 'CartVolumeChanged':     if (!_draggingCart)    setVolDisplay('cart',    payload.level); break;
     case 'ItemStarted':        _assistWaiting = false; _enginePlaying = true;  setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); { const t = document.getElementById('assistBannerTitle'); if (t) t.textContent = 'Modo ASSIST ativado'; } break;
-    case 'ItemFinished':       _enginePlaying = false; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); break;
+    case 'ItemFinished':       _enginePlaying = false; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); clearIntroCountdown(); break;
     case 'BreakStarted':       showToast(true, '🎙 Bloco: ' + (payload.break_title || '')); break;
     case 'BreakEnded':         showToast(true, '✓ Bloco encerrado: ' + (payload.break_title || '')); clearBreakBanner(); break;
     case 'SpotStarted':        updateBreakBanner(payload); break;
@@ -4065,6 +4088,37 @@ const _STATUS_PT = {
   'ERROR':    'ERRO',
 };
 function statusLabel(s) { return _STATUS_PT[(s || '').toUpperCase()] || (s || '—').toUpperCase(); }
+
+// ─── Intro Countdown ──────────────────────────────────────────────────────────
+function _msToMMSS(ms) {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function onIntroCountdown(p) {
+  if (!p) return;
+  const row = document.getElementById('npIntroRow');
+  const val = document.getElementById('npIntroVal');
+  if (!row || !val) return;
+  if (p.remaining_ms <= 0) { clearIntroCountdown(); return; }
+  val.textContent = _msToMMSS(p.remaining_ms);
+  row.classList.add('intro-visible');
+  if (p.remaining_ms <= 5000) {
+    row.classList.add('intro-urgent');
+    row.classList.remove('intro-ok');
+  } else {
+    row.classList.add('intro-ok');
+    row.classList.remove('intro-urgent');
+  }
+}
+
+function clearIntroCountdown() {
+  const row = document.getElementById('npIntroRow');
+  if (!row) return;
+  row.classList.remove('intro-visible', 'intro-ok', 'intro-urgent');
+}
 
 function onNowPlaying(p) {
   if (!p || !p.title) { setIdle(); return; }
@@ -4734,12 +4788,16 @@ function advRender() {
   const rows = _advTracks.map((t, i) => {
     const badgeClass = { MUSIC:'music', VINHETA:'vinheta', JINGLE:'jingle', SPOT:'spot', EFEITOS:'efeitos' }[t.type] || '';
     const isSelected = t.id && t.id === _selectedTrackId;
+    const introTxt   = t.cue_in_ms  != null ? _msToMMSS(t.cue_in_ms)  : '—';
+    const cueOutTxt  = t.cue_out_ms != null ? _msToMMSS(t.cue_out_ms) : '—';
     return `<tr id="adv-row-${i}" ondblclick="advEnqueue(${i})" onclick="advSelectRow(${i})" title="Duplo clique para enfileirar"${isSelected ? ' class="adv-row--selected"' : ''}>
       <td class="adv-td-title" title="${escHtml(t.title || '')}">${escHtml(t.title || '—')}</td>
       <td class="adv-td-artist" title="${escHtml(t.artist || '')}">${escHtml(t.artist || '—')}</td>
       <td class="adv-td-album"  title="${escHtml(t.album  || '')}">${escHtml(t.album  || '—')}</td>
       <td><span class="adv-type-badge ${badgeClass}">${escHtml(t.type || '')}</span></td>
       <td class="adv-td-dur">${msToDuration(t.duration_ms || 0)}</td>
+      <td class="adv-td-intro">${introTxt}</td>
+      <td class="adv-td-intro">${cueOutTxt}</td>
       <td class="adv-td-actions">
         <button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" id="adv-cue-${i}" onclick="event.stopPropagation();advTogglePreview(${i})"><img src="icons/cue_preview.svg"></button>
         <button class="lib-marker-btn tip-left" data-tooltip="Editor de cue points (M)" onclick="event.stopPropagation();advOpenCueEditor(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></button>
@@ -4750,15 +4808,17 @@ function advRender() {
 
   resultsEl.innerHTML = `<table class="adv-table">
     <colgroup>
-      <col style="width:28%">
-      <col style="width:20%">
-      <col style="width:20%">
-      <col style="width:10%">
+      <col style="width:26%">
+      <col style="width:18%">
+      <col style="width:11%">
+      <col style="width:9%">
       <col style="width:8%">
-      <col style="width:14%">
+      <col style="width:7%">
+      <col style="width:10%">
+      <col style="width:11%">
     </colgroup>
     <thead><tr>
-      <th>Título</th><th>Artista</th><th>Álbum</th><th>Tipo</th><th>Duração</th><th>Ações</th>
+      <th>Título</th><th>Artista</th><th>Álbum</th><th>Tipo</th><th>Duração</th><th style="text-align:center">Cue In</th><th style="text-align:center">Cue Out</th><th>Ações</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -5013,10 +5073,12 @@ function closeCueEditor() {
   _cueEditor.track        = null;
   _cueWaveformPeaks       = [];
   _cueWaveformLoading     = false;
+  _cueWaveformDurMS       = 0;
   _cueWaveZoom            = 1;
   _cueWaveOffset          = 0;
   _cueSel.active          = false;
   _markerDrag.active      = false;
+  _cuePan.active          = false;
   _cuePinMS               = null;
   document.getElementById('cueEditorOverlay').classList.remove('open');
   if (_preview.state !== 'idle') previewStop();
@@ -5025,7 +5087,12 @@ function closeCueEditor() {
 function _renderCueEditor() {
   if (!_cueEditor.open) return;
   const s   = _preview;
-  const dur = s.durationMS > 0 ? s.durationMS : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
+  // Use the decoded audio buffer duration as the timeline reference when available,
+  // falling back to the engine-reported duration. This prevents the playhead from
+  // drifting past the right edge due to small differences between ffprobe and WebAudio.
+  const dur = _cueWaveformDurMS > 0 ? _cueWaveformDurMS
+            : s.durationMS > 0      ? s.durationMS
+            : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
   const pos = s.positionMS || 0;
 
   document.getElementById('cueEdPosTime').textContent = _msToCueTime(pos);
@@ -5206,13 +5273,37 @@ function cueTimelineDblClick(e) {
   _renderCueEditor();
 }
 
+// ─── Waveform pan (Alt+drag) ──────────────────────────────────────────────────
+let _cuePan = { active: false, startX: 0, startOffset: 0 };
+
+// Show grab cursor when Alt is held over the timeline
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Alt') return;
+  const tl = document.getElementById('cueEdTimeline');
+  if (tl && _cueEditor.open && _cueWaveZoom > 1) tl.classList.add('cue-panning');
+});
+document.addEventListener('keyup', function(e) {
+  if (e.key !== 'Alt') return;
+  const tl = document.getElementById('cueEdTimeline');
+  if (tl) tl.classList.remove('cue-panning', 'cue-panning-active');
+});
+
 // ─── Waveform drag-to-select zoom ────────────────────────────────────────────
 let _cueSel = { active: false, startFrac: 0, endFrac: 0, startPx: 0 };
 
 function cueTimelineMouseDown(e) {
   if (!_cueEditor.track) return;
   e.preventDefault();
-  const tl    = document.getElementById('cueEdTimeline');
+  const tl = document.getElementById('cueEdTimeline');
+
+  // Alt+drag → pan (only when zoomed in)
+  if (e.altKey && _cueWaveZoom > 1) {
+    _cuePan = { active: true, startX: e.clientX, startOffset: _cueWaveOffset };
+    tl.classList.remove('cue-panning');
+    tl.classList.add('cue-panning-active');
+    return;
+  }
+
   const rect  = tl.getBoundingClientRect();
   const ratio = _cueRatio(e.clientX, rect);
   const frac  = _cueWaveOffset + ratio / _cueWaveZoom;
@@ -5223,6 +5314,19 @@ function cueTimelineMouseDown(e) {
 document.addEventListener('mousemove', function(e) {
   const tl = document.getElementById('cueEdTimeline');
   if (!tl) return;
+
+  // Pan mode
+  if (_cuePan.active) {
+    const rect     = tl.getBoundingClientRect();
+    const deltaPx  = e.clientX - _cuePan.startX;
+    const innerW   = rect.width - 2 * CUE_WAVE_PAD;
+    const deltaFrac = -(deltaPx / innerW) / _cueWaveZoom;
+    _cueWaveOffset  = _cuePan.startOffset + deltaFrac;
+    _clampCueWaveOffset();
+    _renderCueEditor();
+    return;
+  }
+
   const rect  = tl.getBoundingClientRect();
   const ratio = _cueRatio(e.clientX, rect);
 
@@ -5243,6 +5347,15 @@ document.addEventListener('mousemove', function(e) {
 });
 
 document.addEventListener('mouseup', async function(e) {
+  if (_cuePan.active) {
+    _cuePan.active = false;
+    const tl = document.getElementById('cueEdTimeline');
+    if (tl) {
+      tl.classList.remove('cue-panning-active');
+      if (e.altKey && _cueWaveZoom > 1) tl.classList.add('cue-panning');
+    }
+    return;
+  }
   if (_markerDrag.active) {
     _markerDrag.active = false;
     const tl = document.getElementById('cueEdTimeline');
@@ -5296,6 +5409,7 @@ document.addEventListener('mouseup', async function(e) {
 // ─── Waveform (Web Audio API + Canvas) ───────────────────────────────────────
 let _cueWaveformPeaks   = [];
 let _cueWaveformLoading = false;
+let _cueWaveformDurMS   = 0;   // actual decoded audio duration — used as timeline reference
 
 async function _loadCueWaveform(filePath) {
   if (!filePath) return;
@@ -5312,6 +5426,7 @@ async function _loadCueWaveform(filePath) {
     const ac      = new (window.AudioContext || window.webkitAudioContext)();
     const decoded = await ac.decodeAudioData(buf);
     ac.close();
+    _cueWaveformDurMS = Math.round(decoded.duration * 1000);
 
     // Average all available channels (stereo → L+R mean)
     const numCh = decoded.numberOfChannels;
@@ -5380,7 +5495,8 @@ function _drawCueWaveform() {
   }
 
   const s        = _preview;
-  const dur      = s.durationMS > 0 ? s.durationMS
+  const dur      = _cueWaveformDurMS > 0 ? _cueWaveformDurMS
+                 : s.durationMS > 0      ? s.durationMS
                  : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
   const viewSpan = 1 / _cueWaveZoom;
   const vStart   = _cueWaveOffset;
@@ -5394,21 +5510,24 @@ function _drawCueWaveform() {
                    : CUE_WAVE_PAD + ((playedFrac - vStart) / viewSpan) * innerW;
 
   const N    = _cueWaveformPeaks.length;
-  const iS   = Math.max(0, Math.floor(vStart * N));
-  const iE   = Math.min(N, Math.ceil(vEnd * N));
+  const iS   = Math.max(0, Math.floor(vStart * (N - 1)));
+  const iE   = Math.min(N, Math.ceil(vEnd * (N - 1)) + 1);
   const mid  = cssH / 2;
 
-  // Build the waveform polygon path — only peaks within the visible window
+  // Build the waveform polygon path — only peaks within the visible window.
+  // Normalize by (N-1) so peak 0 maps to fraction 0.0 and peak N-1 maps to 1.0,
+  // ensuring the waveform fills the full canvas edge-to-edge.
+  const Nm1 = Math.max(1, N - 1);
   function buildPath() {
     ctx.beginPath();
     for (let i = iS; i < iE; i++) {
-      const x   = CUE_WAVE_PAD + ((i / N - vStart) / viewSpan) * innerW;
+      const x   = CUE_WAVE_PAD + ((i / Nm1 - vStart) / viewSpan) * innerW;
       const amp = _cueWaveformPeaks[i] * (mid - 2);
       if (i === iS) ctx.moveTo(x, mid - amp);
       else          ctx.lineTo(x, mid - amp);
     }
     for (let i = iE - 1; i >= iS; i--) {
-      const x   = CUE_WAVE_PAD + ((i / N - vStart) / viewSpan) * innerW;
+      const x   = CUE_WAVE_PAD + ((i / Nm1 - vStart) / viewSpan) * innerW;
       const amp = _cueWaveformPeaks[i] * (mid - 2);
       ctx.lineTo(x, mid + amp);
     }

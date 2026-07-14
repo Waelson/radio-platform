@@ -53,7 +53,7 @@ Este documento compara o RadioFlow com as principais soluções de automação d
 | Fila de reprodução dinâmica | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Drag-and-drop na fila | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Crossfade configurável por tipo | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
-| Marcadores de intro/outro/cue | 🔲 | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
+| Marcadores de intro/outro/cue | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Tempo estimado da fila | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Preview (CUE) antes de tocar | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Skimming (ouvir entrada rápida) | 🔲 | ✅ | — | ✅ | 🔲 | ✅ | 🔲 | 🔲 |
@@ -198,7 +198,7 @@ As lacunas abaixo foram identificadas como mais impactantes para adoção em emi
 | 2 | **Integração com streaming (Icecast/SHOUTcast)** | Emissoras de internet dependem disso. RadioPro, RadioBOSS e PlayIt Live têm. |
 | ~~3~~ | ~~**Importação automática de pasta**~~ | ~~Sem isso, adicionar áudios ao catálogo é manual — inviável para operação contínua.~~ ✅ **Já implementado no Library Service.** |
 | ~~4~~ | ~~**Normalização automática de volume**~~ | ~~Sem normalização, o volume varia faixa a faixa — problema grave em emissoras.~~ ✅ **Implementado no Library Service + Playout Engine (EBU R128, por tipo de áudio, gain_db propagado end-to-end até o PCM do cart player).** |
-| 5 | **Marcadores de intro/outro/cue** | Permite crossfade preciso e hora certa sincronizada com a entrada da voz do locutor. |
+| ~~5~~ | ~~**Marcadores de intro/outro/cue**~~ | ~~Permite crossfade preciso e hora certa sincronizada com a entrada da voz do locutor.~~ ✅ **Implementado no Library Service + Playout Engine + Player (cue_in/intro/outro/cue_out, editor visual de waveform, auto-detecção de silêncio, crossfade preciso no outro_ms, countdown de intro no Now Playing).** |
 
 ---
 
