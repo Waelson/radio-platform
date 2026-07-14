@@ -229,12 +229,142 @@ A solução é dividida em três componentes:
 
 ### 5.2 Marcadores definidos
 
-| Marcador | Campo | Descrição | Auto-detectado |
-|----------|-------|-----------|----------------|
-| Cue In | `cue_in_ms` | Ponto de início da reprodução (pula silêncio inicial). Default: 0. | Sim (silencedetect) |
-| Intro | `intro_ms` | Posição onde a letra/voz começa. Usado para countdown do locutor. | Não (manual) |
-| Outro | `outro_ms` | Posição onde o crossfade de saída deve iniciar. | Não (manual) |
-| Cue Out | `cue_out_ms` | Posição onde a reprodução para. Default: duração real da faixa. | Não (manual) |
+| Marcador | Campo | Auto-detectado |
+|----------|-------|:--------------:|
+| Cue In | `cue_in_ms` | Sim (silencedetect) |
+| Intro | `intro_ms` | Não (manual) |
+| Outro | `outro_ms` | Não (manual) |
+| Cue Out | `cue_out_ms` | Não (manual) |
+
+---
+
+#### Visualização da posição dos marcadores na linha do tempo
+
+```
+Arquivo de áudio (exemplo: 3:02)
+│
+0:00                                                              3:02
+├──────────────────────────────────────────────────────────────────┤
+│  silêncio │◄── intro instrumental ──►│◄── corpo da música ──►│fade│
+│           │                          │                        │   │
+▲           ▲                          ▲                        ▲
+cue_in_ms   intro_ms               (conteúdo)              outro_ms  cue_out_ms
+```
+
+---
+
+#### cue_in_ms — Ponto de início da reprodução
+
+**O que é:**
+O momento exato, em milissegundos, a partir do qual o Playout Engine começa a reproduzir o arquivo. Tudo antes desse ponto é ignorado — o decoder faz um seek direto para essa posição.
+
+**Por que existe:**
+Arquivos de áudio frequentemente contêm silêncio no início. Isso ocorre por dois motivos: (1) artefato de codificação MP3 — o encoder LAME insere frames silenciosos no início para garantir sincronismo de decodificação; (2) gravações analógicas digitalizadas que incluem o "rabo" do silêncio anterior à gravação. Esse silêncio chega ao ar e o ouvinte percebe como uma "falha" ou "pausa estranha" entre músicas.
+
+**Exemplo prático:**
+```
+Arquivo: Aquarela - Toquinho.mp3
+Duração real:  3:42
+Silêncio inicial detectado: 0,432 s
+
+cue_in_ms = 432
+
+Resultado: o engine começa a reproduzir no frame 432 ms,
+eliminando completamente o silêncio antes de o áudio chegar ao ar.
+```
+
+**Quem define:** detectado automaticamente pelo `ffmpeg silencedetect` na importação. Pode ser ajustado manualmente no editor de waveform.
+
+**Fallback:** se NULL ou 0, o engine reproduz desde o frame 0 (comportamento atual).
+
+---
+
+#### intro_ms — Fim da introdução instrumental
+
+**O que é:**
+O momento, em milissegundos, em que a voz do cantor ou o conteúdo principal da faixa começa — ou seja, onde termina a introdução puramente instrumental. Esse marcador não afeta a reprodução em si; seu único uso é informar o locutor quanto tempo de intro ainda resta para ele falar ao microfone.
+
+**Por que existe:**
+Na operação ao vivo de uma rádio, é prática universal o locutor "falar sobre a música" enquanto ela começa — apresentando o artista, o nome da música, fazendo uma observação. Para isso, o locutor precisa saber com precisão quantos segundos de intro instrumental tem antes da letra do cantor começar. Sem essa informação visível, o locutor usa intuição e frequentemente comete dois erros:
+- **Fala demais:** a voz do locutor sobrepõe a letra do cantor — erro grave, perceptível ao ouvinte.
+- **Para cedo:** fica em silêncio desnecessário esperando a letra — desperdiça o intro e soa amador.
+
+**Exemplo prático:**
+```
+Música: La Isla Bonita — Madonna
+intro_ms = 17800  (17,8 segundos de intro instrumental)
+
+Painel do locutor enquanto a música toca:
+  ▶  INTRO   00:17   (amarelo)
+  ▶  INTRO   00:09   (amarelo)
+  ▶  INTRO   00:04   (vermelho — urgência)
+  [linha some — locutor deve parar de falar]
+```
+
+**Quem define:** manual, via editor de waveform. O programador ouve a música e posiciona o marcador no ponto exato onde a letra começa.
+
+**Fallback:** se NULL, o contador de intro não é exibido no painel. Nenhum impacto na reprodução.
+
+---
+
+#### outro_ms — Ponto de início do crossfade de saída
+
+**O que é:**
+O momento, em milissegundos, em que o Playout Engine deve iniciar o crossfade para a próxima faixa. A partir desse ponto, o volume da faixa atual começa a diminuir enquanto o volume da próxima faixa começa a aumentar.
+
+**Por que existe:**
+Sem esse marcador, o engine usa uma regra fixa: "inicia o crossfade N segundos antes do fim do arquivo". Esse comportamento é cego — não sabe se nesses últimos N segundos ainda há letra sendo cantada, um acorde final ressoando ou já é silêncio. Isso causa dois problemas comuns:
+- **Crossfade cortando a letra:** o fade começa enquanto o cantor ainda está cantando — o ouvinte percebe a voz "sumindo" de forma artificial no meio da frase.
+- **Crossfade atrasado demais:** a música já terminou (silêncio) e a próxima ainda não começou — há uma brecha de silêncio audível.
+
+Com `outro_ms`, o programador marca exatamente onde a música termina de forma musical (geralmente o último acorde antes do fade natural ou do silêncio final), e o engine usa esse ponto como gatilho preciso para o crossfade.
+
+**Exemplo prático:**
+```
+Música: Emoções — Roberto Carlos   (duração: 4:12 = 252.000 ms)
+O cantor termina a última nota em 4:05 (245.000 ms)
+Os últimos 7 segundos são reverb decaindo até o silêncio
+
+outro_ms = 245000
+
+Resultado: o crossfade começa em 4:05, quando a música já terminou
+musicalmente, e a próxima faixa entra de forma natural e precisa.
+```
+
+**Quem define:** manual, via editor de waveform.
+
+**Fallback:** se NULL, o engine usa a lógica atual de tempo fixo antes do EOF (comportamento existente).
+
+---
+
+#### cue_out_ms — Ponto de término da reprodução
+
+**O que é:**
+O momento, em milissegundos, em que o Playout Engine para completamente a reprodução da faixa, independentemente de haver mais áudio no arquivo após esse ponto. Tudo após `cue_out_ms` é descartado.
+
+**Por que existe:**
+Muitos arquivos de áudio têm conteúdo indesejado após o ponto de término musical:
+- **Silêncio longo no final:** codificação com padding.
+- **Ruído de tape:** gravações analógicas com chiado residual após o fade.
+- **Conteúdo extra:** em arquivos de rádio antigos, às vezes há um "take" de ensaio ou conversa de estúdio após o fade da música.
+- **Fade incompleto:** o arquivo foi exportado antes do silence completo — há um último transiente audível que, se reproduzido, soa como um "estalo".
+
+`cue_out_ms` garante que o engine para exatamente onde o programador quer, sem tocar nada além desse ponto.
+
+**Relação com outro_ms:**
+Os dois marcadores trabalham juntos. `outro_ms` define quando o crossfade **começa**. `cue_out_ms` define quando a reprodução **termina**. Em uma configuração típica:
+
+```
+outro_ms   = 245.000 ms  → crossfade começa aqui
+cue_out_ms = 248.000 ms  → reprodução para aqui (3 s de fade)
+
+Durante esses 3 s, a faixa está em fade out E a próxima já está
+em fade in — as duas tocando simultaneamente no mixer.
+```
+
+**Quem define:** manual, via editor de waveform.
+
+**Fallback:** se NULL, o engine reproduz até o EOF real do arquivo (comportamento atual).
 
 ### 5.3 Regras de fallback
 
