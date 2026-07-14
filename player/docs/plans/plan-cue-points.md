@@ -57,7 +57,9 @@ Sem marcadores de intro, o programador precisa ouvir cada música do início par
 
 **RN-06** — O sistema deve exibir um contador regressivo de intro no painel "Now Playing" enquanto a faixa atual tem intro não concluído.
 
-**RN-07** — O sistema deve usar `cue_out` para sincronizar a Hora Certa: o engine calcula com antecedência o momento exato em que o fade deve iniciar para que a hora certa entre na virada do minuto.
+**~~RN-07~~** — ~~O sistema deve usar `cue_out` para sincronizar a Hora Certa: o engine calcula com antecedência o momento exato em que o fade deve iniciar para que a hora certa entre na virada do minuto.~~
+
+> **Fora de escopo desta feature.** A sincronização da Hora Certa com `cue_out_ms` é uma evolução futura do módulo de agendamento e **não será implementada nesta entrega**. Os marcadores desta feature apenas fornecem os dados (`cue_out_ms`) que a Hora Certa poderá consumir no futuro — sem nenhuma alteração no módulo de agendamento agora.
 
 **RN-08** — Os marcadores devem ser persistidos no banco de dados do Library Service, não no arquivo de áudio.
 
@@ -1151,9 +1153,11 @@ A UI deve garantir e o backend deve validar que a ordem lógica é sempre respei
 0 ≤ cue_in_ms ≤ intro_ms ≤ outro_ms ≤ cue_out_ms ≤ duration_ms
 ```
 
-### 12.3 Hora Certa — integração futura
+### 12.3 Hora Certa — fora de escopo
 
-Com `outro_ms` disponível, a Hora Certa pode ser sincronizada com precisão de segundo. Essa integração é um aprimoramento do módulo de agendamento (`scheduler`) e será tratada como task separada após a entrega dos marcadores. O modelo de dados desta fase já suporta isso sem alterações adicionais.
+**Não haverá nenhuma alteração ou implementação relacionada à Hora Certa nesta feature.**
+
+O modelo de dados (`cue_out_ms`, `outro_ms`) fornece naturalmente os dados que um futuro módulo de sincronização de Hora Certa precisaria consumir. Essa integração é uma evolução independente do módulo de agendamento e será tratada como iniciativa separada em momento oportuno.
 
 ### 12.4 Futura auto-detecção de intro vocal
 
