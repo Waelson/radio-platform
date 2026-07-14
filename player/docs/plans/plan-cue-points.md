@@ -632,7 +632,60 @@ PUT /v1/tracks/:id/cuepoints
 
 ---
 
-### 8.2 Endpoint existente impactado — GET /v1/tracks/:id
+### 8.2 Novo endpoint — Re-análise retroativa de cue_in
+
+```
+POST /v1/tracks/reanalyze-cuepoints
+```
+
+**Descrição:** Dispara a análise retroativa de `cue_in_ms` para todas as faixas que já estavam no catálogo antes da feature de cue points ser implantada — ou seja, faixas com `cue_in_ms = NULL`. Funciona de forma análoga ao `POST /v1/loudness/analyze`: enfileira as faixas pendentes e processa em background via worker, sem bloquear a API.
+
+**Motivação:** O scanner só roda `silencedetect` em arquivos **novos** detectados pelo watch folder. Faixas importadas antes da Fase 3 desta feature terão `cue_in_ms = NULL` indefinidamente, a menos que sejam re-analisadas explicitamente. Este endpoint resolve isso sem exigir que o operador reimporte o catálogo.
+
+**Comportamento:**
+- Busca todas as faixas com `cue_in_ms IS NULL`.
+- Enfileira para análise via `silencedetect`.
+- Processa em background (mesmo worker da análise de loudness, ou worker dedicado).
+- Faixas com `cue_in_ms` já definido (inclusive `0`) **não são reprocessadas** — o valor manual do operador é preservado.
+
+**Request body:** nenhum (ou body vazio `{}`).
+
+**Response 200:**
+```json
+{
+  "ok": true,
+  "enqueued": 124
+}
+```
+
+**Response 200 — nenhuma faixa pendente:**
+```json
+{
+  "ok": true,
+  "enqueued": 0,
+  "message": "all tracks already have cue_in_ms defined"
+}
+```
+
+**Progresso:** consultável via `GET /v1/tracks/reanalyze-cuepoints/status` (mesmo padrão do `/v1/loudness/status`):
+
+```json
+{
+  "running": true,
+  "counts": {
+    "pending":   98,
+    "analyzing":  2,
+    "done":      24,
+    "error":      0
+  }
+}
+```
+
+**Regra importante:** o endpoint **nunca sobrescreve** um `cue_in_ms` já definido pelo operador, mesmo que seja diferente do valor que o `silencedetect` detectaria. O valor manual tem precedência absoluta.
+
+---
+
+### 8.4 Endpoint existente impactado — GET /v1/tracks/:id
 
 **Descrição:** Adiciona os campos de cue points na resposta.
 
@@ -655,7 +708,7 @@ PUT /v1/tracks/:id/cuepoints
 
 ---
 
-### 8.3 Endpoint existente impactado — GET /v1/tracks (listagem)
+### 8.5 Endpoint existente impactado — GET /v1/tracks (listagem)
 
 **Descrição:** Adiciona coluna `intro_ms` na listagem para exibição na coluna "Intro" do catálogo.
 
@@ -674,7 +727,7 @@ PUT /v1/tracks/:id/cuepoints
 
 ---
 
-### 8.4 Endpoints existentes impactados — enqueue / schedule
+### 8.6 Endpoints existentes impactados — enqueue / schedule
 
 **Endpoints:** `POST /v1/queue/enqueue`, `GET /v1/schedule/generate`, `GET /v1/hotkeys/profile/:id`
 
@@ -695,7 +748,7 @@ PUT /v1/tracks/:id/cuepoints
 
 ---
 
-### 8.5 Playout Engine — command types impactados
+### 8.7 Playout Engine — command types impactados
 
 **`QueueItemInput`** em `playout/internal/commands/types.go`:
 
@@ -711,7 +764,7 @@ type QueueItemInput struct {
 
 ---
 
-### 8.6 Novo evento WebSocket — IntroCountdown
+### 8.8 Novo evento WebSocket — IntroCountdown
 
 **Evento:** `cart.intro_countdown` / `playback.intro_countdown`
 
@@ -990,7 +1043,24 @@ ws.on('ws-message', (evt) => {
 
 ---
 
-### Fase 4 — Propagação de cue points nos payloads de enqueue (Library Service + Player)
+### Fase 4 — Re-análise retroativa de cue_in para faixas existentes (Library Service)
+
+**Objetivo:** preencher `cue_in_ms` automaticamente em faixas que já estavam no catálogo antes da feature, sem exigir reimportação.
+
+1. Implementar worker de re-análise retroativa — varre faixas com `cue_in_ms IS NULL` e roda `silencedetect` em cada uma.
+2. Adicionar tabela ou coluna de status de re-análise (ex.: `cue_in_status TEXT DEFAULT 'pending'`) para acompanhamento de progresso.
+3. Criar handler `POST /v1/tracks/reanalyze-cuepoints` que enfileira as faixas pendentes e inicia o worker.
+4. Criar handler `GET /v1/tracks/reanalyze-cuepoints/status` que retorna contagens por status.
+5. Registrar as rotas no `server.go`.
+6. Garantir que o worker **nunca sobrescreve** `cue_in_ms` já definido (NULL check antes de gravar).
+7. Escrever testes para o handler e para a regra de não-sobrescrita.
+8. `go test ./... && go vet ./...`
+
+**Entregável:** operador pode disparar `POST /v1/tracks/reanalyze-cuepoints` após o deploy e acompanhar o progresso via `GET /v1/tracks/reanalyze-cuepoints/status`. Faixas existentes recebem `cue_in_ms` automaticamente; valores definidos manualmente são preservados.
+
+---
+
+### Fase 5 — Propagação de cue points nos payloads de enqueue (Library Service + Player)
 
 **Objetivo:** todos os endpoints que produzem itens para reprodução devem incluir os cue points.
 
@@ -1005,7 +1075,7 @@ ws.on('ws-message', (evt) => {
 
 ---
 
-### Fase 5 — Uso dos cue points no Playout Engine
+### Fase 6 — Uso dos cue points no Playout Engine
 
 **Objetivo:** engine usa cue_in para seek, outro para crossfade e cue_out para parada.
 
@@ -1022,7 +1092,7 @@ ws.on('ws-message', (evt) => {
 
 ---
 
-### Fase 6 — Editor visual de cue points no Player (UI)
+### Fase 7 — Editor visual de cue points no Player (UI)
 
 **Objetivo:** operador pode visualizar e editar marcadores via waveform.
 
@@ -1039,7 +1109,7 @@ ws.on('ws-message', (evt) => {
 
 ---
 
-### Fase 7 — Countdown de intro no Now Playing
+### Fase 8 — Countdown de intro no Now Playing
 
 **Objetivo:** operador vê o contador regressivo em tempo real no painel de transmissão.
 
@@ -1054,7 +1124,7 @@ ws.on('ws-message', (evt) => {
 
 ---
 
-### Fase 8 — Testes, ajustes e PR
+### Fase 9 — Testes, ajustes e PR
 
 **Objetivo:** garantir qualidade e integrar na main.
 
