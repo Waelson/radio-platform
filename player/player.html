@@ -5433,7 +5433,7 @@ async function _loadCueWaveform(filePath) {
     const chs   = [];
     for (let c = 0; c < numCh; c++) chs.push(decoded.getChannelData(c));
     const len  = chs[0].length;
-    const N    = 300;
+    const N    = 8000;
     const step = Math.max(1, Math.floor(len / N));
     const peaks = new Array(N);
     for (let i = 0; i < N; i++) {
@@ -5514,51 +5514,42 @@ function _drawCueWaveform() {
   const iE   = Math.min(N, Math.ceil(vEnd * (N - 1)) + 1);
   const mid  = cssH / 2;
 
-  // Build the waveform polygon path — only peaks within the visible window.
-  // Normalize by (N-1) so peak 0 maps to fraction 0.0 and peak N-1 maps to 1.0,
-  // ensuring the waveform fills the full canvas edge-to-edge.
-  const Nm1 = Math.max(1, N - 1);
-  function buildPath() {
-    ctx.beginPath();
+  // Draw waveform as individual vertical bars (one per peak).
+  // Normalize by (N-1) so peak 0 → fraction 0.0 and peak N-1 → fraction 1.0.
+  const Nm1       = Math.max(1, N - 1);
+  const pxPerPeak = innerW / Math.max(1, iE - iS);
+  const barW      = Math.max(1, pxPerPeak * 0.9);
+
+  function drawBars(fillStyle) {
+    ctx.fillStyle = fillStyle;
     for (let i = iS; i < iE; i++) {
       const x   = CUE_WAVE_PAD + ((i / Nm1 - vStart) / viewSpan) * innerW;
-      const amp = _cueWaveformPeaks[i] * (mid - 2);
-      if (i === iS) ctx.moveTo(x, mid - amp);
-      else          ctx.lineTo(x, mid - amp);
+      const amp = Math.max(1, Math.round(_cueWaveformPeaks[i] * (mid - 2)));
+      ctx.fillRect(Math.round(x - barW / 2), Math.round(mid - amp), Math.ceil(barW), amp * 2);
     }
-    for (let i = iE - 1; i >= iS; i--) {
-      const x   = CUE_WAVE_PAD + ((i / Nm1 - vStart) / viewSpan) * innerW;
-      const amp = _cueWaveformPeaks[i] * (mid - 2);
-      ctx.lineTo(x, mid + amp);
-    }
-    ctx.closePath();
   }
 
-  // Draw played portion (clipped left)
+  // Played portion (clipped left of playhead)
   if (playedX > 0) {
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, playedX, cssH); ctx.clip();
-    buildPath();
     const gp = ctx.createLinearGradient(0, 0, 0, cssH);
-    gp.addColorStop(0,   'rgba(255,255,255,0.70)');
-    gp.addColorStop(0.5, 'rgba(255,255,255,0.15)');
-    gp.addColorStop(1,   'rgba(255,255,255,0.70)');
-    ctx.fillStyle = gp;
-    ctx.fill();
+    gp.addColorStop(0,   'rgba(255,255,255,0.80)');
+    gp.addColorStop(0.5, 'rgba(255,255,255,0.25)');
+    gp.addColorStop(1,   'rgba(255,255,255,0.80)');
+    drawBars(gp);
     ctx.restore();
   }
 
-  // Draw unplayed portion (clipped right)
+  // Unplayed portion (clipped right of playhead)
   if (playedX < cssW) {
     ctx.save();
     ctx.beginPath(); ctx.rect(playedX, 0, cssW - playedX, cssH); ctx.clip();
-    buildPath();
     const gu = ctx.createLinearGradient(0, 0, 0, cssH);
-    gu.addColorStop(0,   'rgba(255,255,255,0.28)');
-    gu.addColorStop(0.5, 'rgba(255,255,255,0.05)');
-    gu.addColorStop(1,   'rgba(255,255,255,0.28)');
-    ctx.fillStyle = gu;
-    ctx.fill();
+    gu.addColorStop(0,   'rgba(100,181,246,0.90)');
+    gu.addColorStop(0.5, 'rgba(100,181,246,0.35)');
+    gu.addColorStop(1,   'rgba(100,181,246,0.90)');
+    drawBars(gu);
     ctx.restore();
   }
 
