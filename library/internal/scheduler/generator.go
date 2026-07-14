@@ -56,6 +56,10 @@ type TrackRef struct {
 	Type         string   // MUSIC|VINHETA|JINGLE|SPOT
 	CategoryID   string   // may be empty; used for separation checks
 	LoudnessLUFS *float64 // nil when not yet analyzed
+	CueInMS      *int64
+	IntroMS      *int64
+	OutroMS      *int64
+	CueOutMS     *int64
 }
 
 // SeparationQuerier retrieves the active separation rules.

@@ -401,6 +401,19 @@ input[type=range].vol-slider:disabled {
   margin-right: 7px;
   vertical-align: middle;
 }
+/* Intro countdown row */
+.np5-intro-row { display: none; border-top: 1px solid rgba(255,255,255,0.06); }
+.np5-intro-row.intro-visible { display: flex; }
+.np5-intro-icon { font-size: 14px; width: 26px; text-align: center; flex-shrink: 0; }
+.np5-intro-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; min-width: 52px; flex-shrink: 0; }
+.np5-intro-value { font-size: 15px; font-weight: 800; letter-spacing: 0.06em; font-family: 'Courier New', monospace; }
+.np5-intro-row.intro-ok   .np5-intro-icon,
+.np5-intro-row.intro-ok   .np5-intro-label,
+.np5-intro-row.intro-ok   .np5-intro-value  { color: #f5c542; }
+.np5-intro-row.intro-urgent .np5-intro-icon,
+.np5-intro-row.intro-urgent .np5-intro-label,
+.np5-intro-row.intro-urgent .np5-intro-value { color: #ef5350; animation: intro-blink 0.6s ease-in-out infinite alternate; }
+@keyframes intro-blink { from { opacity: 1; } to { opacity: 0.45; } }
 
 /* Right column: title + artist */
 .np5-title-area {
@@ -789,7 +802,7 @@ input[type=range].vol-slider:disabled {
 /* ── Advanced Search Modal ─────────────────────────────────────────────── */
 .adv-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 900; display: none; }
 .adv-backdrop.open { display: block; }
-.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1060px; height: 720px; background: var(--bg); border: 0.5px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: none; overflow: hidden; }
+.adv-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1160px; height: 720px; background: var(--bg); border: 0.5px solid var(--cyan); border-radius: 6px; display: flex; flex-direction: column; z-index: 901; box-shadow: none; overflow: hidden; }
 .adv-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(32,230,255,0.15); background: rgba(32,230,255,0.05); flex-shrink: 0; cursor: move; user-select: none; }
 .adv-modal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); }
 .catalog-modal-title { font-size: 16px; font-weight: 700; color: #20e6ff; text-transform: uppercase; letter-spacing: 0.01em; }
@@ -820,6 +833,8 @@ input[type=range].vol-slider:disabled {
 .adv-td-title { font-size: 16px; font-weight: 700; color: #e8fbfb; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adv-td-artist, .adv-td-album { font-size: 16px; font-weight: 700; color: #e8fbfb; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adv-td-dur { font-size: 16px; font-weight: 700; color: #e8fbfb; white-space: nowrap; }
+.adv-td-intro { font-size: 16px; font-weight: 700; color: #f5c542; white-space: nowrap; font-family: 'Courier New', monospace; letter-spacing: 0.04em; text-align: center; }
+.adv-td-intro:empty::after, .adv-td-intro:contains('—') { color: var(--text-dim); }
 .adv-type-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .adv-type-badge.music    { background: rgba(0,188,212,0.15); color: var(--cyan); }
 .adv-type-badge.vinheta  { background: rgba(156,39,176,0.2); color: #ce93d8; }
@@ -831,7 +846,77 @@ input[type=range].vol-slider:disabled {
 .adv-td-actions button:not(.lib-cue-btn):not(.lib-enqueue-btn):hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-row--previewing td { background: rgba(0,188,212,0.07) !important; }
 .adv-row--previewing .adv-td-actions button:first-child:not(.lib-cue-btn) { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.adv-row--selected td { background: rgba(45,216,255,0.05) !important; outline: 1px solid rgba(45,216,255,0.22); outline-offset: -1px; }
 .adv-empty { padding: 40px; text-align: center; color: var(--text-dim); font-size: 13px; }
+
+/* ─── Lib Marker Button (cue editor trigger) ─────────────────── */
+.lib-marker-btn { background: transparent; border: none; padding: 0; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s; color: rgba(220,239,242,0.65); }
+.lib-marker-btn svg { height: 15px; width: 15px; }
+.lib-marker-btn:hover { background: rgba(220,239,242,0.05); color: #fff; }
+
+/* ─── Cue Editor Modal ───────────────────────────────────────── */
+.cue-editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 1200; display: none; align-items: center; justify-content: center; }
+.cue-editor-overlay.open { display: flex; }
+.cue-editor-modal { background: #091520; border: 1px solid rgba(45,216,255,0.35); border-radius: 14px; width: 680px; max-width: 96vw; padding: 22px 24px 20px; box-shadow: 0 16px 48px rgba(0,0,0,0.7), 0 0 28px rgba(45,216,255,0.08); display: flex; flex-direction: column; gap: 16px; }
+.cue-ed-header { display: flex; align-items: flex-start; justify-content: space-between; }
+.cue-ed-title  { font-size: 15px; font-weight: 800; color: #e8fbfb; letter-spacing: 0.03em; }
+.cue-ed-artist { font-size: 12px; color: #77a4a3; font-weight: 600; margin-top: 3px; }
+.cue-ed-close  { background: none; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; line-height: 1; padding: 0 2px; }
+.cue-ed-close:hover { color: #fff; }
+/* Timeline / Waveform */
+.cue-ed-timeline-wrap { position: relative; height: 130px; background: rgba(6,18,24,0.90); border: 1px solid rgba(45,216,255,0.18); border-radius: 6px; cursor: crosshair; overflow: hidden; user-select: none; }
+.cue-ed-timeline-wrap.cue-selecting { cursor: col-resize; }
+.cue-ed-timeline-wrap.cue-panning  { cursor: grab; }
+.cue-ed-timeline-wrap.cue-panning-active { cursor: grabbing; }
+.cue-ed-timeline-wrap canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; }
+.cue-ed-timeline-head { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 5px rgba(255,255,255,0.9); pointer-events: none; transform: translateX(-50%); z-index: 2; }
+.cue-ed-timeline-pin { position: absolute; top: 0; bottom: 0; width: 2px; background: repeating-linear-gradient(to bottom, #f5c542 0 6px, transparent 6px 10px); pointer-events: none; transform: translateX(-50%); z-index: 3; display: none; }
+.cue-ed-pin-label { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: 700; letter-spacing: 0.04em; color: #f5c542; background: rgba(9,21,32,0.85); padding: 1px 4px; border-radius: 3px; white-space: nowrap; pointer-events: none; }
+.cue-ed-marker { position: absolute; top: -4px; bottom: -4px; width: 2px; pointer-events: none; border-radius: 2px; }
+.cue-ed-marker.draggable { pointer-events: auto; cursor: ew-resize; }
+.cue-ed-marker.draggable::before { content: ''; position: absolute; top: 0; bottom: 0; left: -6px; right: -6px; }
+.cue-ed-marker.dragging { box-shadow: 0 0 0 1px rgba(255,255,255,0.6), 0 0 12px rgba(255,255,255,0.4) !important; }
+.cue-ed-marker.cue-in  { background: #4fc3f7; box-shadow: 0 0 6px rgba(79,195,247,0.8); }
+.cue-ed-marker.intro   { background: #81c784; box-shadow: 0 0 6px rgba(129,199,132,0.8); }
+.cue-ed-marker.outro   { background: #ffb74d; box-shadow: 0 0 6px rgba(255,183,77,0.8); }
+.cue-ed-marker.cue-out { background: #ef5350; box-shadow: 0 0 6px rgba(239,83,80,0.8); }
+.cue-ed-times { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; font-family: 'Courier New', monospace; color: #fff; }
+.cue-ed-zoom { display: flex; align-items: center; gap: 5px; }
+.cue-ed-zoom button { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); color: #ccc; font-size: 13px; font-weight: 700; width: 22px; height: 18px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+.cue-ed-zoom button:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.cue-ed-zoom-level { font-size: 11px; color: #fff; min-width: 24px; text-align: center; }
+/* Marker panels */
+.cue-ed-markers-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+.cue-ed-marker-panel { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cue-ed-marker-panel.panel-cue-in  { border-color: rgba(79,195,247,0.35); }
+.cue-ed-marker-panel.panel-intro   { border-color: rgba(129,199,132,0.35); }
+.cue-ed-marker-panel.panel-outro   { border-color: rgba(255,183,77,0.35); }
+.cue-ed-marker-panel.panel-cue-out { border-color: rgba(239,83,80,0.35); }
+.cue-ed-marker-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.panel-cue-in  .cue-ed-marker-label { color: #4fc3f7; }
+.panel-intro   .cue-ed-marker-label { color: #81c784; }
+.panel-outro   .cue-ed-marker-label { color: #ffb74d; }
+.panel-cue-out .cue-ed-marker-label { color: #ef5350; }
+.cue-ed-marker-time { font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #e8fbfb; letter-spacing: 0.04em; min-height: 20px; }
+.cue-ed-marker-time.empty { color: var(--text-dim); font-size: 12px; }
+.cue-ed-marker-btns { display: flex; gap: 4px; }
+.cue-ed-marker-btns button { flex: 1; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 4px 2px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.04); color: var(--text); transition: background 0.1s; }
+.cue-ed-marker-btns button:hover { background: rgba(255,255,255,0.10); }
+.cue-ed-marker-btns .btn-capture { color: var(--cyan); border-color: rgba(45,216,255,0.28); }
+.cue-ed-marker-btns .btn-capture:hover { background: rgba(45,216,255,0.12); }
+.cue-ed-marker-btns .btn-clear { color: #ff6b6b; border-color: rgba(255,107,107,0.22); }
+.cue-ed-marker-btns .btn-clear:hover { background: rgba(255,107,107,0.10); }
+/* Play from buttons */
+.cue-ed-playfrom { display: flex; gap: 8px; flex-wrap: wrap; }
+.cue-ed-playfrom button { font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(45,216,255,0.22); background: rgba(45,216,255,0.06); color: var(--cyan); transition: background 0.12s; }
+.cue-ed-playfrom button:hover { background: rgba(45,216,255,0.18); }
+/* Footer */
+.cue-ed-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 14px; }
+.cue-ed-footer button { font-size: 13px; font-weight: 700; padding: 8px 22px; border-radius: 7px; cursor: pointer; }
+.cue-ed-btn-cancel { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); color: var(--text); }
+.cue-ed-btn-cancel:hover { background: rgba(255,255,255,0.10); }
+.cue-ed-btn-save { background: var(--cyan); border: none; color: #000; }
+.cue-ed-btn-save:hover { background: #5ce8ff; }
 
 /* ─── CUE Float Panel ───────────────────────────────────────── */
 .cue-float {
@@ -2178,6 +2263,11 @@ canvas.vu-canvas {
                   <span class="np5-icon">≋</span>
                   <span class="np5-label">Áudio</span>
                   <span class="np5-value" id="npSampleVal">48 kHz / Stereo</span>
+                </div>
+                <div class="np5-meta-row np5-intro-row" id="npIntroRow">
+                  <span class="np5-intro-icon">▶</span>
+                  <span class="np5-intro-label">Intro</span>
+                  <span class="np5-intro-value" id="npIntroVal">00:00</span>
                 </div>
               </div>
 
@@ -3799,6 +3889,8 @@ function _renderPreviewPanel() {
 
   // Always update CUE float panel (used when preview is triggered from queue)
   _updateCueFloat();
+  // Update cue editor timeline if open
+  _renderCueEditor();
 }
 
 async function previewPlayOrResume() {
@@ -3857,7 +3949,8 @@ function handleEvent({ type, payload }) {
   switch (type) {
     case 'VUMeter':            applyVU(payload); break;
     case 'AudioHealthChanged': onHealth(payload); break;
-    case 'NowPlayingChanged':  onNowPlaying(payload); break;
+    case 'NowPlayingChanged':  onNowPlaying(payload); clearIntroCountdown(); break;
+    case 'IntroCountdown':     onIntroCountdown(payload); break;
     case 'ProgressChanged':    onProgress(payload); break;
     case 'PlayerStateChanged': onStateChange(payload); break;
     case 'EngineStarted':      onEngineStarted(payload); break;
@@ -3869,7 +3962,7 @@ function handleEvent({ type, payload }) {
     case 'PreviewVolumeChanged':  if (!_draggingPreview) setVolDisplay('preview', payload.level); break;
     case 'CartVolumeChanged':     if (!_draggingCart)    setVolDisplay('cart',    payload.level); break;
     case 'ItemStarted':        _assistWaiting = false; _enginePlaying = true;  setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); { const t = document.getElementById('assistBannerTitle'); if (t) t.textContent = 'Modo ASSIST ativado'; } break;
-    case 'ItemFinished':       _enginePlaying = false; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); break;
+    case 'ItemFinished':       _enginePlaying = false; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); clearIntroCountdown(); break;
     case 'BreakStarted':       showToast(true, '🎙 Bloco: ' + (payload.break_title || '')); break;
     case 'BreakEnded':         showToast(true, '✓ Bloco encerrado: ' + (payload.break_title || '')); clearBreakBanner(); break;
     case 'SpotStarted':        updateBreakBanner(payload); break;
@@ -3995,6 +4088,37 @@ const _STATUS_PT = {
   'ERROR':    'ERRO',
 };
 function statusLabel(s) { return _STATUS_PT[(s || '').toUpperCase()] || (s || '—').toUpperCase(); }
+
+// ─── Intro Countdown ──────────────────────────────────────────────────────────
+function _msToMMSS(ms) {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function onIntroCountdown(p) {
+  if (!p) return;
+  const row = document.getElementById('npIntroRow');
+  const val = document.getElementById('npIntroVal');
+  if (!row || !val) return;
+  if (p.remaining_ms <= 0) { clearIntroCountdown(); return; }
+  val.textContent = _msToMMSS(p.remaining_ms);
+  row.classList.add('intro-visible');
+  if (p.remaining_ms <= 5000) {
+    row.classList.add('intro-urgent');
+    row.classList.remove('intro-ok');
+  } else {
+    row.classList.add('intro-ok');
+    row.classList.remove('intro-urgent');
+  }
+}
+
+function clearIntroCountdown() {
+  const row = document.getElementById('npIntroRow');
+  if (!row) return;
+  row.classList.remove('intro-visible', 'intro-ok', 'intro-urgent');
+}
 
 function onNowPlaying(p) {
   if (!p || !p.title) { setIdle(); return; }
@@ -4599,6 +4723,7 @@ function advModalOpen() {
 }
 
 function advModalClose() {
+  closeCueEditor();
   // Always stop preview if active, regardless of panel index state
   _advClosePreviewPanel();
   if (_preview.state !== 'idle') previewStop();
@@ -4662,30 +4787,38 @@ function advRender() {
 
   const rows = _advTracks.map((t, i) => {
     const badgeClass = { MUSIC:'music', VINHETA:'vinheta', JINGLE:'jingle', SPOT:'spot', EFEITOS:'efeitos' }[t.type] || '';
-    return `<tr ondblclick="advEnqueue(${i})" title="Duplo clique para enfileirar">
+    const isSelected = t.id && t.id === _selectedTrackId;
+    const introTxt   = t.cue_in_ms  != null ? _msToMMSS(t.cue_in_ms)  : '—';
+    const cueOutTxt  = t.cue_out_ms != null ? _msToMMSS(t.cue_out_ms) : '—';
+    return `<tr id="adv-row-${i}" ondblclick="advEnqueue(${i})" onclick="advSelectRow(${i})" title="Duplo clique para enfileirar"${isSelected ? ' class="adv-row--selected"' : ''}>
       <td class="adv-td-title" title="${escHtml(t.title || '')}">${escHtml(t.title || '—')}</td>
       <td class="adv-td-artist" title="${escHtml(t.artist || '')}">${escHtml(t.artist || '—')}</td>
       <td class="adv-td-album"  title="${escHtml(t.album  || '')}">${escHtml(t.album  || '—')}</td>
       <td><span class="adv-type-badge ${badgeClass}">${escHtml(t.type || '')}</span></td>
       <td class="adv-td-dur">${msToDuration(t.duration_ms || 0)}</td>
+      <td class="adv-td-intro">${introTxt}</td>
+      <td class="adv-td-intro">${cueOutTxt}</td>
       <td class="adv-td-actions">
-        <button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" id="adv-cue-${i}" onclick="advTogglePreview(${i})"><img src="icons/cue_preview.svg"></button>
-        <button class="lib-enqueue-btn tip-left" data-tooltip="Adicionar à fila" onclick="advEnqueue(${i})"><img src="icons/add_audio_queue.svg"></button>
+        <button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" id="adv-cue-${i}" onclick="event.stopPropagation();advTogglePreview(${i})"><img src="icons/cue_preview.svg"></button>
+        <button class="lib-marker-btn tip-left" data-tooltip="Editor de cue points (M)" onclick="event.stopPropagation();advOpenCueEditor(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></button>
+        <button class="lib-enqueue-btn tip-left" data-tooltip="Adicionar à fila" onclick="event.stopPropagation();advEnqueue(${i})"><img src="icons/add_audio_queue.svg"></button>
       </td>
     </tr>`;
   }).join('');
 
   resultsEl.innerHTML = `<table class="adv-table">
     <colgroup>
-      <col style="width:28%">
-      <col style="width:20%">
-      <col style="width:20%">
-      <col style="width:10%">
+      <col style="width:26%">
+      <col style="width:18%">
+      <col style="width:11%">
+      <col style="width:9%">
       <col style="width:8%">
-      <col style="width:14%">
+      <col style="width:7%">
+      <col style="width:10%">
+      <col style="width:11%">
     </colgroup>
     <thead><tr>
-      <th>Título</th><th>Artista</th><th>Álbum</th><th>Tipo</th><th>Duração</th><th>Ações</th>
+      <th>Título</th><th>Artista</th><th>Álbum</th><th>Tipo</th><th>Duração</th><th style="text-align:center">Cue In</th><th style="text-align:center">Cue Out</th><th>Ações</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -4707,6 +4840,7 @@ function advClear() {
   _advPage   = 1;
   _advTotal  = 0;
   _advTracks = [];
+  _selectedTrackId = null;
   document.getElementById('advResults').innerHTML               = '<div class="adv-empty">Preencha os filtros e clique em Buscar</div>';
   document.getElementById('advResultsHeader').style.display     = 'none';
   document.getElementById('advPagination').style.display        = 'none';
@@ -4817,6 +4951,649 @@ async function advTogglePreview(idx) {
   _advOpenPreviewPanel(idx);
 }
 
+// ─── Cue Editor (Phase 7) ────────────────────────────────────────────────────
+let _selectedTrackId = null;
+const _cueEditor = {
+  open: false, track: null,
+  cueInMS: null, introMS: null, outroMS: null, cueOutMS: null,
+};
+let _cueWaveZoom   = 1;    // 1 = full view, 2 = 2×, …, 16×
+let _cueWaveOffset = 0;    // visible window start, as fraction of total duration (0..1)
+
+// Horizontal padding (px) left and right inside the timeline — gives room to
+// select regions near the very start and end of the waveform.
+const CUE_WAVE_PAD = 14;
+
+// Converts a clientX position into a 0..1 ratio inside the padded waveform area.
+function _cueRatio(clientX, rect) {
+  const inner = rect.width - 2 * CUE_WAVE_PAD;
+  return Math.max(0, Math.min(1, (clientX - rect.left - CUE_WAVE_PAD) / inner));
+}
+
+function _clampCueWaveOffset() {
+  const span = 1 / _cueWaveZoom;
+  _cueWaveOffset = Math.max(0, Math.min(1 - span, _cueWaveOffset));
+}
+
+function cueWaveZoomIn(e) {
+  if (_cueWaveZoom >= 16) return;
+  const old = _cueWaveZoom;
+  _cueWaveZoom = Math.min(16, _cueWaveZoom * 2);
+  _centerZoomOnEvent(e, old);
+  _clampCueWaveOffset();
+  _updateZoomLabel();
+  _renderCueEditor();
+}
+
+function cueWaveZoomOut(e) {
+  if (_cueWaveZoom <= 1) return;
+  const old = _cueWaveZoom;
+  _cueWaveZoom = Math.max(1, _cueWaveZoom / 2);
+  _centerZoomOnEvent(e, old);
+  _clampCueWaveOffset();
+  _updateZoomLabel();
+  _renderCueEditor();
+}
+
+function _centerZoomOnEvent(e, oldZoom) {
+  // Keep the point under the mouse (or playhead if no event) stable after zoom
+  const tl = document.getElementById('cueEdTimeline');
+  if (!tl) return;
+  const rect  = tl.getBoundingClientRect();
+  const ratio = e ? _cueRatio(e.clientX, rect) : 0.5;
+  const anchorFrac  = _cueWaveOffset + ratio / oldZoom;
+  _cueWaveOffset    = anchorFrac - ratio / _cueWaveZoom;
+}
+
+function _updateZoomLabel() {
+  const el = document.getElementById('cueEdZoomLevel');
+  if (el) el.textContent = _cueWaveZoom + '×';
+}
+
+// Wheel-to-zoom on the timeline
+(function() {
+  const tl = document.getElementById('cueEdTimeline');
+  if (!tl) return;
+  tl.addEventListener('wheel', function(e) {
+    if (!_cueEditor.open) return;
+    e.preventDefault();
+    if (e.deltaY < 0) cueWaveZoomIn(e);
+    else              cueWaveZoomOut(e);
+  }, { passive: false });
+})();
+
+function advSelectRow(idx) {
+  document.querySelectorAll('.adv-table tbody tr').forEach(r => r.classList.remove('adv-row--selected'));
+  const t = _advTracks[idx];
+  if (!t) { _selectedTrackId = null; return; }
+  _selectedTrackId = t.id;
+  const rows = document.querySelectorAll('.adv-table tbody tr:not(#adv-preview-row)');
+  if (rows[idx]) rows[idx].classList.add('adv-row--selected');
+}
+
+function advOpenCueEditor(idx) {
+  const t = _advTracks[idx];
+  if (!t) return;
+  advSelectRow(idx);
+  openCueEditor(t);
+}
+
+function openCueEditor(track) {
+  _cueEditor.open    = true;
+  _cueEditor.track   = track;
+  _cueEditor.cueInMS  = track.cue_in_ms  != null ? track.cue_in_ms  : null;
+  _cueEditor.introMS  = track.intro_ms   != null ? track.intro_ms   : null;
+  _cueEditor.outroMS  = track.outro_ms   != null ? track.outro_ms   : null;
+  _cueEditor.cueOutMS = track.cue_out_ms != null ? track.cue_out_ms : null;
+
+  document.getElementById('cueEdTitle').textContent  = track.title  || '—';
+  document.getElementById('cueEdArtist').textContent = track.artist || '—';
+
+  // Prime preview state so timeline knows the duration (no auto-play)
+  _preview.path       = track.path || '';
+  _preview.durationMS = track.duration_ms || 0;
+  _preview.positionMS = 0;
+
+  _cueWaveZoom   = 1;
+  _cueWaveOffset = 0;
+  _updateZoomLabel();
+  document.getElementById('cueEditorOverlay').classList.add('open');
+  // rAF ensures the modal has been laid out before we read canvas dimensions
+  requestAnimationFrame(() => {
+    _renderCueEditor();
+    _loadCueWaveform(track.path);
+  });
+}
+
+let _cuePinMS = null;
+
+function closeCueEditor() {
+  if (!_cueEditor.open) return;
+  _cueEditor.open         = false;
+  _cueEditor.track        = null;
+  _cueWaveformPeaks       = [];
+  _cueWaveformLoading     = false;
+  _cueWaveformDurMS       = 0;
+  _cueWaveZoom            = 1;
+  _cueWaveOffset          = 0;
+  _cueSel.active          = false;
+  _markerDrag.active      = false;
+  _cuePan.active          = false;
+  _cuePinMS               = null;
+  document.getElementById('cueEditorOverlay').classList.remove('open');
+  if (_preview.state !== 'idle') previewStop();
+}
+
+function _renderCueEditor() {
+  if (!_cueEditor.open) return;
+  const s   = _preview;
+  // Use the decoded audio buffer duration as the timeline reference when available,
+  // falling back to the engine-reported duration. This prevents the playhead from
+  // drifting past the right edge due to small differences between ffprobe and WebAudio.
+  const dur = _cueWaveformDurMS > 0 ? _cueWaveformDurMS
+            : s.durationMS > 0      ? s.durationMS
+            : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
+  const pos = s.positionMS || 0;
+
+  document.getElementById('cueEdPosTime').textContent = _msToCueTime(pos);
+  document.getElementById('cueEdDurTime').textContent = dur > 0 ? _msToCueTime(dur) : '--:--.---';
+  _drawCueWaveform();
+
+  // Map a 0..1 fraction to canvas % inside the visible zoom window, accounting for padding
+  const viewSpan = 1 / _cueWaveZoom;
+  const tlW      = (document.getElementById('cueEdTimeline') || {}).offsetWidth || 600;
+  const padPct   = CUE_WAVE_PAD / tlW * 100;
+  function fracToCanvasPct(frac) {
+    return padPct + ((frac - _cueWaveOffset) / viewSpan) * (100 - 2 * padPct);
+  }
+  function inView(frac) {
+    return frac >= _cueWaveOffset && frac <= _cueWaveOffset + viewSpan;
+  }
+
+  // Playhead
+  const head    = document.getElementById('cueEdHead');
+  const posFrac = dur > 0 ? pos / dur : 0;
+  if (dur > 0 && inView(posFrac)) {
+    head.style.left    = fracToCanvasPct(posFrac) + '%';
+    head.style.display = 'block';
+  } else {
+    head.style.display = 'none';
+  }
+
+  // Capture pin (double-click marker)
+  const pin     = document.getElementById('cueEdPin');
+  const pinFrac = (_cuePinMS != null && dur > 0) ? _cuePinMS / dur : null;
+  if (pinFrac != null && inView(pinFrac)) {
+    pin.style.left    = fracToCanvasPct(pinFrac) + '%';
+    pin.style.display = 'block';
+  } else {
+    pin.style.display = 'none';
+  }
+
+  const defs = [
+    { key: 'cueInMS',  markId: 'cueEdMarkCueIn',  valId: 'cueEdValCueIn'  },
+    { key: 'introMS',  markId: 'cueEdMarkIntro',   valId: 'cueEdValIntro'  },
+    { key: 'outroMS',  markId: 'cueEdMarkOutro',   valId: 'cueEdValOutro'  },
+    { key: 'cueOutMS', markId: 'cueEdMarkCueOut',  valId: 'cueEdValCueOut' },
+  ];
+  for (const d of defs) {
+    const ms   = _cueEditor[d.key];
+    const el   = document.getElementById(d.markId);
+    const val  = document.getElementById(d.valId);
+    const frac = (ms != null && dur > 0) ? ms / dur : null;
+    if (frac != null && inView(frac)) {
+      el.style.left    = fracToCanvasPct(frac) + '%';
+      el.style.display = 'block';
+      el.classList.add('draggable');
+    } else {
+      el.style.display = 'none';
+      el.classList.remove('draggable');
+    }
+    if (ms != null) {
+      val.textContent = _msToCueTime(ms);
+      val.classList.remove('empty');
+    } else {
+      val.textContent = '—';
+      val.classList.add('empty');
+    }
+  }
+}
+
+function cueEditorCapture(field) {
+  const map = { cueIn: 'cueInMS', intro: 'introMS', outro: 'outroMS', cueOut: 'cueOutMS' };
+  // Prefer pin position (double-click); fall back to playback position
+  _cueEditor[map[field]] = _cuePinMS != null ? _cuePinMS : (_preview.positionMS || 0);
+  _cuePinMS = null; // clear pin after capture
+  _renderCueEditor();
+}
+
+function cueEditorClear(field) {
+  const map = { cueIn: 'cueInMS', intro: 'introMS', outro: 'outroMS', cueOut: 'cueOutMS' };
+  _cueEditor[map[field]] = null;
+  _renderCueEditor();
+}
+
+async function cueEditorPlayFrom(field) {
+  if (!_cueEditor.track) return;
+  const map = { cueIn: 'cueInMS', intro: 'introMS', outro: 'outroMS' };
+  const ms  = _cueEditor[map[field]] != null ? _cueEditor[map[field]] : 0;
+  _preview.path       = _cueEditor.track.path || '';
+  _preview.durationMS = _cueEditor.track.duration_ms || 0;
+  try {
+    if (_preview.state === 'idle') {
+      await fetch(API_URL + '/v1/preview/play', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ path: _preview.path, seek_ms: ms }),
+      });
+    } else {
+      await fetch(API_URL + '/v1/preview/seek', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ position_ms: ms }),
+      });
+    }
+  } catch(e) { console.warn('[cueEditor] playFrom error', e); }
+}
+
+async function cueEditorSeekClick(event) {
+  if (!_cueEditor.track) return;
+  const dur = _preview.durationMS > 0 ? _preview.durationMS : (_cueEditor.track.duration_ms || 0);
+  if (dur <= 0) return;
+  const rect  = event.currentTarget.getBoundingClientRect();
+  const ratio = _cueRatio(event.clientX, rect);
+  // Account for zoom: ratio maps into the visible window, not the full duration
+  const frac  = _cueWaveOffset + ratio / _cueWaveZoom;
+  const posMS = Math.round(Math.max(0, Math.min(1, frac)) * dur);
+  try {
+    if (_preview.state === 'idle') {
+      _preview.path       = _cueEditor.track.path || '';
+      _preview.durationMS = dur;
+      await fetch(API_URL + '/v1/preview/play', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ path: _preview.path, seek_ms: posMS }),
+      });
+    } else {
+      await fetch(API_URL + '/v1/preview/seek', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ position_ms: posMS }),
+      });
+    }
+  } catch(e) { console.warn('[cueEditor] seekClick error', e); }
+}
+
+async function cueEditorSave() {
+  const t = _cueEditor.track;
+  if (!t) return;
+  const body = {
+    cue_in_ms:  _cueEditor.cueInMS  ?? null,
+    intro_ms:   _cueEditor.introMS  ?? null,
+    outro_ms:   _cueEditor.outroMS  ?? null,
+    cue_out_ms: _cueEditor.cueOutMS ?? null,
+  };
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/tracks/' + t.id + '/cuepoints', {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // Update local cache so re-renders reflect new values
+    const idx = _advTracks.findIndex(x => x.id === t.id);
+    if (idx >= 0) Object.assign(_advTracks[idx], body);
+    showToast(true, 'Cue points salvos');
+    closeCueEditor();
+  } catch(e) {
+    showToast(false, 'Erro ao salvar: ' + e.message);
+  }
+}
+
+// ─── Marker drag ──────────────────────────────────────────────────────────────
+const _fieldKeyMap = { cueIn: 'cueInMS', intro: 'introMS', outro: 'outroMS', cueOut: 'cueOutMS' };
+let _markerDrag = { active: false, field: null };
+
+function cueMarkerDragStart(e, field) {
+  e.stopPropagation(); // prevent timeline's own mousedown
+  e.preventDefault();
+  const key = _fieldKeyMap[field];
+  if (!_cueEditor.track || _cueEditor[key] == null) return;
+  _markerDrag = { active: true, field: key };
+  const el = e.currentTarget;
+  el.classList.add('dragging');
+  document.getElementById('cueEdTimeline').classList.add('cue-selecting');
+}
+
+// ─── Double-click pin (capture target) ────────────────────────────────────────
+function cueTimelineDblClick(e) {
+  if (!_cueEditor.track) return;
+  const dur = _preview.durationMS > 0 ? _preview.durationMS : (_cueEditor.track.duration_ms || 0);
+  if (dur <= 0) return;
+  const tl   = document.getElementById('cueEdTimeline');
+  const rect = tl.getBoundingClientRect();
+  const ratio = _cueRatio(e.clientX, rect);
+  const frac  = _cueWaveOffset + ratio / _cueWaveZoom;
+  _cuePinMS   = Math.round(Math.max(0, Math.min(1, frac)) * dur);
+  _renderCueEditor();
+}
+
+// ─── Waveform pan (Alt+drag) ──────────────────────────────────────────────────
+let _cuePan = { active: false, startX: 0, startOffset: 0 };
+
+// Show grab cursor when Alt is held over the timeline
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Alt') return;
+  const tl = document.getElementById('cueEdTimeline');
+  if (tl && _cueEditor.open && _cueWaveZoom > 1) tl.classList.add('cue-panning');
+});
+document.addEventListener('keyup', function(e) {
+  if (e.key !== 'Alt') return;
+  const tl = document.getElementById('cueEdTimeline');
+  if (tl) tl.classList.remove('cue-panning', 'cue-panning-active');
+});
+
+// ─── Waveform drag-to-select zoom ────────────────────────────────────────────
+let _cueSel = { active: false, startFrac: 0, endFrac: 0, startPx: 0 };
+
+function cueTimelineMouseDown(e) {
+  if (!_cueEditor.track) return;
+  e.preventDefault();
+  const tl = document.getElementById('cueEdTimeline');
+
+  // Alt+drag → pan (only when zoomed in)
+  if (e.altKey && _cueWaveZoom > 1) {
+    _cuePan = { active: true, startX: e.clientX, startOffset: _cueWaveOffset };
+    tl.classList.remove('cue-panning');
+    tl.classList.add('cue-panning-active');
+    return;
+  }
+
+  const rect  = tl.getBoundingClientRect();
+  const ratio = _cueRatio(e.clientX, rect);
+  const frac  = _cueWaveOffset + ratio / _cueWaveZoom;
+  _cueSel = { active: true, startFrac: frac, endFrac: frac, startPx: e.clientX };
+  tl.classList.add('cue-selecting');
+}
+
+document.addEventListener('mousemove', function(e) {
+  const tl = document.getElementById('cueEdTimeline');
+  if (!tl) return;
+
+  // Pan mode
+  if (_cuePan.active) {
+    const rect     = tl.getBoundingClientRect();
+    const deltaPx  = e.clientX - _cuePan.startX;
+    const innerW   = rect.width - 2 * CUE_WAVE_PAD;
+    const deltaFrac = -(deltaPx / innerW) / _cueWaveZoom;
+    _cueWaveOffset  = _cuePan.startOffset + deltaFrac;
+    _clampCueWaveOffset();
+    _renderCueEditor();
+    return;
+  }
+
+  const rect  = tl.getBoundingClientRect();
+  const ratio = _cueRatio(e.clientX, rect);
+
+  if (_markerDrag.active) {
+    const dur = _preview.durationMS > 0 ? _preview.durationMS
+              : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
+    if (dur > 0) {
+      const frac = _cueWaveOffset + ratio / _cueWaveZoom;
+      _cueEditor[_markerDrag.field] = Math.round(Math.max(0, Math.min(1, frac)) * dur);
+      _renderCueEditor();
+    }
+    return;
+  }
+
+  if (!_cueSel.active) return;
+  _cueSel.endFrac = _cueWaveOffset + ratio / _cueWaveZoom;
+  _drawCueWaveform();
+});
+
+document.addEventListener('mouseup', async function(e) {
+  if (_cuePan.active) {
+    _cuePan.active = false;
+    const tl = document.getElementById('cueEdTimeline');
+    if (tl) {
+      tl.classList.remove('cue-panning-active');
+      if (e.altKey && _cueWaveZoom > 1) tl.classList.add('cue-panning');
+    }
+    return;
+  }
+  if (_markerDrag.active) {
+    _markerDrag.active = false;
+    const tl = document.getElementById('cueEdTimeline');
+    if (tl) {
+      tl.classList.remove('cue-selecting');
+      tl.querySelectorAll('.cue-ed-marker.dragging').forEach(el => el.classList.remove('dragging'));
+    }
+    return;
+  }
+  if (!_cueSel.active) return;
+  _cueSel.active = false;
+  const tl = document.getElementById('cueEdTimeline');
+  if (tl) tl.classList.remove('cue-selecting');
+
+  const dragPx = Math.abs(e.clientX - _cueSel.startPx);
+  const selMin = Math.min(_cueSel.startFrac, _cueSel.endFrac);
+  const selMax = Math.max(_cueSel.startFrac, _cueSel.endFrac);
+
+  if (dragPx < 6 || selMax - selMin < 0.002) {
+    // ── Seek (clique simples) ──────────────────────────────────────────────
+    const dur   = _preview.durationMS > 0 ? _preview.durationMS
+                : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
+    const posMS = Math.round(Math.max(0, Math.min(1, _cueSel.startFrac)) * dur);
+    try {
+      if (_preview.state === 'idle') {
+        _preview.path       = _cueEditor.track.path || '';
+        _preview.durationMS = dur;
+        await fetch(API_URL + '/v1/preview/play', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: _preview.path, seek_ms: posMS }),
+        });
+      } else {
+        await fetch(API_URL + '/v1/preview/seek', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ position_ms: posMS }),
+        });
+      }
+    } catch(ex) { console.warn('[cueEditor] seek error', ex); }
+  } else {
+    // ── Zoom na região selecionada ─────────────────────────────────────────
+    const span = selMax - selMin;
+    _cueWaveOffset = selMin;
+    _cueWaveZoom   = Math.min(16, 1 / span);
+    _clampCueWaveOffset();
+    _updateZoomLabel();
+    _renderCueEditor();
+  }
+  _drawCueWaveform();
+});
+
+// ─── Waveform (Web Audio API + Canvas) ───────────────────────────────────────
+let _cueWaveformPeaks   = [];
+let _cueWaveformLoading = false;
+let _cueWaveformDurMS   = 0;   // actual decoded audio duration — used as timeline reference
+
+async function _loadCueWaveform(filePath) {
+  if (!filePath) return;
+  _cueWaveformPeaks   = [];
+  _cueWaveformLoading = true;
+  _drawCueWaveform();
+
+  try {
+    const url  = /^(file|https?):\/\//.test(filePath) ? filePath : 'file://' + filePath;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const buf  = await resp.arrayBuffer();
+
+    const ac      = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await ac.decodeAudioData(buf);
+    ac.close();
+    _cueWaveformDurMS = Math.round(decoded.duration * 1000);
+
+    // Average all available channels (stereo → L+R mean)
+    const numCh = decoded.numberOfChannels;
+    const chs   = [];
+    for (let c = 0; c < numCh; c++) chs.push(decoded.getChannelData(c));
+    const len  = chs[0].length;
+    const N    = 8000;
+    const step = Math.max(1, Math.floor(len / N));
+    const peaks = new Array(N);
+    for (let i = 0; i < N; i++) {
+      let max = 0;
+      const base = i * step;
+      for (let j = 0; j < step; j++) {
+        let sum = 0;
+        for (let c = 0; c < numCh; c++) sum += Math.abs(chs[c][base + j] || 0);
+        const avg = sum / numCh;
+        if (avg > max) max = avg;
+      }
+      peaks[i] = max;
+    }
+    const maxPk = Math.max(...peaks, 0.0001);
+    _cueWaveformPeaks = peaks.map(p => p / maxPk);
+  } catch(e) {
+    console.warn('[cueEditor] waveform load error:', e);
+    _cueWaveformPeaks = [];
+  }
+
+  _cueWaveformLoading = false;
+  _drawCueWaveform();
+}
+
+function _drawCueWaveform() {
+  const canvas = document.getElementById('cueEdCanvas');
+  if (!canvas) return;
+
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = canvas.offsetWidth;
+  const cssH = canvas.offsetHeight;
+  if (cssW === 0 || cssH === 0) return;
+
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  if (_cueWaveformLoading) {
+    ctx.fillStyle    = 'rgba(45,216,255,0.06)';
+    ctx.fillRect(0, 0, cssW, cssH);
+    ctx.fillStyle    = 'rgba(45,216,255,0.38)';
+    ctx.font         = '11px system-ui, sans-serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Carregando waveform…', cssW / 2, cssH / 2);
+    return;
+  }
+
+  if (!_cueWaveformPeaks.length) {
+    ctx.strokeStyle = 'rgba(45,216,255,0.15)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, cssH / 2);
+    ctx.lineTo(cssW, cssH / 2);
+    ctx.stroke();
+    return;
+  }
+
+  const s        = _preview;
+  const dur      = _cueWaveformDurMS > 0 ? _cueWaveformDurMS
+                 : s.durationMS > 0      ? s.durationMS
+                 : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
+  const viewSpan = 1 / _cueWaveZoom;
+  const vStart   = _cueWaveOffset;
+  const vEnd     = vStart + viewSpan;
+
+  const innerW = cssW - 2 * CUE_WAVE_PAD;
+
+  const playedFrac = dur > 0 ? s.positionMS / dur : 0;
+  const playedX    = playedFrac <= vStart ? CUE_WAVE_PAD
+                   : playedFrac >= vEnd   ? cssW - CUE_WAVE_PAD
+                   : CUE_WAVE_PAD + ((playedFrac - vStart) / viewSpan) * innerW;
+
+  const N    = _cueWaveformPeaks.length;
+  const iS   = Math.max(0, Math.floor(vStart * (N - 1)));
+  const iE   = Math.min(N, Math.ceil(vEnd * (N - 1)) + 1);
+  const mid  = cssH / 2;
+
+  // Draw waveform as individual vertical bars (one per peak).
+  // Normalize by (N-1) so peak 0 → fraction 0.0 and peak N-1 → fraction 1.0.
+  const Nm1       = Math.max(1, N - 1);
+  const pxPerPeak = innerW / Math.max(1, iE - iS);
+  const barW      = Math.max(1, pxPerPeak * 0.9);
+
+  function drawBars(fillStyle) {
+    ctx.fillStyle = fillStyle;
+    for (let i = iS; i < iE; i++) {
+      const x   = CUE_WAVE_PAD + ((i / Nm1 - vStart) / viewSpan) * innerW;
+      const amp = Math.max(1, Math.round(_cueWaveformPeaks[i] * (mid - 2)));
+      ctx.fillRect(Math.round(x - barW / 2), Math.round(mid - amp), Math.ceil(barW), amp * 2);
+    }
+  }
+
+  // Played portion (clipped left of playhead)
+  if (playedX > 0) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, playedX, cssH); ctx.clip();
+    const gp = ctx.createLinearGradient(0, 0, 0, cssH);
+    gp.addColorStop(0,   'rgba(255,255,255,0.80)');
+    gp.addColorStop(0.5, 'rgba(255,255,255,0.25)');
+    gp.addColorStop(1,   'rgba(255,255,255,0.80)');
+    drawBars(gp);
+    ctx.restore();
+  }
+
+  // Unplayed portion (clipped right of playhead)
+  if (playedX < cssW) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(playedX, 0, cssW - playedX, cssH); ctx.clip();
+    const gu = ctx.createLinearGradient(0, 0, 0, cssH);
+    gu.addColorStop(0,   'rgba(100,181,246,0.90)');
+    gu.addColorStop(0.5, 'rgba(100,181,246,0.35)');
+    gu.addColorStop(1,   'rgba(100,181,246,0.90)');
+    drawBars(gu);
+    ctx.restore();
+  }
+
+  // Center line
+  ctx.beginPath();
+  ctx.moveTo(0, mid); ctx.lineTo(cssW, mid);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth   = 1;
+  ctx.stroke();
+
+  // Selection region highlight (drag-to-zoom)
+  if (_cueSel.active) {
+    const selMin = Math.min(_cueSel.startFrac, _cueSel.endFrac);
+    const selMax = Math.max(_cueSel.startFrac, _cueSel.endFrac);
+    const sx = Math.max(0, Math.min(cssW, ((selMin - vStart) / viewSpan) * cssW));
+    const ex = Math.max(0, Math.min(cssW, ((selMax - vStart) / viewSpan) * cssW));
+    if (ex - sx > 1) {
+      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      ctx.fillRect(sx, 0, ex - sx, cssH);
+      ctx.strokeStyle = 'rgba(255,255,255,0.60)';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(sx, 0); ctx.lineTo(sx, cssH);
+      ctx.moveTo(ex, 0); ctx.lineTo(ex, cssH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _msToCueTime(ms) {
+  if (ms == null || ms < 0) return '0:00.000';
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  const ms3 = ms % 1000;
+  return m + ':' + String(s).padStart(2, '0') + '.' + String(ms3).padStart(3, '0');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function advEnqueue(idx) {
   const t = _advTracks[idx];
   if (!t) return;
@@ -4824,7 +5601,7 @@ async function advEnqueue(idx) {
     const r = await fetch(API_URL + '/v1/queue/enqueue', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [{ asset_id: t.id || '', path: t.path, type: t.type, title: t.title, artist: t.artist || '', isrc: t.isrc || '', composer: t.composer || '', publisher: t.publisher || '', duration_ms: t.duration_ms || 0, gain_db: t.gain_db || 0 }] }),
+      body: JSON.stringify({ items: [{ asset_id: t.id || '', path: t.path, type: t.type, title: t.title, artist: t.artist || '', isrc: t.isrc || '', composer: t.composer || '', publisher: t.publisher || '', duration_ms: t.duration_ms || 0, gain_db: t.gain_db || 0, cue_in_ms: t.cue_in_ms || 0, intro_ms: t.intro_ms || 0, outro_ms: t.outro_ms || 0, cue_out_ms: t.cue_out_ms || 0 }] }),
     });
     const j  = await r.json();
     const ok = j.ok !== false && j.accepted !== false;
@@ -4880,10 +5657,19 @@ advModalOpen = function() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Close on Escape
+// Close on Escape — cue editor first, then adv modal
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('advBackdrop').classList.contains('open')) {
-    advModalClose();
+  if (e.key === 'Escape') {
+    if (_cueEditor.open) { closeCueEditor(); return; }
+    if (document.getElementById('advBackdrop').classList.contains('open')) { advModalClose(); }
+  }
+  // M — open cue editor for selected catalog row
+  if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const focused = document.activeElement;
+    if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.tagName === 'SELECT')) return;
+    if (!_selectedTrackId) return;
+    const idx = _advTracks.findIndex(t => t.id === _selectedTrackId);
+    if (idx >= 0) advOpenCueEditor(idx);
   }
 });
 
@@ -5065,7 +5851,7 @@ async function drwHkPlayCart(btn) {
   try {
     const r = await fetch(API_URL + '/v1/cart/play', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist }),
+      body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist, gain_db: btn.gain_db || 0, cue_in_ms: btn.cue_in_ms || 0, intro_ms: btn.intro_ms || 0, outro_ms: btn.outro_ms || 0, cue_out_ms: btn.cue_out_ms || 0 }),
     });
     if (!r.ok) { _drwHkPendingBtnId = null; showToast(false, 'Erro ao acionar botão'); return; }
     _drwHkCartBtnId = btn.id;
@@ -5871,7 +6657,11 @@ async function rotEnqueue() {
             publisher:   item.track.publisher || '',
             duration_ms: item.track.duration_ms,
             type:        item.track.type || 'MUSIC',
-            gain_db:     item.track.gain_db || 0
+            gain_db:     item.track.gain_db || 0,
+            cue_in_ms:   item.track.cue_in_ms || 0,
+            intro_ms:    item.track.intro_ms || 0,
+            outro_ms:    item.track.outro_ms || 0,
+            cue_out_ms:  item.track.cue_out_ms || 0
           }]
         })
       });
@@ -5983,6 +6773,10 @@ async function libEnqueuePlaylist(idx) {
         artist:      it.track?.artist      || '',
         duration_ms: it.track?.duration_ms || 0,
         gain_db:     it.track?.gain_db     || 0,
+        cue_in_ms:   it.track?.cue_in_ms  || 0,
+        intro_ms:    it.track?.intro_ms    || 0,
+        outro_ms:    it.track?.outro_ms    || 0,
+        cue_out_ms:  it.track?.cue_out_ms  || 0,
       }))
       .filter(it => it.path);
     if (!items.length) { showToast(false, 'Playlist vazia ou sem arquivos indexados'); return; }
@@ -6008,10 +6802,10 @@ async function libEnqueueBreak(idx) {
     if (!data.spots || !data.spots.length) { showToast(false, 'Break sem spots cadastrados'); return; }
     const body = {
       title: data.name || b.name || 'Break',
-      spots: data.spots.map(s => ({ asset_id: s.id || '', path: s.path, type: s.type, title: s.title, artist: s.artist || '', duration_ms: s.duration_ms || 0, gain_db: s.gain_db || 0 })),
+      spots: data.spots.map(s => ({ asset_id: s.id || '', path: s.path, type: s.type, title: s.title, artist: s.artist || '', duration_ms: s.duration_ms || 0, gain_db: s.gain_db || 0, cue_in_ms: s.cue_in_ms || 0, intro_ms: s.intro_ms || 0, outro_ms: s.outro_ms || 0, cue_out_ms: s.cue_out_ms || 0 })),
     };
-    if (data.open)  body.open  = { asset_id: data.open.id  || '', path: data.open.path,  type: data.open.type,  title: data.open.title,  artist: data.open.artist  || '', duration_ms: data.open.duration_ms  || 0, gain_db: data.open.gain_db  || 0 };
-    if (data.close) body.close = { asset_id: data.close.id || '', path: data.close.path, type: data.close.type, title: data.close.title, artist: data.close.artist || '', duration_ms: data.close.duration_ms || 0, gain_db: data.close.gain_db || 0 };
+    if (data.open)  body.open  = { asset_id: data.open.id  || '', path: data.open.path,  type: data.open.type,  title: data.open.title,  artist: data.open.artist  || '', duration_ms: data.open.duration_ms  || 0, gain_db: data.open.gain_db  || 0, cue_in_ms: data.open.cue_in_ms  || 0, intro_ms: data.open.intro_ms  || 0, outro_ms: data.open.outro_ms  || 0, cue_out_ms: data.open.cue_out_ms  || 0 };
+    if (data.close) body.close = { asset_id: data.close.id || '', path: data.close.path, type: data.close.type, title: data.close.title, artist: data.close.artist || '', duration_ms: data.close.duration_ms || 0, gain_db: data.close.gain_db || 0, cue_in_ms: data.close.cue_in_ms || 0, intro_ms: data.close.intro_ms || 0, outro_ms: data.close.outro_ms || 0, cue_out_ms: data.close.cue_out_ms || 0 };
     const r = await fetch(API_URL + '/v1/queue/enqueue-break', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -6304,6 +7098,91 @@ function histEsc(s) {
     </div>
 
   </div><!-- /advModal -->
+
+  <!-- ─── Cue Points Editor Overlay ───────────────────────────────────── -->
+  <div class="cue-editor-overlay" id="cueEditorOverlay">
+    <div class="cue-editor-modal">
+
+      <!-- Header -->
+      <div class="cue-ed-header">
+        <div>
+          <div class="cue-ed-title"  id="cueEdTitle">—</div>
+          <div class="cue-ed-artist" id="cueEdArtist">—</div>
+        </div>
+        <button class="cue-ed-close" onclick="closeCueEditor()">✕</button>
+      </div>
+
+      <!-- Timeline bar -->
+      <div class="cue-ed-timeline-wrap" id="cueEdTimeline" onmousedown="cueTimelineMouseDown(event)" ondblclick="cueTimelineDblClick(event)">
+        <canvas id="cueEdCanvas"></canvas>
+        <div class="cue-ed-timeline-head" id="cueEdHead" style="left:0%"></div>
+        <div class="cue-ed-timeline-pin" id="cueEdPin"><span class="cue-ed-pin-label">PINO</span></div>
+        <div class="cue-ed-marker cue-in"  id="cueEdMarkCueIn"  style="display:none;left:0%" onmousedown="cueMarkerDragStart(event,'cueIn')"></div>
+        <div class="cue-ed-marker intro"   id="cueEdMarkIntro"  style="display:none;left:0%" onmousedown="cueMarkerDragStart(event,'intro')"></div>
+        <div class="cue-ed-marker outro"   id="cueEdMarkOutro"  style="display:none;left:0%" onmousedown="cueMarkerDragStart(event,'outro')"></div>
+        <div class="cue-ed-marker cue-out" id="cueEdMarkCueOut" style="display:none;left:0%" onmousedown="cueMarkerDragStart(event,'cueOut')"></div>
+      </div>
+      <div class="cue-ed-times">
+        <span id="cueEdPosTime">0:00.000</span>
+        <div class="cue-ed-zoom">
+          <button onclick="cueWaveZoomOut()" title="Zoom Out">−</button>
+          <span class="cue-ed-zoom-level" id="cueEdZoomLevel">1×</span>
+          <button onclick="cueWaveZoomIn()" title="Zoom In">+</button>
+        </div>
+        <span id="cueEdDurTime">--:--.---</span>
+      </div>
+
+      <!-- Marker panels -->
+      <div class="cue-ed-markers-grid">
+        <div class="cue-ed-marker-panel panel-cue-in">
+          <div class="cue-ed-marker-label">CUE IN</div>
+          <div class="cue-ed-marker-time empty" id="cueEdValCueIn">—</div>
+          <div class="cue-ed-marker-btns">
+            <button class="btn-capture" onclick="cueEditorCapture('cueIn')">CAPTURAR</button>
+            <button class="btn-clear"   onclick="cueEditorClear('cueIn')">LIMPAR</button>
+          </div>
+        </div>
+        <div class="cue-ed-marker-panel panel-intro">
+          <div class="cue-ed-marker-label">INTRO</div>
+          <div class="cue-ed-marker-time empty" id="cueEdValIntro">—</div>
+          <div class="cue-ed-marker-btns">
+            <button class="btn-capture" onclick="cueEditorCapture('intro')">CAPTURAR</button>
+            <button class="btn-clear"   onclick="cueEditorClear('intro')">LIMPAR</button>
+          </div>
+        </div>
+        <div class="cue-ed-marker-panel panel-outro">
+          <div class="cue-ed-marker-label">OUTRO</div>
+          <div class="cue-ed-marker-time empty" id="cueEdValOutro">—</div>
+          <div class="cue-ed-marker-btns">
+            <button class="btn-capture" onclick="cueEditorCapture('outro')">CAPTURAR</button>
+            <button class="btn-clear"   onclick="cueEditorClear('outro')">LIMPAR</button>
+          </div>
+        </div>
+        <div class="cue-ed-marker-panel panel-cue-out">
+          <div class="cue-ed-marker-label">CUE OUT</div>
+          <div class="cue-ed-marker-time empty" id="cueEdValCueOut">—</div>
+          <div class="cue-ed-marker-btns">
+            <button class="btn-capture" onclick="cueEditorCapture('cueOut')">CAPTURAR</button>
+            <button class="btn-clear"   onclick="cueEditorClear('cueOut')">LIMPAR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Play from markers -->
+      <div class="cue-ed-playfrom">
+        <button onclick="cueEditorPlayFrom('cueIn')">▶ TOCAR DO CUE IN</button>
+        <button onclick="cueEditorPlayFrom('intro')">▶ TOCAR DO INTRO</button>
+        <button onclick="cueEditorPlayFrom('outro')">▶ TOCAR DO OUTRO</button>
+      </div>
+
+      <!-- Footer -->
+      <div class="cue-ed-footer">
+        <button class="cue-ed-btn-cancel" onclick="closeCueEditor()">CANCELAR</button>
+        <button class="cue-ed-btn-save"   onclick="cueEditorSave()">SALVAR</button>
+      </div>
+
+    </div>
+  </div><!-- /cueEditorOverlay -->
 
 </body>
 </html>

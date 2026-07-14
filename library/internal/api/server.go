@@ -33,6 +33,8 @@ type Server struct {
 	srw  handlers.SettingsReadWriter
 	lw   handlers.LoudnessWorker
 	lts  handlers.LoudnessTrackStore
+	ciw  handlers.CueInWorker
+	cits handlers.CueInTrackStore
 	nr   handlers.NormalizationReader
 	log  *slog.Logger
 	http *http.Server
@@ -44,6 +46,14 @@ type Server struct {
 func (s *Server) SetLoudnessWorker(lw handlers.LoudnessWorker, lts handlers.LoudnessTrackStore) {
 	s.lw = lw
 	s.lts = lts
+}
+
+// SetCueInWorker attaches the cue_in worker and its backing store so the
+// server can register the /v1/tracks/reanalyze-cuepoints routes. Must be
+// called before Start.
+func (s *Server) SetCueInWorker(cw handlers.CueInWorker, cits handlers.CueInTrackStore) {
+	s.ciw = cw
+	s.cits = cits
 }
 
 // SetNormalizationReader attaches the normalization settings reader used by
@@ -114,6 +124,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /v1/tracks/{id}", handlers.GetTrack(s.ts, s.nr))
 	mux.HandleFunc("GET /v1/tracks", handlers.SearchTracks(s.ts, s.nr))
 	mux.HandleFunc("PATCH /v1/tracks/{id}", handlers.PatchTrack(s.ts, s.nr))
+	mux.HandleFunc("PUT /v1/tracks/{id}/cuepoints", handlers.SaveCuePoints(s.ts))
 
 	mux.HandleFunc("GET /v1/playlists", handlers.ListPlaylists(s.ps))
 	mux.HandleFunc("POST /v1/playlists", handlers.CreatePlaylist(s.ps))
@@ -198,6 +209,13 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("DELETE /v1/loudness/analyze",      handlers.CancelLoudness(s.lw))
 	}
 
+	// CueIn reanalysis
+	if s.ciw != nil {
+		mux.HandleFunc("GET /v1/tracks/reanalyze-cuepoints/status", handlers.GetCueInReanalyzeStatus(s.ciw))
+		mux.HandleFunc("POST /v1/tracks/reanalyze-cuepoints",       handlers.TriggerCueInReanalyze(s.ciw, s.cits))
+		mux.HandleFunc("DELETE /v1/tracks/reanalyze-cuepoints",     handlers.CancelCueInReanalyze(s.ciw))
+	}
+
 	// Transmission log — order matters: more specific paths first
 	mux.HandleFunc("GET /v1/transmission-log/export/ecad",              handlers.ExportECAD(s.tls, s.stg))
 	mux.HandleFunc("GET /v1/transmission-log/export",                   handlers.ExportTransmissionLog(s.tls))
@@ -236,7 +254,7 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Add("Vary", "Origin")
 			}
-			w.Header().Set("Access-Control-Allow-Methods", "GET, PATCH, POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, PATCH, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		}
 

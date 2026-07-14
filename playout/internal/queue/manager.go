@@ -631,6 +631,8 @@ func newItem(inp commands.QueueItemInput) *QueueItem {
 		Publisher:   inp.Publisher,
 		DurationMS:  inp.DurationMS,
 		CueInMS:     inp.CueInMS,
+		IntroMS:     inp.IntroMS,
+		OutroMS:     inp.OutroMS,
 		CueOutMS:    inp.CueOutMS,
 		GainDB:      inp.GainDB,
 		Transition:  tr,

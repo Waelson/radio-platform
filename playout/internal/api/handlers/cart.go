@@ -21,10 +21,14 @@ func CartPlay(bus queueBus, enabled bool) http.HandlerFunc {
 			return
 		}
 		var req struct {
-			Path   string  `json:"path"`
-			Title  string  `json:"title"`
-			Artist string  `json:"artist"`
-			GainDB float64 `json:"gain_db"`
+			Path     string  `json:"path"`
+			Title    string  `json:"title"`
+			Artist   string  `json:"artist"`
+			GainDB   float64 `json:"gain_db"`
+			CueInMS  int64   `json:"cue_in_ms"`
+			IntroMS  int64   `json:"intro_ms"`
+			OutroMS  int64   `json:"outro_ms"`
+			CueOutMS int64   `json:"cue_out_ms"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid_json", err.Error())
@@ -35,10 +39,14 @@ func CartPlay(bus queueBus, enabled bool) http.HandlerFunc {
 			return
 		}
 		cmd, replyCh := commands.NewSync(commands.CmdCartPlay, commands.CartPlayPayload{
-			Path:   req.Path,
-			Title:  req.Title,
-			Artist: req.Artist,
-			GainDB: req.GainDB,
+			Path:     req.Path,
+			Title:    req.Title,
+			Artist:   req.Artist,
+			GainDB:   req.GainDB,
+			CueInMS:  req.CueInMS,
+			IntroMS:  req.IntroMS,
+			OutroMS:  req.OutroMS,
+			CueOutMS: req.CueOutMS,
 		})
 		result, ok := sendAndWait(w, bus, cmd, replyCh)
 		if !ok {

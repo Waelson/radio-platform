@@ -53,6 +53,10 @@ type generatedTrackJSON struct {
 	DurationMS int64   `json:"duration_ms"`
 	Type       string  `json:"type"`
 	GainDB     float64 `json:"gain_db"`
+	CueInMS    *int64  `json:"cue_in_ms,omitempty"`
+	IntroMS    *int64  `json:"intro_ms,omitempty"`
+	OutroMS    *int64  `json:"outro_ms,omitempty"`
+	CueOutMS   *int64  `json:"cue_out_ms,omitempty"`
 }
 
 // ── Separation rule handlers ──────────────────────────────────────────────────
@@ -214,6 +218,10 @@ func GenerateSchedule(svc SchedulerService, nr NormalizationReader) http.Handler
 					DurationMS: item.Track.DurationMS,
 					Type:       item.Track.Type,
 					GainDB:     gainDB,
+					CueInMS:    item.Track.CueInMS,
+					IntroMS:    item.Track.IntroMS,
+					OutroMS:    item.Track.OutroMS,
+					CueOutMS:   item.Track.CueOutMS,
 				},
 			}
 		}

@@ -180,7 +180,8 @@ func (s *PlaylistStore) AddItem(ctx context.Context, playlistID, trackID string)
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks WHERE id = ?`, trackID)
 	track, err = scanTrack(row)
 	if errors.Is(err, ErrNotFound) {

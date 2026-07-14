@@ -36,6 +36,12 @@ type Track struct {
 	LoudnessStatus     string     // pending | analyzing | done | error
 	LoudnessError      string     // error message when LoudnessStatus = "error"
 	LoudnessAnalyzedAt *time.Time // timestamp of last successful analysis
+
+	// Cue point fields (populated by migration 011). All nil = use defaults.
+	CueInMS  *int64 // playback seek start (ms) — silence-trimmed head
+	IntroMS  *int64 // vocal intro end (ms) — announcer window countdown
+	OutroMS  *int64 // outro start (ms) — crossfade trigger
+	CueOutMS *int64 // playback stop (ms) — silence-trimmed tail
 }
 
 // SearchQuery holds optional filters for track searches.
@@ -52,6 +58,60 @@ type SearchQuery struct {
 	LoudnessStatus string   // filter by loudness_status (pending|analyzing|done|error)
 	LoudnessMin    *float64 // tracks with loudness_lufs >= value
 	LoudnessMax    *float64 // tracks with loudness_lufs <= value
+}
+
+// CuePoints holds the four cue point markers for a track.
+// A nil pointer means "clear this marker" (store NULL).
+type CuePoints struct {
+	CueInMS  *int64 `json:"cue_in_ms"`
+	IntroMS  *int64 `json:"intro_ms"`
+	OutroMS  *int64 `json:"outro_ms"`
+	CueOutMS *int64 `json:"cue_out_ms"`
+}
+
+// Validate checks that the cue point values are internally consistent:
+//   - all non-nil values must be >= 0
+//   - when multiple markers are set they must not contradict each other:
+//     cue_in <= intro <= outro <= cue_out, with cue_in strictly < cue_out.
+//
+// Equal values between adjacent markers are allowed (e.g. cue_in == intro == 0
+// means vocals start at the very beginning of the playable region).
+func (cp CuePoints) Validate() error {
+	check := func(name string, v *int64) error {
+		if v != nil && *v < 0 {
+			return fmt.Errorf("%s must be >= 0, got %d", name, *v)
+		}
+		return nil
+	}
+	if err := check("cue_in_ms", cp.CueInMS); err != nil {
+		return err
+	}
+	if err := check("intro_ms", cp.IntroMS); err != nil {
+		return err
+	}
+	if err := check("outro_ms", cp.OutroMS); err != nil {
+		return err
+	}
+	if err := check("cue_out_ms", cp.CueOutMS); err != nil {
+		return err
+	}
+	// Ordering: cue_in <= intro
+	if cp.CueInMS != nil && cp.IntroMS != nil && *cp.CueInMS > *cp.IntroMS {
+		return fmt.Errorf("cue_in_ms (%d) must be <= intro_ms (%d)", *cp.CueInMS, *cp.IntroMS)
+	}
+	// intro <= outro
+	if cp.IntroMS != nil && cp.OutroMS != nil && *cp.IntroMS > *cp.OutroMS {
+		return fmt.Errorf("intro_ms (%d) must be <= outro_ms (%d)", *cp.IntroMS, *cp.OutroMS)
+	}
+	// outro <= cue_out
+	if cp.OutroMS != nil && cp.CueOutMS != nil && *cp.OutroMS > *cp.CueOutMS {
+		return fmt.Errorf("outro_ms (%d) must be <= cue_out_ms (%d)", *cp.OutroMS, *cp.CueOutMS)
+	}
+	// cue_in strictly < cue_out (defines a non-zero playable region)
+	if cp.CueInMS != nil && cp.CueOutMS != nil && *cp.CueInMS >= *cp.CueOutMS {
+		return fmt.Errorf("cue_in_ms (%d) must be less than cue_out_ms (%d)", *cp.CueInMS, *cp.CueOutMS)
+	}
+	return nil
 }
 
 // TrackPatch carries the fields that may be updated via PATCH.
@@ -124,7 +184,8 @@ func (s *TrackStore) FindByID(ctx context.Context, id string) (Track, error) {
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks WHERE id = ?`, id)
 	return scanTrack(row)
 }
@@ -136,7 +197,8 @@ func (s *TrackStore) FindByPath(ctx context.Context, path string) (Track, error)
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks WHERE path = ?`, path)
 	return scanTrack(row)
 }
@@ -198,7 +260,8 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
 		       loudness_lufs, true_peak_dbtp,
 		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
 		FROM tracks %s
 		ORDER BY title ASC
 		LIMIT ? OFFSET ?`, clause)
@@ -373,6 +436,47 @@ func (s *TrackStore) DeleteByPath(ctx context.Context, path string) error {
 	return err
 }
 
+// --- cue point methods -------------------------------------------------------
+
+// SaveCuePoints updates the four cue point markers for the track with id.
+// Nil fields are stored as NULL (marker removed). Returns ErrNotFound when
+// no track with that id exists.
+func (s *TrackStore) SaveCuePoints(ctx context.Context, id string, cp CuePoints) error {
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE tracks
+		SET cue_in_ms  = ?,
+		    intro_ms   = ?,
+		    outro_ms   = ?,
+		    cue_out_ms = ?
+		WHERE id = ?`,
+		cp.CueInMS, cp.IntroMS, cp.OutroMS, cp.CueOutMS, id,
+	)
+	if err != nil {
+		return fmt.Errorf("save cue points: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SetCueIn sets cue_in_ms for the track with id, but only when the column is
+// currently NULL. If it is already set (even to 0), this is a no-op — the
+// operator's manual value is never overwritten by auto-detection.
+// Returns nil (not ErrNotFound) when the track exists but already has a value.
+func (s *TrackStore) SetCueIn(ctx context.Context, id string, ms int64) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE tracks SET cue_in_ms = ?
+		WHERE id = ? AND cue_in_ms IS NULL`,
+		ms, id,
+	)
+	if err != nil {
+		return fmt.Errorf("set cue_in: %w", err)
+	}
+	return nil
+}
+
 // --- loudness methods --------------------------------------------------------
 
 // UpdateLoudness sets the measured loudness values and marks the track as done.
@@ -456,6 +560,44 @@ func (s *TrackStore) ListPendingLoudness(ctx context.Context, limit int) ([]stri
 	return ids, rows.Err()
 }
 
+// ListNullCueIn returns IDs of tracks where cue_in_ms is NULL (not yet detected).
+func (s *TrackStore) ListNullCueIn(ctx context.Context, limit int) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id FROM tracks
+		WHERE cue_in_ms IS NULL
+		ORDER BY rowid ASC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list null cue_in: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// CountCueInStatus returns counts of tracks with and without cue_in_ms set.
+// The returned map has keys "pending" (NULL) and "done" (NOT NULL).
+func (s *TrackStore) CountCueInStatus(ctx context.Context) (map[string]int, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(SUM(CASE WHEN cue_in_ms IS NULL     THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN cue_in_ms IS NOT NULL THEN 1 ELSE 0 END), 0)
+		FROM tracks`)
+	var pending, done int
+	if err := row.Scan(&pending, &done); err != nil {
+		return nil, fmt.Errorf("count cue_in status: %w", err)
+	}
+	return map[string]int{"pending": pending, "done": done}, nil
+}
+
 // --- helpers -----------------------------------------------------------------
 
 func scanTrack(row *sql.Row) (Track, error) {
@@ -463,10 +605,12 @@ func scanTrack(row *sql.Row) (Track, error) {
 	var indexedAt string
 	var lufs, truePeak sql.NullFloat64
 	var loudnessAnalyzedAt sql.NullString
+	var cueInMS, introMS, outroMS, cueOutMS sql.NullInt64
 	err := row.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
 		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
 		&lufs, &truePeak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
+		&cueInMS, &introMS, &outroMS, &cueOutMS,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Track{}, ErrNotFound
@@ -490,6 +634,18 @@ func scanTrack(row *sql.Row) (Track, error) {
 			t.LoudnessAnalyzedAt = &ts
 		}
 	}
+	if cueInMS.Valid {
+		t.CueInMS = &cueInMS.Int64
+	}
+	if introMS.Valid {
+		t.IntroMS = &introMS.Int64
+	}
+	if outroMS.Valid {
+		t.OutroMS = &outroMS.Int64
+	}
+	if cueOutMS.Valid {
+		t.CueOutMS = &cueOutMS.Int64
+	}
 	return t, nil
 }
 
@@ -498,10 +654,12 @@ func scanTrackRow(rows *sql.Rows) (Track, error) {
 	var indexedAt string
 	var lufs, truePeak sql.NullFloat64
 	var loudnessAnalyzedAt sql.NullString
+	var cueInMS, introMS, outroMS, cueOutMS sql.NullInt64
 	err := rows.Scan(
 		&t.ID, &t.Path, &t.Title, &t.Artist, &t.Album, &t.Type,
 		&t.DurationMS, &t.Category, &t.ISRC, &t.Composer, &t.Publisher, &indexedAt,
 		&lufs, &truePeak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
+		&cueInMS, &introMS, &outroMS, &cueOutMS,
 	)
 	if err != nil {
 		return Track{}, err
@@ -521,6 +679,18 @@ func scanTrackRow(rows *sql.Rows) (Track, error) {
 		if !ts.IsZero() {
 			t.LoudnessAnalyzedAt = &ts
 		}
+	}
+	if cueInMS.Valid {
+		t.CueInMS = &cueInMS.Int64
+	}
+	if introMS.Valid {
+		t.IntroMS = &introMS.Int64
+	}
+	if outroMS.Valid {
+		t.OutroMS = &outroMS.Int64
+	}
+	if cueOutMS.Valid {
+		t.CueOutMS = &cueOutMS.Int64
 	}
 	return t, nil
 }

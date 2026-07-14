@@ -62,6 +62,10 @@ type ScannerConfig struct {
 	// "filename" (default): parsed from the file name pattern [Category] Artist - Album - Title.
 	// "tags": read from embedded audio tags (ID3/Vorbis) via ffprobe.
 	MetadataSource string `yaml:"metadata_source"`
+	// AutoDetectCueIn enables automatic cue_in detection via ffmpeg silencedetect
+	// during file indexing. When true (default), cue_in_ms is set on newly
+	// indexed tracks if the beginning of the file contains silence.
+	AutoDetectCueIn bool `yaml:"auto_detect_cue_in"`
 }
 
 // LoggingConfig holds logging settings.
@@ -95,11 +99,12 @@ func defaults() Config {
 				"spots":    "SPOT",
 				"efeitos":  "EFEITOS",
 			},
-			Extensions:     []string{".mp3", ".wav", ".flac", ".ogg", ".aac"},
-			FFprobePath:    "ffprobe",
-			FFmpegPath:     "ffmpeg",
-			WatchEnabled:   true,
-			MetadataSource: "filename",
+			Extensions:      []string{".mp3", ".wav", ".flac", ".ogg", ".aac"},
+			FFprobePath:     "ffprobe",
+			FFmpegPath:      "ffmpeg",
+			WatchEnabled:    true,
+			MetadataSource:  "filename",
+			AutoDetectCueIn: true,
 		},
 		Logging: LoggingConfig{
 			Level:  "info",

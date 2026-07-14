@@ -53,6 +53,7 @@ func (a *TrackStoreAdapter) TracksByCategory(ctx context.Context, categoryID str
 			ID: t.ID, Path: t.Path, Title: t.Title,
 			Artist: t.Artist, Album: t.Album, DurationMS: t.DurationMS,
 			Type: t.Type, LoudnessLUFS: t.LoudnessLUFS,
+			CueInMS: t.CueInMS, IntroMS: t.IntroMS, OutroMS: t.OutroMS, CueOutMS: t.CueOutMS,
 		}
 	}
 	return out, nil

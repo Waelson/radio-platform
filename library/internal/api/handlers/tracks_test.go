@@ -83,6 +83,22 @@ func (f *fakeTrackStore) ListArtists(_ context.Context, trackType string) ([]str
 	return out, nil
 }
 
+func (f *fakeTrackStore) SaveCuePoints(_ context.Context, id string, cp store.CuePoints) error {
+	if f.err != nil {
+		return f.err
+	}
+	for i, t := range f.tracks {
+		if t.ID == id {
+			f.tracks[i].CueInMS = cp.CueInMS
+			f.tracks[i].IntroMS = cp.IntroMS
+			f.tracks[i].OutroMS = cp.OutroMS
+			f.tracks[i].CueOutMS = cp.CueOutMS
+			return nil
+		}
+	}
+	return store.ErrNotFound
+}
+
 func (f *fakeTrackStore) UpdateMeta(_ context.Context, id string, patch store.TrackPatch) error {
 	if f.err != nil {
 		return f.err

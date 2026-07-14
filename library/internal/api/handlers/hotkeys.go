@@ -43,20 +43,24 @@ type hotkeyProfileDetailJSON struct {
 }
 
 type hotkeyButtonJSON struct {
-	ID          string    `json:"id"`
-	ProfileID   string    `json:"profile_id"`
-	Position    int       `json:"position"`
-	Label       string    `json:"label"`
-	SubLabel    string    `json:"sub_label"`
-	Icon        string    `json:"icon"`
-	Palette     int       `json:"palette"`
-	TrackID     string    `json:"track_id,omitempty"`
-	TrackPath   string    `json:"track_path"`
-	TrackTitle  string    `json:"track_title"`
-	TrackArtist string    `json:"track_artist"`
-	TrackType   string    `json:"track_type"`
-	DurationMS  int64     `json:"duration_ms"`
-	GainDB      float64   `json:"gain_db"`
+	ID          string  `json:"id"`
+	ProfileID   string  `json:"profile_id"`
+	Position    int     `json:"position"`
+	Label       string  `json:"label"`
+	SubLabel    string  `json:"sub_label"`
+	Icon        string  `json:"icon"`
+	Palette     int     `json:"palette"`
+	TrackID     string  `json:"track_id,omitempty"`
+	TrackPath   string  `json:"track_path"`
+	TrackTitle  string  `json:"track_title"`
+	TrackArtist string  `json:"track_artist"`
+	TrackType   string  `json:"track_type"`
+	DurationMS  int64   `json:"duration_ms"`
+	CueInMS     *int64  `json:"cue_in_ms,omitempty"`
+	IntroMS     *int64  `json:"intro_ms,omitempty"`
+	OutroMS     *int64  `json:"outro_ms,omitempty"`
+	CueOutMS    *int64  `json:"cue_out_ms,omitempty"`
+	GainDB      float64 `json:"gain_db"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -107,7 +111,12 @@ func toButtonJSON(b store.HotkeyButton, ns store.NormalizationSettings) hotkeyBu
 		Label: b.Label, SubLabel: b.SubLabel, Icon: b.Icon, Palette: b.Palette,
 		TrackID: b.TrackID, TrackPath: b.TrackPath, TrackTitle: b.TrackTitle,
 		TrackArtist: b.TrackArtist, TrackType: b.TrackType,
-		DurationMS: b.DurationMS, GainDB: gainDB, CreatedAt: b.CreatedAt,
+		DurationMS: b.DurationMS,
+		CueInMS:    b.CueInMS,
+		IntroMS:    b.IntroMS,
+		OutroMS:    b.OutroMS,
+		CueOutMS:   b.CueOutMS,
+		GainDB: gainDB, CreatedAt: b.CreatedAt,
 	}
 }
 

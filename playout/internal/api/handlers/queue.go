@@ -60,6 +60,8 @@ type queueItemInput struct {
 	Publisher  string            `json:"publisher,omitempty"`
 	DurationMS int64             `json:"duration_ms"`
 	CueInMS    int64             `json:"cue_in_ms"`
+	IntroMS    int64             `json:"intro_ms"`
+	OutroMS    int64             `json:"outro_ms"`
 	CueOutMS   int64             `json:"cue_out_ms"`
 	GainDB     float64           `json:"gain_db"`
 	Transition *transitionInput  `json:"transition,omitempty"`
@@ -145,6 +147,8 @@ func toCommandItem(inp queueItemInput) commands.QueueItemInput {
 		Publisher:  inp.Publisher,
 		DurationMS: inp.DurationMS,
 		CueInMS:    inp.CueInMS,
+		IntroMS:    inp.IntroMS,
+		OutroMS:    inp.OutroMS,
 		CueOutMS:   inp.CueOutMS,
 		GainDB:     inp.GainDB,
 		Mandatory:  inp.Mandatory,

@@ -257,6 +257,8 @@ type QueueItemInput struct {
 	Publisher  string
 	DurationMS int64
 	CueInMS    int64
+	IntroMS    int64
+	OutroMS    int64
 	CueOutMS   int64
 	GainDB     float64
 	Transition *TransitionInput
@@ -299,10 +301,14 @@ type PreviewSetVolumePayload struct {
 // If a cart is already playing it is stopped with reason "replaced" before
 // the new one starts.
 type CartPlayPayload struct {
-	Path   string
-	Title  string
-	Artist string
-	GainDB float64 // EBU R128 normalization gain in dB; 0 = unity
+	Path    string
+	Title   string
+	Artist  string
+	GainDB  float64 // EBU R128 normalization gain in dB; 0 = unity
+	CueInMS int64
+	IntroMS int64
+	OutroMS int64
+	CueOutMS int64
 }
 
 // CartSetVolumePayload carries the new volume level for the cart output.
