@@ -25,6 +25,7 @@ const (
 	EvtItemStarted        EventType = "ItemStarted"
 	EvtItemFinished       EventType = "ItemFinished"
 	EvtCrossfadeStarted   EventType = "CrossfadeStarted"
+	EvtIntroCountdown     EventType = "IntroCountdown"
 	EvtPanicEntered       EventType = "PanicEntered"
 	EvtPanicExited        EventType = "PanicExited"
 	EvtAlertRaised        EventType = "AlertRaised"
@@ -212,6 +213,16 @@ type ItemFinishedPayload struct {
 	AssetID          string `json:"asset_id"`
 	Result           string `json:"result"`
 	DurationPlayedMS int64  `json:"duration_played_ms"`
+}
+
+// IntroCountdownPayload is the payload for EvtIntroCountdown.
+// Published on every progress tick while the current position is before IntroMS.
+// RemainingMS reaches zero exactly when the vocal/intro cue point is hit.
+type IntroCountdownPayload struct {
+	QueueItemID string `json:"queue_item_id"`
+	PositionMS  int64  `json:"position_ms"`
+	IntroMS     int64  `json:"intro_ms"`
+	RemainingMS int64  `json:"remaining_ms"`
 }
 
 // CrossfadeStartedPayload is the payload for EvtCrossfadeStarted.

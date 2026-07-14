@@ -73,6 +73,8 @@ type QueueItem struct {
 	Publisher   string
 	DurationMS  int64
 	CueInMS     int64
+	IntroMS     int64 // 0 means no intro cue; > 0 = time offset where vocals begin
+	OutroMS     int64 // 0 means use (CueOutMS - xfade); > 0 = time offset to start crossfade
 	CueOutMS    int64 // 0 means use DurationMS
 	Transition  TransitionSpec
 	Mandatory   bool

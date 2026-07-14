@@ -962,6 +962,8 @@ func (m *Manager) hotButtonAfterCurrent(p commands.TriggerHotButtonPayload) erro
 		Artist:     p.Asset.Artist,
 		DurationMS: p.Asset.DurationMS,
 		CueInMS:    p.Asset.CueInMS,
+		IntroMS:    p.Asset.IntroMS,
+		OutroMS:    p.Asset.OutroMS,
 		CueOutMS:   p.Asset.CueOutMS,
 		Mandatory:  p.Asset.Mandatory,
 		Metadata:   p.Asset.Metadata,
@@ -1411,7 +1413,14 @@ func (m *Manager) runPlayLoop(
 			posFrames := m.framesTotal.Load() - m.itemStartFrame
 			posMS := audio.DefaultFormat.MsFromFrames(posFrames)
 			cueOutMS := item.EffectiveCueOut()
-			xStartMS := cueOutMS - int64(xfadeDurMS)
+			// OutroMS, when set, marks the exact moment to start the crossfade
+			// (the musical outro begins). Fall back to the time-based calculation.
+			var xStartMS int64
+			if item.OutroMS > 0 && item.OutroMS > item.CueInMS {
+				xStartMS = item.OutroMS
+			} else {
+				xStartMS = cueOutMS - int64(xfadeDurMS)
+			}
 
 			// Energy-based trigger: evaluate RMS of the previous read buffer.
 			if m.cfg.AutoCrossfadeEnabled && !energyTriggered && lastReadSamples > 0 {
@@ -1622,6 +1631,17 @@ func (m *Manager) progressLoop(ctx context.Context, done chan struct{}) {
 				Percent:     pct,
 				RemainingMS: remainMS,
 			}))
+
+			// IntroCountdown: published while we're still before the vocal cue.
+			if cur.IntroMS > 0 && posMS < cur.IntroMS {
+				introRemaining := cur.IntroMS - posMS
+				m.evtBus.Publish(events.New(events.EvtIntroCountdown, events.IntroCountdownPayload{
+					QueueItemID: cur.QueueItemID,
+					PositionMS:  posMS,
+					IntroMS:     cur.IntroMS,
+					RemainingMS: introRemaining,
+				}))
+			}
 		}
 	}
 }
