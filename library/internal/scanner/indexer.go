@@ -17,6 +17,8 @@ type TrackWriter interface {
 	Upsert(ctx context.Context, t store.Track) error
 	DeleteByPath(ctx context.Context, path string) error
 	FindByPath(ctx context.Context, path string) (store.Track, error)
+	// SetCueIn sets cue_in_ms only when it is currently NULL (never overwrites).
+	SetCueIn(ctx context.Context, id string, ms int64) error
 }
 
 // LoudnessEnqueuer is an optional hook called after each successful file index.
@@ -149,9 +151,21 @@ func (ix *Indexer) IndexFile(ctx context.Context, path, assetType string) error 
 		return fmt.Errorf("upsert %q: %w", path, err)
 	}
 
-	// Enqueue for loudness analysis after a successful upsert.
-	if ix.loudness != nil {
-		if tr, err := ix.store.FindByPath(ctx, path); err == nil {
+	// After upsert, fetch the stored track (needed for ID and current cue_in_ms).
+	tr, err := ix.store.FindByPath(ctx, path)
+	if err == nil {
+		// Auto-detect cue_in_ms when enabled and not already set.
+		if ix.cfg.AutoDetectCueIn && tr.CueInMS == nil {
+			if ms := DetectCueIn(ix.cfg.FFmpegPath, path); ms > 0 {
+				if setErr := ix.store.SetCueIn(ctx, tr.ID, ms); setErr != nil {
+					ix.log.Warn("set cue_in failed", "path", path, "error", setErr)
+				} else {
+					ix.log.Debug("cue_in detected", "path", path, "cue_in_ms", ms)
+				}
+			}
+		}
+		// Enqueue for loudness analysis.
+		if ix.loudness != nil {
 			ix.loudness.Enqueue(tr.ID)
 		}
 	}

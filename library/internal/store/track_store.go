@@ -457,6 +457,22 @@ func (s *TrackStore) SaveCuePoints(ctx context.Context, id string, cp CuePoints)
 	return nil
 }
 
+// SetCueIn sets cue_in_ms for the track with id, but only when the column is
+// currently NULL. If it is already set (even to 0), this is a no-op — the
+// operator's manual value is never overwritten by auto-detection.
+// Returns nil (not ErrNotFound) when the track exists but already has a value.
+func (s *TrackStore) SetCueIn(ctx context.Context, id string, ms int64) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE tracks SET cue_in_ms = ?
+		WHERE id = ? AND cue_in_ms IS NULL`,
+		ms, id,
+	)
+	if err != nil {
+		return fmt.Errorf("set cue_in: %w", err)
+	}
+	return nil
+}
+
 // --- loudness methods --------------------------------------------------------
 
 // UpdateLoudness sets the measured loudness values and marks the track as done.
