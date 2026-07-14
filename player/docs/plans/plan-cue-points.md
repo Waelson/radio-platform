@@ -729,13 +729,11 @@ POST /v1/tracks/reanalyze-cuepoints
 
 ---
 
-### 8.6 Endpoints existentes impactados — enqueue / schedule
+### 8.6 Endpoints existentes impactados — todos os que produzem faixas para reprodução
 
-**Endpoints:** `POST /v1/queue/enqueue`, `GET /v1/schedule/generate`, `GET /v1/hotkeys/profile/:id`
+Os cue points devem estar presentes em **todos** os endpoints do Library Service que retornam faixas destinadas à reprodução, e o Player deve repassá-los ao Playout Engine em todos os sites de enqueue. Isso garante que o engine sempre receba os marcadores sem precisar consultar o Library Service separadamente.
 
-**Descrição:** Os cue points devem ser incluídos em todos os payloads que descrevem faixas a serem reproduzidas, para que o Playout Engine os receba sem precisar consultar o Library Service separadamente.
-
-**Adição nos itens de faixa:**
+**Campos adicionados em todos os itens de faixa:**
 ```json
 {
   "path": "/media/musicas/chega-de-saudade.mp3",
@@ -747,6 +745,36 @@ POST /v1/tracks/reanalyze-cuepoints
   "cue_out_ms": 151000
 }
 ```
+
+**Campos com valor `null` ou `0` indicam marcador não definido** — o Playout Engine aplica o fallback correspondente.
+
+---
+
+#### Endpoints do Library Service impactados
+
+| Endpoint | Retorna faixas? | Impacto |
+|----------|:--------------:|---------|
+| `GET /v1/tracks` | ✅ | Adicionar `cue_in_ms` e `intro_ms` (os 4 campos na resposta de item) |
+| `GET /v1/tracks/:id` | ✅ | Adicionar os 4 campos |
+| `GET /v1/playlists/:id` | ✅ | Adicionar os 4 campos em cada item da playlist |
+| `GET /v1/breaks/:id` | ✅ | Adicionar os 4 campos em cada spot/open/close do bloco |
+| `GET /v1/schedule/generate` | ✅ | Adicionar os 4 campos em cada faixa gerada |
+| `GET /v1/hotkeys/profiles/:id` | ✅ | Adicionar os 4 campos em cada botão |
+| `GET /v1/categories/:id/tracks` | ✅ | Adicionar os 4 campos em cada faixa listada |
+
+---
+
+#### Sites de enqueue no Player (`player.html` e `hotkeys.html`) impactados
+
+| Ação no Player | Endpoint do Playout chamado | O que deve incluir |
+|----------------|----------------------------|--------------------|
+| Enfileirar faixa do catálogo | `POST /v1/queue/enqueue` | `cue_in_ms`, `intro_ms`, `outro_ms`, `cue_out_ms` |
+| Enfileirar playlist | `POST /v1/queue/enqueue` | idem, para cada item da playlist |
+| Enfileirar bloco comercial | `POST /v1/queue/enqueue-break` | idem, para open, spots e close |
+| Inserir próxima faixa | `POST /v1/queue/insert-next` | idem |
+| Inserir após item | `POST /v1/queue/insert-after` | idem |
+| Enfileirar via gerador de rotação | `POST /v1/queue/enqueue` | idem |
+| Acionar botão da botoneira | `POST /v1/cart/play` | idem |
 
 ---
 
