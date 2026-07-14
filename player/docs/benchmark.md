@@ -1,7 +1,7 @@
 # Benchmark RadioFlow — Comparação com Soluções de Mercado
 
 **Data:** julho de 2026
-**Versão RadioFlow:** 0.1.0 (em desenvolvimento ativo)
+**Versão RadioFlow:** 0.4.0 (em desenvolvimento ativo)
 
 ---
 
@@ -81,7 +81,7 @@ Este documento compara o RadioFlow com as principais soluções de automação d
 | Stop individual por botão | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Cores por tipo de áudio | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Ducking automático ao acionar botão | 🔲 | ✅ | — | ✅ | ✅ | ✅ | 🔲 | 🔲 |
-| Atalhos de teclado para botões | 🔲 | ✅ | ✅ | ✅ | ✅ | ✅ | 🔲 | ✅ |
+| Atalhos de teclado para botões | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Controle via hardware (GPI) | 🔲 | ✅ | ✅ | ✅ | ✅ | ✅ | 🔲 | 🔲 |
 
 ### 3.4 Agendamento
@@ -92,7 +92,7 @@ Este documento compara o RadioFlow com as principais soluções de automação d
 | Countdown para próximo evento | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | 🔲 |
 | Hora Certa automática | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Inserção automática de jingles | 🔲 | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Rotação musical por formato (clock) | 🔲 | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
+| Rotação musical por formato (clock) | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | ✅ |
 | Agendamento de breaks comerciais | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Grade semanal / programação futura | 🔲 | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Trigger após faixa atual (AFTER_CURRENT) | ✅ | ✅ | — | ✅ | ✅ | ✅ | 🔲 | 🔲 |
@@ -536,12 +536,12 @@ O RadioFlow possui um player principal (fila de reprodução) e um player de CUE
 |---|--------|---------------|
 | 6 | **Failover / backup de transmissão** | Dead air é o pior evento para uma emissora. Mecanismo de contingência automático é obrigatório em operação 24h. |
 | 7 | **Voice tracking** | Permite que locutores gravem offs antecipados — essencial para emissoras sem operador 24h. |
-| 8 | **Rotação musical por formato (clock)** | Padrão em emissoras AM/FM. Garante equilíbrio de tipos de áudio ao longo do dia. |
+| ~~8~~ | ~~**Rotação musical por formato (clock)**~~ | ~~Padrão em emissoras AM/FM. Garante equilíbrio de tipos de áudio ao longo do dia.~~ ✅ **Implementado no Library Service + Player (clocks, categorias musicais, grade semanal de clocks, gerador de playlist com regras de separação, aba Rotação no player).** |
 | 9 | **Grade semanal / programação futura** | Operador precisa visualizar e editar a programação dos próximos dias. |
 | 10 | **Prova de veiculação** | Relatório para anunciantes provando que os comerciais foram ao ar. |
 | 11 | **Gestão de usuários e permissões** | Múltiplos operadores com níveis de acesso diferentes (locutor, técnico, gerente). |
 | 12 | **Ducking automático** | Baixar a música automaticamente quando um hot button é acionado. |
-| 13 | **Atalhos de teclado para a botoneira** | Operadores de rádio usam teclado intensivamente para agilidade. |
+| ~~13~~ | ~~**Atalhos de teclado para a botoneira**~~ | ~~Operadores de rádio usam teclado intensivamente para agilidade.~~ ✅ **Implementado no Player + Playout Engine (botoneira com perfis, atalhos de teclado configuráveis por botão, CUE preview na botoneira, drawer lateral integrado).** |
 
 ---
 
@@ -971,7 +971,7 @@ Esta feature é de baixa prioridade porque requer hardware físico específico p
 
 ---
 
-##### Rotação musical por formato (clock)
+##### ~~Rotação musical por formato (clock)~~ ✅ Já implementado
 
 **O que é:**
 Sistema que define quais tipos e categorias de música tocam em qual ordem e proporção ao longo do dia, garantindo identidade musical consistente independentemente de quem está operando. O elemento central é o **clock** (relógio de programação): um template de 60 minutos que especifica exatamente o que deve tocar em cada janela de tempo dentro de uma hora — categorias musicais, tipos de áudio, jingles, spots e vinhetas, na ordem e proporção definidas pela direção artística da emissora.
