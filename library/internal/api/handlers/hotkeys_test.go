@@ -232,7 +232,7 @@ func TestCreateHotkeyProfile_MissingName(t *testing.T) {
 func TestGetHotkeyProfile_NotFound(t *testing.T) {
 	hs := newFakeHotkeyStore()
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}", handlers.GetHotkeyProfile(hs))
+	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}", handlers.GetHotkeyProfile(hs, fakeNR))
 
 	r := httptest.NewRequest("GET", "/v1/hotkeys/profiles/nonexistent", nil)
 	w := httptest.NewRecorder()
@@ -247,7 +247,7 @@ func TestAddAndGetButton(t *testing.T) {
 	hs := newFakeHotkeyStore()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/hotkeys/profiles", handlers.CreateHotkeyProfile(hs))
-	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}", handlers.GetHotkeyProfile(hs))
+	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}", handlers.GetHotkeyProfile(hs, fakeNR))
 	mux.HandleFunc("POST /v1/hotkeys/profiles/{id}/buttons", handlers.AddHotkeyButton(hs))
 
 	// Create profile.
@@ -293,7 +293,7 @@ func TestDeleteHotkeyProfile(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/hotkeys/profiles", handlers.CreateHotkeyProfile(hs))
 	mux.HandleFunc("DELETE /v1/hotkeys/profiles/{id}", handlers.DeleteHotkeyProfile(hs))
-	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}", handlers.GetHotkeyProfile(hs))
+	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}", handlers.GetHotkeyProfile(hs, fakeNR))
 
 	// Create.
 	r := httptest.NewRequest("POST", "/v1/hotkeys/profiles", strings.NewReader(`{"name":"Temp","columns":4}`))

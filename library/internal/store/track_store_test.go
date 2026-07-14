@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/Waelson/radio-library-service/internal/store"
@@ -290,6 +291,193 @@ func TestUpdateMeta_PartialPatch(t *testing.T) {
 	}
 	if got.Category != "Sertanejo" {
 		t.Errorf("Category = %q", got.Category)
+	}
+}
+
+// ─── Loudness ────────────────────────────────────────────────────────────────
+
+func TestUpdateLoudness_SetsValuesAndStatus(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	_ = ts.Upsert(ctx, store.Track{Path: "/m/lufs.mp3", Title: "Loud", Type: "MUSIC"})
+	tr, _ := ts.FindByPath(ctx, "/m/lufs.mp3")
+
+	// Default status should be "pending" after insert.
+	if tr.LoudnessStatus != "pending" {
+		t.Errorf("initial LoudnessStatus = %q, want pending", tr.LoudnessStatus)
+	}
+	if tr.LoudnessLUFS != nil {
+		t.Error("initial LoudnessLUFS should be nil")
+	}
+
+	if err := ts.UpdateLoudness(ctx, tr.ID, -14.2, -0.5); err != nil {
+		t.Fatalf("UpdateLoudness: %v", err)
+	}
+
+	got, _ := ts.FindByID(ctx, tr.ID)
+	if got.LoudnessStatus != "done" {
+		t.Errorf("LoudnessStatus = %q, want done", got.LoudnessStatus)
+	}
+	if got.LoudnessLUFS == nil || *got.LoudnessLUFS != -14.2 {
+		t.Errorf("LoudnessLUFS = %v, want -14.2", got.LoudnessLUFS)
+	}
+	if got.TruePeakDBTP == nil || *got.TruePeakDBTP != -0.5 {
+		t.Errorf("TruePeakDBTP = %v, want -0.5", got.TruePeakDBTP)
+	}
+	if got.LoudnessAnalyzedAt == nil {
+		t.Error("LoudnessAnalyzedAt should be set after UpdateLoudness")
+	}
+	if got.LoudnessError != "" {
+		t.Errorf("LoudnessError should be empty, got %q", got.LoudnessError)
+	}
+}
+
+func TestUpdateLoudness_NotFound(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	err := ts.UpdateLoudness(context.Background(), "ghost", -16.0, -1.0)
+	if err != store.ErrNotFound {
+		t.Errorf("want ErrNotFound, got %v", err)
+	}
+}
+
+func TestUpdateLoudnessStatus_Error(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	_ = ts.Upsert(ctx, store.Track{Path: "/m/broken.mp3", Title: "Broken", Type: "MUSIC"})
+	tr, _ := ts.FindByPath(ctx, "/m/broken.mp3")
+
+	if err := ts.UpdateLoudnessStatus(ctx, tr.ID, "error", "ffmpeg exited with code 1"); err != nil {
+		t.Fatalf("UpdateLoudnessStatus: %v", err)
+	}
+
+	got, _ := ts.FindByID(ctx, tr.ID)
+	if got.LoudnessStatus != "error" {
+		t.Errorf("LoudnessStatus = %q, want error", got.LoudnessStatus)
+	}
+	if got.LoudnessError != "ffmpeg exited with code 1" {
+		t.Errorf("LoudnessError = %q", got.LoudnessError)
+	}
+}
+
+func TestUpdateLoudnessStatus_Analyzing(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	_ = ts.Upsert(ctx, store.Track{Path: "/m/wip.mp3", Title: "WIP", Type: "MUSIC"})
+	tr, _ := ts.FindByPath(ctx, "/m/wip.mp3")
+
+	if err := ts.UpdateLoudnessStatus(ctx, tr.ID, "analyzing", ""); err != nil {
+		t.Fatalf("UpdateLoudnessStatus: %v", err)
+	}
+
+	got, _ := ts.FindByID(ctx, tr.ID)
+	if got.LoudnessStatus != "analyzing" {
+		t.Errorf("LoudnessStatus = %q, want analyzing", got.LoudnessStatus)
+	}
+}
+
+func TestUpdateLoudnessStatus_NotFound(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	err := ts.UpdateLoudnessStatus(context.Background(), "ghost", "error", "oops")
+	if err != store.ErrNotFound {
+		t.Errorf("want ErrNotFound, got %v", err)
+	}
+}
+
+func TestCountByLoudnessStatus(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	// Seed 3 tracks.
+	for i, path := range []string{"/m/a.mp3", "/m/b.mp3", "/m/c.mp3"} {
+		_ = ts.Upsert(ctx, store.Track{Path: path, Title: "T", Type: "MUSIC"})
+		tr, _ := ts.FindByPath(ctx, path)
+		switch i {
+		case 1:
+			_ = ts.UpdateLoudness(ctx, tr.ID, -14.0, -1.0) // done
+		case 2:
+			_ = ts.UpdateLoudnessStatus(ctx, tr.ID, "error", "bad") // error
+		}
+		// i==0 stays "pending"
+	}
+
+	counts, err := ts.CountByLoudnessStatus(ctx)
+	if err != nil {
+		t.Fatalf("CountByLoudnessStatus: %v", err)
+	}
+	if counts["pending"] != 1 {
+		t.Errorf("pending = %d, want 1", counts["pending"])
+	}
+	if counts["done"] != 1 {
+		t.Errorf("done = %d, want 1", counts["done"])
+	}
+	if counts["error"] != 1 {
+		t.Errorf("error = %d, want 1", counts["error"])
+	}
+}
+
+func TestListPendingLoudness(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	paths := []string{"/m/p1.mp3", "/m/p2.mp3", "/m/p3.mp3", "/m/p4.mp3"}
+	for _, path := range paths {
+		_ = ts.Upsert(ctx, store.Track{Path: path, Title: "T", Type: "MUSIC"})
+	}
+
+	// Mark p2 as done and p3 as analyzing — should not appear in pending list.
+	p2, _ := ts.FindByPath(ctx, "/m/p2.mp3")
+	_ = ts.UpdateLoudness(ctx, p2.ID, -16.0, -1.0)
+	p3, _ := ts.FindByPath(ctx, "/m/p3.mp3")
+	_ = ts.UpdateLoudnessStatus(ctx, p3.ID, "analyzing", "")
+
+	// p1 and p4 are "pending"; p3 is "analyzing" (not pending).
+	ids, err := ts.ListPendingLoudness(ctx, 100)
+	if err != nil {
+		t.Fatalf("ListPendingLoudness: %v", err)
+	}
+	if len(ids) != 2 {
+		t.Errorf("want 2 pending IDs, got %d: %v", len(ids), ids)
+	}
+}
+
+func TestListPendingLoudness_IncludesError(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	_ = ts.Upsert(ctx, store.Track{Path: "/m/err.mp3", Title: "E", Type: "MUSIC"})
+	tr, _ := ts.FindByPath(ctx, "/m/err.mp3")
+	_ = ts.UpdateLoudnessStatus(ctx, tr.ID, "error", "bad codec")
+
+	ids, err := ts.ListPendingLoudness(ctx, 100)
+	if err != nil {
+		t.Fatalf("ListPendingLoudness: %v", err)
+	}
+	if len(ids) != 1 || ids[0] != tr.ID {
+		t.Errorf("want [%s], got %v", tr.ID, ids)
+	}
+}
+
+func TestListPendingLoudness_Limit(t *testing.T) {
+	ts := store.NewTrackStore(openMemDB(t))
+	ctx := context.Background()
+
+	for i := 0; i < 5; i++ {
+		_ = ts.Upsert(ctx, store.Track{
+			Path:  fmt.Sprintf("/m/lim%d.mp3", i),
+			Title: "T",
+			Type:  "MUSIC",
+		})
+	}
+
+	ids, err := ts.ListPendingLoudness(ctx, 3)
+	if err != nil {
+		t.Fatalf("ListPendingLoudness: %v", err)
+	}
+	if len(ids) != 3 {
+		t.Errorf("want 3, got %d", len(ids))
 	}
 }
 

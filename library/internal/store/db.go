@@ -32,6 +32,12 @@ var migration007 string
 //go:embed migrations/008_transmission_log_engine_id.sql
 var migration008 string
 
+//go:embed migrations/009_loudness.sql
+var migration009 string
+
+//go:embed migrations/010_normalization_settings.sql
+var migration010 string
+
 // Open opens (or creates) the SQLite database at path, applies required PRAGMAs,
 // runs migrations and returns a ready-to-use *sql.DB.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
@@ -163,6 +169,26 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		}
 	}
 
+	// 009_loudness: adiciona colunas de loudness/análise à tabela tracks.
+	if !migrationDone(ctx, db, "009_loudness") {
+		if err := applyMigration009(ctx, db); err != nil {
+			return fmt.Errorf("009_loudness: %w", err)
+		}
+		if err := markMigration(ctx, db, "009_loudness"); err != nil {
+			return err
+		}
+	}
+
+	// 010_normalization_settings: insere valores padrão de normalização na tabela settings.
+	if !migrationDone(ctx, db, "010_normalization_settings") {
+		if _, err := db.ExecContext(ctx, migration010); err != nil {
+			return fmt.Errorf("010_normalization_settings: %w", err)
+		}
+		if err := markMigration(ctx, db, "010_normalization_settings"); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -216,6 +242,32 @@ func applyMigration005(ctx context.Context, db *sql.DB) error {
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("transmission_log schema: %w", err)
 		}
+	}
+	return nil
+}
+
+// applyMigration009 adds loudness columns to the tracks table, ignoring
+// "duplicate column" errors so the migration is safe to re-run on a DB that
+// already has some columns (e.g. from a partial previous run).
+func applyMigration009(ctx context.Context, db *sql.DB) error {
+	alterStmts := []string{
+		`ALTER TABLE tracks ADD COLUMN loudness_lufs        REAL`,
+		`ALTER TABLE tracks ADD COLUMN true_peak_dbtp       REAL`,
+		`ALTER TABLE tracks ADD COLUMN loudness_status      TEXT NOT NULL DEFAULT 'pending'`,
+		`ALTER TABLE tracks ADD COLUMN loudness_error       TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE tracks ADD COLUMN loudness_analyzed_at DATETIME`,
+	}
+	for _, stmt := range alterStmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			if !isDuplicateColumn(err) {
+				return fmt.Errorf("%s: %w", stmt, err)
+			}
+		}
+	}
+	if _, err := db.ExecContext(ctx,
+		`CREATE INDEX IF NOT EXISTS idx_tracks_loudness_status ON tracks(loudness_status)`,
+	); err != nil {
+		return fmt.Errorf("create loudness index: %w", err)
 	}
 	return nil
 }

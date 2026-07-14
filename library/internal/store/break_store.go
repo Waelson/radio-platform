@@ -73,8 +73,14 @@ func (s *BreakStore) FindByID(ctx context.Context, id string) (Break, error) {
 		SELECT b.id, b.name, b.created_at, b.updated_at,
 		       ot.id, ot.path, ot.title, ot.artist, ot.type, ot.duration_ms,
 		           COALESCE(ot.category,''), ot.indexed_at,
+		           ot.loudness_lufs, ot.true_peak_dbtp,
+		           COALESCE(ot.loudness_status,'pending'), COALESCE(ot.loudness_error,''),
+		           ot.loudness_analyzed_at,
 		       ct.id, ct.path, ct.title, ct.artist, ct.type, ct.duration_ms,
-		           COALESCE(ct.category,''), ct.indexed_at
+		           COALESCE(ct.category,''), ct.indexed_at,
+		           ct.loudness_lufs, ct.true_peak_dbtp,
+		           COALESCE(ct.loudness_status,'pending'), COALESCE(ct.loudness_error,''),
+		           ct.loudness_analyzed_at
 		FROM breaks b
 		LEFT JOIN tracks ot ON ot.id = b.open_track_id
 		LEFT JOIN tracks ct ON ct.id = b.close_track_id
@@ -181,7 +187,10 @@ func (s *BreakStore) AddItem(ctx context.Context, breakID, trackID string) (Brea
 
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), isrc, composer, publisher, indexed_at
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
+		       loudness_lufs, true_peak_dbtp,
+		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
+		       loudness_analyzed_at
 		FROM tracks WHERE id = ?`, trackID)
 	track, err := scanTrack(row)
 	if errors.Is(err, ErrNotFound) {
@@ -285,14 +294,20 @@ func scanBreakRow(row *sql.Row) (Break, error) {
 	// Nullable open-track columns.
 	var otID, otPath, otTitle, otArtist, otType, otCategory, otIndexedAt sql.NullString
 	var otDuration sql.NullInt64
+	var otLUFS, otPeak sql.NullFloat64
+	var otLoudnessStatus, otLoudnessError, otLoudnessAnalyzedAt sql.NullString
 	// Nullable close-track columns.
 	var ctID, ctPath, ctTitle, ctArtist, ctType, ctCategory, ctIndexedAt sql.NullString
 	var ctDuration sql.NullInt64
+	var ctLUFS, ctPeak sql.NullFloat64
+	var ctLoudnessStatus, ctLoudnessError, ctLoudnessAnalyzedAt sql.NullString
 
 	err := row.Scan(
 		&brk.ID, &brk.Name, &createdAt, &updatedAt,
 		&otID, &otPath, &otTitle, &otArtist, &otType, &otDuration, &otCategory, &otIndexedAt,
+		&otLUFS, &otPeak, &otLoudnessStatus, &otLoudnessError, &otLoudnessAnalyzedAt,
 		&ctID, &ctPath, &ctTitle, &ctArtist, &ctType, &ctDuration, &ctCategory, &ctIndexedAt,
+		&ctLUFS, &ctPeak, &ctLoudnessStatus, &ctLoudnessError, &ctLoudnessAnalyzedAt,
 	)
 	if err != nil {
 		return Break{}, err
@@ -306,8 +321,22 @@ func scanBreakRow(row *sql.Row) (Break, error) {
 			ID: otID.String, Path: otPath.String, Title: otTitle.String,
 			Artist: otArtist.String, Type: otType.String,
 			DurationMS: otDuration.Int64, Category: otCategory.String,
+			LoudnessStatus: otLoudnessStatus.String,
+			LoudnessError:  otLoudnessError.String,
 		}
 		t.IndexedAt, _ = time.Parse("2006-01-02T15:04:05Z", otIndexedAt.String)
+		if otLUFS.Valid {
+			t.LoudnessLUFS = &otLUFS.Float64
+		}
+		if otPeak.Valid {
+			t.TruePeakDBTP = &otPeak.Float64
+		}
+		if otLoudnessAnalyzedAt.Valid && otLoudnessAnalyzedAt.String != "" {
+			ts := parseSQLiteTime(otLoudnessAnalyzedAt.String)
+			if !ts.IsZero() {
+				t.LoudnessAnalyzedAt = &ts
+			}
+		}
 		brk.OpenTrack = t
 	}
 	if ctID.Valid {
@@ -315,8 +344,22 @@ func scanBreakRow(row *sql.Row) (Break, error) {
 			ID: ctID.String, Path: ctPath.String, Title: ctTitle.String,
 			Artist: ctArtist.String, Type: ctType.String,
 			DurationMS: ctDuration.Int64, Category: ctCategory.String,
+			LoudnessStatus: ctLoudnessStatus.String,
+			LoudnessError:  ctLoudnessError.String,
 		}
 		t.IndexedAt, _ = time.Parse("2006-01-02T15:04:05Z", ctIndexedAt.String)
+		if ctLUFS.Valid {
+			t.LoudnessLUFS = &ctLUFS.Float64
+		}
+		if ctPeak.Valid {
+			t.TruePeakDBTP = &ctPeak.Float64
+		}
+		if ctLoudnessAnalyzedAt.Valid && ctLoudnessAnalyzedAt.String != "" {
+			ts := parseSQLiteTime(ctLoudnessAnalyzedAt.String)
+			if !ts.IsZero() {
+				t.LoudnessAnalyzedAt = &ts
+			}
+		}
 		brk.CloseTrack = t
 	}
 	return brk, nil
@@ -326,7 +369,10 @@ func (s *BreakStore) listItems(ctx context.Context, breakID string) ([]BreakItem
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT bi.id, bi.track_id, bi.position,
 		       t.id, t.path, t.title, t.artist, t.type,
-		       t.duration_ms, COALESCE(t.category,''), t.indexed_at
+		       t.duration_ms, COALESCE(t.category,''), t.indexed_at,
+		       t.loudness_lufs, t.true_peak_dbtp,
+		       COALESCE(t.loudness_status,'pending'), COALESCE(t.loudness_error,''),
+		       t.loudness_analyzed_at
 		FROM break_items bi
 		JOIN tracks t ON t.id = bi.track_id
 		WHERE bi.break_id = ?
@@ -341,14 +387,29 @@ func (s *BreakStore) listItems(ctx context.Context, breakID string) ([]BreakItem
 		var item BreakItem
 		var t Track
 		var indexedAt string
+		var lufs, peak sql.NullFloat64
+		var loudnessAnalyzedAt sql.NullString
 		if err := rows.Scan(
 			&item.ID, &item.TrackID, &item.Position,
 			&t.ID, &t.Path, &t.Title, &t.Artist, &t.Type,
 			&t.DurationMS, &t.Category, &indexedAt,
+			&lufs, &peak, &t.LoudnessStatus, &t.LoudnessError, &loudnessAnalyzedAt,
 		); err != nil {
 			return nil, fmt.Errorf("break items scan: %w", err)
 		}
 		t.IndexedAt, _ = time.Parse("2006-01-02T15:04:05Z", indexedAt)
+		if lufs.Valid {
+			t.LoudnessLUFS = &lufs.Float64
+		}
+		if peak.Valid {
+			t.TruePeakDBTP = &peak.Float64
+		}
+		if loudnessAnalyzedAt.Valid && loudnessAnalyzedAt.String != "" {
+			ts := parseSQLiteTime(loudnessAnalyzedAt.String)
+			if !ts.IsZero() {
+				t.LoudnessAnalyzedAt = &ts
+			}
+		}
 		item.Track = t
 		out = append(out, item)
 	}

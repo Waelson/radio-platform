@@ -22,6 +22,38 @@ type TrackStore interface {
 	UpdateMeta(ctx context.Context, id string, patch store.TrackPatch) error
 }
 
+// NormalizationReader reads loudness-normalization settings from the store.
+type NormalizationReader interface {
+	NormalizationSettings(ctx context.Context) (store.NormalizationSettings, error)
+}
+
+// computeGainDB returns the gain (in dB) to apply to t so its loudness reaches
+// the configured target. Returns 0 when normalization is disabled or when t has
+// not yet been analysed (LoudnessLUFS == nil).
+func computeGainDB(t store.Track, ns store.NormalizationSettings) float64 {
+	if !ns.Enabled || t.LoudnessLUFS == nil {
+		return 0.0
+	}
+	target := ns.TargetLUFS
+	if ns.PerTypeEnabled {
+		switch t.Type {
+		case "MUSIC":
+			target = ns.TargetMusic
+		case "JINGLE":
+			target = ns.TargetJingle
+		case "VINHETA":
+			target = ns.TargetVinheta
+		case "SPOT":
+			target = ns.TargetSpot
+		}
+	}
+	gain := target - *t.LoudnessLUFS
+	if gain > ns.MaxGainDB {
+		gain = ns.MaxGainDB
+	}
+	return gain
+}
+
 // trackJSON is the JSON representation of a track.
 type trackJSON struct {
 	ID         string    `json:"id"`
@@ -36,28 +68,43 @@ type trackJSON struct {
 	DurationMS int64     `json:"duration_ms"`
 	Category   string    `json:"category"`
 	IndexedAt  time.Time `json:"indexed_at"`
+
+	// Loudness fields (null until analysis completes).
+	LoudnessLUFS       *float64   `json:"loudness_lufs"`
+	TruePeakDBTP       *float64   `json:"true_peak_dbtp"`
+	LoudnessStatus     string     `json:"loudness_status"`
+	LoudnessAnalyzedAt *time.Time `json:"loudness_analyzed_at,omitempty"`
+
+	// GainDB is the gain adjustment (dB) the playout engine must apply so this
+	// track reaches the configured loudness target. 0.0 means no adjustment.
+	GainDB float64 `json:"gain_db"`
 }
 
 func toTrackJSON(t store.Track) trackJSON {
 	return trackJSON{
-		ID:         t.ID,
-		Path:       t.Path,
-		Title:      t.Title,
-		Artist:     t.Artist,
-		Album:      t.Album,
-		Type:       t.Type,
-		ISRC:       t.ISRC,
-		Composer:   t.Composer,
-		Publisher:  t.Publisher,
-		DurationMS: t.DurationMS,
-		Category:   t.Category,
-		IndexedAt:  t.IndexedAt,
+		ID:                 t.ID,
+		Path:               t.Path,
+		Title:              t.Title,
+		Artist:             t.Artist,
+		Album:              t.Album,
+		Type:               t.Type,
+		ISRC:               t.ISRC,
+		Composer:           t.Composer,
+		Publisher:          t.Publisher,
+		DurationMS:         t.DurationMS,
+		Category:           t.Category,
+		IndexedAt:          t.IndexedAt,
+		LoudnessLUFS:       t.LoudnessLUFS,
+		TruePeakDBTP:       t.TruePeakDBTP,
+		LoudnessStatus:     t.LoudnessStatus,
+		LoudnessAnalyzedAt: t.LoudnessAnalyzedAt,
 	}
 }
 
 // SearchTracks handles GET /v1/tracks
-// Query params: q, type, artist, album, category, limit (default 50, max 200), offset.
-func SearchTracks(ts TrackStore) http.HandlerFunc {
+// Query params: q, type, artist, album, category, limit (default 50, max 200), offset,
+// loudness_status, loudness_min, loudness_max.
+func SearchTracks(ts TrackStore, nr NormalizationReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 
@@ -65,13 +112,24 @@ func SearchTracks(ts TrackStore) http.HandlerFunc {
 		offset, _ := strconv.Atoi(q.Get("offset"))
 
 		sq := store.SearchQuery{
-			Q:        q.Get("q"),
-			Type:     q.Get("type"),
-			Artist:   q.Get("artist"),
-			Album:    q.Get("album"),
-			Category: q.Get("category"),
-			Limit:    limit,
-			Offset:   offset,
+			Q:              q.Get("q"),
+			Type:           q.Get("type"),
+			Artist:         q.Get("artist"),
+			Album:          q.Get("album"),
+			Category:       q.Get("category"),
+			Limit:          limit,
+			Offset:         offset,
+			LoudnessStatus: q.Get("loudness_status"),
+		}
+		if v := q.Get("loudness_min"); v != "" {
+			if f, err := strconv.ParseFloat(v, 64); err == nil {
+				sq.LoudnessMin = &f
+			}
+		}
+		if v := q.Get("loudness_max"); v != "" {
+			if f, err := strconv.ParseFloat(v, 64); err == nil {
+				sq.LoudnessMax = &f
+			}
 		}
 
 		tracks, err := ts.Search(r.Context(), sq)
@@ -88,9 +146,13 @@ func SearchTracks(ts TrackStore) http.HandlerFunc {
 			return
 		}
 
+		ns, _ := nr.NormalizationSettings(r.Context())
+
 		out := make([]trackJSON, len(tracks))
 		for i, t := range tracks {
-			out[i] = toTrackJSON(t)
+			tj := toTrackJSON(t)
+			tj.GainDB = computeGainDB(t, ns)
+			out[i] = tj
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -104,7 +166,7 @@ func SearchTracks(ts TrackStore) http.HandlerFunc {
 }
 
 // GetTrack handles GET /v1/tracks/{id}.
-func GetTrack(ts TrackStore) http.HandlerFunc {
+func GetTrack(ts TrackStore, nr NormalizationReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if id == "" {
@@ -123,13 +185,16 @@ func GetTrack(ts TrackStore) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, toTrackJSON(t))
+		ns, _ := nr.NormalizationSettings(r.Context())
+		tj := toTrackJSON(t)
+		tj.GainDB = computeGainDB(t, ns)
+		writeJSON(w, http.StatusOK, tj)
 	}
 }
 
 // PatchTrack handles PATCH /v1/tracks/{id}.
 // Accepts a JSON body with any subset of: title, artist, category, type.
-func PatchTrack(ts TrackStore) http.HandlerFunc {
+func PatchTrack(ts TrackStore, nr NormalizationReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if id == "" {
@@ -188,7 +253,10 @@ func PatchTrack(ts TrackStore) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, toTrackJSON(t))
+		ns, _ := nr.NormalizationSettings(r.Context())
+		tj := toTrackJSON(t)
+		tj.GainDB = computeGainDB(t, ns)
+		writeJSON(w, http.StatusOK, tj)
 	}
 }
 

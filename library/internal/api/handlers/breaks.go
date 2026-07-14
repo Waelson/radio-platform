@@ -52,12 +52,13 @@ type breakItemJSON struct {
 // enginePayloadTrack is the track shape expected by the playout engine's
 // POST /v1/queue/enqueue-break endpoint.
 type enginePayloadTrack struct {
-	ID         string `json:"id"`
-	Path       string `json:"path"`
-	Title      string `json:"title"`
-	Artist     string `json:"artist,omitempty"`
-	Type       string `json:"type"`
-	DurationMS int64  `json:"duration_ms"`
+	ID         string  `json:"id"`
+	Path       string  `json:"path"`
+	Title      string  `json:"title"`
+	Artist     string  `json:"artist,omitempty"`
+	Type       string  `json:"type"`
+	DurationMS int64   `json:"duration_ms"`
+	GainDB     float64 `json:"gain_db"`
 }
 
 // engineBreakPayload is the full payload for POST /v1/queue/enqueue-break.
@@ -97,28 +98,29 @@ func toBreakDetail(b store.Break) breakDetailJSON {
 	return d
 }
 
-func toEngineTrack(t store.Track) enginePayloadTrack {
+func toEngineTrack(t store.Track, ns store.NormalizationSettings) enginePayloadTrack {
 	return enginePayloadTrack{
 		ID: t.ID, Path: t.Path, Title: t.Title, Artist: t.Artist,
 		Type: t.Type, DurationMS: t.DurationMS,
+		GainDB: computeGainDB(t, ns),
 	}
 }
 
-func toEnginePayload(b store.Break) engineBreakPayload {
+func toEnginePayload(b store.Break, ns store.NormalizationSettings) engineBreakPayload {
 	p := engineBreakPayload{
 		Name:  b.Name,
 		Spots: make([]enginePayloadTrack, len(b.Items)),
 	}
 	if b.OpenTrack != nil {
-		et := toEngineTrack(*b.OpenTrack)
+		et := toEngineTrack(*b.OpenTrack, ns)
 		p.Open = &et
 	}
 	if b.CloseTrack != nil {
-		et := toEngineTrack(*b.CloseTrack)
+		et := toEngineTrack(*b.CloseTrack, ns)
 		p.Close = &et
 	}
 	for i, it := range b.Items {
-		p.Spots[i] = toEngineTrack(it.Track)
+		p.Spots[i] = toEngineTrack(it.Track, ns)
 	}
 	return p
 }
@@ -164,8 +166,9 @@ func CreateBreak(bs BreakStore) http.HandlerFunc {
 }
 
 // GetBreak handles GET /v1/breaks/{id}.
-// With ?format=engine-payload it returns the payload ready for the playout engine.
-func GetBreak(bs BreakStore) http.HandlerFunc {
+// With ?format=engine-payload it returns the payload ready for the playout engine,
+// including gain_db per slot computed from the current normalization settings.
+func GetBreak(bs BreakStore, nr NormalizationReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		brk, err := bs.FindByID(r.Context(), id)
@@ -180,7 +183,8 @@ func GetBreak(bs BreakStore) http.HandlerFunc {
 		}
 
 		if r.URL.Query().Get("format") == "engine-payload" {
-			writeJSON(w, http.StatusOK, toEnginePayload(brk))
+			ns, _ := nr.NormalizationSettings(r.Context())
+			writeJSON(w, http.StatusOK, toEnginePayload(brk, ns))
 			return
 		}
 		writeJSON(w, http.StatusOK, toBreakDetail(brk))

@@ -23,20 +23,21 @@ type HotkeyProfile struct {
 // track_id may be NULL (ON DELETE SET NULL); track_path/title/artist are cached
 // copies so the button remains usable even if the track is deleted from the library.
 type HotkeyButton struct {
-	ID          string
-	ProfileID   string
-	Position    int
-	Label       string
-	SubLabel    string
-	Icon        string
-	Palette     int
-	TrackID     string // empty when track was deleted
-	TrackPath   string
-	TrackTitle  string
-	TrackArtist string
-	TrackType   string
-	DurationMS  int64
-	CreatedAt   time.Time
+	ID           string
+	ProfileID    string
+	Position     int
+	Label        string
+	SubLabel     string
+	Icon         string
+	Palette      int
+	TrackID      string // empty when track was deleted
+	TrackPath    string
+	TrackTitle   string
+	TrackArtist  string
+	TrackType    string
+	DurationMS   int64
+	CreatedAt    time.Time
+	LoudnessLUFS *float64 // nil when track not analyzed or button has no track
 }
 
 // HotkeyButtonPatch holds optional fields for a button update.
@@ -331,12 +332,14 @@ func (s *HotkeyStore) ReorderButtons(ctx context.Context, profileID string, butt
 
 func (s *HotkeyStore) listButtons(ctx context.Context, profileID string) ([]HotkeyButton, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, profile_id, position, label, sub_label, icon, palette,
-		       COALESCE(track_id,''), track_path, track_title, track_artist, track_type,
-		       duration_ms, created_at
-		FROM hotkey_buttons
-		WHERE profile_id = ?
-		ORDER BY position ASC`, profileID)
+		SELECT hb.id, hb.profile_id, hb.position, hb.label, hb.sub_label, hb.icon, hb.palette,
+		       COALESCE(hb.track_id,''), hb.track_path, hb.track_title, hb.track_artist, hb.track_type,
+		       hb.duration_ms, hb.created_at,
+		       t.loudness_lufs
+		FROM hotkey_buttons hb
+		LEFT JOIN tracks t ON t.id = hb.track_id
+		WHERE hb.profile_id = ?
+		ORDER BY hb.position ASC`, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("hotkey list buttons: %w", err)
 	}
@@ -344,7 +347,7 @@ func (s *HotkeyStore) listButtons(ctx context.Context, profileID string) ([]Hotk
 
 	var out []HotkeyButton
 	for rows.Next() {
-		b, err := scanButton(rows)
+		b, err := scanButtonWithLoudness(rows)
 		if err != nil {
 			return nil, fmt.Errorf("hotkey list buttons scan: %w", err)
 		}
@@ -403,5 +406,23 @@ func scanButton(sc buttonScanner) (HotkeyButton, error) {
 		return HotkeyButton{}, err
 	}
 	b.CreatedAt, _ = time.Parse("2006-01-02T15:04:05Z", createdAt)
+	return b, nil
+}
+
+func scanButtonWithLoudness(sc buttonScanner) (HotkeyButton, error) {
+	var b HotkeyButton
+	var createdAt string
+	var lufs sql.NullFloat64
+	if err := sc.Scan(
+		&b.ID, &b.ProfileID, &b.Position, &b.Label, &b.SubLabel, &b.Icon, &b.Palette,
+		&b.TrackID, &b.TrackPath, &b.TrackTitle, &b.TrackArtist, &b.TrackType,
+		&b.DurationMS, &createdAt, &lufs,
+	); err != nil {
+		return HotkeyButton{}, err
+	}
+	b.CreatedAt, _ = time.Parse("2006-01-02T15:04:05Z", createdAt)
+	if lufs.Valid {
+		b.LoudnessLUFS = &lufs.Float64
+	}
 	return b, nil
 }

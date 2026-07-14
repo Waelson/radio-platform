@@ -93,6 +93,19 @@ func (s *SettingsStore) List(ctx context.Context) ([]SettingRow, error) {
 	return out, rows.Err()
 }
 
+// NormalizationSettings holds all loudness-normalization parameters read from
+// the settings table (keys injected by migration 010).
+type NormalizationSettings struct {
+	Enabled        bool
+	TargetLUFS     float64
+	MaxGainDB      float64
+	PerTypeEnabled bool
+	TargetMusic    float64
+	TargetJingle   float64
+	TargetVinheta  float64
+	TargetSpot     float64
+}
+
 // ── Typed helpers ─────────────────────────────────────────────────────────────
 
 func (s *SettingsStore) getOrDefault(ctx context.Context, key, def string) string {
@@ -153,6 +166,40 @@ func (s *SettingsStore) RetentionDaysOrDefault(ctx context.Context) int {
 		return 7
 	}
 	return days
+}
+
+// NormalizationSettings reads all normalization.* keys from the settings table.
+// Missing or malformed values fall back to the defaults set by migration 010.
+func (s *SettingsStore) NormalizationSettings(ctx context.Context) (NormalizationSettings, error) {
+	parseBool := func(v, def string) bool {
+		if v == "" {
+			v = def
+		}
+		return v == "true" || v == "1"
+	}
+	parseFloat := func(v, def string) float64 {
+		if v == "" {
+			v = def
+		}
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			f, _ = strconv.ParseFloat(def, 64)
+		}
+		return f
+	}
+
+	g := func(key, def string) string { return s.getOrDefault(ctx, key, def) }
+
+	return NormalizationSettings{
+		Enabled:        parseBool(g("normalization.enabled", "true"), "true"),
+		TargetLUFS:     parseFloat(g("normalization.target_lufs", "-16.0"), "-16.0"),
+		MaxGainDB:      parseFloat(g("normalization.max_gain_db", "12.0"), "12.0"),
+		PerTypeEnabled: parseBool(g("normalization.per_type_enabled", "false"), "false"),
+		TargetMusic:    parseFloat(g("normalization.target_lufs_music", "-16.0"), "-16.0"),
+		TargetJingle:   parseFloat(g("normalization.target_lufs_jingle", "-16.0"), "-16.0"),
+		TargetVinheta:  parseFloat(g("normalization.target_lufs_vinheta", "-18.0"), "-18.0"),
+		TargetSpot:     parseFloat(g("normalization.target_lufs_spot", "-14.0"), "-14.0"),
+	}, nil
 }
 
 // StationInfo returns the radio station data from settings.

@@ -14,6 +14,7 @@ import (
 	"github.com/Waelson/radio-library-service/internal/fileimporter"
 	"github.com/Waelson/radio-library-service/internal/indexsvc"
 	"github.com/Waelson/radio-library-service/internal/logging"
+	"github.com/Waelson/radio-library-service/internal/loudness"
 	"github.com/Waelson/radio-library-service/internal/scanner"
 	"github.com/Waelson/radio-library-service/internal/scheduler"
 	"github.com/Waelson/radio-library-service/internal/store"
@@ -74,6 +75,30 @@ func run(args []string) error {
 	ilStore := store.NewTransmissionImportLogStore(db)
 	trackStore := store.NewTrackStore(db)
 	indexer := scanner.NewIndexer(cfg.Scanner, trackStore, logging.With(log, "scanner"))
+
+	// 5a. Build loudness worker and attach to indexer.
+	loudnessWorker := loudness.NewWorker(
+		loudness.NewAnalyzer(cfg.Scanner.FFmpegPath, 0),
+		trackStore,
+		0, // concurrency from settings default (2); Phase 5 will read from settings
+		logging.With(log, "loudness"),
+	)
+	indexer.SetLoudnessEnqueuer(loudnessWorker)
+	go func() {
+		loudnessWorker.Start(ctx)
+	}()
+	log.Info("loudness worker started")
+
+	// 5b. Re-enqueue tracks pending analysis from previous runs.
+	if pendingIDs, err := trackStore.ListPendingLoudness(ctx, 10_000); err != nil {
+		log.Warn("loudness: could not list pending tracks", "error", err)
+	} else if len(pendingIDs) > 0 {
+		for _, id := range pendingIDs {
+			loudnessWorker.Enqueue(id)
+		}
+		log.Info("loudness: re-enqueued pending tracks", "count", len(pendingIDs))
+	}
+
 	idxSvc := indexsvc.New(indexer, trackStore, logging.With(log, "indexsvc"))
 
 	// 6. Initial library scan (non-blocking; state tracked via idxSvc).
@@ -122,6 +147,8 @@ func run(args []string) error {
 		categoryStore, clockStore, separationStore, rotationLogStore, gen,
 		tlStore, ilStore, settingsStore, settingsStore,
 		logging.With(log, "api"))
+	srv.SetLoudnessWorker(loudnessWorker, trackStore)
+	srv.SetNormalizationReader(settingsStore)
 	go func() {
 		if err := srv.Start(ctx); err != nil {
 			slog.Error("API server error", "error", err)

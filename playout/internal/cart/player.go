@@ -137,6 +137,7 @@ func (p *Player) Run(ctx context.Context) {
 		path   string
 		title  string
 		artist string
+		gainDB float64
 		posMS  int64
 		durMS  int64
 	}
@@ -147,7 +148,7 @@ func (p *Player) Run(ctx context.Context) {
 		gen   int64
 	)
 
-	startSession := func(cartID, path, title, artist string) {
+	startSession := func(cartID, path, title, artist string, gainDB float64) {
 		if sess.cancel != nil {
 			sess.cancel()
 		}
@@ -159,6 +160,7 @@ func (p *Player) Run(ctx context.Context) {
 			path:   path,
 			title:  title,
 			artist: artist,
+			gainDB: gainDB,
 		}
 		state = StatePlaying
 		p.setStatus(Status{
@@ -168,7 +170,7 @@ func (p *Player) Run(ctx context.Context) {
 			Title:  title,
 			Artist: artist,
 		})
-		go p.loop(pCtx, gen, cartID, path)
+		go p.loop(pCtx, gen, cartID, path, gainDB)
 	}
 
 	stopSession := func(reason string) {
@@ -209,7 +211,7 @@ func (p *Player) Run(ctx context.Context) {
 					stopSession("replaced")
 				}
 				cartID := "cart_" + ulid.Make().String()
-				startSession(cartID, cmd.path, cmd.title, cmd.artist)
+				startSession(cartID, cmd.path, cmd.title, cmd.artist, cmd.gainDB)
 				p.evtBus.Publish(events.New(events.EvtCartStarted, events.CartStartedPayload{
 					CartID:     cartID,
 					Path:       sess.path,
@@ -290,7 +292,8 @@ func (p *Player) Run(ctx context.Context) {
 
 // loop is the playback goroutine. It decodes path and writes PCM to the output
 // device, sending progress/ended messages to intCh.
-func (p *Player) loop(ctx context.Context, gen int64, cartID, path string) {
+// gainDB is the EBU R128 normalization gain in dB (0 = unity).
+func (p *Player) loop(ctx context.Context, gen int64, cartID, path string, gainDB float64) {
 	send := func(msg intMsg) {
 		msg.gen = gen
 		select {
@@ -340,6 +343,8 @@ func (p *Player) loop(ctx context.Context, gen int64, cartID, path string) {
 	}()
 
 	_ = cartID // cartID carried in parent scope for event payloads
+	// Pre-compute the linear normalization gain from gainDB once per session.
+	normGain := float32(math.Pow(10, gainDB/20))
 	buf := make([]float32, p.bufFrames*p.channels)
 	posMS := int64(0)
 	lastProgressMS := int64(-101)
@@ -351,7 +356,8 @@ func (p *Player) loop(ctx context.Context, gen int64, cartID, path string) {
 
 		n, readErr := stream.ReadFrames(ctx, buf)
 		if n > 0 {
-			gain := math.Float32frombits(p.vol.Load())
+			// Combined gain: cart volume knob × EBU R128 normalization.
+			gain := math.Float32frombits(p.vol.Load()) * normGain
 			if gain != 1.0 {
 				for i := range buf[:n*p.channels] {
 					buf[i] *= gain
@@ -392,7 +398,7 @@ func (p *Player) HandlePlay(_ context.Context, cmd commands.Command) error {
 	if !ok {
 		return fmt.Errorf("cart: HandlePlay: unexpected payload type %T", cmd.Payload)
 	}
-	p.send(extCmd{kind: extPlay, path: payload.Path, title: payload.Title, artist: payload.Artist})
+	p.send(extCmd{kind: extPlay, path: payload.Path, title: payload.Title, artist: payload.Artist, gainDB: payload.GainDB})
 	return nil
 }
 
@@ -424,6 +430,7 @@ type extCmd struct {
 	path   string
 	title  string
 	artist string
+	gainDB float64
 }
 
 type intMsgKind int

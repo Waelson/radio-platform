@@ -16,19 +16,33 @@ import (
 type TrackWriter interface {
 	Upsert(ctx context.Context, t store.Track) error
 	DeleteByPath(ctx context.Context, path string) error
+	FindByPath(ctx context.Context, path string) (store.Track, error)
+}
+
+// LoudnessEnqueuer is an optional hook called after each successful file index.
+// Implementations should be non-blocking (e.g. drop to a buffered channel).
+type LoudnessEnqueuer interface {
+	Enqueue(id string)
 }
 
 // Indexer walks the library directories, probes each audio file and upserts
 // the resulting metadata into the track store.
 type Indexer struct {
-	cfg   config.ScannerConfig
-	store TrackWriter
-	log   *slog.Logger
+	cfg      config.ScannerConfig
+	store    TrackWriter
+	log      *slog.Logger
+	loudness LoudnessEnqueuer // optional; nil = no loudness analysis
 }
 
 // NewIndexer creates an Indexer.
 func NewIndexer(cfg config.ScannerConfig, ts TrackWriter, log *slog.Logger) *Indexer {
 	return &Indexer{cfg: cfg, store: ts, log: log}
+}
+
+// SetLoudnessEnqueuer attaches a LoudnessEnqueuer that is called after each
+// successful file index. Safe to call before Start/Scan.
+func (ix *Indexer) SetLoudnessEnqueuer(e LoudnessEnqueuer) {
+	ix.loudness = e
 }
 
 // ScanResult contains statistics from a full library scan.
@@ -133,6 +147,13 @@ func (ix *Indexer) IndexFile(ctx context.Context, path, assetType string) error 
 
 	if err := ix.store.Upsert(ctx, t); err != nil {
 		return fmt.Errorf("upsert %q: %w", path, err)
+	}
+
+	// Enqueue for loudness analysis after a successful upsert.
+	if ix.loudness != nil {
+		if tr, err := ix.store.FindByPath(ctx, path); err == nil {
+			ix.loudness.Enqueue(tr.ID)
+		}
 	}
 
 	ix.log.Debug("indexed", "path", path, "title", title, "artist", artist,

@@ -45,13 +45,14 @@ type generatedItemJSON struct {
 }
 
 type generatedTrackJSON struct {
-	ID         string `json:"id"`
-	Path       string `json:"path"`
-	Title      string `json:"title"`
-	Artist     string `json:"artist"`
-	Album      string `json:"album"`
-	DurationMS int64  `json:"duration_ms"`
-	Type       string `json:"type"`
+	ID         string  `json:"id"`
+	Path       string  `json:"path"`
+	Title      string  `json:"title"`
+	Artist     string  `json:"artist"`
+	Album      string  `json:"album"`
+	DurationMS int64   `json:"duration_ms"`
+	Type       string  `json:"type"`
+	GainDB     float64 `json:"gain_db"`
 }
 
 // ── Separation rule handlers ──────────────────────────────────────────────────
@@ -136,7 +137,7 @@ func DeleteSeparationRule(ss SeparationRuleStore) http.HandlerFunc {
 // ── Generator handler ─────────────────────────────────────────────────────────
 
 // GenerateSchedule handles POST /v1/schedule/generate.
-func GenerateSchedule(svc SchedulerService) http.HandlerFunc {
+func GenerateSchedule(svc SchedulerService, nr NormalizationReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			From  string `json:"from"`  // ISO 8601, e.g. "2026-07-19T08:00:00"
@@ -167,8 +168,38 @@ func GenerateSchedule(svc SchedulerService) http.HandlerFunc {
 			return
 		}
 
+		var ns store.NormalizationSettings
+		nsLoaded := false
+		if nr != nil {
+			if s, e := nr.NormalizationSettings(r.Context()); e == nil {
+				ns = s
+				nsLoaded = true
+			}
+		}
+
 		out := make([]generatedItemJSON, len(items))
 		for i, item := range items {
+			var gainDB float64
+			if nsLoaded && ns.Enabled && item.Track.LoudnessLUFS != nil {
+				target := ns.TargetLUFS
+				if ns.PerTypeEnabled {
+					switch item.Track.Type {
+					case "MUSIC":
+						target = ns.TargetMusic
+					case "JINGLE":
+						target = ns.TargetJingle
+					case "VINHETA":
+						target = ns.TargetVinheta
+					case "SPOT":
+						target = ns.TargetSpot
+					}
+				}
+				gain := target - *item.Track.LoudnessLUFS
+				if gain > ns.MaxGainDB {
+					gain = ns.MaxGainDB
+				}
+				gainDB = gain
+			}
 			out[i] = generatedItemJSON{
 				Hour: item.Hour, Position: item.Position,
 				SlotID: item.SlotID, SlotType: item.SlotType,
@@ -182,6 +213,7 @@ func GenerateSchedule(svc SchedulerService) http.HandlerFunc {
 					Album:      item.Track.Album,
 					DurationMS: item.Track.DurationMS,
 					Type:       item.Track.Type,
+					GainDB:     gainDB,
 				},
 			}
 		}

@@ -21,9 +21,10 @@ func CartPlay(bus queueBus, enabled bool) http.HandlerFunc {
 			return
 		}
 		var req struct {
-			Path   string `json:"path"`
-			Title  string `json:"title"`
-			Artist string `json:"artist"`
+			Path   string  `json:"path"`
+			Title  string  `json:"title"`
+			Artist string  `json:"artist"`
+			GainDB float64 `json:"gain_db"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid_json", err.Error())
@@ -37,6 +38,7 @@ func CartPlay(bus queueBus, enabled bool) http.HandlerFunc {
 			Path:   req.Path,
 			Title:  req.Title,
 			Artist: req.Artist,
+			GainDB: req.GainDB,
 		})
 		result, ok := sendAndWait(w, bus, cmd, replyCh)
 		if !ok {

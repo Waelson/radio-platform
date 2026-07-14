@@ -302,6 +302,7 @@ type CartPlayPayload struct {
 	Path   string
 	Title  string
 	Artist string
+	GainDB float64 // EBU R128 normalization gain in dB; 0 = unity
 }
 
 // CartSetVolumePayload carries the new volume level for the cart output.

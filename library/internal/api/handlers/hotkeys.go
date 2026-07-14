@@ -56,6 +56,7 @@ type hotkeyButtonJSON struct {
 	TrackArtist string    `json:"track_artist"`
 	TrackType   string    `json:"track_type"`
 	DurationMS  int64     `json:"duration_ms"`
+	GainDB      float64   `json:"gain_db"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -68,10 +69,10 @@ func toProfileSummary(p store.HotkeyProfile) hotkeyProfileSummaryJSON {
 	}
 }
 
-func toProfileDetail(p store.HotkeyProfile) hotkeyProfileDetailJSON {
+func toProfileDetail(p store.HotkeyProfile, ns store.NormalizationSettings) hotkeyProfileDetailJSON {
 	btns := make([]hotkeyButtonJSON, len(p.Buttons))
 	for i, b := range p.Buttons {
-		btns[i] = toButtonJSON(b)
+		btns[i] = toButtonJSON(b, ns)
 	}
 	return hotkeyProfileDetailJSON{
 		ID: p.ID, Name: p.Name, Columns: p.Columns,
@@ -79,13 +80,34 @@ func toProfileDetail(p store.HotkeyProfile) hotkeyProfileDetailJSON {
 	}
 }
 
-func toButtonJSON(b store.HotkeyButton) hotkeyButtonJSON {
+func toButtonJSON(b store.HotkeyButton, ns store.NormalizationSettings) hotkeyButtonJSON {
+	var gainDB float64
+	if ns.Enabled && b.LoudnessLUFS != nil {
+		target := ns.TargetLUFS
+		if ns.PerTypeEnabled {
+			switch b.TrackType {
+			case "MUSIC":
+				target = ns.TargetMusic
+			case "JINGLE":
+				target = ns.TargetJingle
+			case "VINHETA":
+				target = ns.TargetVinheta
+			case "SPOT":
+				target = ns.TargetSpot
+			}
+		}
+		gain := target - *b.LoudnessLUFS
+		if gain > ns.MaxGainDB {
+			gain = ns.MaxGainDB
+		}
+		gainDB = gain
+	}
 	return hotkeyButtonJSON{
 		ID: b.ID, ProfileID: b.ProfileID, Position: b.Position,
 		Label: b.Label, SubLabel: b.SubLabel, Icon: b.Icon, Palette: b.Palette,
 		TrackID: b.TrackID, TrackPath: b.TrackPath, TrackTitle: b.TrackTitle,
 		TrackArtist: b.TrackArtist, TrackType: b.TrackType,
-		DurationMS: b.DurationMS, CreatedAt: b.CreatedAt,
+		DurationMS: b.DurationMS, GainDB: gainDB, CreatedAt: b.CreatedAt,
 	}
 }
 
@@ -127,12 +149,12 @@ func CreateHotkeyProfile(hs HotkeyStore) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "store_error", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "data": toProfileDetail(p)})
+		writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "data": toProfileDetail(p, store.NormalizationSettings{})})
 	}
 }
 
 // GetHotkeyProfile returns a handler for GET /v1/hotkeys/profiles/{id}.
-func GetHotkeyProfile(hs HotkeyStore) http.HandlerFunc {
+func GetHotkeyProfile(hs HotkeyStore, nr NormalizationReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		p, err := hs.FindProfileByID(r.Context(), id)
@@ -144,7 +166,11 @@ func GetHotkeyProfile(hs HotkeyStore) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "store_error", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "data": toProfileDetail(p)})
+		var ns store.NormalizationSettings
+		if nr != nil {
+			ns, _ = nr.NormalizationSettings(r.Context())
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "data": toProfileDetail(p, ns)})
 	}
 }
 
@@ -176,7 +202,7 @@ func UpdateHotkeyProfile(hs HotkeyStore) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "store_error", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "data": toProfileDetail(p)})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "data": toProfileDetail(p, store.NormalizationSettings{})})
 	}
 }
 
@@ -225,7 +251,7 @@ func AddHotkeyButton(hs HotkeyStore) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "store_error", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "data": toButtonJSON(btn)})
+		writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "data": toButtonJSON(btn, store.NormalizationSettings{})})
 	}
 }
 
@@ -287,7 +313,7 @@ func PatchHotkeyButton(hs HotkeyStore) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "store_error", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "data": toButtonJSON(btn)})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "data": toButtonJSON(btn, store.NormalizationSettings{})})
 	}
 }
 

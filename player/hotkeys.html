@@ -785,7 +785,7 @@ async function cartPlay(btn) {
   try {
     const r = await fetch(API_URL + '/v1/cart/play', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist }),
+      body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist, gain_db: btn.gain_db || 0 }),
     });
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
