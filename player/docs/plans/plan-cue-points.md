@@ -1092,16 +1092,47 @@ ws.on('ws-message', (evt) => {
 
 ### Fase 5 — Propagação de cue points nos payloads de enqueue (Library Service + Player)
 
-**Objetivo:** todos os endpoints que produzem itens para reprodução devem incluir os cue points.
+**Objetivo:** todos os endpoints do Library Service que produzem faixas para reprodução devem incluir os 4 campos de cue points, e todos os sites de enqueue no Player devem repassá-los ao Playout Engine.
 
-1. Atualizar `QueueItemInput` no `commands/types.go` do Playout Engine com `CueInMS`, `IntroMS`, `OutroMS`, `CueOutMS int64`.
-2. Atualizar `GET /v1/schedule/generate` para incluir cue points nas faixas geradas.
-3. Atualizar `GET /v1/hotkeys/profile/:id` para incluir cue points nos botões.
-4. Atualizar `POST /v1/queue/enqueue` para aceitar os campos opcionais.
-5. Atualizar `player.html` para passar cue points em todos os sites de enqueue.
-6. `go test ./...` em library e playout.
+#### 5.1 — Playout Engine: ampliar QueueItemInput
 
-**Entregável:** Cue points fluem do banco até o payload que chega ao Playout Engine.
+1. Adicionar `CueInMS`, `IntroMS`, `OutroMS`, `CueOutMS int64` ao `QueueItemInput` em `playout/internal/commands/types.go`.
+2. `go build ./...` no playout para confirmar compilação.
+
+#### 5.2 — Library Service: endpoints que retornam faixas
+
+Atualizar cada handler para incluir os 4 campos em todos os itens de faixa retornados:
+
+| # | Endpoint | Arquivo de handler |
+|---|----------|--------------------|
+| 1 | `GET /v1/tracks` | `handlers/tracks.go` |
+| 2 | `GET /v1/tracks/:id` | `handlers/tracks.go` |
+| 3 | `GET /v1/playlists/:id` | `handlers/playlists.go` |
+| 4 | `GET /v1/breaks/:id` | `handlers/breaks.go` |
+| 5 | `GET /v1/schedule/generate` | `handlers/schedule.go` |
+| 6 | `GET /v1/hotkeys/profiles/:id` | `handlers/hotkeys.go` |
+| 7 | `GET /v1/categories/:id/tracks` | `handlers/categories.go` |
+
+#### 5.3 — Player: sites de enqueue
+
+Atualizar `player.html` e `hotkeys.html` para incluir `cue_in_ms`, `intro_ms`, `outro_ms`, `cue_out_ms` em todos os payloads enviados ao Playout Engine:
+
+| # | Ação | Endpoint do Playout | Arquivo |
+|---|------|---------------------|---------|
+| 1 | Enfileirar faixa do catálogo | `POST /v1/queue/enqueue` | `player.html` |
+| 2 | Enfileirar playlist | `POST /v1/queue/enqueue` | `player.html` |
+| 3 | Enfileirar bloco comercial | `POST /v1/queue/enqueue-break` | `player.html` |
+| 4 | Inserir próxima faixa | `POST /v1/queue/insert-next` | `player.html` |
+| 5 | Inserir após item | `POST /v1/queue/insert-after` | `player.html` |
+| 6 | Enfileirar via gerador de rotação | `POST /v1/queue/enqueue` | `player.html` |
+| 7 | Acionar botão da botoneira | `POST /v1/cart/play` | `hotkeys.html` |
+
+#### 5.4 — Testes e validação
+
+- `go test ./...` em library e playout.
+- Verificar manualmente via `curl` que `GET /v1/breaks/:id` e `GET /v1/playlists/:id` retornam os 4 campos.
+
+**Entregável:** Cue points fluem do banco → Library Service → Player → Playout Engine em todos os caminhos de reprodução.
 
 ---
 
