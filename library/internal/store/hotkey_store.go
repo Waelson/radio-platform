@@ -36,6 +36,10 @@ type HotkeyButton struct {
 	TrackArtist  string
 	TrackType    string
 	DurationMS   int64
+	CueInMS      *int64
+	IntroMS      *int64
+	OutroMS      *int64
+	CueOutMS     *int64
 	CreatedAt    time.Time
 	LoudnessLUFS *float64 // nil when track not analyzed or button has no track
 }
@@ -335,7 +339,8 @@ func (s *HotkeyStore) listButtons(ctx context.Context, profileID string) ([]Hotk
 		SELECT hb.id, hb.profile_id, hb.position, hb.label, hb.sub_label, hb.icon, hb.palette,
 		       COALESCE(hb.track_id,''), hb.track_path, hb.track_title, hb.track_artist, hb.track_type,
 		       hb.duration_ms, hb.created_at,
-		       t.loudness_lufs
+		       t.loudness_lufs,
+		       t.cue_in_ms, t.intro_ms, t.outro_ms, t.cue_out_ms
 		FROM hotkey_buttons hb
 		LEFT JOIN tracks t ON t.id = hb.track_id
 		WHERE hb.profile_id = ?
@@ -413,16 +418,30 @@ func scanButtonWithLoudness(sc buttonScanner) (HotkeyButton, error) {
 	var b HotkeyButton
 	var createdAt string
 	var lufs sql.NullFloat64
+	var cueIn, intro, outro, cueOut sql.NullInt64
 	if err := sc.Scan(
 		&b.ID, &b.ProfileID, &b.Position, &b.Label, &b.SubLabel, &b.Icon, &b.Palette,
 		&b.TrackID, &b.TrackPath, &b.TrackTitle, &b.TrackArtist, &b.TrackType,
 		&b.DurationMS, &createdAt, &lufs,
+		&cueIn, &intro, &outro, &cueOut,
 	); err != nil {
 		return HotkeyButton{}, err
 	}
 	b.CreatedAt, _ = time.Parse("2006-01-02T15:04:05Z", createdAt)
 	if lufs.Valid {
 		b.LoudnessLUFS = &lufs.Float64
+	}
+	if cueIn.Valid {
+		b.CueInMS = &cueIn.Int64
+	}
+	if intro.Valid {
+		b.IntroMS = &intro.Int64
+	}
+	if outro.Valid {
+		b.OutroMS = &outro.Int64
+	}
+	if cueOut.Valid {
+		b.CueOutMS = &cueOut.Int64
 	}
 	return b, nil
 }
