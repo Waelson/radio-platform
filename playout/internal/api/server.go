@@ -59,6 +59,12 @@ type ScheduleDeps struct {
 	Mgr handlers.ScheduleManager
 }
 
+// StreamingDeps carries the streaming manager for the /v1/streaming/* endpoints.
+// When Mgr is nil all streaming endpoints return 404.
+type StreamingDeps struct {
+	Mgr handlers.StreamingManager
+}
+
 // ConfigDeps carries config-related dependencies for the config endpoints.
 // When Snapshot is nil, GET /v1/config/current and PUT /v1/config are not registered.
 type ConfigDeps struct {
@@ -80,6 +86,7 @@ type Server struct {
 	cartStatus     func() any
 	listDevices    func() ([]handlers.AudioDevice, error)
 	scheduleMgr    handlers.ScheduleManager
+	streamingMgr   handlers.StreamingManager
 	configSnapshot *appcfg.Config
 	configPath     string
 	log            *slog.Logger
@@ -91,7 +98,8 @@ type Server struct {
 // wsHub may be nil; the /v1/events endpoint will not be registered.
 // col may be nil; the /v1/metrics endpoint will not be registered.
 // devicesDeps.List may be nil; GET /v1/devices will return an empty list.
-func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, cartDeps CartDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, configDeps ConfigDeps, log *slog.Logger) *Server {
+// streamingDeps.Mgr may be nil; streaming endpoints will return 404.
+func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, cartDeps CartDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, configDeps ConfigDeps, streamingDeps StreamingDeps, log *slog.Logger) *Server {
 	s := &Server{
 		cfg:            cfg,
 		stateMgr:       stateMgr,
@@ -105,6 +113,7 @@ func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *qu
 		cartStatus:     cartDeps.GetStatus,
 		listDevices:    devicesDeps.List,
 		scheduleMgr:    scheduleDeps.Mgr,
+		streamingMgr:   streamingDeps.Mgr,
 		configSnapshot: configDeps.Snapshot,
 		configPath:     configDeps.Path,
 		log:            log,
@@ -130,7 +139,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Observability
 	mux.HandleFunc("GET /v1/health", handlers.Health(s.stateMgr))
 	mux.HandleFunc("GET /v1/ready", handlers.Ready(s.stateMgr))
-	mux.HandleFunc("GET /v1/status", handlers.Status(s.stateMgr))
+	mux.HandleFunc("GET /v1/status", handlers.Status(s.stateMgr, s.streamingMgr))
 	mux.HandleFunc("GET /v1/build", handlers.Build(s.cfg.Version))
 	mux.HandleFunc("GET /v1/info", handlers.Info(s.cfg.EngineID, s.cfg.Version, s.cfg.StartTime, s.cfg.AudioDriver))
 	mux.HandleFunc("GET /status", handlers.StatusHTML(s.cfg.Port, s.cfg.Version, s.cfg.StartTime, s.stateMgr))
@@ -203,6 +212,14 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("GET /v1/config/current",  handlers.GetCurrentConfig(s.configSnapshot))
 		mux.HandleFunc("POST /v1/config/browse",  handlers.BrowsePath())
 		mux.HandleFunc("PUT /v1/config",          handlers.UpdateConfig(s.configPath))
+	}
+
+	// Streaming — registered only when a manager is injected.
+	if s.streamingMgr != nil {
+		mux.HandleFunc("GET /v1/streaming", handlers.StreamingList(s.streamingMgr))
+		mux.HandleFunc("POST /v1/streaming/{id}/connect", handlers.StreamingConnect(s.streamingMgr))
+		mux.HandleFunc("POST /v1/streaming/{id}/disconnect", handlers.StreamingDisconnect(s.streamingMgr))
+		mux.HandleFunc("POST /v1/streaming/{id}/test", handlers.StreamingTest())
 	}
 
 	// Admin

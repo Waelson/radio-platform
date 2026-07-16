@@ -414,7 +414,7 @@ func run(args []string) error {
 		return fmt.Errorf("scheduler: %w", err)
 	}
 
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, cartDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, log)
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, cartDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, api.StreamingDeps{Mgr: streamMgr}, log)
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)
