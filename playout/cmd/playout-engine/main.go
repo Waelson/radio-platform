@@ -33,6 +33,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/playback"
 	"github.com/Waelson/radio-playout-engine/internal/prefs"
 	"github.com/Waelson/radio-playout-engine/internal/queue"
+	"github.com/Waelson/radio-playout-engine/internal/streaming"
 	"github.com/Waelson/radio-playout-engine/internal/scheduler"
 	"github.com/Waelson/radio-playout-engine/internal/state"
 	"github.com/Waelson/radio-playout-engine/internal/transmissionlog"
@@ -302,7 +303,14 @@ func run(args []string) error {
 	disp.Handle(commands.CmdTriggerHotButton, pbMgr.HandleTriggerHotButton)
 	disp.Handle(commands.CmdSetVolume,        pbMgr.HandleSetVolume)
 
-	// 11b. Preview (CUE) player — optional, runs as an isolated subprocess so
+	// 11b. Streaming Manager — fans PCM audio out to Icecast/SHOUTcast targets.
+	// Must be wired before the first play session so the tap is ready.
+	streamMgr := streaming.NewManager(evtBus, log)
+	pbMgr.SetStreamingTap(streamMgr.TapCh())
+	go streamMgr.Run(ctx)
+	log.Info("streaming manager started")
+
+	// 11c. Preview (CUE) player — optional, runs as an isolated subprocess so
 	// its CoreAudio client lives in a separate Mach task. This prevents
 	// HAL notifications from the BT/A2DP preview device from disrupting the
 	// main engine's AudioQueue during preview start/stop.
@@ -320,7 +328,7 @@ func run(args []string) error {
 		log.Info("preview player enabled as subprocess", "driver", outfactory.BuiltinDriverName())
 	}
 
-	// 11c. Cart player — optional dedicated audio channel for hotkey-triggered playback.
+	// 11d. Cart player — optional dedicated audio channel for hotkey-triggered playback.
 	// Isolated from both the main pipeline and the preview/CUE channel.
 	cartDeps := api.CartDeps{Enabled: cfg.Cart.Enabled}
 	if cfg.Cart.Enabled {

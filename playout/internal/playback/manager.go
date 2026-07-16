@@ -154,6 +154,12 @@ type Manager struct {
 	assistMu       sync.Mutex
 	assistMode     bool
 	assistResumeCh chan struct{}
+
+	// streamingTap, when non-nil, receives a copy of each PCM frame slice
+	// written to the output device. The streaming.Manager reads from the other
+	// end and fans out to connected Icecast/SHOUTcast targets.
+	// Set once via SetStreamingTap before any play session starts; no lock needed.
+	streamingTap chan<- []float32
 }
 
 // NewManager creates a Manager. healthMon may be nil to disable audio health
@@ -191,6 +197,12 @@ func NewManager(
 // If r is nil, HORA_CERTA items will be marked as failed with a clear log message.
 func (m *Manager) WithHoraCerta(r *horacerta.Resolver) {
 	m.horaCerta = r
+}
+
+// SetStreamingTap sets the channel that receives a copy of each PCM frame
+// slice written to the output device. Call once before the first play session.
+func (m *Manager) SetStreamingTap(ch chan<- []float32) {
+	m.streamingTap = ch
 }
 
 // applyGain multiplies every sample in buf by gain.
@@ -1533,6 +1545,18 @@ func (m *Manager) runPlayLoop(
 			m.framesTotal.Add(int64(written))
 			if m.healthMon != nil {
 				m.healthMon.Push(buf[:samples])
+			}
+
+			// ---- streaming tap ----
+			// Send a copy to the streaming manager (non-blocking).
+			// Frames are dropped when the tap channel is full to protect the audio loop.
+			if tap := m.streamingTap; tap != nil {
+				cp := make([]float32, samples)
+				copy(cp, buf[:samples])
+				select {
+				case tap <- cp:
+				default:
+				}
 			}
 
 			if werr != nil {

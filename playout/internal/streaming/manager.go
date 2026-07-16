@@ -1,0 +1,165 @@
+package streaming
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"sync"
+
+	"github.com/Waelson/radio-playout-engine/internal/events"
+)
+
+// tapChanCap is the number of PCM frame slices buffered in the Manager's
+// tap channel. The playback manager drops frames when this channel is full,
+// so this only needs to absorb transient scheduling jitter.
+const tapChanCap = 32
+
+// Manager fans out PCM audio from the playback loop to one or more streaming
+// targets (Icecast/SHOUTcast). It is safe for concurrent use.
+type Manager struct {
+	mu      sync.RWMutex
+	targets map[string]*Target
+
+	tapCh  chan []float32 // receives frames from the playback loop
+	evtBus *events.Bus
+	log    *slog.Logger
+}
+
+// NewManager creates a Manager. evtBus and log may not be nil.
+func NewManager(evtBus *events.Bus, log *slog.Logger) *Manager {
+	if log == nil {
+		log = slog.Default()
+	}
+	return &Manager{
+		targets: make(map[string]*Target),
+		tapCh:   make(chan []float32, tapChanCap),
+		evtBus:  evtBus,
+		log:     log,
+	}
+}
+
+// TapCh returns the write-only end of the PCM tap channel. The playback
+// manager sends frame slices here; the Manager distributes them to all
+// connected targets via fanOut.
+func (m *Manager) TapCh() chan<- []float32 { return m.tapCh }
+
+// Run starts the fanOut goroutine and blocks until ctx is cancelled.
+// On shutdown it disconnects all targets gracefully.
+// Call this in its own goroutine.
+func (m *Manager) Run(ctx context.Context) {
+	fanDone := make(chan struct{})
+	go func() {
+		defer close(fanDone)
+		m.fanOut(ctx)
+	}()
+	<-ctx.Done()
+	<-fanDone // wait for fanOut to drain and exit
+
+	m.mu.Lock()
+	for _, t := range m.targets {
+		t.Disconnect()
+	}
+	m.mu.Unlock()
+}
+
+// fanOut reads frame slices from tapCh and writes them to every connected
+// target. Target.Write is non-blocking and copies the slice internally, so
+// passing the same slice to multiple targets is safe.
+func (m *Manager) fanOut(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case frames, ok := <-m.tapCh:
+			if !ok {
+				return
+			}
+			m.mu.RLock()
+			for _, t := range m.targets {
+				t.Write(frames)
+			}
+			m.mu.RUnlock()
+		}
+	}
+}
+
+// AddTarget connects a new streaming target. If a target with the same ID
+// already exists an error is returned.
+func (m *Manager) AddTarget(ctx context.Context, cfg TargetConfig) error {
+	m.mu.Lock()
+	if _, exists := m.targets[cfg.ID]; exists {
+		m.mu.Unlock()
+		return fmt.Errorf("streaming: target %q already exists", cfg.ID)
+	}
+	t := NewTarget(cfg, m.log)
+	t.SetOnDisconnect(func(id, reason string) {
+		m.evtBus.Publish(events.New(events.EvtStreamingDisconnected, events.StreamingDisconnectedPayload{
+			TargetID: id,
+			Reason:   reason,
+		}))
+		m.log.Warn("streaming: target disconnected unexpectedly", "target", id, "reason", reason)
+	})
+	m.targets[cfg.ID] = t
+	m.mu.Unlock()
+
+	if err := t.Connect(ctx); err != nil {
+		m.mu.Lock()
+		delete(m.targets, cfg.ID)
+		m.mu.Unlock()
+		return fmt.Errorf("streaming: connect %q: %w", cfg.ID, err)
+	}
+
+	m.evtBus.Publish(events.New(events.EvtStreamingConnected, events.StreamingConnectedPayload{
+		TargetID:    cfg.ID,
+		Name:        cfg.Name,
+		Host:        cfg.Host,
+		Mount:       cfg.Mount,
+		Format:      cfg.Format,
+		BitrateKbps: cfg.BitrateKbps,
+	}))
+	m.log.Info("streaming: target connected", "target", cfg.ID, "host", cfg.Host, "format", cfg.Format)
+	return nil
+}
+
+// RemoveTarget disconnects and removes a target by ID.
+// If the target does not exist the call is a no-op.
+func (m *Manager) RemoveTarget(id string) {
+	m.mu.Lock()
+	t, ok := m.targets[id]
+	if ok {
+		delete(m.targets, id)
+	}
+	m.mu.Unlock()
+
+	if !ok {
+		return
+	}
+	t.Disconnect()
+	m.evtBus.Publish(events.New(events.EvtStreamingDisconnected, events.StreamingDisconnectedPayload{
+		TargetID: id,
+		Reason:   "removed",
+	}))
+	m.log.Info("streaming: target removed", "target", id)
+}
+
+// ListStatuses returns a snapshot of the status of all registered targets.
+func (m *Manager) ListStatuses() []TargetStatus {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]TargetStatus, 0, len(m.targets))
+	for _, t := range m.targets {
+		out = append(out, t.Status())
+	}
+	return out
+}
+
+// Status returns the status of a single target or an error if not found.
+func (m *Manager) Status(id string) (TargetStatus, error) {
+	m.mu.RLock()
+	t, ok := m.targets[id]
+	m.mu.RUnlock()
+	if !ok {
+		return TargetStatus{}, fmt.Errorf("streaming: target %q not found", id)
+	}
+	return t.Status(), nil
+}
