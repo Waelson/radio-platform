@@ -71,7 +71,7 @@ type streamingTestRequest struct {
 
 type streamingTestResponse struct {
 	OK        bool   `json:"ok"`
-	LatencyMS int64  `json:"latency_ms,omitempty"`
+	LatencyMS int64  `json:"latency_ms"`
 	Error     string `json:"error,omitempty"`
 }
 

@@ -2042,7 +2042,7 @@ canvas.vu-canvas {
 #streamingBadge.reconnecting #streamingBadgeLabel { color: #ffb400; }
 
 /* ─── Streaming — Panel ───────────────────────────────────── */
-.streaming-panel { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.streaming-panel { padding: 12px; flex-direction: column; gap: 10px; overflow-y: auto; }
 .streaming-top { display: flex; align-items: center; justify-content: space-between; padding-bottom: 6px; }
 .streaming-top-title { font-size: 13px; font-weight: 700; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.08em; }
 .streaming-card {
@@ -7417,19 +7417,49 @@ function histEsc(s) {
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   STREAMING MODULE — Fase 9
-   Estado em memória: _stmTargets = { [id]: TargetStatus }
+   STREAMING MODULE — Fase 9 + Library persistence
+   _stmTargets: status ao vivo do Playout { [id]: TargetStatus }
+   Configs persistidas no Library Service (SQLite)
    ══════════════════════════════════════════════════════════════ */
 
-let _stmTargets = {}; // id → { id, name, host, port, mount, format, bitrate_kbps, state, listeners, bytes_sent, uptime_ms, last_error, retry_count, next_retry_at, current_title, current_artist }
-let _stmLocalConfigs = {}; // id → config local (para poder reconectar/editar)
+let _stmTargets = {}; // id → status ao vivo (state, listeners, uptime_ms, etc.)
 
 /* ── Inicialização da aba ─────────────────────────────────── */
-function stmInit() {
+async function stmInit() {
   stmRenderList();
+  await stmLoadFromLibrary();
   stmFetchStatuses();
 }
 
+/* Carrega a lista de servidores do Library (sem senha) e popula _stmTargets
+   com os campos de config, preservando o estado ao vivo se já existir. */
+async function stmLoadFromLibrary() {
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/streaming');
+    if (!r.ok) return;
+    const j = await r.json();
+    const items = j.data || [];
+    items.forEach(item => {
+      _stmTargets[item.id] = Object.assign(
+        { state: 'disconnected' },
+        _stmTargets[item.id] || {},
+        {
+          id:           item.id,
+          name:         item.name,
+          host:         item.host,
+          port:         item.port,
+          mount:        item.mount,
+          format:       item.format,
+          bitrate_kbps: item.bitrate_kbps,
+        }
+      );
+    });
+    stmRenderList();
+    stmUpdateBadge();
+  } catch(_) {}
+}
+
+/* Busca status ao vivo dos targets conectados no Playout Engine. */
 async function stmFetchStatuses() {
   try {
     const r = await fetch(API_URL + '/v1/streaming');
@@ -7437,7 +7467,6 @@ async function stmFetchStatuses() {
     const j = await r.json();
     const targets = j.targets || [];
     targets.forEach(t => {
-      // Mescla com o que já existe (preserva config local)
       _stmTargets[t.id] = Object.assign(_stmTargets[t.id] || {}, t);
     });
     stmRenderList();
@@ -7471,13 +7500,13 @@ function stmRenderCard(t) {
   const canDisconnect = ['connected', 'connecting', 'reconnecting'].includes(state);
 
   const actions = (canConnect
-    ? '<button class="streaming-btn primary" onclick="stmConnect(' + JSON.stringify(t.id) + ')">Conectar</button>'
+    ? '<button class="streaming-btn primary" onclick="stmConnect(\'' + t.id + '\')">Conectar</button>'
     : '') +
     (canDisconnect
-    ? '<button class="streaming-btn danger" onclick="stmDisconnect(' + JSON.stringify(t.id) + ')">Desconectar</button>'
+    ? '<button class="streaming-btn danger" onclick="stmDisconnect(\'' + t.id + '\')">' + 'Desconectar</button>'
     : '') +
-    '<button class="streaming-btn" onclick="stmOpenModal(' + JSON.stringify(t.id) + ')">Editar</button>' +
-    '<button class="streaming-btn" onclick="stmRemove(' + JSON.stringify(t.id) + ')">Remover</button>';
+    '<button class="streaming-btn" onclick="stmOpenModal(\'' + t.id + '\')">' + 'Editar</button>' +
+    '<button class="streaming-btn" onclick="stmRemove(\'' + t.id + '\')">' + 'Remover</button>';
 
   return [
     '<div class="streaming-card ' + cls + '" id="stmCard-' + t.id + '">',
@@ -7589,22 +7618,41 @@ function stmOnMetadata(p) {
 }
 
 /* ── Ações de conectar / desconectar ─────────────────────── */
+
+/* Busca a config completa (com senha) do Library e conecta no Playout. */
 async function stmConnect(id) {
-  const cfg = _stmLocalConfigs[id];
-  if (!cfg) {
-    showToast(false, 'Config do servidor não encontrada. Edite antes de conectar.');
-    return;
-  }
+  let fullCfg;
+  try {
+    const r = await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(id));
+    if (!r.ok) { showToast(false, 'Config não encontrada no Library. Salve antes de conectar.'); return; }
+    const j = await r.json();
+    fullCfg = j.data;
+  } catch(e) { showToast(false, 'Erro ao carregar config: ' + e.message); return; }
+
+  // Playout espera nested reconnect — Library já retorna nesse formato em GET /v1/streaming/{id}
+  const payload = {
+    name:          fullCfg.name,
+    type:          fullCfg.type || 'icecast',
+    host:          fullCfg.host,
+    port:          fullCfg.port,
+    mount:         fullCfg.mount || '/stream',
+    password:      fullCfg.password || '',
+    format:        fullCfg.format || 'mp3',
+    bitrate_kbps:  fullCfg.bitrate_kbps || 128,
+    send_metadata: fullCfg.send_metadata !== false,
+    station_name:  fullCfg.station_name || '',
+    station_genre: fullCfg.station_genre || '',
+    reconnect:     fullCfg.reconnect || { enabled: true, initial_delay_sec: 2, max_delay_sec: 60, backoff_multiplier: 2 },
+  };
+
   try {
     const r = await fetch(API_URL + '/v1/streaming/' + encodeURIComponent(id) + '/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cfg),
+      body: JSON.stringify(payload),
     });
     const j = await r.json();
-    if (!r.ok) {
-      showToast(false, j.message || j.error || 'Erro ao conectar');
-    }
+    if (!r.ok) { showToast(false, j.message || j.error || 'Erro ao conectar'); }
   } catch(e) { showToast(false, 'Erro de rede: ' + e.message); }
 }
 
@@ -7617,16 +7665,19 @@ async function stmDisconnect(id) {
   } catch(e) { showToast(false, 'Erro de rede: ' + e.message); }
 }
 
-function stmRemove(id) {
-  stmDisconnect(id).catch(() => {});
+async function stmRemove(id) {
+  await stmDisconnect(id).catch(() => {});
+  try {
+    await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(id), { method: 'DELETE' });
+  } catch(_) {}
   delete _stmTargets[id];
-  delete _stmLocalConfigs[id];
   stmRenderList();
   stmUpdateBadge();
+  showToast(true, 'Servidor removido.');
 }
 
 /* ── Modal ───────────────────────────────────────────────── */
-function stmOpenModal(id) {
+async function stmOpenModal(id) {
   const modal = document.getElementById('streamingModal');
   const title = document.getElementById('stmModalTitle');
   const testResult = document.getElementById('stmTestResult');
@@ -7634,38 +7685,48 @@ function stmOpenModal(id) {
   testResult.className = 'stm-test-result';
   testResult.textContent = '';
 
-  if (id && _stmLocalConfigs[id]) {
-    const cfg = _stmLocalConfigs[id];
-    title.textContent = 'Editar Servidor';
-    document.getElementById('stmEditId').value = id;
-    document.getElementById('stmName').value          = cfg.name || '';
-    document.getElementById('stmType').value          = cfg.type || 'icecast';
-    document.getElementById('stmHost').value          = cfg.host || '';
-    document.getElementById('stmPort').value          = cfg.port || 8000;
-    document.getElementById('stmMount').value         = cfg.mount || '/stream';
-    document.getElementById('stmPassword').value      = cfg.password || '';
-    document.getElementById('stmFormat').value        = cfg.format || 'mp3';
-    document.getElementById('stmBitrate').value       = cfg.bitrate_kbps || 128;
-    document.getElementById('stmStationName').value   = cfg.station_name || '';
-    document.getElementById('stmGenre').value         = cfg.station_genre || '';
-    document.getElementById('stmSendMeta').checked    = cfg.send_metadata !== false;
-    document.getElementById('stmReconnect').checked   = cfg.reconnect?.enabled !== false;
-  } else {
-    title.textContent = 'Adicionar Servidor de Streaming';
-    document.getElementById('stmEditId').value = '';
-    document.getElementById('stmName').value = '';
-    document.getElementById('stmType').value = 'icecast';
-    document.getElementById('stmHost').value = '';
-    document.getElementById('stmPort').value = '8000';
-    document.getElementById('stmMount').value = '/stream';
-    document.getElementById('stmPassword').value = '';
-    document.getElementById('stmFormat').value = 'mp3';
-    document.getElementById('stmBitrate').value = '128';
-    document.getElementById('stmStationName').value = '';
-    document.getElementById('stmGenre').value = '';
-    document.getElementById('stmSendMeta').checked = true;
-    document.getElementById('stmReconnect').checked = true;
+  if (id) {
+    // Carrega config completa (com senha) do Library
+    try {
+      const r = await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(id));
+      if (r.ok) {
+        const j = await r.json();
+        const cfg = j.data;
+        title.textContent = 'Editar Servidor';
+        document.getElementById('stmEditId').value        = cfg.id;
+        document.getElementById('stmName').value          = cfg.name || '';
+        document.getElementById('stmType').value          = cfg.type || 'icecast';
+        document.getElementById('stmHost').value          = cfg.host || '';
+        document.getElementById('stmPort').value          = cfg.port || 8000;
+        document.getElementById('stmMount').value         = cfg.mount || '/stream';
+        document.getElementById('stmPassword').value      = cfg.password || '';
+        document.getElementById('stmFormat').value        = cfg.format || 'mp3';
+        document.getElementById('stmBitrate').value       = cfg.bitrate_kbps || 128;
+        document.getElementById('stmStationName').value   = cfg.station_name || '';
+        document.getElementById('stmGenre').value         = cfg.station_genre || '';
+        document.getElementById('stmSendMeta').checked    = cfg.send_metadata !== false;
+        document.getElementById('stmReconnect').checked   = cfg.reconnect ? cfg.reconnect.enabled !== false : true;
+        modal.classList.add('open');
+        return;
+      }
+    } catch(_) {}
   }
+
+  // Novo servidor
+  title.textContent = 'Adicionar Servidor de Streaming';
+  document.getElementById('stmEditId').value = '';
+  document.getElementById('stmName').value = '';
+  document.getElementById('stmType').value = 'icecast';
+  document.getElementById('stmHost').value = '';
+  document.getElementById('stmPort').value = '8000';
+  document.getElementById('stmMount').value = '/stream';
+  document.getElementById('stmPassword').value = '';
+  document.getElementById('stmFormat').value = 'mp3';
+  document.getElementById('stmBitrate').value = '128';
+  document.getElementById('stmStationName').value = '';
+  document.getElementById('stmGenre').value = '';
+  document.getElementById('stmSendMeta').checked = true;
+  document.getElementById('stmReconnect').checked = true;
   modal.classList.add('open');
 }
 
@@ -7673,26 +7734,24 @@ function stmCloseModal() {
   document.getElementById('streamingModal').classList.remove('open');
 }
 
+/* Retorna os valores do formulário no formato flat do Library (POST/PUT). */
 function stmReadForm() {
   return {
-    id:           document.getElementById('stmEditId').value || ('stream-' + Date.now()),
-    name:         document.getElementById('stmName').value.trim() || 'Stream',
-    type:         document.getElementById('stmType').value,
-    host:         document.getElementById('stmHost').value.trim(),
-    port:         parseInt(document.getElementById('stmPort').value) || 8000,
-    mount:        document.getElementById('stmMount').value.trim() || '/stream',
-    password:     document.getElementById('stmPassword').value,
-    format:       document.getElementById('stmFormat').value,
-    bitrate_kbps: parseInt(document.getElementById('stmBitrate').value) || 128,
-    station_name: document.getElementById('stmStationName').value.trim(),
-    station_genre:document.getElementById('stmGenre').value.trim(),
-    send_metadata:document.getElementById('stmSendMeta').checked,
-    reconnect: {
-      enabled:            document.getElementById('stmReconnect').checked,
-      initial_delay_sec:  2,
-      max_delay_sec:      60,
-      backoff_multiplier: 2.0,
-    },
+    name:                        document.getElementById('stmName').value.trim() || 'Stream',
+    type:                        document.getElementById('stmType').value,
+    host:                        document.getElementById('stmHost').value.trim(),
+    port:                        parseInt(document.getElementById('stmPort').value) || 8000,
+    mount:                       document.getElementById('stmMount').value.trim() || '/stream',
+    password:                    document.getElementById('stmPassword').value,
+    format:                      document.getElementById('stmFormat').value,
+    bitrate_kbps:                parseInt(document.getElementById('stmBitrate').value) || 128,
+    station_name:                document.getElementById('stmStationName').value.trim(),
+    station_genre:               document.getElementById('stmGenre').value.trim(),
+    send_metadata:               document.getElementById('stmSendMeta').checked,
+    reconnect_enabled:           document.getElementById('stmReconnect').checked,
+    reconnect_initial_delay_sec: 2,
+    reconnect_max_delay_sec:     60,
+    reconnect_backoff_multiplier: 2.0,
   };
 }
 
@@ -7719,7 +7778,7 @@ async function stmTestConnection() {
     const j = await res.json();
     if (j.ok !== undefined ? j.ok : res.ok) {
       r.className = 'stm-test-result ok';
-      r.textContent = 'Servidor acessivel em ' + (j.latency_ms != null ? j.latency_ms + 'ms' : '—');
+      r.textContent = 'Servidor acessivel em ' + (j.latency_ms > 0 ? j.latency_ms + 'ms' : '< 1ms');
     } else {
       r.className = 'stm-test-result err';
       r.textContent = 'Falha: ' + (j.error || j.message || 'sem resposta');
@@ -7733,32 +7792,49 @@ async function stmTestConnection() {
   }
 }
 
-function stmSave() {
+/* Persiste a config do formulário no Library (POST para novo, PUT para edição). */
+async function stmSave() {
   const cfg = stmReadForm();
   if (!cfg.host) { showToast(false, 'Preencha o Host.'); return; }
   if (!cfg.port) { showToast(false, 'Preencha a Porta.'); return; }
 
   const editId = document.getElementById('stmEditId').value;
-  if (editId && editId !== cfg.id) {
-    // ID foi gerado novo por edição; preserva o id original
-    cfg.id = editId;
-  }
+  const isEdit = !!editId;
 
-  _stmLocalConfigs[cfg.id] = cfg;
-  _stmTargets[cfg.id] = Object.assign(_stmTargets[cfg.id] || {}, {
-    id: cfg.id,
-    name: cfg.name,
-    host: cfg.host,
-    port: cfg.port,
-    mount: cfg.mount,
-    format: cfg.format,
-    bitrate_kbps: cfg.bitrate_kbps,
-    state: _stmTargets[cfg.id]?.state || 'disconnected',
-  });
+  try {
+    let r;
+    if (isEdit) {
+      r = await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(editId), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg),
+      });
+    } else {
+      r = await fetch(LIBRARY_URL + '/v1/streaming', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg),
+      });
+    }
+    const j = await r.json();
+    if (!r.ok) { showToast(false, j.message || j.error || 'Erro ao salvar'); return; }
 
-  stmCloseModal();
-  stmRenderList();
-  showToast(true, 'Servidor salvo: ' + cfg.name);
+    const savedId = (j.data && j.data.id) || editId;
+    _stmTargets[savedId] = Object.assign(_stmTargets[savedId] || {}, {
+      id:           savedId,
+      name:         cfg.name,
+      host:         cfg.host,
+      port:         cfg.port,
+      mount:        cfg.mount,
+      format:       cfg.format,
+      bitrate_kbps: cfg.bitrate_kbps,
+      state:        (_stmTargets[savedId] || {}).state || 'disconnected',
+    });
+
+    stmCloseModal();
+    stmRenderList();
+    showToast(true, 'Servidor salvo: ' + cfg.name);
+  } catch(e) { showToast(false, 'Erro de rede: ' + e.message); }
 }
 </script>
 

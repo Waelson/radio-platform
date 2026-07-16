@@ -265,8 +265,8 @@ func scanTarget(r rowScanner) (StreamingTarget, error) {
 	t.SendMetadata = sendMeta != 0
 	t.ReconnectEnabled = reconnEnabled != 0
 	t.AutoConnect = autoConnect != 0
-	t.CreatedAt, _ = time.Parse("2006-01-02T15:04:05Z", createdAt)
-	t.UpdatedAt, _ = time.Parse("2006-01-02T15:04:05Z", updatedAt)
+	t.CreatedAt = parseSQLiteTime(createdAt)
+	t.UpdatedAt = parseSQLiteTime(updatedAt)
 	return t, nil
 }
 
