@@ -1,0 +1,8 @@
+services:
+  shoutcast-v2:
+    build: .
+    container_name: shoutcast-v2-test
+    ports:
+      - "8002:8002"   # source port  — FFmpeg / playout engine conectam aqui
+      - "9001:9001"   # listener port — VLC / browser ouve aqui
+    restart: unless-stopped

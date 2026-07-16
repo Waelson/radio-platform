@@ -48,23 +48,39 @@ type statusLastCommand struct {
 	At       time.Time `json:"at"`
 }
 
+// statusStreamingTarget is the streaming sub-block inside GET /v1/status.
+type statusStreamingTarget struct {
+	ID        string `json:"id"`
+	State     string `json:"state"`
+	UptimeMS  int64  `json:"uptime_ms"`
+	BytesSent int64  `json:"bytes_sent"`
+	LastError string `json:"last_error,omitempty"`
+}
+
 // statusResponse is the full body for GET /v1/status.
 type statusResponse struct {
-	EngineID      string             `json:"engine_id"`
-	State         string             `json:"state"`
-	Mode          string             `json:"mode"`
-	Panic         bool               `json:"panic"`
-	NowPlaying    *statusNowPlaying  `json:"now_playing,omitempty"`
-	Queue         statusQueue        `json:"queue"`
-	AudioHealth   statusAudioHealth  `json:"audio_health"`
-	LastCommand   *statusLastCommand `json:"last_command,omitempty"`
-	MainVolume    float32            `json:"main_volume"`
-	PreviewVolume float32            `json:"preview_volume"`
-	ErrorMsg    string             `json:"error,omitempty"`
+	EngineID      string                  `json:"engine_id"`
+	State         string                  `json:"state"`
+	Mode          string                  `json:"mode"`
+	Panic         bool                    `json:"panic"`
+	NowPlaying    *statusNowPlaying       `json:"now_playing,omitempty"`
+	Queue         statusQueue             `json:"queue"`
+	AudioHealth   statusAudioHealth       `json:"audio_health"`
+	LastCommand   *statusLastCommand      `json:"last_command,omitempty"`
+	MainVolume    float32                 `json:"main_volume"`
+	PreviewVolume float32                 `json:"preview_volume"`
+	Streaming     []statusStreamingTarget `json:"streaming"`
+	ErrorMsg      string                  `json:"error,omitempty"`
 }
 
 // Status returns a handler for GET /v1/status.
-func Status(stateMgr *state.Manager) http.HandlerFunc {
+// An optional StreamingManager may be passed to include the streaming sub-block.
+func Status(stateMgr *state.Manager, streamMgrs ...StreamingManager) http.HandlerFunc {
+	var streamMgr StreamingManager
+	if len(streamMgrs) > 0 {
+		streamMgr = streamMgrs[0]
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		snap := stateMgr.Snapshot()
 
@@ -86,7 +102,8 @@ func Status(stateMgr *state.Manager) http.HandlerFunc {
 				BufferPct:     snap.AudioHealth.BufferPct,
 				UnderrunCount: snap.AudioHealth.UnderrunCount,
 			},
-			ErrorMsg: snap.ErrorMsg,
+			Streaming: []statusStreamingTarget{},
+			ErrorMsg:  snap.ErrorMsg,
 		}
 
 		if snap.NowPlaying != nil {
@@ -119,6 +136,18 @@ func Status(stateMgr *state.Manager) http.HandlerFunc {
 				Command: snap.LastCommand.Command,
 				Status:  status,
 				At:      snap.LastCommand.At,
+			}
+		}
+
+		if streamMgr != nil {
+			for _, s := range streamMgr.ListStatuses() {
+				resp.Streaming = append(resp.Streaming, statusStreamingTarget{
+					ID:        s.ID,
+					State:     string(s.State),
+					UptimeMS:  s.UptimeMS,
+					BytesSent: s.BytesSent,
+					LastError: s.LastError,
+				})
 			}
 		}
 

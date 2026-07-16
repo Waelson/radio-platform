@@ -33,6 +33,8 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/playback"
 	"github.com/Waelson/radio-playout-engine/internal/prefs"
 	"github.com/Waelson/radio-playout-engine/internal/queue"
+	"github.com/Waelson/radio-playout-engine/internal/mixbus"
+	"github.com/Waelson/radio-playout-engine/internal/streaming"
 	"github.com/Waelson/radio-playout-engine/internal/scheduler"
 	"github.com/Waelson/radio-playout-engine/internal/state"
 	"github.com/Waelson/radio-playout-engine/internal/transmissionlog"
@@ -302,7 +304,19 @@ func run(args []string) error {
 	disp.Handle(commands.CmdTriggerHotButton, pbMgr.HandleTriggerHotButton)
 	disp.Handle(commands.CmdSetVolume,        pbMgr.HandleSetVolume)
 
-	// 11b. Preview (CUE) player — optional, runs as an isolated subprocess so
+	// 11b. Streaming Manager — fans PCM audio out to Icecast/SHOUTcast targets.
+	// Must be wired before the first play session so the tap is ready.
+	// Mix Bus: aggregates main playback + cart into a single fixed-rate
+	// PCM stream for the streaming manager, eliminating clock jitter.
+	mb := mixbus.New()
+	pbMgr.SetStreamingTap(mb.MainIn())
+	streamMgr := streaming.NewManager(evtBus, log)
+	streamMgr.SetAudioIn(mb.OutCh())
+	go mb.Run(ctx)
+	go streamMgr.Run(ctx)
+	log.Info("streaming manager started")
+
+	// 11c. Preview (CUE) player — optional, runs as an isolated subprocess so
 	// its CoreAudio client lives in a separate Mach task. This prevents
 	// HAL notifications from the BT/A2DP preview device from disrupting the
 	// main engine's AudioQueue during preview start/stop.
@@ -320,7 +334,7 @@ func run(args []string) error {
 		log.Info("preview player enabled as subprocess", "driver", outfactory.BuiltinDriverName())
 	}
 
-	// 11c. Cart player — optional dedicated audio channel for hotkey-triggered playback.
+	// 11d. Cart player — optional dedicated audio channel for hotkey-triggered playback.
 	// Isolated from both the main pipeline and the preview/CUE channel.
 	cartDeps := api.CartDeps{Enabled: cfg.Cart.Enabled}
 	if cfg.Cart.Enabled {
@@ -336,6 +350,7 @@ func run(args []string) error {
 			BufferFrames: cfg.Audio.BufferFrames,
 		}
 		cartPlayer := cart.New(evtBus, decoder.NewFFmpegDecoder(log), cartOut, cartAudioCfg, cartVolAtomic, log)
+		cartPlayer.SetStreamingTap(mb.CartIn())
 		disp.Handle(commands.CmdCartPlay,      cartPlayer.HandlePlay)
 		disp.Handle(commands.CmdCartStop,      cartPlayer.HandleStop)
 		disp.Handle(commands.CmdCartSetVolume, func(_ context.Context, cmd commands.Command) error {
@@ -406,7 +421,7 @@ func run(args []string) error {
 		return fmt.Errorf("scheduler: %w", err)
 	}
 
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, cartDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, log)
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, cartDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, api.StreamingDeps{Mgr: streamMgr}, log)
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)

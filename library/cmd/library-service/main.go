@@ -158,6 +158,7 @@ func run(args []string) error {
 	clockStore := store.NewClockStore(db)
 	separationStore := store.NewSeparationRuleStore(db)
 	rotationLogStore := store.NewRotationLogStore(db)
+	streamingStore := store.NewStreamingStore(db)
 
 	gen := scheduler.New(
 		&scheduler.ClockStoreAdapter{S: clockStore},
@@ -168,7 +169,7 @@ func run(args []string) error {
 
 	srv := api.New(cfg.API, trackStore, playlistStore, breakStore, hotkeyStore, idxSvc,
 		categoryStore, clockStore, separationStore, rotationLogStore, gen,
-		tlStore, ilStore, settingsStore, settingsStore,
+		tlStore, ilStore, settingsStore, settingsStore, streamingStore,
 		logging.With(log, "api"))
 	srv.SetLoudnessWorker(loudnessWorker, trackStore)
 	srv.SetCueInWorker(cueinWorker, trackStore)
