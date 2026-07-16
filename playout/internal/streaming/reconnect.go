@@ -109,12 +109,14 @@ func (m *Manager) reconnectLoop(ctx context.Context, id string, cfg TargetConfig
 		t.state = StateReconnecting
 		t.retryCount = retryCount
 		t.nextRetryAt = &nextAt
+		lastErr := t.lastError // capture before unlock so UI can show the actual cause
 		t.mu.Unlock()
 
-		// Publish disconnect event with countdown so clients can show a timer.
+		// Publish disconnect event with countdown and the actual FFmpeg error so
+		// clients can display why the connection dropped, not just "reconnecting".
 		m.evtBus.Publish(events.New(events.EvtStreamingDisconnected, events.StreamingDisconnectedPayload{
 			TargetID:  id,
-			Reason:    "reconnecting",
+			Reason:    lastErr,
 			RetryInMS: delay.Milliseconds(),
 		}))
 		m.log.Info("streaming: waiting before reconnect",

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/Waelson/radio-playout-engine/internal/events"
 )
@@ -138,20 +139,84 @@ func (m *Manager) updateAllMetadata(ctx context.Context, title, artist string) {
 // fanOut reads frame slices from tapCh and writes them to every connected
 // target. Target.Write is non-blocking and copies the slice internally, so
 // passing the same slice to multiple targets is safe.
+//
+// Silence keepalive: Icecast/SHOUTcast servers close source connections that
+// send no data for several seconds. When the playout engine is idle (no music
+// playing), fanOut generates silence frames at 48 kHz stereo to keep every
+// connected target's FFmpeg process alive. Silence stops immediately when real
+// audio resumes.
 func (m *Manager) fanOut(ctx context.Context) {
+	const (
+		// silenceSamples is the number of float32 values per silence chunk:
+		// 48000 Hz × 0.020 s × 2 channels = 1920 samples (20 ms of stereo).
+		silenceSamples = 1920
+		// idleThreshold is how long to wait without real audio before starting
+		// the silence keepalive. Must be long enough to cover normal scheduling
+		// jitter between the output device and the tap send.
+		idleThreshold = 200 * time.Millisecond
+		// silenceInterval is how often silence chunks are sent while idle.
+		silenceInterval = 20 * time.Millisecond
+	)
+	silence := make([]float32, silenceSamples) // all zeros — valid PCM silence
+
+	send := func(frames []float32) {
+		m.mu.RLock()
+		for _, t := range m.targets {
+			t.Write(frames)
+		}
+		m.mu.RUnlock()
+	}
+
+	// idleTimer fires when no real audio has arrived for idleThreshold,
+	// triggering the start of the silence keepalive ticker.
+	idleTimer := time.NewTimer(idleThreshold)
+	defer idleTimer.Stop()
+
+	var silenceTicker *time.Ticker
+
 	for {
+		var tickC <-chan time.Time
+		if silenceTicker != nil {
+			tickC = silenceTicker.C
+		}
+
 		select {
 		case <-ctx.Done():
+			if silenceTicker != nil {
+				silenceTicker.Stop()
+			}
 			return
+
 		case frames, ok := <-m.tapCh:
 			if !ok {
+				if silenceTicker != nil {
+					silenceTicker.Stop()
+				}
 				return
 			}
-			m.mu.RLock()
-			for _, t := range m.targets {
-				t.Write(frames)
+			// Real audio arrived: stop silence and reset the idle countdown.
+			if silenceTicker != nil {
+				silenceTicker.Stop()
+				silenceTicker = nil
 			}
-			m.mu.RUnlock()
+			if !idleTimer.Stop() {
+				select {
+				case <-idleTimer.C:
+				default:
+				}
+			}
+			idleTimer.Reset(idleThreshold)
+			send(frames)
+
+		case <-idleTimer.C:
+			// Engine has been idle for idleThreshold — start silence keepalive.
+			if silenceTicker == nil {
+				silenceTicker = time.NewTicker(silenceInterval)
+			}
+
+		case <-tickC:
+			// Keepalive tick: send silence to prevent server-side timeouts.
+			send(silence)
 		}
 	}
 }

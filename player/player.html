@@ -2054,6 +2054,7 @@ canvas.vu-canvas {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin-bottom: 10px;
   transition: border-left-color 0.2s;
 }
 .streaming-card.connected    { border-left-color: #27ae60; }
@@ -7493,7 +7494,7 @@ function stmRenderCard(t) {
   const cls = { connected: 'connected', connecting: 'connected', reconnecting: 'reconnecting', error: 'error' }[state] || '';
   const badgeLabel = { connected: 'LIVE', connecting: 'CONECTANDO', reconnecting: 'RECONECTANDO', error: 'ERRO', disconnected: 'OFF' }[state] || state.toUpperCase();
   const infoLine = [t.host && t.port ? t.host + ':' + t.port + (t.mount || '') : '', t.format ? t.format.toUpperCase() : '', t.bitrate_kbps ? t.bitrate_kbps + 'kbps' : ''].filter(Boolean).join(' · ');
-  const statsLine = state === 'connected' ? [t.listeners > 0 ? t.listeners + ' ouvintes' : '', t.uptime_ms > 0 ? stmFmtUptime(t.uptime_ms) : ''].filter(Boolean).join(' · ') : (state === 'reconnecting' && t.retry_count ? 'Tentativa ' + t.retry_count : (t.last_error || ''));
+  const statsLine = state === 'connected' ? [t.listeners > 0 ? t.listeners + ' ouvintes' : '', t.uptime_ms > 0 ? stmFmtUptime(t.uptime_ms) : ''].filter(Boolean).join(' · ') : (state === 'reconnecting' ? ('Tentativa ' + (t.retry_count || 1) + (t.last_error ? ': ' + t.last_error : '')) : (t.last_error || ''));
   const metaLine = (t.current_artist || t.current_title) ? ((t.current_artist ? t.current_artist + ' — ' : '') + (t.current_title || '')) : '';
 
   const canConnect    = ['disconnected', 'error'].includes(state);
@@ -7573,7 +7574,7 @@ function stmOnConnected(p) {
   });
   stmRenderList();
   stmUpdateBadge();
-  showToast(true, 'Stream conectado: ' + (_stmTargets[id].name || id));
+
 }
 
 function stmOnDisconnected(p) {
@@ -7585,11 +7586,10 @@ function stmOnDisconnected(p) {
   }
   stmRenderList();
   stmUpdateBadge();
-  const reason = p.reason || 'desconectado';
+  const reason = p.reason || '';
   const name = _stmTargets[id]?.name || id;
-  if (p.retry_in_ms > 0) {
-    showToast(false, 'Stream ' + name + ': ' + reason + '. Reconectando...');
-  } else {
+  const isManual = !reason || reason === 'removed';
+  if (!p.retry_in_ms && !isManual) {
     showToast(false, 'Stream ' + name + ': ' + reason);
   }
 }

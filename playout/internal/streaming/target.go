@@ -1,6 +1,7 @@
 package streaming
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"math"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -101,7 +103,7 @@ func (t *Target) Connect(ctx context.Context) error {
 		"bitrate", t.cfg.BitrateKbps,
 	)
 
-	cmd := exec.CommandContext(ctx, ffmpegBin(), args...)
+	cmd := exec.Command(ffmpegBin(), args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.setState(StateError)
@@ -109,13 +111,11 @@ func (t *Target) Connect(ctx context.Context) error {
 		return fmt.Errorf("streaming target %s: stdin pipe: %w", t.cfg.ID, err)
 	}
 
-	// Drain stderr so FFmpeg never blocks on a full pipe.
-	stderr, _ := cmd.StderrPipe()
-	go func() {
-		if data, _ := io.ReadAll(stderr); len(data) > 0 {
-			t.log.Warn("streaming: ffmpeg stderr", "target", t.cfg.ID, "output", string(data))
-		}
-	}()
+	// Capture stderr into a buffer. When cmd.Stderr is set to an io.Writer,
+	// cmd.Wait() guarantees all stderr output is written before returning,
+	// so watchProcess can read the buffer safely after Wait completes.
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
 
 	if err := cmd.Start(); err != nil {
 		t.setState(StateError)
@@ -132,7 +132,7 @@ func (t *Target) Connect(ctx context.Context) error {
 	t.setState(StateConnected)
 
 	go t.writeLoop()
-	go t.watchProcess(ctx)
+	go t.watchProcess(ctx, &stderrBuf)
 
 	return nil
 }
@@ -253,14 +253,15 @@ func (t *Target) writeFrames(frames []float32) error {
 }
 
 // watchProcess waits for the FFmpeg process to exit and notifies the manager.
-func (t *Target) watchProcess(ctx context.Context) {
+// stderrBuf is fully populated by cmd.Wait() (set via cmd.Stderr in Connect).
+func (t *Target) watchProcess(ctx context.Context, stderrBuf *bytes.Buffer) {
 	defer close(t.doneCh)
 
 	cmd := t.cmd
 	if cmd == nil {
 		return
 	}
-	err := cmd.Wait()
+	err := cmd.Wait() // also drains stderrBuf (set as cmd.Stderr)
 
 	// Check whether Disconnect was called intentionally.
 	select {
@@ -270,9 +271,26 @@ func (t *Target) watchProcess(ctx context.Context) {
 	default:
 	}
 
+	// Build a human-readable reason that includes the FFmpeg error output
+	// so the UI can show exactly why the connection dropped.
+	stderrStr := strings.TrimSpace(stderrBuf.String())
+	if stderrStr != "" {
+		t.log.Warn("streaming: ffmpeg stderr", "target", t.cfg.ID, "output", stderrStr)
+	}
+
 	reason := "connection_lost"
 	if err != nil {
 		reason = fmt.Sprintf("ffmpeg exited: %v", err)
+		// Append the last meaningful stderr line for quick diagnosis.
+		if stderrStr != "" {
+			lastLine := stderrStr
+			if idx := strings.LastIndex(stderrStr, "\n"); idx >= 0 {
+				if l := strings.TrimSpace(stderrStr[idx+1:]); l != "" {
+					lastLine = l
+				}
+			}
+			reason += " — " + lastLine
+		}
 	}
 
 	t.mu.Lock()
@@ -324,6 +342,11 @@ func (t *Target) buildFFmpegArgs() []string {
 		"-c:a", t.encoder(),
 		"-b:a", strconv.Itoa(bitrate) + "k",
 		"-ar", strconv.Itoa(sr),
+	}
+
+	// SHOUTcast v1 uses a legacy HTTP-like handshake; FFmpeg requires this flag.
+	if t.cfg.Type == "shoutcast_v1" {
+		args = append(args, "-legacy_icecast", "1")
 	}
 
 	// Icecast station metadata.
@@ -387,15 +410,21 @@ func (t *Target) ffmpegFormat() string {
 // Icecast and SHOUTcast targets.
 func (t *Target) buildURL() string {
 	mount := t.cfg.Mount
-	if mount == "" {
-		mount = "/stream"
-	}
 	switch t.cfg.Type {
 	case "shoutcast_v1":
-		// SHOUTcast v1: password in the user field, no mount.
+		// SHOUTcast v1 servers are typically single-stream and expect "/" as
+		// the mount point in the ICY SOURCE handshake. Fall back to "/" when
+		// the operator did not configure an explicit mount.
+		if mount == "" {
+			mount = "/"
+		}
+		// Password in the user field, no "source:" prefix (ICY legacy auth).
 		return fmt.Sprintf("icecast://:%s@%s:%d%s",
 			t.cfg.Password, t.cfg.Host, t.cfg.Port, mount)
 	default: // "icecast", "shoutcast_v2"
+		if mount == "" {
+			mount = "/stream"
+		}
 		return fmt.Sprintf("icecast://source:%s@%s:%d%s",
 			t.cfg.Password, t.cfg.Host, t.cfg.Port, mount)
 	}

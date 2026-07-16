@@ -198,12 +198,23 @@ func TestTarget_BuildURL_SHOUTcast_v1(t *testing.T) {
 	}
 	args := streaming.ExportBuildFFmpegArgs(cfg)
 	url := args[len(args)-1]
-	// SHOUTcast v1: password in user field, no "source:" prefix.
+	// SHOUTcast v1: password in user field, no "source:" prefix, mount preserved.
 	if !strings.Contains(url, ":pass123@sc.example.com:8000/stream") {
 		t.Errorf("unexpected SHOUTcast v1 URL: %v", url)
 	}
 	if strings.Contains(url, "source:") {
 		t.Errorf("SHOUTcast v1 URL must not contain 'source:': %v", url)
+	}
+	// Must include -legacy_icecast 1 for SHOUTcast v1 handshake.
+	found := false
+	for i, a := range args {
+		if a == "-legacy_icecast" && i+1 < len(args) && args[i+1] == "1" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("SHOUTcast v1 args must include -legacy_icecast 1, got: %v", args)
 	}
 }
 
