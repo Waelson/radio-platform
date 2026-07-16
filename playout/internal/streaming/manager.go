@@ -53,7 +53,8 @@ func NewManager(evtBus *events.Bus, log *slog.Logger) *Manager {
 // connected targets via fanOut.
 func (m *Manager) TapCh() chan<- []float32 { return m.tapCh }
 
-// Run starts the fanOut goroutine and blocks until ctx is cancelled.
+// Run starts the fanOut goroutine, subscribes to NowPlayingChanged events
+// for metadata updates, and blocks until ctx is cancelled.
 // On shutdown it disconnects all targets gracefully.
 // Call this in its own goroutine.
 func (m *Manager) Run(ctx context.Context) {
@@ -62,19 +63,69 @@ func (m *Manager) Run(ctx context.Context) {
 	m.runCtx = ctx
 	m.mu.Unlock()
 
+	// Subscribe to engine events before starting the fan-out goroutine so no
+	// NowPlayingChanged event is missed between Run() and the first select.
+	evtCh, cancelSub := m.evtBus.Subscribe(32)
+	defer cancelSub()
+
 	fanDone := make(chan struct{})
 	go func() {
 		defer close(fanDone)
 		m.fanOut(ctx)
 	}()
-	<-ctx.Done()
-	<-fanDone // wait for fanOut to drain and exit
 
-	m.mu.Lock()
-	for _, t := range m.targets {
-		t.Disconnect()
+	for {
+		select {
+		case <-ctx.Done():
+			<-fanDone
+			m.mu.Lock()
+			for _, t := range m.targets {
+				t.Disconnect()
+			}
+			m.mu.Unlock()
+			return
+		case evt := <-evtCh:
+			if evt.Type == events.EvtNowPlayingChanged {
+				if p, ok := evt.Payload.(events.NowPlayingChangedPayload); ok {
+					// Run in a goroutine — HTTP requests must not stall the event loop.
+					go m.updateAllMetadata(ctx, p.Title, p.Artist)
+				}
+			}
+		}
 	}
-	m.mu.Unlock()
+}
+
+// updateAllMetadata sends title/artist to every connected target that has
+// SendMetadata enabled, and publishes EvtStreamingMetadataUpdated on success.
+func (m *Manager) updateAllMetadata(ctx context.Context, title, artist string) {
+	m.mu.RLock()
+	type entry struct {
+		id  string
+		cfg TargetConfig
+	}
+	var targets []entry
+	for id, t := range m.targets {
+		if t.IsConnected() && t.cfg.SendMetadata {
+			targets = append(targets, entry{id: id, cfg: t.cfg})
+		}
+	}
+	m.mu.RUnlock()
+
+	for _, e := range targets {
+		if err := UpdateMetadata(ctx, e.cfg, title, artist); err != nil {
+			m.log.Warn("streaming: metadata update failed",
+				"target", e.id, "error", err)
+			continue
+		}
+		m.evtBus.Publish(events.New(events.EvtStreamingMetadataUpdated,
+			events.StreamingMetadataUpdatedPayload{
+				TargetID: e.id,
+				Title:    title,
+				Artist:   artist,
+			}))
+		m.log.Debug("streaming: metadata updated", "target", e.id,
+			"title", title, "artist", artist)
+	}
 }
 
 // fanOut reads frame slices from tapCh and writes them to every connected
