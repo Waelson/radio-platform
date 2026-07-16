@@ -74,10 +74,17 @@ func (m *Manager) Run(ctx context.Context) {
 		m.fanOut(ctx)
 	}()
 
+	statsDone := make(chan struct{})
+	go func() {
+		defer close(statsDone)
+		m.pollStatsLoop(ctx)
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			<-fanDone
+			<-statsDone
 			m.mu.Lock()
 			for _, t := range m.targets {
 				t.Disconnect()

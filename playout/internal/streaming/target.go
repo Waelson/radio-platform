@@ -38,6 +38,7 @@ type Target struct {
 	lastError   string
 	retryCount  int
 	nextRetryAt *time.Time
+	listeners   int
 
 	// FFmpeg subprocess
 	cmd     *exec.Cmd
@@ -203,6 +204,7 @@ func (t *Target) Status() TargetStatus {
 		ConnectedAt: t.connectedAt,
 		NextRetryAt: t.nextRetryAt,
 		BytesSent:   t.bytesSent.Load(),
+		Listeners:   t.listeners,
 	}
 	if t.connectedAt != nil {
 		s.UptimeMS = time.Since(*t.connectedAt).Milliseconds()
