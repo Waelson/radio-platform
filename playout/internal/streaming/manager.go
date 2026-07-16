@@ -9,6 +9,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/events"
 )
 
+
 // tapChanCap is the number of PCM frame slices buffered in the Manager's
 // tap channel. The playback manager drops frames when this channel is full,
 // so this only needs to absorb transient scheduling jitter.
@@ -19,6 +20,14 @@ const tapChanCap = 32
 type Manager struct {
 	mu      sync.RWMutex
 	targets map[string]*Target
+
+	// reconnecting tracks which target IDs have an active reconnect loop.
+	// Protected by mu.
+	reconnecting map[string]bool
+
+	// runCtx is set when Run() is called; used by reconnect goroutines.
+	// Protected by mu.
+	runCtx context.Context
 
 	tapCh  chan []float32 // receives frames from the playback loop
 	evtBus *events.Bus
@@ -31,10 +40,11 @@ func NewManager(evtBus *events.Bus, log *slog.Logger) *Manager {
 		log = slog.Default()
 	}
 	return &Manager{
-		targets: make(map[string]*Target),
-		tapCh:   make(chan []float32, tapChanCap),
-		evtBus:  evtBus,
-		log:     log,
+		targets:      make(map[string]*Target),
+		reconnecting: make(map[string]bool),
+		tapCh:        make(chan []float32, tapChanCap),
+		evtBus:       evtBus,
+		log:          log,
 	}
 }
 
@@ -47,6 +57,11 @@ func (m *Manager) TapCh() chan<- []float32 { return m.tapCh }
 // On shutdown it disconnects all targets gracefully.
 // Call this in its own goroutine.
 func (m *Manager) Run(ctx context.Context) {
+	// Store the context so reconnect goroutines can use it.
+	m.mu.Lock()
+	m.runCtx = ctx
+	m.mu.Unlock()
+
 	fanDone := make(chan struct{})
 	go func() {
 		defer close(fanDone)
@@ -93,11 +108,16 @@ func (m *Manager) AddTarget(ctx context.Context, cfg TargetConfig) error {
 	}
 	t := NewTarget(cfg, m.log)
 	t.SetOnDisconnect(func(id, reason string) {
-		m.evtBus.Publish(events.New(events.EvtStreamingDisconnected, events.StreamingDisconnectedPayload{
-			TargetID: id,
-			Reason:   reason,
-		}))
 		m.log.Warn("streaming: target disconnected unexpectedly", "target", id, "reason", reason)
+		// Reconnect handles its own disconnect events; only publish here when
+		// reconnect is disabled so the client still receives the event.
+		if !cfg.Reconnect.Enabled {
+			m.evtBus.Publish(events.New(events.EvtStreamingDisconnected, events.StreamingDisconnectedPayload{
+				TargetID: id,
+				Reason:   reason,
+			}))
+		}
+		m.scheduleReconnect(id, cfg)
 	})
 	m.targets[cfg.ID] = t
 	m.mu.Unlock()
