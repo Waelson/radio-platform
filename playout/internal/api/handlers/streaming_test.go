@@ -152,6 +152,25 @@ func TestStreamingConnect_MissingHostPort(t *testing.T) {
 	}
 }
 
+func TestStreamingConnect_InvalidFormat(t *testing.T) {
+	mgr := newFakeStreamingMgr()
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v1/streaming/{id}/connect", handlers.StreamingConnect(mgr))
+
+	cases := []string{"flac", "wav", "mp4", "mpeg"}
+	for _, fmt_ := range cases {
+		body := map[string]any{"host": "127.0.0.1", "port": 8000, "format": fmt_}
+		b, _ := json.Marshal(body)
+		req := httptest.NewRequest(http.MethodPost, "/v1/streaming/t1/connect", bytes.NewReader(b))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("format %q: status = %d, want 400", fmt_, rr.Code)
+		}
+	}
+}
+
 func TestStreamingConnect_DuplicateID_Conflict(t *testing.T) {
 	mgr := newFakeStreamingMgr()
 	mgr.addErr = fmt.Errorf("streaming: target %q already exists", "dup")

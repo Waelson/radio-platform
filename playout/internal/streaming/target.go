@@ -80,6 +80,14 @@ func (t *Target) Connect(ctx context.Context) error {
 		return fmt.Errorf("streaming target %s: already %s", t.cfg.ID, t.state)
 	}
 
+	// Validate format string and codec availability before starting FFmpeg.
+	if err := ValidateFormat(t.cfg.Format); err != nil {
+		return err
+	}
+	if err := CheckCodecAvailable(t.cfg.Format); err != nil {
+		return err
+	}
+
 	t.setState(StateConnecting)
 	t.stopCh = make(chan struct{})
 	t.doneCh = make(chan struct{})

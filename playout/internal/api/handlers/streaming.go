@@ -99,6 +99,11 @@ func StreamingConnect(mgr StreamingManager) http.HandlerFunc {
 			return
 		}
 
+		if err := streaming.ValidateFormat(req.Format); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_format", err.Error())
+			return
+		}
+
 		cfg := streaming.TargetConfig{
 			ID:                 id,
 			Name:               req.Name,
