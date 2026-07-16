@@ -134,7 +134,7 @@ Este documento compara o RadioFlow com as principais soluções de automação d
 |---------|:---------:|:--------:|:--------:|:---------:|:---------:|:--------:|:-----------:|:-------:|
 | REST API aberta | ✅ | — | — | — | — | ✅ | — | — |
 | WebSocket (eventos em tempo real) | ✅ | — | — | ✅ | — | — | — | — |
-| Integração com streaming (Icecast/SHOUTcast) | 🔲 | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Integração com streaming (Icecast/SHOUTcast) | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Controle remoto via web | 🔲 | — | — | ✅ | ✅ | ✅ | 🔲 | — |
 | Multi-estúdio / multi-instância | 🔲 | ✅ | — | ✅ | 🔲 | ✅ | — | — |
 | Controle por hardware (mesas de corte) | 🔲 | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
