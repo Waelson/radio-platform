@@ -41,6 +41,9 @@ var migration010 string
 //go:embed migrations/011_cue_points.sql
 var migration011 string
 
+//go:embed migrations/012_streaming_targets.sql
+var migration012 string
+
 // Open opens (or creates) the SQLite database at path, applies required PRAGMAs,
 // runs migrations and returns a ready-to-use *sql.DB.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
@@ -198,6 +201,16 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("011_cue_points: %w", err)
 		}
 		if err := markMigration(ctx, db, "011_cue_points"); err != nil {
+			return err
+		}
+	}
+
+	// 012_streaming_targets: tabela de destinos de streaming Icecast/SHOUTcast.
+	if !migrationDone(ctx, db, "012_streaming_targets") {
+		if _, err := db.ExecContext(ctx, migration012); err != nil {
+			return fmt.Errorf("012_streaming_targets: %w", err)
+		}
+		if err := markMigration(ctx, db, "012_streaming_targets"); err != nil {
 			return err
 		}
 	}

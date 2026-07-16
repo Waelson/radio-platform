@@ -36,6 +36,7 @@ type Server struct {
 	ciw  handlers.CueInWorker
 	cits handlers.CueInTrackStore
 	nr   handlers.NormalizationReader
+	sts  handlers.StreamingStore
 	log  *slog.Logger
 	http *http.Server
 }
@@ -79,11 +80,12 @@ func New(
 	ils handlers.TransmissionImportLogStore,
 	stg handlers.SettingsStore,
 	srw handlers.SettingsReadWriter,
+	sts handlers.StreamingStore,
 	log *slog.Logger,
 ) *Server {
 	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix,
 		cs: cs, cls: cls, ss: ss, rls: rls, svc: svc,
-		tls: tls, ils: ils, stg: stg, srw: srw, log: log}
+		tls: tls, ils: ils, stg: stg, srw: srw, sts: sts, log: log}
 	return s
 }
 
@@ -215,6 +217,13 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("POST /v1/tracks/reanalyze-cuepoints",       handlers.TriggerCueInReanalyze(s.ciw, s.cits))
 		mux.HandleFunc("DELETE /v1/tracks/reanalyze-cuepoints",     handlers.CancelCueInReanalyze(s.ciw))
 	}
+
+	// Streaming targets
+	mux.HandleFunc("GET /v1/streaming",          handlers.ListStreamingTargets(s.sts))
+	mux.HandleFunc("POST /v1/streaming",         handlers.CreateStreamingTarget(s.sts))
+	mux.HandleFunc("GET /v1/streaming/{id}",     handlers.GetStreamingTarget(s.sts))
+	mux.HandleFunc("PUT /v1/streaming/{id}",     handlers.UpdateStreamingTarget(s.sts))
+	mux.HandleFunc("DELETE /v1/streaming/{id}",  handlers.DeleteStreamingTarget(s.sts))
 
 	// Transmission log — order matters: more specific paths first
 	mux.HandleFunc("GET /v1/transmission-log/export/ecad",              handlers.ExportECAD(s.tls, s.stg))
