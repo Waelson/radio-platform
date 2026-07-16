@@ -33,6 +33,7 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/playback"
 	"github.com/Waelson/radio-playout-engine/internal/prefs"
 	"github.com/Waelson/radio-playout-engine/internal/queue"
+	"github.com/Waelson/radio-playout-engine/internal/mixbus"
 	"github.com/Waelson/radio-playout-engine/internal/streaming"
 	"github.com/Waelson/radio-playout-engine/internal/scheduler"
 	"github.com/Waelson/radio-playout-engine/internal/state"
@@ -305,8 +306,13 @@ func run(args []string) error {
 
 	// 11b. Streaming Manager — fans PCM audio out to Icecast/SHOUTcast targets.
 	// Must be wired before the first play session so the tap is ready.
+	// Mix Bus: aggregates main playback + cart into a single fixed-rate
+	// PCM stream for the streaming manager, eliminating clock jitter.
+	mb := mixbus.New()
+	pbMgr.SetStreamingTap(mb.MainIn())
 	streamMgr := streaming.NewManager(evtBus, log)
-	pbMgr.SetStreamingTap(streamMgr.TapCh())
+	streamMgr.SetAudioIn(mb.OutCh())
+	go mb.Run(ctx)
 	go streamMgr.Run(ctx)
 	log.Info("streaming manager started")
 
@@ -344,6 +350,7 @@ func run(args []string) error {
 			BufferFrames: cfg.Audio.BufferFrames,
 		}
 		cartPlayer := cart.New(evtBus, decoder.NewFFmpegDecoder(log), cartOut, cartAudioCfg, cartVolAtomic, log)
+		cartPlayer.SetStreamingTap(mb.CartIn())
 		disp.Handle(commands.CmdCartPlay,      cartPlayer.HandlePlay)
 		disp.Handle(commands.CmdCartStop,      cartPlayer.HandleStop)
 		disp.Handle(commands.CmdCartSetVolume, func(_ context.Context, cmd commands.Command) error {

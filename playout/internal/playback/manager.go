@@ -956,6 +956,16 @@ func (m *Manager) hotButtonInterrupt(ctx context.Context, p commands.TriggerHotB
 				m.log.Error("interrupt hot button: output write failed", "error", werr)
 				return nil
 			}
+			// Send a copy to the streaming tap so the interrupt audio reaches
+			// connected Icecast/SHOUTcast targets, just like the main loop does.
+			if tap := m.streamingTap; tap != nil {
+				cp := make([]float32, n*spf)
+				copy(cp, buf[:n*spf])
+				select {
+				case tap <- cp:
+				default:
+				}
+			}
 		}
 		if rerr != nil {
 			break

@@ -54,6 +54,8 @@ type Player struct {
 
 	cmdCh chan extCmd // external commands from dispatcher handlers
 	intCh chan intMsg // internal messages from the playback goroutine
+
+	streamingTap chan<- []float32 // optional; receives a copy of each PCM frame
 }
 
 // New creates a Player. out must not yet be opened — the player opens
@@ -102,6 +104,12 @@ func (p *Player) setStatus(s Status) {
 	p.mu.Lock()
 	p.status = s
 	p.mu.Unlock()
+}
+
+// SetStreamingTap sets the channel that receives a copy of each PCM frame
+// written by the cart player. Safe to call once before Run.
+func (p *Player) SetStreamingTap(ch chan<- []float32) {
+	p.streamingTap = ch
 }
 
 // Run is the player event loop. Must be called in a dedicated goroutine.
@@ -368,6 +376,16 @@ func (p *Player) loop(ctx context.Context, gen int64, cartID, path string, gainD
 					send(intMsg{kind: intEnded, err: fmt.Errorf("cart: output write: %w", writeErr)})
 				}
 				return
+			}
+			// Send a copy to the streaming tap so cart audio reaches
+			// connected Icecast/SHOUTcast targets (non-blocking).
+			if tap := p.streamingTap; tap != nil {
+				cp := make([]float32, n*p.channels)
+				copy(cp, buf[:n*p.channels])
+				select {
+				case tap <- cp:
+				default:
+				}
 			}
 			posMS += int64(n) * 1000 / int64(p.sampleRate)
 		}

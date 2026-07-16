@@ -5,16 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/Waelson/radio-playout-engine/internal/events"
 )
 
-
-// tapChanCap is the number of PCM frame slices buffered in the Manager's
-// tap channel. The playback manager drops frames when this channel is full,
-// so this only needs to absorb transient scheduling jitter.
-const tapChanCap = 32
 
 // Manager fans out PCM audio from the playback loop to one or more streaming
 // targets (Icecast/SHOUTcast). It is safe for concurrent use.
@@ -30,9 +24,11 @@ type Manager struct {
 	// Protected by mu.
 	runCtx context.Context
 
-	tapCh  chan []float32 // receives frames from the playback loop
-	evtBus *events.Bus
-	log    *slog.Logger
+	// audioIn receives the mixed PCM stream from the MixBus.
+	// Set once via SetAudioIn before Run is called.
+	audioIn <-chan []float32
+	evtBus  *events.Bus
+	log     *slog.Logger
 }
 
 // NewManager creates a Manager. evtBus and log may not be nil.
@@ -43,16 +39,14 @@ func NewManager(evtBus *events.Bus, log *slog.Logger) *Manager {
 	return &Manager{
 		targets:      make(map[string]*Target),
 		reconnecting: make(map[string]bool),
-		tapCh:        make(chan []float32, tapChanCap),
 		evtBus:       evtBus,
 		log:          log,
 	}
 }
 
-// TapCh returns the write-only end of the PCM tap channel. The playback
-// manager sends frame slices here; the Manager distributes them to all
-// connected targets via fanOut.
-func (m *Manager) TapCh() chan<- []float32 { return m.tapCh }
+// SetAudioIn sets the channel from which fanOut reads mixed PCM frames.
+// Must be called before Run.
+func (m *Manager) SetAudioIn(ch <-chan []float32) { m.audioIn = ch }
 
 // Run starts the fanOut goroutine, subscribes to NowPlayingChanged events
 // for metadata updates, and blocks until ctx is cancelled.
@@ -146,19 +140,6 @@ func (m *Manager) updateAllMetadata(ctx context.Context, title, artist string) {
 // connected target's FFmpeg process alive. Silence stops immediately when real
 // audio resumes.
 func (m *Manager) fanOut(ctx context.Context) {
-	const (
-		// silenceSamples is the number of float32 values per silence chunk:
-		// 48000 Hz × 0.020 s × 2 channels = 1920 samples (20 ms of stereo).
-		silenceSamples = 1920
-		// idleThreshold is how long to wait without real audio before starting
-		// the silence keepalive. Must be long enough to cover normal scheduling
-		// jitter between the output device and the tap send.
-		idleThreshold = 200 * time.Millisecond
-		// silenceInterval is how often silence chunks are sent while idle.
-		silenceInterval = 20 * time.Millisecond
-	)
-	silence := make([]float32, silenceSamples) // all zeros — valid PCM silence
-
 	send := func(frames []float32) {
 		m.mu.RLock()
 		for _, t := range m.targets {
@@ -167,59 +148,19 @@ func (m *Manager) fanOut(ctx context.Context) {
 		m.mu.RUnlock()
 	}
 
-	// idleTimer fires when no real audio has arrived for idleThreshold,
-	// triggering the start of the silence keepalive ticker.
-	idleTimer := time.NewTimer(idleThreshold)
-	defer idleTimer.Stop()
-
-	var silenceTicker *time.Ticker
-
 	for {
-		var tickC <-chan time.Time
-		if silenceTicker != nil {
-			tickC = silenceTicker.C
-		}
-
 		select {
 		case <-ctx.Done():
-			if silenceTicker != nil {
-				silenceTicker.Stop()
-			}
 			return
-
-		case frames, ok := <-m.tapCh:
+		case frames, ok := <-m.audioIn:
 			if !ok {
-				if silenceTicker != nil {
-					silenceTicker.Stop()
-				}
 				return
 			}
-			// Real audio arrived: stop silence and reset the idle countdown.
-			if silenceTicker != nil {
-				silenceTicker.Stop()
-				silenceTicker = nil
-			}
-			if !idleTimer.Stop() {
-				select {
-				case <-idleTimer.C:
-				default:
-				}
-			}
-			idleTimer.Reset(idleThreshold)
 			send(frames)
-
-		case <-idleTimer.C:
-			// Engine has been idle for idleThreshold — start silence keepalive.
-			if silenceTicker == nil {
-				silenceTicker = time.NewTicker(silenceInterval)
-			}
-
-		case <-tickC:
-			// Keepalive tick: send silence to prevent server-side timeouts.
-			send(silence)
 		}
 	}
 }
+
 
 // AddTarget connects a new streaming target. If a target with the same ID
 // already exists an error is returned.
