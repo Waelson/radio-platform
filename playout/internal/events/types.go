@@ -62,6 +62,13 @@ const (
 	EvtPreviewVolumeChanged EventType = "PreviewVolumeChanged"
 	EvtCartVolumeChanged    EventType = "CartVolumeChanged"
 
+	// Streaming events — Icecast/SHOUTcast targets.
+	EvtStreamingConnected        EventType = "StreamingConnected"
+	EvtStreamingDisconnected     EventType = "StreamingDisconnected"
+	EvtStreamingError            EventType = "StreamingError"
+	EvtStreamingMetadataUpdated  EventType = "StreamingMetadataUpdated"
+	EvtStreamingStats            EventType = "StreamingStats"
+
 	// Cart player events — isolated from the main playback pipeline and preview.
 	EvtCartStarted  EventType = "CartStarted"
 	EvtCartProgress EventType = "CartProgress"
@@ -451,6 +458,48 @@ type CartStoppedPayload struct {
 // CartVolumeChangedPayload is the payload for EvtCartVolumeChanged.
 type CartVolumeChangedPayload struct {
 	Level float32 `json:"level"` // 0.0–1.0
+}
+
+// --- Streaming event payloads ------------------------------------------------
+
+// StreamingConnectedPayload is the payload for EvtStreamingConnected.
+type StreamingConnectedPayload struct {
+	TargetID    string `json:"target_id"`
+	Name        string `json:"name"`
+	Host        string `json:"host"`
+	Mount       string `json:"mount"`
+	Format      string `json:"format"`
+	BitrateKbps int    `json:"bitrate_kbps"`
+}
+
+// StreamingDisconnectedPayload is the payload for EvtStreamingDisconnected.
+type StreamingDisconnectedPayload struct {
+	TargetID   string `json:"target_id"`
+	Reason     string `json:"reason"`     // "manual" | "connection_lost" | "error"
+	RetryInMS  int64  `json:"retry_in_ms,omitempty"`
+}
+
+// StreamingErrorPayload is the payload for EvtStreamingError.
+// Published when max retries are exhausted.
+type StreamingErrorPayload struct {
+	TargetID   string `json:"target_id"`
+	Error      string `json:"error"`
+	RetryCount int    `json:"retry_count"`
+}
+
+// StreamingMetadataUpdatedPayload is the payload for EvtStreamingMetadataUpdated.
+type StreamingMetadataUpdatedPayload struct {
+	TargetID string `json:"target_id"`
+	Title    string `json:"title"`
+	Artist   string `json:"artist"`
+}
+
+// StreamingStatsPayload is the payload for EvtStreamingStats.
+type StreamingStatsPayload struct {
+	TargetID  string `json:"target_id"`
+	Listeners int    `json:"listeners"`
+	BytesSent int64  `json:"bytes_sent"`
+	UptimeMS  int64  `json:"uptime_ms"`
 }
 
 // --- Scheduler event payloads ------------------------------------------------
