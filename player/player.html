@@ -151,6 +151,28 @@ html, body {
 .badge.ASSIST_MODE { background: rgba(42,24,0,0.8); color: var(--orange); border-color: rgba(255,138,0,0.35); }
 .badge.PANIC_MODE  { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.45); }
 
+/* ─── Footer ─────────────────────────────────────────────────── */
+.app-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  height: 26px;
+  flex-shrink: 0;
+  border-top: 1px solid #20384c;
+  background: #07121b;
+  color: #4a6478;
+  font-size: 9px;
+  z-index: 9;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.app-footer .ft-spacer { flex: 1; }
+.app-footer .ft-status { display: flex; align-items: center; gap: 5px; }
+.ft-dot { width: 7px; height: 7px; border-radius: 50%; background: #4a6478; flex-shrink: 0; }
+.ft-dot.live { background: var(--green, #36d399); box-shadow: 0 0 0 3px rgba(54,211,153,.1), 0 0 8px rgba(54,211,153,.7); }
+.ft-dot.offline { background: var(--red, #f87272); }
+
 /* ─── Rail (left sidebar) ────────────────────────────────────── */
 .rail {
   display: flex;
@@ -194,6 +216,20 @@ html, body {
 
 /* ─── Main 3-column layout ───────────────────────────────────── */
 .main-layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.content-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.main-cols {
   display: flex;
   flex-direction: row;
   flex: 1;
@@ -2327,15 +2363,14 @@ canvas.vu-canvas {
     <!-- ─── Rail: navegação lateral ──────────────────────────── -->
     <nav class="rail" aria-label="Módulos">
       <button class="rail-btn active" title="No ar"><span class="ico">▶</span><span class="lbl">No ar</span></button>
-      <button class="rail-btn" title="Produção"><span class="ico">▦</span><span class="lbl">Produção</span></button>
-      <button class="rail-btn" title="Engenharia"><span class="ico">⌁</span><span class="lbl">Engenharia</span></button>
+      <button class="rail-btn" title="Produção" onclick="advModalOpen()"><span class="ico">▦</span><span class="lbl">Produção</span></button>
       <div class="rail-divider"></div>
-      <button class="rail-btn" title="Grade"><span class="ico">◫</span><span class="lbl">Grade</span></button>
-      <button class="rail-btn" title="Tráfego"><span class="ico">◈</span><span class="lbl">Tráfego</span></button>
-      <button class="rail-btn" title="Gravar"><span class="ico">●</span><span class="lbl">Gravar</span></button>
-      <button class="rail-btn" title="Relatórios"><span class="ico">▥</span><span class="lbl">Relatórios</span></button>
-      <button class="rail-btn rail-bottom" title="Configurações"><span class="ico">⚙</span><span class="lbl">Config</span></button>
+      <button class="rail-btn" title="Keys" onclick="openHotkeys()"><span class="ico">◫</span><span class="lbl">Keys</span></button>
+<button class="rail-btn rail-bottom" title="Configurações"><span class="ico">⚙</span><span class="lbl">Config</span></button>
     </nav>
+
+    <div class="content-wrap">
+    <div class="main-cols">
 
     <!-- ─── Col 1: Fila de Reprodução ─────────────────────────── -->
     <div class="col-meters">
@@ -2460,7 +2495,7 @@ canvas.vu-canvas {
       </div>
 
       <!-- Próxima música -->
-      <div class="next-deck hidden" id="nextDeckCard">
+      <div class="next-deck" id="nextDeckCard">
         <div class="next-cover">♫</div>
         <div>
           <div class="next-label">Próximo no ar</div>
@@ -2476,13 +2511,7 @@ canvas.vu-canvas {
 
       <!-- Barra utilitária (funcionalidades secundárias) -->
       <div class="pn-utility-bar">
-        <button class="pn-util-btn" id="btnAudios"      onclick="advModalOpen()"           data-tooltip="Catálogo"><img class="btn-icon" src="icons/catalogo.svg"></button>
-        <button class="pn-util-btn" id="btnLibrary"     onclick="toggleLibrary()"          data-tooltip="Biblioteca"><img class="btn-icon" src="icons/biblioteca.svg"></button>
-        <button class="pn-util-btn" id="btnHotkeys"     onclick="openHotkeys()"            data-tooltip="Botoneira"><img class="btn-icon" src="icons/botoneira.svg"></button>
-        <div class="pn-util-sep"></div>
-        <button class="pn-util-btn" id="btnEnterAssist" onclick="sendCmd('assist-enter')"  data-tooltip="ASSIST"><img class="btn-icon" src="icons/assist.svg"></button>
         <button class="pn-util-btn" id="btnReturnAuto"  onclick="sendCmd('return-auto')"   data-tooltip="Voltar Auto" style="display:none"><img class="btn-icon" src="icons/auto_mode.svg"></button>
-        <button class="pn-util-btn" id="btnStop"        onclick="sendCmd('stop')"          data-tooltip="Stop"><img class="btn-icon" src="icons/panic.svg"></button>
       </div>
 
       <!-- ASSIST Banner (visible when engine is waiting in ASSIST) -->
@@ -2498,14 +2527,6 @@ canvas.vu-canvas {
             <span class="next-evt-dot">•</span>
             <span id="nextEvtType">—</span>
           </div>
-        </div>
-      </div>
-
-      <div class="assist-banner" id="assistBanner">
-        <div class="assist-banner-icon"><img src="icons/assist.svg" style="width:34px;height:34px;object-fit:contain;filter:brightness(0) saturate(100%) invert(55%) sepia(90%) saturate(700%) hue-rotate(12deg) brightness(1.05);vertical-align:middle"></div>
-        <div class="assist-banner-body">
-          <div class="assist-banner-title" id="assistBannerTitle">Modo ASSIST ativado</div>
-          <div class="assist-banner-next" id="assistBannerNext">Fila vazia</div>
         </div>
       </div>
 
@@ -2812,7 +2833,24 @@ canvas.vu-canvas {
       </div>
     </div><!-- /lib-drawer -->
 
+    </div><!-- /main-cols -->
+
+    <!-- ─── Footer ──────────────────────────────────────────── -->
+    <footer class="app-footer">
+      <span>Audion Playout v6.4.2</span>
+      <span>Operator: Waelson N.</span>
+      <span>Layout: Enterprise / Studio A</span>
+      <div class="ft-spacer"></div>
+      <span class="ft-status"><span class="ft-dot live" id="ftDotApi"></span>API local</span>
+      <span class="ft-status"><span class="ft-dot" id="ftDotLib"></span>Library</span>
+      <span class="ft-status"><span class="ft-dot live" id="ftDotSched"></span>Scheduler</span>
+      <span id="ftSysInfo">CPU — · RAM — · Audio 48 kHz / 24-bit</span>
+    </footer>
+
+    </div><!-- /content-wrap -->
+
   </div><!-- /main-layout -->
+
 </div><!-- /app -->
 
 <!-- ─── CUE Float Panel ───────────────────────────────────── -->
@@ -3412,12 +3450,16 @@ function updateNextDeckCard() {
     nextItem = queueData.items.find(i => i && (i.status || '').toUpperCase() === 'QUEUED') || null;
   }
 
+  card.classList.remove('hidden');
+
   if (!nextItem) {
-    card.classList.add('hidden');
+    titleEl.textContent = '—';
+    artEl.textContent   = '';
+    durEl.textContent   = '—';
+    metaEl.innerHTML    = '';
     return;
   }
 
-  card.classList.remove('hidden');
   titleEl.textContent  = nextItem.title || '—';
   artEl.textContent    = [nextItem.artist, nextItem.type].filter(Boolean).join(' · ');
   durEl.textContent    = nextItem.duration_ms ? msToDuration(nextItem.duration_ms) : '—';
@@ -5069,6 +5111,8 @@ function setConn(ok) {
   const label = document.getElementById('connLabel');
   if (dot)   dot.className   = 'conn-dot ' + (ok ? 'ok' : 'error');
   if (label) label.style.color = ok ? 'var(--cyan)' : 'var(--red)';
+  const ftDot = document.getElementById('ftDotApi');
+  if (ftDot) ftDot.className = 'ft-dot ' + (ok ? 'live' : 'offline');
 }
 
 function connect() {
@@ -5335,10 +5379,14 @@ async function checkLibraryHealth() {
     _libOnline            = r.ok;
     dot.className         = 'conn-dot ' + (r.ok ? 'ok' : 'error');
     label.style.color     = r.ok ? 'var(--cyan)' : 'var(--red)';
+    const ftDotLib = document.getElementById('ftDotLib');
+    if (ftDotLib) ftDotLib.className = 'ft-dot ' + (r.ok ? 'live' : 'offline');
   } catch {
     _libOnline            = false;
     dot.className         = 'conn-dot error';
     label.style.color     = 'var(--red)';
+    const ftDotLib = document.getElementById('ftDotLib');
+    if (ftDotLib) ftDotLib.className = 'ft-dot offline';
   }
   // Quando a library fica online pela primeira vez, recarrega o pane ativo
   if (!wasOnline && _libOnline && _rotInited) {
