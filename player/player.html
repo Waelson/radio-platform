@@ -151,6 +151,47 @@ html, body {
 .badge.ASSIST_MODE { background: rgba(42,24,0,0.8); color: var(--orange); border-color: rgba(255,138,0,0.35); }
 .badge.PANIC_MODE  { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.45); }
 
+/* ─── Rail (left sidebar) ────────────────────────────────────── */
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  width: 74px;
+  flex-shrink: 0;
+  border-right: 1px solid #20384c;
+  background: rgba(7, 16, 25, .92);
+  z-index: 10;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.rail-btn {
+  width: 58px;
+  min-height: 54px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #4a6478;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  padding: 6px 3px;
+  transition: .18s ease;
+}
+.rail-btn .ico { font-size: 18px; line-height: 1; }
+.rail-btn .lbl { font-size: 9px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
+.rail-btn:hover { color: #c8c8c8; background: rgba(255,255,255,.04); }
+.rail-btn.active {
+  color: var(--cyan);
+  border-color: rgba(32,230,255,.22);
+  background: linear-gradient(145deg, rgba(32,230,255,.12), rgba(57,120,255,.05));
+  box-shadow: inset 3px 0 0 var(--cyan);
+}
+.rail-divider { width: 36px; height: 1px; background: #20384c; margin: 4px 0; flex-shrink: 0; }
+.rail-bottom { margin-top: auto; }
+
 /* ─── Main 3-column layout ───────────────────────────────────── */
 .main-layout {
   display: flex;
@@ -230,9 +271,8 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Col 1: Loudness + Saúde + VU Meters (coluna única) ────── */
 .col-meters {
-  flex: 0 0 25%;
-  width: 25%;
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
@@ -309,8 +349,8 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Col 2: PlayNow + Controles ────────────────────────────── */
 .col-playnow {
-  flex: 0 0 50%;
-  width: 50%;
+  flex: 2 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -320,8 +360,7 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Col 3: Direita ─────────────────────────────────────────── */
 .col-right {
-  flex: 0 0 25%;
-  width: 25%;
+  flex: 1 1 0;
   min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -750,21 +789,25 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Controles principais ────────────────────────────────────── */
 .pn-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  position: relative;
   padding: 11px;
   border-top: 1px solid #20384c;
   background: rgba(5,14,22,.6);
   flex-shrink: 0;
 }
+.pn-controls-center { display: flex; gap: 8px; margin: 0 auto; }
+.pn-controls-right  { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); }
 .pn-btn {
   min-height: 46px;
+  min-width: 192px;
+  padding: 0 14px;
   border: 1px solid #20384c;
   border-radius: 10px;
   background: linear-gradient(180deg, #122334, #0e1b28);
   color: #d7e3ec;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 760;
   cursor: pointer;
   transition: .16s ease;
@@ -2281,6 +2324,19 @@ canvas.vu-canvas {
   <!-- ─── Main 3-column layout ─────────────────────────── -->
   <div class="main-layout">
 
+    <!-- ─── Rail: navegação lateral ──────────────────────────── -->
+    <nav class="rail" aria-label="Módulos">
+      <button class="rail-btn active" title="No ar"><span class="ico">▶</span><span class="lbl">No ar</span></button>
+      <button class="rail-btn" title="Produção"><span class="ico">▦</span><span class="lbl">Produção</span></button>
+      <button class="rail-btn" title="Engenharia"><span class="ico">⌁</span><span class="lbl">Engenharia</span></button>
+      <div class="rail-divider"></div>
+      <button class="rail-btn" title="Grade"><span class="ico">◫</span><span class="lbl">Grade</span></button>
+      <button class="rail-btn" title="Tráfego"><span class="ico">◈</span><span class="lbl">Tráfego</span></button>
+      <button class="rail-btn" title="Gravar"><span class="ico">●</span><span class="lbl">Gravar</span></button>
+      <button class="rail-btn" title="Relatórios"><span class="ico">▥</span><span class="lbl">Relatórios</span></button>
+      <button class="rail-btn rail-bottom" title="Configurações"><span class="ico">⚙</span><span class="lbl">Config</span></button>
+    </nav>
+
     <!-- ─── Col 1: Fila de Reprodução ─────────────────────────── -->
     <div class="col-meters">
 
@@ -2391,11 +2447,14 @@ canvas.vu-canvas {
 
         <!-- Controles principais -->
         <div class="pn-controls">
-          <button class="pn-btn"               id="btnBack"        onclick="sendCmd('back')"         disabled>↩ Voltar</button>
-          <button class="pn-btn"               id="btnPauseToggle" onclick="sendCmd('pause-toggle')" disabled>⏸ Pausar</button>
-          <button class="pn-btn pn-btn-primary" id="btnPlay"       onclick="playStopToggle()"        disabled>▶ NO AR</button>
-          <button class="pn-btn"               id="btnSkip"        onclick="sendCmd('skip')"         disabled>Próximo ↪</button>
-          <button class="pn-btn pn-btn-danger"  id="btnPanicToggle" onclick="sendCmd('panic-toggle')" disabled>⚠ Emergência</button>
+          <div class="pn-controls-center">
+            <button class="pn-btn"               id="btnPauseToggle" onclick="sendCmd('pause-toggle')" disabled>⏸ Pausar</button>
+            <button class="pn-btn pn-btn-primary" id="btnPlay"        onclick="playStopToggle()"        disabled>▶ NO AR</button>
+            <button class="pn-btn"               id="btnSkip"        onclick="sendCmd('skip')"         disabled>Próximo ⏭</button>
+          </div>
+          <div class="pn-controls-right">
+            <button class="pn-btn pn-btn-danger" id="btnPanicToggle" onclick="sendCmd('panic-toggle')" disabled style="min-width:46px;width:46px;padding:0;">⚠ Emergência</button>
+          </div>
         </div>
 
       </div>
@@ -3148,8 +3207,6 @@ async function sendCmd(cmd) {
     const data = await res.json().catch(() => ({}));
     if (data.accepted === false) {
       showToast(false, data.reason || 'Comando rejeitado');
-    } else {
-      showToast(true, cmd.toUpperCase());
     }
   } catch (e) {
     showToast(false, 'Erro de rede: ' + e.message);
@@ -3387,6 +3444,33 @@ function updateNextBreakCard(estTimes) {
   const brk = pending.find(e => e && e.kind === 'break');
 
   if (!brk || !brk.break) {
+    // Fallback: use next scheduled break event if available
+    if (_nextEvent?.break) {
+      card.classList.remove('empty');
+      const b       = _nextEvent.break;
+      const fireAt  = _nextEvent.next_fire_at ? new Date(_nextEvent.next_fire_at).getTime() : 0;
+      _nextBreakEstMs = fireAt;
+
+      let timeLabel = '';
+      if (fireAt) {
+        const d = new Date(fireAt);
+        timeLabel = ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      }
+      titleEl.textContent = (_nextEvent.name || 'Próximo break') + timeLabel;
+
+      const spotCount  = (b.items || []).length;
+      const totalBrkMs = (b.items || []).reduce((s, sp) => s + (sp?.duration_ms || 0), 0);
+      const tolSec     = b.tolerance_seconds || 0;
+      const tolStr     = tolSec > 0
+        ? ` · ±${String(Math.floor(tolSec/60)).padStart(2,'0')}:${String(tolSec%60).padStart(2,'0')}`
+        : '';
+      subEl.textContent = spotCount > 0
+        ? `${spotCount} ${spotCount !== 1 ? 'peças' : 'peça'}${totalBrkMs > 0 ? ' · ' + msToDuration(totalBrkMs) : ''}${tolStr}`
+        : 'Break agendado';
+
+      _tickNextBreak();
+      return;
+    }
     card.classList.add('empty');
     titleEl.textContent = 'Próximo break';
     subEl.textContent   = 'Nenhum break agendado';
@@ -3407,7 +3491,6 @@ function updateNextBreakCard(estTimes) {
   const totalBrkMs = (b.items || []).reduce((s, sp) => s + (sp?.item?.duration_ms || 0), 0);
   const tolSec     = b.tolerance_seconds || 0;
 
-  // Format estimated start time as HH:MM for the title
   let timeLabel = '';
   if (estMs) {
     const d = new Date(estMs);
@@ -4094,7 +4177,7 @@ async function assistInsertHoraCerta() {
       body: JSON.stringify({ items: [{ path: '', type: 'HORA_CERTA', title: 'Hora Certa', duration_ms: 0 }] }),
     });
     const j = await r.json();
-    showToast(j.ok !== false, j.ok !== false ? '🕐 Hora Certa inserida' : (j.reason || 'Erro'));
+    if (j.ok === false) showToast(false, j.reason || 'Erro');
     if (j.ok !== false) fetchQueue();
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
@@ -4162,7 +4245,7 @@ async function assistClearQueue() {
       body: JSON.stringify({ preserve_current: true }),
     });
     const j = await r.json();
-    showToast(j.ok !== false, j.ok !== false ? 'Fila limpa' : (j.reason || 'Erro'));
+    if (j.ok === false) showToast(false, j.reason || 'Erro');
     if (j.ok !== false) fetchQueue();
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
@@ -4182,7 +4265,7 @@ async function submitInsertNextMusic() {
       body: JSON.stringify({ item: { path, type: 'MUSIC', title: title || path, artist, duration_ms: 0 } }),
     });
     const j = await r.json();
-    showToast(j.ok !== false, j.ok !== false ? '+ Música inserida' : (j.reason || 'Erro'));
+    if (j.ok === false) showToast(false, j.reason || 'Erro');
     if (j.ok !== false) { document.getElementById('musicPath').value = ''; document.getElementById('musicTitle').value = ''; document.getElementById('musicArtist').value = ''; fetchQueue(); }
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
@@ -4200,7 +4283,7 @@ async function submitInsertNextVinheta() {
       body: JSON.stringify({ item: { path, type, title: title || path, duration_ms: 0 } }),
     });
     const j = await r.json();
-    showToast(j.ok !== false, j.ok !== false ? '+ Vinheta inserida' : (j.reason || 'Erro'));
+    if (j.ok === false) showToast(false, j.reason || 'Erro');
     if (j.ok !== false) { document.getElementById('vinhetaPath').value = ''; document.getElementById('vinhetaTitle').value = ''; fetchQueue(); }
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
@@ -4220,7 +4303,7 @@ async function submitBreak() {
       body: JSON.stringify({ title, items }),
     });
     const j = await r.json();
-    showToast(j.ok !== false, j.ok !== false ? `📢 Break "${title}" inserido` : (j.reason || 'Erro'));
+    if (j.ok === false) showToast(false, j.reason || 'Erro');
     if (j.ok !== false) { document.getElementById('breakModalTitle').value = ''; document.getElementById('breakSpots').value = ''; fetchQueue(); }
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
@@ -4342,8 +4425,8 @@ function handleEvent({ type, payload }) {
     case 'CartVolumeChanged':     if (!_draggingCart)    setVolDisplay('cart',    payload.level); break;
     case 'ItemStarted':        _assistWaiting = false; _enginePlaying = true;  setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); { const t = document.getElementById('assistBannerTitle'); if (t) t.textContent = 'Modo ASSIST ativado'; } break;
     case 'ItemFinished':       _enginePlaying = false; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); clearIntroCountdown(); break;
-    case 'BreakStarted':       showToast(true, '🎙 Bloco: ' + (payload.break_title || '')); break;
-    case 'BreakEnded':         showToast(true, '✓ Bloco encerrado: ' + (payload.break_title || '')); clearBreakBanner(); break;
+    case 'BreakStarted':       break;
+    case 'BreakEnded':         clearBreakBanner(); break;
     case 'SpotStarted':        updateBreakBanner(payload); break;
     case 'SpotEnded':          /* banner updated on next SpotStarted */ break;
     case 'AssistEntered':      enterAssistUI(); break;
@@ -5810,7 +5893,6 @@ async function cueEditorSave() {
     // Update local cache so re-renders reflect new values
     const idx = _advTracks.findIndex(x => x.id === t.id);
     if (idx >= 0) Object.assign(_advTracks[idx], body);
-    showToast(true, 'Cue points salvos');
     closeCueEditor();
   } catch(e) {
     showToast(false, 'Erro ao salvar: ' + e.message);
@@ -6177,7 +6259,7 @@ async function advEnqueue(idx) {
     });
     const j  = await r.json();
     const ok = j.ok !== false && j.accepted !== false;
-    showToast(ok, ok ? `+ "${t.title}" enfileirada` : (j.reason || 'Comando rejeitado'));
+    if (!ok) showToast(false, j.reason || 'Comando rejeitado');
     if (ok) fetchQueue();
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
@@ -7263,7 +7345,6 @@ async function rotEnqueue() {
 
   overlay.remove();
   if (genBtn) { genBtn.disabled = false; genBtn.classList.remove('is-loading'); }
-  showToast(true, enqueued + ' faixa(s) enfileiradas');
   _rotGenItems = [];
   enqBtn.disabled = false; enqBtn.classList.remove('is-loading');
   enqBtn.style.display = 'none';
@@ -7322,7 +7403,7 @@ async function libEnqueueBreak(idx) {
     });
     const j = await r.json();
     const ok = j.ok !== false && j.accepted !== false;
-    showToast(ok, ok ? `📢 Break "${body.title}" enfileirado` : (j.reason || 'Comando rejeitado'));
+    if (!ok) showToast(false, j.reason || 'Comando rejeitado');
     if (ok) fetchQueue();
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
@@ -7825,7 +7906,6 @@ async function stmRemove(id) {
   delete _stmTargets[id];
   stmRenderList();
   stmUpdateBadge();
-  showToast(true, 'Servidor removido.');
 }
 
 /* ── Modal ───────────────────────────────────────────────── */
@@ -7985,7 +8065,6 @@ async function stmSave() {
 
     stmCloseModal();
     stmRenderList();
-    showToast(true, 'Servidor salvo: ' + cfg.name);
   } catch(e) { showToast(false, 'Erro de rede: ' + e.message); }
 }
 </script>
