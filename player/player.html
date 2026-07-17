@@ -696,6 +696,8 @@ input[type=range].vol-slider:disabled {
 .pn-live-badge.idle .pn-dot { background: #4a6478; box-shadow: none; animation: none; }
 .pn-live-badge.paused { background: rgba(251,191,36,.08); color: #fbbf24; border-color: rgba(251,191,36,.3); }
 .pn-live-badge.paused .pn-dot { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,.6); animation: none; }
+.pn-live-badge.streaming { background: rgba(32,230,255,.08); color: var(--cyan); border-color: rgba(32,230,255,.28); }
+.pn-live-badge.streaming .pn-dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: pulse 1.3s infinite; }
 .pn-topbar-spacer { flex: 1; }
 .pn-source {
   font-size: 10px;
@@ -2208,32 +2210,38 @@ canvas.vu-canvas {
 
 /* ─── Streaming — Badge LIVE ──────────────────────────────── */
 #streamingBadge {
-  display: none;
+  display: flex;
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
   border-radius: 4px;
-  border: 1px solid rgba(32,230,255,0.35);
-  background: rgba(32,230,255,0.08);
+  border: 1px solid #20384c;
+  background: rgba(255,255,255,.04);
   cursor: pointer;
   user-select: none;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
-#streamingBadge:hover { background: rgba(32,230,255,0.15); }
-#streamingBadge.live { display: flex; }
-#streamingBadge.reconnecting { display: flex; border-color: rgba(255,180,0,0.5); background: rgba(255,180,0,0.08); }
+#streamingBadge:hover { background: rgba(255,255,255,.08); }
+#streamingBadge.live { border-color: rgba(32,230,255,0.35); background: rgba(32,230,255,0.08); }
+#streamingBadge.live:hover { background: rgba(32,230,255,0.15); }
+#streamingBadge.reconnecting { border-color: rgba(255,180,0,0.5); background: rgba(255,180,0,0.08); }
 .streaming-dot {
   width: 8px; height: 8px; border-radius: 50%;
+  background: #4a6478;
+  flex-shrink: 0;
+}
+#streamingBadge.live .streaming-dot {
   background: var(--cyan);
   box-shadow: 0 0 6px var(--cyan);
-  flex-shrink: 0;
+  animation: pulse 1.3s infinite;
 }
 #streamingBadge.reconnecting .streaming-dot {
   background: #ffb400;
   box-shadow: 0 0 6px #ffb400;
   animation: blink 0.8s step-start infinite;
 }
-#streamingBadgeLabel { font-size: 12px; font-weight: 700; color: var(--cyan); }
+#streamingBadgeLabel { font-size: 12px; font-weight: 700; color: #88a0b5; }
+#streamingBadge.live #streamingBadgeLabel { color: var(--cyan); }
 #streamingBadge.reconnecting #streamingBadgeLabel { color: #ffb400; }
 
 /* ─── Streaming — Panel ───────────────────────────────────── */
@@ -2349,7 +2357,7 @@ canvas.vu-canvas {
       </div>
       <div id="streamingBadge" onclick="libSwitchTab('streaming');if(!document.getElementById('libDrawer').classList.contains('open'))toggleLibrary();" title="Streaming ao vivo">
         <span class="streaming-dot"></span>
-        <span id="streamingBadgeLabel">LIVE</span>
+        <span id="streamingBadgeLabel">STREAMING</span>
       </div>
     </div>
 
@@ -2446,6 +2454,9 @@ canvas.vu-canvas {
           </span>
           <span class="pn-source" id="pnSource"></span>
           <span class="pn-topbar-spacer"></span>
+          <span class="pn-live-badge idle" id="pnStreamingBadge" style="margin-right:8px;">
+            <span class="pn-dot"></span><span id="pnStreamingLabel">Streaming</span>
+          </span>
           <span class="pn-mode-badge" id="pnModeBadge">LIVE ASSIST</span>
         </div>
 
@@ -7848,22 +7859,37 @@ function stmEsc(s) {
 
 /* ── Badge LIVE no topbar ────────────────────────────────── */
 function stmUpdateBadge() {
+  // Badge antigo (drawer Library)
   const badge = document.getElementById('streamingBadge');
   const label = document.getElementById('streamingBadgeLabel');
-  if (!badge) return;
 
   const statuses = Object.values(_stmTargets);
   const connected    = statuses.filter(t => t.state === 'connected').length;
   const reconnecting = statuses.filter(t => t.state === 'reconnecting').length;
   const totalListeners = statuses.reduce((s, t) => s + (t.listeners || 0), 0);
 
-  badge.classList.remove('live', 'reconnecting');
-  if (connected > 0) {
-    badge.classList.add('live');
-    label.textContent = 'LIVE' + (totalListeners > 0 ? ' ' + totalListeners + '♪' : '');
-  } else if (reconnecting > 0) {
-    badge.classList.add('reconnecting');
-    label.textContent = 'RECONECTANDO';
+  if (badge) {
+    badge.classList.remove('live', 'reconnecting');
+    if (connected > 0) {
+      badge.classList.add('live');
+      if (label) label.textContent = 'STREAMING' + (totalListeners > 0 ? ' · ' + totalListeners + '♪' : '');
+    } else if (reconnecting > 0) {
+      badge.classList.add('reconnecting');
+      if (label) label.textContent = 'RECONECTANDO';
+    } else {
+      if (label) label.textContent = 'STREAMING';
+    }
+  }
+
+  // Badge no topbar do PlayNow
+  const pnBadge = document.getElementById('pnStreamingBadge');
+  if (pnBadge) {
+    pnBadge.classList.remove('streaming', 'idle');
+    if (connected > 0) {
+      pnBadge.classList.add('streaming');
+    } else {
+      pnBadge.classList.add('idle');
+    }
   }
 }
 
