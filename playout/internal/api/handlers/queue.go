@@ -126,6 +126,9 @@ type queueItemView struct {
 	DurationMS  int64             `json:"duration_ms"`
 	CueInMS     int64             `json:"cue_in_ms"`
 	CueOutMS    int64             `json:"cue_out_ms"`
+	IntroMS     int64             `json:"intro_ms"`
+	OutroMS     int64             `json:"outro_ms"`
+	GainDB      float64           `json:"gain_db"`
 	Mandatory   bool              `json:"mandatory"`
 	Status      string            `json:"status"`
 	Transition  *transitionView   `json:"transition"`
@@ -204,6 +207,9 @@ func toItemView(it *queue.QueueItem) queueItemView {
 		DurationMS:  it.DurationMS,
 		CueInMS:     it.CueInMS,
 		CueOutMS:    it.CueOutMS,
+		IntroMS:     it.IntroMS,
+		OutroMS:     it.OutroMS,
+		GainDB:      it.GainDB,
 		Mandatory:   it.Mandatory,
 		Status:      string(it.Status),
 		Metadata:    it.Metadata,

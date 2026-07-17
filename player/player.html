@@ -58,81 +58,69 @@ html, body {
 .topbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  background:
-    linear-gradient(
-      100deg,
-      rgba(45, 216, 255, 0.10),
-      transparent 32%,
-      rgba(123, 92, 255, 0.10) 78%,
-      rgba(45, 216, 255, 0.06)
-    ),
-    linear-gradient(
-      180deg,
-      #0f171f,
-      #081018 62%,
-      #05080d
-    );
-  border-bottom: 1px solid var(--border);
+  gap: 13px;
+  padding: 0 15px;
+  height: 66px;
+  border-bottom: 1px solid #20384c;
+  background: rgba(7,16,25,.88);
+  backdrop-filter: blur(18px);
   flex-shrink: 0;
-  height: 90px;
-  position: relative;
+  z-index: 20;
 }
-.topbar-logo { font-size: 16px; font-weight: 700; color: var(--cyan); letter-spacing: 0.5px; }
-.topbar-sep  { flex: 1; }
-.topbar-status-card {
-  display: flex;
-  align-items: stretch;
-  height: 76px;
+.brand { display: flex; align-items: center; gap: 10px; min-width: 195px; }
+.brand-title { font-size: 14px; font-weight: 760; color: #eef7ff; }
+.brand-sub { color: #88a0b5; font-size: 10px; letter-spacing: .75px; text-transform: uppercase; }
+.station-select {
+  height: 38px;
+  min-width: 176px;
+  border: 1px solid #20384c;
+  border-radius: 10px;
+  background: #0e1b28;
+  color: #d7e3ec;
+  padding: 0 11px;
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
 }
-.topbar-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0 18px; }
-.topbar-item-fixed { width: 110px; flex-shrink: 0; }
-.topbar-status-div { width: 1px; background: rgba(45,216,255,0.12); margin: 10px 0; }
-.topbar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.10em; color: #ffffff; font-weight: 700; }
-.topbar-value { font-size: 13px; font-weight: 700; color: var(--text-hi); }
-
-/* ─── Clock Widget ──────────────────────────────────────────── */
-.topbar-clock {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: stretch;
-  background: rgba(6, 14, 22, 0.88);
-  border: 1px solid rgba(45,216,255,0.18);
-  border-radius: 12px;
-  overflow: hidden;
-  height: 76px;
-  flex-shrink: 0;
-}
-.clk-main {
-  display: flex;
-  flex-direction: column;
+.status-cluster { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.chip {
+  height: 30px;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 20px;
-  gap: 5px;
-}
-.clk-time-row { display: flex; align-items: center; gap: 10px; }
-.clk-line { width: 28px; height: 1px; background: rgba(45,216,255,0.22); flex-shrink: 0; }
-.clk-time {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 34px;
-  font-weight: 700;
-  color: var(--cyan);
-  letter-spacing: 3px;
-  line-height: 1;
-  text-shadow: 0 0 18px rgba(45,216,255,0.30);
-}
-.clk-date {
-  font-size: 10.5px;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid #20384c;
+  border-radius: 999px;
+  background: rgba(14,27,40,.78);
+  color: #88a0b5;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-hi);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  white-space: nowrap;
 }
-.clk-divider { width: 1px; background: rgba(45,216,255,0.12); margin: 10px 0; }
+.top-spacer { flex: 1; }
+.clock-block { text-align: right; min-width: 146px; }
+.clock-time {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 23px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 790;
+  letter-spacing: .8px;
+  color: #eef7ff;
+  line-height: 1;
+}
+.clock-date { margin-top: 4px; color: #88a0b5; font-size: 10px; text-transform: capitalize; }
+.top-icon-btn {
+  height: 38px;
+  min-width: 38px;
+  border: 1px solid #20384c;
+  border-radius: 10px;
+  background: #0e1b28;
+  color: #88a0b5;
+  cursor: pointer;
+  font-size: 15px;
+  transition: .15s ease;
+}
+.top-icon-btn:hover { color: #20e6ff; border-color: rgba(0,212,255,.35); }
 
 .conn-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -242,12 +230,13 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Col 1: Loudness + Saúde + VU Meters (coluna única) ────── */
 .col-meters {
-  width: 280px;
+  flex: 0 0 25%;
+  width: 25%;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .lufs-panel {
@@ -318,288 +307,576 @@ input[type=range].vol-slider:disabled {
 .underrun-val { font-family: 'Courier New', monospace; font-size: 20px; font-weight: 700; color: var(--cyan); }
 .underrun-val.warn { color: var(--red); }
 
-/* ─── Col 3: Player (NowPlaying + Controls + Queue) ─────────── */
-.col-player {
-  flex: 1;
+/* ─── Col 2: PlayNow + Controles ────────────────────────────── */
+.col-playnow {
+  flex: 0 0 50%;
+  width: 50%;
   display: flex;
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  border-left: 1px solid rgba(220,239,242,0.07);
 }
 
-/* ─── Now Playing v5 ─────────────────────────────────────────── */
-.nowplaying-bar {
-  border-bottom: 1px solid rgba(43,216,222,0.18);
-  background: #090b0d; padding: 10px 12px; flex-shrink: 0;
-}
-.np-idle { font-size: 15px; color: var(--text-dim); font-style: italic; }
-
-/* Card container */
-.np5-card {
-  position: relative;
-  background: #0c1519;
-  border: 1px solid #20e6ff;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-/* Top: meta grid + title */
-.np5-top {
-  display: flex;
-  min-height: 130px;
-  position: relative;
-  z-index: 1;
-}
-
-/* Left column: 3 metadata rows */
-.np5-meta {
-  flex: 0 0 260px;
-  max-width: 260px;
-  display: flex;
-  flex-direction: column;
-  background: #0f2025;
-  border-right: 1px solid rgba(43,216,222,0.16);
-}
-.np5-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 14px;
-  flex: 1;
-}
-.np5-meta-row + .np5-meta-row {
-  border-top: none;
-}
-.np5-icon {
-  font-size: 17px;
-  color: var(--cyan);
-  width: 26px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.np5-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #ffffff;
-  text-transform: uppercase;
-  min-width: 52px;
-  flex-shrink: 0;
-}
-.np5-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: #9cb5ba;
-  letter-spacing: 0.3px;
-}
-.np5-status-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 6px var(--cyan);
-  margin-right: 7px;
-  vertical-align: middle;
-}
-/* Intro countdown row */
-.np5-intro-row { display: none; border-top: 1px solid rgba(255,255,255,0.06); }
-.np5-intro-row.intro-visible { display: flex; }
-.np5-intro-icon { font-size: 14px; width: 26px; text-align: center; flex-shrink: 0; }
-.np5-intro-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; min-width: 52px; flex-shrink: 0; }
-.np5-intro-value { font-size: 15px; font-weight: 800; letter-spacing: 0.06em; font-family: 'Courier New', monospace; }
-.np5-intro-row.intro-ok   .np5-intro-icon,
-.np5-intro-row.intro-ok   .np5-intro-label,
-.np5-intro-row.intro-ok   .np5-intro-value  { color: #f5c542; }
-.np5-intro-row.intro-urgent .np5-intro-icon,
-.np5-intro-row.intro-urgent .np5-intro-label,
-.np5-intro-row.intro-urgent .np5-intro-value { color: #ef5350; animation: intro-blink 0.6s ease-in-out infinite alternate; }
-@keyframes intro-blink { from { opacity: 1; } to { opacity: 0.45; } }
-
-/* Right column: title + artist */
-.np5-title-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 14px 18px;
+/* ─── Col 3: Direita ─────────────────────────────────────────── */
+.col-right {
+  flex: 0 0 25%;
+  width: 25%;
   min-width: 0;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(90deg, rgba(43,216,222,0.07), rgba(139,92,255,0.07)), #0d161d;
-}
-.np5-wave-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.36;
-  pointer-events: none;
-}
-.np5-title-text {
-  position: relative;
-  z-index: 1;
-}
-.np5-remaining-col {
-  flex: 0 0 260px;
-  max-width: 260px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-left: 1px solid rgba(220,239,242,0.07);
+  padding: 12px;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Painel direito: cards ──────────────────────────────────── */
+.or-card {
+  background: #0e1b28;
+  border: 1px solid #20384c;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.or-card-header {
+  min-height: 42px;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  background: #0f2025;
-  border-left: 1px solid rgba(139,92,255,0.20);
-  gap: 4px;
-  padding: 10px 8px;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #20384c;
+  background: rgba(10,22,33,.7);
 }
-.np5-next-sep {
-  width: 80%;
-  border: none;
-  border-top: 1px solid rgba(43,216,222,0.16);
-  margin: 4px 0;
-}
-.np5-next-label {
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.13em;
-  color: #ffffff;
-  text-transform: uppercase;
-}
-.np5-next-title {
+.or-card-title {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 790;
+  letter-spacing: .8px;
+  color: #bdd0df;
   text-transform: uppercase;
-  color: #9cb5ba;
-  text-align: center;
+}
+.or-studio-badge {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid #20384c;
+  border-radius: 99px;
+  background: #0e1b28;
+  font-size: 10px;
+  font-weight: 700;
+  color: #88a0b5;
+}
+
+/* Modo Operacional — botões */
+.or-mode-btns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  padding: 9px;
+}
+.or-mode-btn {
+  height: 50px;
+  border-radius: 10px;
+  border: 1px solid #20384c;
+  background: rgba(255,255,255,.025);
+  color: #88a0b5;
+  font-size: 10px;
+  font-weight: 760;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.or-mode-btn:hover { background: rgba(255,255,255,.04); color: #eef7ff; border-color: #31536d; }
+.or-mode-btn.active {
+  background: #36d399;
+  border-color: #36d399;
+  color: #031b12;
+  box-shadow: 0 0 16px rgba(54,211,153,.18);
+}
+
+/* Programa / PFL — badge LUFS */
+.or-lufs-badge {
+  height: 27px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid #20384c;
+  border-radius: 7px;
+  background: #0e1b28;
+  font-size: 10px;
+  font-weight: 600;
+  color: #88a0b5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Metros */
+.or-meters {
+  padding: 11px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.or-meter-row {
+  display: grid;
+  grid-template-columns: 15px 1fr 35px;
+  gap: 6px;
+  align-items: center;
+}
+.or-meter-ch {
+  font-size: 9px;
+  font-weight: 600;
+  color: #88a0b5;
+}
+.or-meter-bar-wrap {
+  height: 10px;
+  border-radius: 99px;
+  background: #061018;
+  overflow: hidden;
+  border: 1px solid rgba(49,83,109,.5);
+}
+.or-meter-bar-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #36d399 0 68%, #ffbf4b 68% 88%, #f87272 88%);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.08s linear;
+}
+.or-meter-val {
+  font-size: 9px;
+  color: #88a0b5;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.or-meter-scale {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  padding-left: 21px;
+  font-size: 8px;
+  color: #4a6478;
+}
+
+/* ─── Controles de Volume (painel direito) ───────────────────── */
+.or-vol-body { padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; }
+.or-vol-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.or-vol-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #88a0b5;
+  width: 62px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.or-vol-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: #36d399;
+  cursor: pointer;
+}
+.or-vol-slider:disabled { opacity: 0.30; cursor: not-allowed; }
+.or-vol-pct {
+  font-size: 10px;
+  font-weight: 600;
+  color: #88a0b5;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Contexto da Operação ───────────────────────────────────── */
+.or-ctx-btn {
+  height: 27px;
+  border: 1px solid #20384c;
+  border-radius: 7px;
+  background: #0e1b28;
+  color: #88a0b5;
+  padding: 0 8px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s;
+}
+.or-ctx-btn:hover { background: #122334; border-color: #31536d; color: #d7e3ec; }
+.or-ctx-list {
+  overflow-y: auto;
+  padding: 7px;
+}
+.or-ctx-item {
+  display: grid;
+  grid-template-columns: 33px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+}
+.or-ctx-item:hover { background: rgba(255,255,255,.025); border-color: rgba(255,255,255,.04); }
+.or-ctx-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: rgba(57,120,255,.1);
+  color: #7ea4ff;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.or-ctx-body {
+  min-width: 0;
+}
+.or-ctx-name {
+  font-size: 11px;
+  font-weight: 720;
+  color: #eef7ff;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.or-ctx-sub {
+  font-size: 9px;
+  color: #88a0b5;
+  margin-top: 3px;
   white-space: nowrap;
-  width: 100%;
-  padding: 0 6px;
-}
-.np5-remaining-label {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  color: #ffffff;
-  text-transform: uppercase;
-}
-.np5-remaining-value {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 30px;
-  font-weight: 800;
-  color: #20e6ff;
-  letter-spacing: 0.08em;
-}
-.np5-title {
-  font-size: 23px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: #dceff2;
-  line-height: 1.1;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  margin-bottom: 6px;
-  text-transform: uppercase;
+  text-overflow: ellipsis;
 }
-.np5-artist {
-  font-size: 14px;
-  color: #20e6ff;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.or-ctx-time {
+  font-size: 10px;
+  color: #c4d6e3;
+  font-variant-numeric: tabular-nums;
+}
+.or-ctx-item.or-ctx-past .or-ctx-name,
+.or-ctx-item.or-ctx-past .or-ctx-time { opacity: 0.35; }
+.or-ctx-item.or-ctx-next .or-ctx-name { color: #2dd8ff; }
+.or-ctx-item.or-ctx-next .or-ctx-time { color: #2dd8ff; }
+.or-ctx-empty {
+  font-size: 11px;
+  color: #4a6478;
+  text-align: center;
+  padding: 16px 0;
 }
 
-/* Bottom: progress bar */
-.np5-progress {
+/* ─── PlayNow Card ────────────────────────────────────────────── */
+.playnow-wrap {
+  position: relative;
+  background: linear-gradient(160deg, #10283a 0%, #0c1e2d 55%, #0a1722 100%);
+  border: 1px solid rgba(0,212,255,.35);
+  border-radius: 14px;
+  margin: 10px 10px 0;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.playnow-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,212,255,.03), transparent 35%),
+              radial-gradient(circle at 82% 5%, rgba(0,212,255,.14), transparent 32%);
+}
+
+/* Top bar */
+.pn-topbar {
+  min-height: 48px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px 14px;
-  border-top: 1px solid rgba(43,216,222,0.14);
-  background: #0c1519;
+  gap: 9px;
+  padding: 0 14px;
+  border-bottom: 1px solid #20384c;
   position: relative;
-  z-index: 1;
 }
-.np5-time {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--cyan);
-  white-space: nowrap;
+.pn-live-badge {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border-radius: 7px;
+  background: rgba(255,77,103,.13);
+  color: #ff8fa1;
+  border: 1px solid rgba(255,77,103,.28);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .75px;
+  flex-shrink: 0;
 }
-.np5-time-sep {
-  font-family: 'Courier New', monospace;
-  color: #444;
-  font-size: 13px;
-}
-.np5-total {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--cyan);
-  white-space: nowrap;
-}
-.np5-track-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-  margin-left: 40px;
-}
-.np5-track {
-  position: relative;
-  height: 6px;
-  background: rgba(43,216,222,0.10);
-  border-radius: 999px;
-}
-.np5-fill {
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  background: #20e6ff;
-  border-radius: 999px;
-  transition: width 0.5s linear;
-}
-.np5-thumb {
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 14px; height: 14px;
+.pn-dot {
+  width: 7px; height: 7px;
   border-radius: 50%;
-  background: #dceff2;
-  box-shadow: 0 0 0 2px rgba(43,216,222,0.4);
-  transition: left 0.5s linear;
-  pointer-events: none;
+  background: #f87272;
+  box-shadow: 0 0 10px rgba(255,77,103,.75);
+  animation: pulse 1.3s infinite;
+  flex-shrink: 0;
 }
-.np5-pct {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 11px;
-  color: var(--cyan);
-  text-align: center;
-}
-.np5-remaining {
-  font-family: 'Share Tech Mono', 'Courier New', monospace;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--cyan);
+.pn-live-badge.idle { background: rgba(255,255,255,.04); color: #88a0b5; border-color: #20384c; }
+.pn-live-badge.idle .pn-dot { background: #4a6478; box-shadow: none; animation: none; }
+.pn-topbar-spacer { flex: 1; }
+.pn-source {
+  font-size: 10px;
+  color: #88a0b5;
   white-space: nowrap;
-  text-align: right;
-  align-self: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pn-mode-badge {
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(54,211,153,.1);
+  color: #36d399;
+  border: 1px solid rgba(54,211,153,.24);
+  font-size: 10px;
+  font-weight: 760;
+  flex-shrink: 0;
 }
 
-/* ─── Controls ───────────────────────────────────────────────── */
-.controls-bar {
-  padding: 14px 16px; background: #0c0f11;
-  border-bottom: 1px solid rgba(220,239,242,0.08); flex-shrink: 0;
+/* Conteúdo: categoria, título, artista, metadados */
+.pn-content { padding: 16px 16px 2px; position: relative; min-height: 116px; }
+.pn-category {
+  color: #2dd8ff;
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 1px;
 }
-.controls-row { display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%; }
-.controls-group-right { display: flex; gap: 8px; align-items: center; }
-.controls-group { display: flex; gap: 8px; align-items: center; }
-.controls-sep { width: 1px; height: 28px; background: rgba(220,239,242,0.12); margin: 0 2px; }
+.pn-title {
+  margin-top: 6px;
+  font-size: clamp(18px, 1.76vw, 28px);
+  line-height: 1.08;
+  font-weight: 820;
+  letter-spacing: -.65px;
+  color: #eef7ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 30px;
+}
+.pn-artist {
+  margin-top: 6px;
+  font-size: 15px;
+  color: #b8cad8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 22px;
+}
+.pn-meta-row {
+  margin-top: 13px;
+  display: flex;
+  gap: 16px;
+  color: #88a0b5;
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+.pn-meta-label { color: #88a0b5; }
+.pn-meta-item  { color: #88a0b5; }
+.pn-meta-item strong { color: #d8e6ef; font-weight: 700; }
+.pn-meta-sep   { display: none; }
+
+/* Waveform */
+.pn-wave-wrap {
+  position: relative;
+  height: 67px;
+  overflow: hidden;
+  background: rgba(4,12,19,.52);
+  margin: 9px 16px 0;
+  border: 1px solid rgba(49,83,109,.55);
+  border-radius: 9px;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+.pn-wave-canvas { display: block; width: 100%; height: 100%; }
+.pn-wave-cursor {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  left: 20%; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.7);
+  pointer-events: none;
+  display: none;
+}
+.pn-wave-cue {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: rgba(255,191,75,.72);
+}
+.pn-wave-cue.out { right: 9%; }
+.pn-wave-cue.in  { left: 3%; }
+
+/* Progress */
+.pn-progress-wrap { margin: 11px 16px 0; }
+.pn-progress-track {
+  height: 8px;
+  border-radius: 99px;
+  background: #07131d;
+  border: 1px solid rgba(49,83,109,.5);
+  overflow: hidden;
+}
+.pn-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #20e6ff, #3978ff);
+  box-shadow: 0 0 13px rgba(0,212,255,.45);
+  transition: width 0.25s linear;
+}
+
+/* Linha de tempo */
+.pn-times {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  margin: 8px 16px 0;
+  padding-bottom: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pn-time-side {
+  font-size: 13px;
+  color: #88a0b5;
+}
+.pn-times .pn-time-side:last-child { text-align: right; }
+.pn-time-countdown {
+  font-size: 21px;
+  line-height: .9;
+  font-weight: 850;
+  letter-spacing: -.5px;
+  color: #f4fbff;
+  text-align: center;
+}
+.pn-time-countdown.warning { color: #ffbf4b; }
+.pn-time-countdown.critical { color: #f87272; animation: pulse .8s infinite; }
+
+/* ─── Controles principais ────────────────────────────────────── */
+.pn-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr;
+  gap: 8px;
+  padding: 11px;
+  border-top: 1px solid #20384c;
+  background: rgba(5,14,22,.6);
+  flex-shrink: 0;
+}
+.pn-btn {
+  min-height: 46px;
+  border: 1px solid #20384c;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #122334, #0e1b28);
+  color: #d7e3ec;
+  font-size: 11px;
+  font-weight: 760;
+  cursor: pointer;
+  transition: .16s ease;
+  white-space: nowrap;
+}
+.pn-btn:hover:not(:disabled) { transform: translateY(-1px); border-color: #31536d; filter: brightness(1.08); }
+.pn-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.pn-btn-primary {
+  background: linear-gradient(180deg, #00bfe9, #008aad);
+  border-color: #10cbed;
+  color: #00141b;
+  font-size: 15px;
+  font-weight: 760;
+}
+.pn-btn-primary:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.pn-btn-danger { color: #ff90a1; border-color: rgba(255,77,103,.28); background: rgba(255,77,103,.08); }
+.pn-btn-danger:hover:not(:disabled) { background: rgba(255,77,103,.14); border-color: rgba(255,77,103,.5); transform: translateY(-1px); }
+.pn-btn-stop {
+  background: linear-gradient(180deg, #c0392b, #8e1a10);
+  border-color: rgba(255,77,103,.7);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 760;
+}
+.pn-btn-stop:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* ─── Next Deck (próxima música) ─────────────────────────────── */
+.next-deck {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 12px;
+  margin: 10px 10px 0;
+  border: 1px solid #20384c;
+  border-radius: 14px;
+  background: #0e1b28;
+  flex-shrink: 0;
+}
+.next-deck.hidden { display: none; }
+.next-cover {
+  height: 74px;
+  border-radius: 11px;
+  border: 1px solid #20384c;
+  display: grid;
+  place-items: center;
+  color: #3978ff;
+  background: linear-gradient(145deg, rgba(57,120,255,.2), rgba(211,106,255,.08)), #0b1723;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.next-label {
+  color: #3978ff;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .9px;
+  font-weight: 780;
+}
+.next-title {
+  margin-top: 5px;
+  font-size: 18px;
+  font-weight: 790;
+  color: #eef7ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.next-artist {
+  margin-top: 4px;
+  color: #88a0b5;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.next-meta { margin-top: 9px; display: flex; gap: 6px; flex-wrap: wrap; }
+.meta-pill {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.05);
+  color: #88a0b5;
+  font-size: 9px;
+}
+.next-count { min-width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.next-count strong { display: block; font-size: 23px; color: #3978ff; font-weight: 800; }
+.next-count span   { color: #88a0b5; font-size: 9px; text-transform: uppercase; letter-spacing: .6px; }
+
+/* ─── Barra utilitária ────────────────────────────────────────── */
+.pn-utility-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 10px;
+  flex-shrink: 0;
+  background: #090f14;
+  border-bottom: 1px solid rgba(220,239,242,0.08);
+}
+.pn-util-btn {
+  width: 40px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(220,239,242,0.12);
+  border-radius: 7px;
+  background: #111820;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s;
+  padding: 0;
+}
+.pn-util-btn:hover:not(:disabled) { background: #1a2530; border-color: rgba(220,239,242,0.24); }
+.pn-util-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.pn-util-btn.active { background: #15354d; border-color: rgba(39,147,219,0.8); }
+.pn-util-sep { width: 1px; height: 24px; background: rgba(220,239,242,0.10); margin: 0 2px; }
 
 .btn {
   --btn-bg: #171c20;
@@ -1192,16 +1469,63 @@ input[type=range].vol-slider:disabled {
 /* ─── Queue ──────────────────────────────────────────────────── */
 .queue-section {
   flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  margin: 10px; border-radius: 14px;
+  border: 1px solid #20384c;
+  background: #0e1b28;
+  box-shadow: 0 18px 45px rgba(0,0,0,.28);
 }
 .queue-header {
   display: flex; align-items: center; gap: 12px;
-  padding: 10px 16px; border-bottom: 1px solid rgba(43,216,222,0.16);
-  background: #0c0f11; flex-shrink: 0;
+  min-height: 42px; padding: 0 12px;
+  border-bottom: 1px solid #20384c;
+  background: #0a1621; flex-shrink: 0;
 }
-.queue-title-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; color: #dceff2; font-weight: 800; }
+.queue-title-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #bdd0df; font-weight: 790; }
 .meter-section-label { font-size: 16px; font-weight: 700; color: #20e6ff; text-transform: uppercase; letter-spacing: 0.01em; }
-.queue-count { font-size: 13px; font-weight: 800; color: #dceff2; letter-spacing: 0.02em; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); text-transform: uppercase; }
-.queue-duration { font-size: 13px; font-weight: 700; color: #dceff2; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.12); }
+/* Tab buttons */
+.q-tab-btn {
+  height: 28px; padding: 0 10px; border-radius: 7px;
+  border: 1px solid #20384c; background: transparent;
+  color: #5f788e; font-size: 11px; font-weight: 700; cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.q-tab-btn:hover:not(:disabled) { background: rgba(0,212,255,.06); color: #88a0b5; }
+.q-tab-btn.q-tab-active { background: rgba(0,212,255,.10); color: #00d4ff; border-color: rgba(0,212,255,.35); }
+.q-tab-btn:disabled { opacity: 0.45; cursor: default; }
+.q-tab-lock { font-size: 10px !important; }
+
+/* Toolbar (search + insert) */
+.queue-toolbar {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 7px; padding: 8px;
+  border-bottom: 1px solid #20384c; flex-shrink: 0;
+}
+.queue-search-input {
+  height: 32px; min-width: 0;
+  border: 1px solid #20384c; border-radius: 8px;
+  background: #071019; color: #eef7ff;
+  padding: 0 10px; font-size: 12px;
+  outline: none; transition: border-color 0.12s;
+}
+.queue-search-input::placeholder { color: #5f788e; }
+.queue-search-input:focus { border-color: rgba(0,212,255,.4); }
+.q-insert-btn {
+  height: 32px; padding: 0 12px; border-radius: 8px;
+  border: 1px solid #20384c; background: transparent;
+  color: #88a0b5; font-size: 11px; font-weight: 700; cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.q-insert-btn:hover { background: rgba(0,212,255,.06); border-color: rgba(0,212,255,.25); color: #00d4ff; }
+
+/* Info bar (count + duration + actions) */
+.queue-info-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px; border-bottom: 1px solid #20384c;
+  flex-shrink: 0; min-height: 34px;
+}
+.queue-count { font-size: 11px; font-weight: 800; color: #88a0b5; letter-spacing: 0.02em; text-transform: uppercase; }
+.queue-duration { font-size: 11px; font-weight: 700; color: #88a0b5; padding-left: 8px; border-left: 1px solid rgba(255,255,255,0.1); }
 .queue-refresh {
   padding: 0 12px; min-height: 32px; background: transparent;
   border: 1px solid rgba(220,239,242,0.12); border-radius: 6px;
@@ -1217,213 +1541,138 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Queue list (card layout) ───────────────────────────────── */
 .queue-scroll-host { position: relative; flex: 1; display: flex; overflow: hidden; }
-.queue-list-wrap { flex: 1; overflow-y: scroll; background: #000000; padding: 10px 30px 10px 10px; scrollbar-width: none; transition: padding-right 0.25s ease; }
+.queue-list-wrap { flex: 1; overflow-y: scroll; background: #0e1b28; padding: 5px 20px 5px 5px; scrollbar-width: thin; scrollbar-color: #31536d transparent; transition: padding-right 0.25s ease; }
 .queue-list-wrap::-webkit-scrollbar { display: none; }
 /* Custom scrollbar */
 .q-sb-track { position: absolute; right: 0; top: 0; bottom: 0; width: 20px; background: rgba(255,255,255,0.04); pointer-events: auto; cursor: pointer; display: flex; align-items: stretch; justify-content: center; padding: 8px 0; box-sizing: border-box; opacity: 1; transition: opacity 0.25s ease; }
 .q-sb-thumb { position: absolute; left: 3px; right: 3px; min-height: 28px; background: rgba(45,212,200,0.32); border-radius: 6px; cursor: grab; transition: background 0.15s; }
 .q-sb-thumb:hover { background: rgba(45,212,200,0.58); }
 .q-sb-thumb.is-dragging { background: rgba(45,212,200,0.72); cursor: grabbing; }
-.queue-list { display: grid; gap: 10px; }
-.assist-active .queue-list { gap: 4px; }
+/* ─── Queue list — reference style ───────────────────────────── */
+.queue-list { display: flex; flex-direction: column; }
 
 .queue-row {
-  min-height: 80px;
-  display: grid;
-  grid-template-columns: 58px minmax(0,1fr) 110px 86px 51px;
-  align-items: center;
-  align-content: center;
-  gap: 14px;
-  padding: 0 16px;
-  border-radius: 12px;
   position: relative;
-  /* Fase 1 — gradiente + reflexo glass */
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #0e2428 0%, #091a1e 100%);
-  border: 1px solid rgba(32,230,255,0.55);
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  display: grid;
+  grid-template-columns: 48px 4px minmax(0,1fr) 50px auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 52px;
+  padding: 6px 8px 6px 5px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #d7e3ec;
+  transition: background 0.1s, border-color 0.1s;
 }
-/* Fase 4 — hover refinado */
-.queue-row:hover {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #112b30 0%, #0b1e22 100%);
-  border-color: rgba(32,230,255,0.75);
-}
-/* Fase 4 — glow externo no item atual */
+.queue-row:hover { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.045); }
 .queue-row.is-current {
-  background:
-    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
-    linear-gradient(180deg, #0f2e33 0%, #091e22 100%);
-  border-color: #20e6ff;
-  box-shadow:
-    0 0 8px rgba(32,230,255,0.35),
-    0 0 20px rgba(32,230,255,0.18),
-    0 0 40px rgba(32,230,255,0.08);
+  background: linear-gradient(90deg, rgba(0,212,255,.13), rgba(0,212,255,.025));
+  border-color: rgba(0,212,255,.28);
+  box-shadow: inset 3px 0 0 #00d4ff;
 }
-.queue-row.is-next    { border-color: rgba(32,230,255,0.55); }
-.queue-row.is-played  { opacity: 0.38; }
-.queue-row.is-failed  { opacity: 0.5; border-color: var(--red); }
-/* Music — glass preto */
-.queue-row.music {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #181818 0%, #080808 100%);
-  border-color: rgba(32,230,255,0.55);
-}
-.queue-row.music:hover {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #222222 0%, #101010 100%);
-  border-color: rgba(32,230,255,0.75);
-}
-.queue-row.music.is-current {
-  background:
-    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
-    linear-gradient(180deg, #141414 0%, #060606 100%);
-  border-width: 1px;
-  border-color: #20e6ff;
-}
-/* Hora Certa — glasss âmbar/laranja */
-.queue-row.hora-certa {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #181818 0%, #080808 100%);
-  border-color: rgba(32,230,255,0.55);
-}
-.queue-row.hora-certa:hover {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #222222 0%, #101010 100%);
-}
-/* Vinheta — mesmo padrão visual da música */
-.queue-row.vinheta {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #181818 0%, #080808 100%);
-  border-color: rgba(32,230,255,0.55);
-}
-.queue-row.vinheta:hover {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #222222 0%, #101010 100%);
-  border-color: rgba(32,230,255,0.75);
-}
-.queue-row.vinheta.is-current {
-  background:
-    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
-    linear-gradient(180deg, #141414 0%, #060606 100%);
-  border-width: 1px;
-  border-color: #20e6ff;
-}
-/* Spot — mesmo padrão visual da música */
-.queue-row.spot {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #181818 0%, #080808 100%);
-  border-color: rgba(32,230,255,0.55);
-}
-.queue-row.spot:hover {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, #222222 0%, #101010 100%);
-  border-color: rgba(32,230,255,0.75);
-}
-.queue-row.spot.is-current {
-  background:
-    linear-gradient(180deg, rgba(45,212,200,0.10) 0%, rgba(45,212,200,0) 40%),
-    linear-gradient(180deg, #141414 0%, #060606 100%);
-  border-width: 1px;
-  border-color: #20e6ff;
-}
+.queue-row.is-next    { background: rgba(57,120,255,.065); }
+.queue-row.is-played  { opacity: 0.35; }
+.queue-row.is-failed  { opacity: 0.5; }
 
+/* Time column */
 .q-index {
-  display: flex; align-items: center; justify-content: center;
-  color: #9de7e2; font-size: 16px; font-weight: 800; letter-spacing: 0.03em;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #88a0b5; font-size: 10px; font-variant-numeric: tabular-nums;
+  text-align: center; line-height: 1.4; gap: 2px;
 }
-.q-type-icon { width: 34px; height: 34px; object-fit: contain; opacity: 0.80; }
-.q-track { min-width: 0; position: relative; padding-left: 12px; }
-.q-track::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 50%;
-  transform: translateY(-50%);
-  width: 1px; height: 24px;
-  background: rgba(255,255,255,0.12);
+.queue-row.is-current .q-index { color: #00d4ff; }
+.queue-row.is-played  .q-index { color: #3d5a6a; }
+
+/* Type bar column */
+.q-type-bar {
+  width: 4px; height: 32px; border-radius: 4px; flex-shrink: 0;
+  background: #00d4ff;
 }
+.q-type-bar.spot      { background: #ffbf4b; }
+.q-type-bar.vinheta,
+.q-type-bar.jingle    { background: #d36aff; }
+.q-type-bar.hora-certa{ background: #ff8b3d; }
+.q-type-bar.voice     { background: #36d399; }
+.q-type-bar.news      { background: #ff4d67; }
+.queue-row.is-played .q-type-bar { opacity: 0.3; }
+
+/* Info column */
+.q-track { min-width: 0; }
 .q-track-name {
-  display: flex; align-items: center; gap: 8px;
-  color: #20e6ff; font-size: 16px; font-weight: 700; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px; font-weight: 720; color: #d7e3ec;
+  display: flex; align-items: center; gap: 6px;
 }
-.q-artist {
-  display: block; margin-top: 4px; color: #77a4a3;
-  font-size: 12px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.q-meta {
+  margin-top: 4px; display: flex; align-items: center; gap: 6px;
+  color: #88a0b5; font-size: 9px; min-width: 0;
+}
+.q-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-meta-sep { color: #3d5a6a; flex-shrink: 0; }
+.row-badge, .q-type-pill {
+  display: inline-flex; align-items: center; padding: 2px 5px;
+  border-radius: 5px; background: rgba(255,255,255,.06);
+  color: #88a0b5; font-size: 9px; font-weight: 700; flex-shrink: 0;
+  border: none; text-transform: none; letter-spacing: 0;
 }
 .q-badge {
-  flex: 0 0 auto; height: 20px;
-  display: inline-flex; align-items: center; padding: 0 7px;
-  border-radius: 999px; color: #2dd4c8;
-  background: rgba(45,212,200,0.15); border: 1px solid rgba(45,212,200,0.35);
-  font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em;
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; padding: 2px 6px;
+  border-radius: 5px;
+  color: #00d4ff; background: rgba(0,212,255,.12); border: 1px solid rgba(0,212,255,.3);
+  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
 }
-.queue-row.hora-certa .q-badge { color: #ff8c00; background: rgba(255,110,0,0.18); border-color: rgba(255,110,0,0.42); }
-.queue-row.hora-certa.is-current .q-badge { color: #2dd4c8; background: rgba(45,212,200,0.15); border-color: rgba(45,212,200,0.35); }
-.q-status-pill {
-  width: 100%; height: 28px;
-  display: inline-flex; align-items: center; justify-content: center; padding: 0 10px;
-  border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-  color: #bce8e5; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
-  position: relative; align-self: center;
-}
-.q-status-pill::before {
-  content: '';
-  position: absolute;
-  left: -18px; top: 50%;
-  transform: translateY(-50%);
-  width: 1px; height: 24px;
-  background: rgba(255,255,255,0.12);
-}
-.q-status-pill.live    { color: #20e6ff; background: rgba(32,230,255,0.10); border-color: rgba(32,230,255,0.55); }
-.q-status-pill.waiting { color: #20e6ff; background: rgba(32,230,255,0.06); border-color: rgba(32,230,255,0.55); }
-.q-status-pill.done    { color: #3a5a58; background: transparent; border-color: rgba(255,255,255,0.04); }
-.q-status-pill.danger  { color: var(--red); background: rgba(255,50,50,0.12); border-color: rgba(255,50,50,0.28); }
+
+/* Duration column */
 .q-time {
-  color: #d5fbf9; font-family: 'Courier New', monospace;
-  font-size: 15px; font-weight: 800; letter-spacing: 0.01em; text-align: center;
-  padding-left: 12px; position: relative;
+  color: #b8c9d7; font-variant-numeric: tabular-nums;
+  font-size: 11px; text-align: right;
 }
-.q-time::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 50%;
-  transform: translateY(-50%);
-  width: 1px; height: 24px;
-  background: rgba(255,255,255,0.12);
+.queue-row.is-current .q-time { color: #00d4ff; }
+
+/* CUE / actions — hidden until hover */
+.q-actions-wrap { display: flex; align-items: center; justify-content: center; width: 28px; }
+.q-cue-btn {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: transparent; border: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity 0.15s, background 0.12s;
 }
+.queue-row:hover .q-cue-btn { opacity: 1; }
+.q-cue-btn img { width: 13px; height: 13px; opacity: 0.55; }
+.q-cue-btn:hover { background: rgba(0,212,255,.10); border-color: rgba(0,212,255,.3); }
+.q-cue-btn.is-cuing { opacity: 1; background: rgba(0,212,255,.16); border-color: #00d4ff; }
+.q-cue-btn.is-cuing img { opacity: 1; }
+.q-reorder-btns { display: flex; flex-direction: column; gap: 2px; }
+.q-btn { font-size: 10px; padding: 1px 4px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #7ab0b8; }
+.q-btn:hover { background: rgba(255,255,255,0.06); }
+.q-btn.q-btn-del { color: #e05050; }
+
+/* Progress bar */
 .q-progress {
-  position: absolute; bottom: 6px; left: 16px; right: 16px;
-  height: 3px; border-radius: 999px; background: transparent; overflow: hidden;
+  position: absolute; bottom: 2px; left: 8px; right: 8px;
+  height: 2px; border-radius: 999px; background: rgba(0,212,255,.12);
 }
 .q-progress span {
-  display: block; height: 100%; background: #2dd4c8;
-  border-radius: inherit; width: 0%; transition: width 0.5s linear;
+  display: block; height: 100%; background: #00d4ff; border-radius: inherit;
+  width: 0%; transition: width 0.5s linear;
 }
+
+/* Equalizer */
 .q-equalizer {
-  width: 18px; height: 16px; flex-shrink: 0;
-  display: inline-grid; grid-template-columns: repeat(4,3px); gap: 2px; align-items: end;
+  width: 14px; height: 12px; flex-shrink: 0;
+  display: inline-grid; grid-template-columns: repeat(4,2px); gap: 1px; align-items: end;
 }
 .q-equalizer i {
-  display: block; width: 3px; border-radius: 999px; background: #2dd4c8;
+  display: block; width: 2px; border-radius: 999px; background: #00d4ff;
   animation: eqBounce 0.8s ease-in-out infinite alternate;
 }
-.q-equalizer i:nth-child(1) { height: 9px;  animation-delay: 0s; }
-.q-equalizer i:nth-child(2) { height: 15px; animation-delay: 0.15s; }
-.q-equalizer i:nth-child(3) { height: 11px; animation-delay: 0.3s; }
-.q-equalizer i:nth-child(4) { height: 6px;  animation-delay: 0.45s; }
+.q-equalizer i:nth-child(1) { height: 5px;  animation-delay: 0s; }
+.q-equalizer i:nth-child(2) { height: 10px; animation-delay: 0.15s; }
+.q-equalizer i:nth-child(3) { height: 7px;  animation-delay: 0.3s; }
+.q-equalizer i:nth-child(4) { height: 4px;  animation-delay: 0.45s; }
 @keyframes eqBounce { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+.q-type-icon { width: 14px; height: 14px; object-fit: contain; opacity: 0.4; }
 
 /* Break group container */
 .break-group {
@@ -1436,7 +1685,8 @@ input[type=range].vol-slider:disabled {
 .break-group .queue-row {
   border-radius: 0;
   border: none;
-  grid-template-columns: 58px minmax(0,1fr) 110px 86px 51px;
+  border-bottom: 1px solid rgba(230,130,10,0.15);
+  grid-template-columns: 48px 4px minmax(0,1fr) 50px auto;
 }
 .break-group .queue-row.break-header { min-height: 52px; background: rgba(230,130,10,0.12); }
 .break-group .queue-row.break-header .q-actions-wrap::before { display: block; }
@@ -1451,6 +1701,36 @@ input[type=range].vol-slider:disabled {
   font-style: italic; font-size: 15px;
 }
 
+
+/* ─── Next Break card ───────────────────────────────────────── */
+.next-break-card {
+  flex: 0 0 auto;
+  padding: 10px;
+  margin: 0 10px 10px;
+  border: 1px solid #20384c;
+  border-radius: 14px;
+  background: #0e1b28;
+  overflow: hidden;
+}
+.next-break-card-inner {
+  display: grid; grid-template-columns: 43px 1fr auto;
+  gap: 10px; align-items: center;
+  padding: 10px; border-radius: 11px;
+  border: 1px solid rgba(255,191,75,.22);
+  background: rgba(255,191,75,.06);
+}
+.next-break-card-inner.empty { opacity: 0.4; }
+.next-break-icon {
+  width: 42px; height: 42px; display: grid; place-items: center;
+  border-radius: 10px; background: rgba(255,191,75,.12);
+  font-size: 19px; color: #ffbf4b;
+}
+.next-break-main { font-weight: 740; color: #eef7ff; }
+.next-break-sub  { color: #88a0b5; margin-top: 4px; font-size: 10px; }
+.next-break-countdown {
+  font-size: 22px; font-weight: 800; color: #ffbf4b;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 
 /* ─── ASSIST mode ────────────────────────────────────────────── */
 
@@ -1693,12 +1973,7 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 
 .vu-readout-value,
 .lufs-val,
-.health-val,
-.np5-time,
-.np5-total,
-.np5-remaining,
-.np5-pct,
-.np5-remaining-value {
+.health-val {
   color: var(--cyan);
   text-shadow: 0 0 8px rgba(32,230,255,.12);
 }
@@ -1721,10 +1996,6 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
   color: var(--cyan);
 }
 
-.np5-status-dot {
-  background: #20e6ff;
-  box-shadow: none;
-}
 
 
 .lib-tab.active {
@@ -1805,114 +2076,6 @@ canvas.vu-canvas {
 }
 
 
-/* ─── Padronização dos botões abaixo do Play Now ─────────────── */
-/* Todos os botões operacionais usam a mesma linguagem azul/cyan/roxo.
-   Panic permanece vermelho por ser ação crítica. */
-.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist) {
-  background:
-    linear-gradient(180deg, rgba(47,123,255,.18), rgba(15,26,48,.72)) !important;
-  color: #bfeeff !important;
-  border-color: rgba(32,230,255,.38) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    0 0 10px rgba(32,230,255,.08) !important;
-}
-
-.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist):hover:not(:disabled) {
-  background:
-    linear-gradient(180deg, rgba(32,230,255,.24), rgba(47,123,255,.18), rgba(122,77,255,.14)) !important;
-  color: #ffffff !important;
-  border-color: rgba(32,230,255,.68) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.08),
-    0 0 14px rgba(32,230,255,.18),
-    0 0 22px rgba(122,77,255,.10) !important;
-}
-
-.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist):active:not(:disabled) {
-  background:
-    linear-gradient(180deg, rgba(122,77,255,.24), rgba(47,123,255,.18)) !important;
-  transform: scale(.97);
-}
-
-/* Estado desabilitado — sobrescreve os !important do controls-bar */
-.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist):disabled,
-.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist).disabled {
-  background: #0e1416 !important;
-  color: #2e3d42 !important;
-  border-color: rgba(220,239,242,0.06) !important;
-  box-shadow: none !important;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.controls-bar .btn:not(.btn-panic):not(.btn-exit-panic):not(.btn-audios):not(.btn-library):not(.btn-hotkeys):not(.btn-assist).active,
-.controls-bar .btn-library.active {
-  background:
-    linear-gradient(180deg, rgba(32,230,255,.28), rgba(122,77,255,.18)) !important;
-  color: #ffffff !important;
-  border-color: rgba(122,77,255,.72) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.08),
-    0 0 16px rgba(122,77,255,.20) !important;
-}
-
-/* Mantém Panic como ação crítica/vermelha — inclusive no estado ativo (btn-exit-panic) */
-.controls-bar .btn-panic,
-.controls-bar .btn-exit-panic {
-  background: #3d0000 !important;
-  color: #ff3b30 !important;
-  border-color: #cc0000 !important;
-  box-shadow: 0 0 10px rgba(255,32,32,.30), inset 0 1px 0 rgba(255,80,80,.15) !important;
-  font-weight: 900 !important;
-}
-
-/* Pulsação vermelha quando panic está ativo */
-.controls-bar .btn-exit-panic {
-  animation: panicPulse 1s ease-in-out infinite !important;
-}
-
-.controls-bar .btn-panic:hover:not(:disabled),
-.controls-bar .btn-exit-panic:hover:not(:disabled) {
-  background: #550000 !important;
-  color: #ff5a52 !important;
-  border-color: #ff2200 !important;
-  box-shadow: 0 0 18px rgba(255,32,32,.50) !important;
-}
-
-/* Botões icon-only transparentes — sobrescrita após regras controls-bar (especificidade 0,3,0) */
-.controls-bar .btn.btn-audios,
-.controls-bar .btn.btn-library,
-.controls-bar .btn.btn-hotkeys,
-.controls-bar .btn.btn-assist {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-.controls-bar .btn.btn-audios:hover:not(:disabled),
-.controls-bar .btn.btn-library:hover:not(:disabled),
-.controls-bar .btn.btn-hotkeys:hover:not(:disabled),
-.controls-bar .btn.btn-assist:hover:not(:disabled) {
-  background: rgba(220,239,242,0.05) !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-.controls-bar .btn.btn-audios:active:not(:disabled),
-.controls-bar .btn.btn-library:active:not(:disabled),
-.controls-bar .btn.btn-hotkeys:active:not(:disabled),
-.controls-bar .btn.btn-assist:active:not(:disabled) {
-  background: rgba(220,239,242,0.10) !important;
-}
-
-/* Ícones desabilitados — reduz opacidade já que background é transparente */
-.controls-bar .btn.btn-audios:disabled,
-.controls-bar .btn.btn-library:disabled,
-.controls-bar .btn.btn-hotkeys:disabled,
-.controls-bar .btn.btn-assist:disabled {
-  opacity: 0.25 !important;
-  cursor: not-allowed !important;
-  pointer-events: none !important;
-}
 
 /* ─── Banner: Próximo Evento Agendado ────────────────── */
 .next-evt-banner {
@@ -2081,320 +2244,186 @@ canvas.vu-canvas {
 <div class="app">
 
   <!-- ─── Top Bar ─────────────────────────────────────── -->
-  <div class="topbar">
-    <div class="topbar-logo"><img src="logo.svg" alt="Logo" height="44"></div>
-    <img src="radio-flow.png" alt="RadioFlow" style="height:42px;width:auto;">
+  <header class="topbar">
+    <div class="brand">
+      <img src="audion-logo.png" alt="Audion" style="height:46px;width:auto;">
+      <div>
+        <div class="brand-title">Audion Play</div>
+        <div class="brand-sub">BROADCAST SUITE</div>
+      </div>
+    </div>
 
-    <div class="topbar-sep"></div>
-    <div class="topbar-status-card">
-      <div class="topbar-item">
-        <span class="topbar-label">Engine</span>
-        <span class="topbar-value" id="tEngineId" style="text-transform:uppercase;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--cyan)">—</span>
+    <div style="width:1px;height:36px;background:#20384c;flex-shrink:0;"></div>
+
+    <div class="status-cluster">
+      <div class="chip">
+        <span class="conn-dot" id="connDot"></span>
+        <span id="connLabel" style="color:#4a6478;font-weight:700;">Playout</span>
       </div>
-      <div class="topbar-status-div"></div>
-      <div class="topbar-item topbar-item-fixed">
-        <span class="topbar-label">Estado</span>
-        <span id="tState" class="badge">—</span>
+      <div class="chip">
+        <span class="conn-dot" id="libDot"></span>
+        <span id="libLabel" style="color:#4a6478;font-weight:700;">Library</span>
       </div>
-      <div class="topbar-status-div"></div>
-      <div class="topbar-item topbar-item-fixed">
-        <span class="topbar-label">Modo</span>
-        <span id="tMode" class="badge">—</span>
-      </div>
-      <div class="topbar-status-div"></div>
-      <div class="topbar-item">
-        <span class="topbar-label">Playout</span>
-        <span style="display:flex;align-items:center;gap:6px;">
-          <span class="conn-dot" id="connDot"></span>
-          <span id="connLabel" style="font-size:13px;font-weight:700;">Off-line</span>
-        </span>
-      </div>
-      <div class="topbar-status-div"></div>
-      <div class="topbar-item">
-        <span class="topbar-label">Library</span>
-        <span style="display:flex;align-items:center;gap:6px;">
-          <span class="conn-dot" id="libDot"></span>
-          <span id="libLabel" style="font-size:13px;font-weight:700;">Off-line</span>
-        </span>
-      </div>
-      <div class="topbar-status-div"></div>
       <div id="streamingBadge" onclick="libSwitchTab('streaming');if(!document.getElementById('libDrawer').classList.contains('open'))toggleLibrary();" title="Streaming ao vivo">
         <span class="streaming-dot"></span>
         <span id="streamingBadgeLabel">LIVE</span>
       </div>
     </div>
-    <div class="topbar-clock" id="topbarClock">
-      <div class="clk-main">
-        <div class="clk-time-row">
-          <span class="clk-line"></span>
-          <span class="clk-time" id="clkTime">--:--:--</span>
-          <span class="clk-line"></span>
-        </div>
-        <div class="clk-date" id="clkDate">carregando...</div>
-      </div>
+
+    <div class="top-spacer"></div>
+
+    <div class="clock-block">
+      <div class="clock-time" id="clkTime">--:--:--</div>
+      <div class="clock-date" id="clkDate">carregando...</div>
     </div>
-  </div>
+  </header>
 
   <!-- ─── Main 3-column layout ─────────────────────────── -->
   <div class="main-layout">
 
-    <!-- ─── Col 1: Loudness + Saúde do Áudio + VU Meters ─────── -->
+    <!-- ─── Col 1: Fila de Reprodução ─────────────────────────── -->
     <div class="col-meters">
 
-      <!-- Loudness (EBU R128) -->
-      <div class="lufs-panel">
-        <div class="meter-section-label">Loudness (EBU R128)</div>
-        <div class="lufs-meter-wrap">
-          <div class="lufs-name">LUFS Momentâneo <span style="color:#ffffff;font-size: 10px">(400ms)</span></div>
-          <div class="lufs-bar-track">
-            <div class="lufs-bar-fill" id="lufsMonBar" style="width:0%"></div>
-            <div class="lufs-bar-ref" id="lufsRef"></div>
-          </div>
-          <div><span class="lufs-val" id="lufsMonVal">—</span><span class="lufs-unit">LUFS</span></div>
-        </div>
-        <div class="lufs-meter-wrap">
-          <div class="lufs-name">LUFS Integrado <span style="color:#ffffff;font-size: 10px">(sessão)</span></div>
-          <div class="lufs-bar-track">
-            <div class="lufs-bar-fill" id="lufsIntBar" style="width:0%;opacity:0.6"></div>
-          </div>
-          <div><span class="lufs-val" id="lufsIntVal">—</span><span class="lufs-unit">LUFS</span></div>
-        </div>
-        <hr class="divider">
-        <div class="peak-grid">
-          <div class="peak-ch">
-            <div class="peak-ch-label">Canal L</div>
-            <div class="peak-ch-val" id="peakHoldL">—</div>
-          </div>
-          <div class="peak-ch">
-            <div class="peak-ch-label">Canal R</div>
-            <div class="peak-ch-val" id="peakHoldR">—</div>
+      <!-- Queue -->
+      <div class="queue-section">
+        <!-- Header -->
+        <div class="queue-header">
+          <span class="queue-title-label">FILA DE REPRODUÇÃO</span>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+            <button class="q-tab-btn q-tab-active" onclick="fetchQueue()">Hoje</button>
+            <button class="q-tab-btn" disabled>Amanhã</button>
+            <button class="q-tab-btn q-tab-lock" disabled>🔒 Livre</button>
           </div>
         </div>
-        <hr class="divider">
-        <div class="clip-indicator">
-          <span class="clip-label">Clip</span>
-          <div class="clip-led" id="clipLed"></div>
-          <span class="clip-text" id="clipText">OK</span>
+        <!-- Toolbar: busca + ações -->
+        <div class="queue-toolbar">
+          <input class="queue-search-input" type="text" placeholder="Buscar no log..." id="queueSearch" oninput="queueFilterInput(this.value)">
+          <button class="q-insert-btn" onclick="advModalOpen()" data-tooltip="Inserir na fila">+ Inserir</button>
+          <button class="queue-refresh btn-sq tip-below" onclick="fetchQueue()" data-tooltip="Atualizar"><img class="btn-icon" src="icons/atualizar.svg"></button>
         </div>
-      </div>
-
-      <!-- Saúde do Áudio -->
-      <div class="health-panel">
-        <div class="meter-section-label">Saúde do Áudio</div>
-        <!-- <div class="health-row">
-          <div class="health-name">Buffer de saída</div>
-          <div class="bar-track"><div class="bar-fill buf" id="bufBar" style="width:0%"></div></div>
-          <div class="health-val" id="bufVal">—%</div>
-        </div> -->
-        <div class="health-row">
-          <div class="health-name">Nível RMS geral</div>
-          <div class="bar-track"><div class="bar-fill buf" id="rmsBar" style="width:0%"></div></div>
-          <div class="health-val" id="rmsVal">— dBFS</div>
-        </div>
-        <hr class="divider">
-        <div style="display:flex; gap:16px; align-items:flex-start;">
-          <div class="health-row" style="flex:1">
-            <div class="health-name">Silêncio</div>
-            <div><span class="silence-badge" id="silenceBadge">NÃO</span></div>
-            <div id="silenceDur" style="font-size: 12px;color:var(--text-dim)"></div>
+        <!-- Info bar -->
+        <div class="queue-info-bar">
+          <span class="queue-count" id="queueCount">0 itens</span>
+          <span class="queue-duration" id="queueDuration"></span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="queue-refresh btn-sq tip-below" id="btnClearQueue" onclick="assistClearQueue()" data-tooltip="Limpar Fila"><img class="btn-icon" src="icons/limpar_fila.svg"></button>
+            <button class="queue-refresh btn-sq queue-refresh-orange tip-below" onclick="assistInsertHoraCerta()" data-tooltip="Hora Certa"><img class="btn-icon" src="icons/hora_certa.svg"></button>
           </div>
-          <div class="health-row" style="flex:1">
-            <div class="health-name">Underruns</div>
-            <div class="underrun-val" id="underrunVal">0</div>
+        </div>
+        <div class="queue-scroll-host">
+          <div class="queue-list-wrap" id="queueScrollPane">
+            <div class="queue-list" id="queueBody"
+              ondragover="tableDragOver(event)"
+              ondrop="tableDrop(event)">
+              <div class="queue-empty">Fila vazia</div>
+            </div>
+          </div>
+          <div class="q-sb-track" id="queueSbTrack">
+            <div class="q-sb-thumb" id="queueSbThumb"></div>
           </div>
         </div>
       </div>
 
-      <!-- ─── Volume ───────────────────────────── -->
-      <div class="vol-section">
-        <div class="meter-section-label">Volume</div>
-
-        <div class="vol-row">
-          <div class="vol-label">Principal</div>
-          <div class="vol-control">
-            <input
-              id="volMain"
-              type="range"
-              class="vol-slider"
-              min="0" max="100" step="1" value="100"
-              oninput="onVolInput('main', this)"
-              onchange="onVolChange('main', this)"
-              onmousedown="_draggingMain=true"
-              onmouseup="_draggingMain=false"
-              ontouchstart="_draggingMain=true"
-              ontouchend="_draggingMain=false"
-            >
-            <span class="vol-pct" id="volMainPct">100%</span>
+      <!-- Next Break card -->
+      <div class="next-break-card">
+        <div class="next-break-card-inner" id="nextBreakCard">
+          <div class="next-break-icon" id="nextBreakIcon">◫</div>
+          <div>
+            <div class="next-break-main" id="nextBreakTitle">Próximo break</div>
+            <div class="next-break-sub"  id="nextBreakSub">Nenhum break agendado</div>
           </div>
-        </div>
-
-        <div class="vol-row" id="volPreviewRow">
-          <div class="vol-label">Player (CUE)</div>
-          <div class="vol-control">
-            <input
-              id="volPreview"
-              type="range"
-              class="vol-slider"
-              min="0" max="100" step="1" value="100"
-              oninput="onVolInput('preview', this)"
-              onchange="onVolChange('preview', this)"
-              onmousedown="_draggingPreview=true"
-              onmouseup="_draggingPreview=false"
-              ontouchstart="_draggingPreview=true"
-              ontouchend="_draggingPreview=false"
-            >
-            <span class="vol-pct" id="volPreviewPct">100%</span>
-          </div>
-        </div>
-
-        <div class="vol-row" id="volCartRow">
-          <div class="vol-label">Cart</div>
-          <div class="vol-control">
-            <input
-              id="volCart"
-              type="range"
-              class="vol-slider"
-              min="0" max="100" step="1" value="100"
-              oninput="onVolInput('cart', this)"
-              onchange="onVolChange('cart', this)"
-              onmousedown="_draggingCart=true"
-              onmouseup="_draggingCart=false"
-              ontouchstart="_draggingCart=true"
-              ontouchend="_draggingCart=false"
-            >
-            <span class="vol-pct" id="volCartPct">100%</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- VU Meters (abaixo de Saúde do Áudio) -->
-      <div class="vu-section">
-        <div class="meter-section-label">VU Meters</div>
-        <div class="vu-meters">
-          <div class="vu-channel">
-            <div class="vu-label" style="color:transparent">·</div>
-            <div class="vu-canvas-wrap">
-              <div class="vu-scale" id="vuScale"></div>
-            </div>
-          </div>
-          <div class="vu-channel">
-            <div class="vu-label">L</div>
-            <div class="vu-canvas-wrap"><canvas class="vu-canvas" id="vuL"></canvas></div>
-            <div class="vu-readout">
-              <div class="vu-readout-label">RMS</div>
-              <div class="vu-readout-value" id="rmsL">—</div>
-            </div>
-            <div class="vu-readout">
-              <div class="vu-readout-label">Peak</div>
-              <div class="vu-readout-value" id="peakL">—</div>
-            </div>
-          </div>
-          <div class="vu-channel">
-            <div class="vu-label">R</div>
-            <div class="vu-canvas-wrap"><canvas class="vu-canvas" id="vuR"></canvas></div>
-            <div class="vu-readout">
-              <div class="vu-readout-label">RMS</div>
-              <div class="vu-readout-value" id="rmsR">—</div>
-            </div>
-            <div class="vu-readout">
-              <div class="vu-readout-label">Peak</div>
-              <div class="vu-readout-value" id="peakR">—</div>
-            </div>
-          </div>
+          <div class="next-break-countdown" id="nextBreakCountdown">—</div>
         </div>
       </div>
 
     </div><!-- /col-meters -->
 
-    <!-- ─── Col 2: Now Playing + Controles + Fila ─────── -->
-    <div class="col-player">
+    <!-- ─── Col 2: Now Playing + Controles ─────────────── -->
+    <div class="col-playnow">
 
       <!-- Now Playing -->
-      <div class="nowplaying-bar">
-        <div class="np5-card">
+      <div class="playnow-wrap">
 
-            <!-- Top: metadata grid + title -->
-            <div class="np5-top">
+        <!-- Top bar -->
+        <div class="pn-topbar">
+          <span class="pn-live-badge idle" id="pnLiveBadge">
+            <span class="pn-dot"></span>TOCANDO AGORA
+          </span>
+          <span class="pn-source" id="pnSource">Player A · Saída principal</span>
+          <span class="pn-topbar-spacer"></span>
+          <span class="pn-mode-badge" id="pnModeBadge">LIVE ASSIST</span>
+        </div>
 
-              <!-- Left: 3 metadata rows -->
-              <div class="np5-meta">
-                <div class="np5-meta-row">
-                  <span class="np5-icon">⊙</span>
-                  <span class="np5-label">Status</span>
-                  <span class="np5-value" id="npStatusVal">—</span>
-                </div>
-                <div class="np5-meta-row">
-                  <span class="np5-icon">◈</span>
-                  <span class="np5-label">Tipo</span>
-                  <span class="np5-value" id="npTypeVal">—</span>
-                </div>
-                <div class="np5-meta-row">
-                  <span class="np5-icon">≋</span>
-                  <span class="np5-label">Áudio</span>
-                  <span class="np5-value" id="npSampleVal">48 kHz / Stereo</span>
-                </div>
-                <div class="np5-meta-row np5-intro-row" id="npIntroRow">
-                  <span class="np5-intro-icon">▶</span>
-                  <span class="np5-intro-label">Intro</span>
-                  <span class="np5-intro-value" id="npIntroVal">00:00</span>
-                </div>
-              </div>
+        <!-- Categoria, título, artista, metadados -->
+        <div class="pn-content">
+          <div class="pn-category" id="pnCategory">—</div>
+          <div class="pn-title"    id="npTitle">—</div>
+          <div class="pn-artist"   id="npArtist"></div>
+          <div class="pn-meta-row">
+            <span class="pn-meta-item">Início <strong id="pnInicio">—</strong></span>
+            <span class="pn-meta-item">Cue <strong id="pnCue">—</strong></span>
+            <span class="pn-meta-item">Intro <strong id="pnIntro">—</strong></span>
+            <span class="pn-meta-item">Outro <strong id="pnOutro">—</strong></span>
+            <span class="pn-meta-item">CueOut <strong id="pnCueOut">—</strong></span>
+            <span class="pn-meta-item">Gain <strong id="pnGain">—</strong></span>
+          </div>
+        </div>
 
-              <!-- Right: title + artist -->
-              <div class="np5-title-area">
-                <canvas class="np5-wave-canvas" id="waveCanvas"></canvas>
-                <div class="np5-title-text">
-                  <div class="np5-title" id="npTitle">—</div>
-                  <div class="np5-artist" id="npArtist"></div>
-                </div>
-              </div>
+        <!-- Waveform -->
+        <div class="pn-wave-wrap">
+          <canvas class="pn-wave-canvas" id="pnWaveCanvas"></canvas>
+          <div class="pn-wave-cursor" id="pnWaveCursor"></div>
+        </div>
 
-              <div class="np5-remaining-col">
-                <div class="np5-remaining-label">Restante</div>
-                <div class="np5-remaining-value" id="npRemCol">00:00</div>
-                <hr class="np5-next-sep">
-                <div class="np5-next-label">A Seguir</div>
-                <div class="np5-next-title" id="npNextTitle">—</div>
-              </div>
+        <!-- Barra de progresso -->
+        <div class="pn-progress-wrap">
+          <div class="pn-progress-track">
+            <div class="pn-progress-fill" id="pnProgressFill" style="width:0%"></div>
+          </div>
+        </div>
 
-            </div>
+        <!-- Linha de tempo -->
+        <div class="pn-times">
+          <span class="pn-time-side" id="pnElapsed">00:00</span>
+          <span class="pn-time-countdown" id="pnCountdown">-00:00</span>
+          <span class="pn-time-side" id="npTotal">00:00</span>
+        </div>
 
-            <!-- Bottom: progress bar -->
-            <div class="np5-progress">
-              <span class="np5-time" id="npPos">00:00</span>
-              <span class="np5-time-sep">/</span>
-              <span class="np5-total" id="npTotal">00:00</span>
-              <div class="np5-track-wrap">
-                <div class="np5-track">
-                  <div class="np5-fill" id="npBar" style="width:0%"></div>
-                  <div class="np5-thumb" id="npThumb" style="left:0%"></div>
-                </div>
-              </div>
-              <span class="np5-remaining" id="npRem">0%</span>
-            </div>
+        <!-- Controles principais -->
+        <div class="pn-controls">
+          <button class="pn-btn"               id="btnBack"        onclick="sendCmd('back')"         disabled>↩ Voltar</button>
+          <button class="pn-btn"               id="btnPauseToggle" onclick="sendCmd('pause-toggle')" disabled>⏸ Pausar</button>
+          <button class="pn-btn pn-btn-primary" id="btnPlay"       onclick="playStopToggle()"        disabled>▶ NO AR</button>
+          <button class="pn-btn"               id="btnSkip"        onclick="sendCmd('skip')"         disabled>Próximo ↪</button>
+          <button class="pn-btn pn-btn-danger"  id="btnPanicToggle" onclick="sendCmd('panic-toggle')" disabled>⚠ Emergência</button>
+        </div>
 
+      </div>
+
+      <!-- Próxima música -->
+      <div class="next-deck hidden" id="nextDeckCard">
+        <div class="next-cover">♫</div>
+        <div>
+          <div class="next-label">Próximo no ar</div>
+          <div class="next-title"  id="nextDeckTitle">—</div>
+          <div class="next-artist" id="nextDeckArtist"></div>
+          <div class="next-meta"   id="nextDeckMeta"></div>
+        </div>
+        <div class="next-count">
+          <strong id="nextDeckDuration">—</strong>
+          <span>duração</span>
         </div>
       </div>
 
-      <!-- Controls -->
-      <div class="controls-bar">
-        <div class="controls-row">
-          <div class="controls-group">
-            <button class="btn btn-play"   id="btnPlay"        onclick="sendCmd('play')">▶ Play</button>
-            <button class="btn btn-pause"  id="btnPauseToggle" onclick="sendCmd('pause-toggle')">⏸ Pause</button>
-            <button class="btn btn-stop"   id="btnStop"        onclick="sendCmd('stop')">⏹ Stop</button>
-            <button class="btn btn-skip"   id="btnSkip"        onclick="sendCmd('skip')">⏭ Skip</button>
-          </div>
-          <div class="controls-group-right">
-            <button class="btn btn-audios"     id="btnAudios"      onclick="advModalOpen()"             data-tooltip="Catálogo"><img class="btn-icon" src="icons/catalogo.svg"></button>
-            <button class="btn btn-library"    id="btnLibrary"     onclick="toggleLibrary()"            data-tooltip="Biblioteca"><img class="btn-icon" src="icons/biblioteca.svg"></button>
-            <button class="btn btn-hotkeys"    id="btnHotkeys"     onclick="openHotkeys()"              data-tooltip="Botoneira"><img class="btn-icon" src="icons/botoneira.svg"></button>
-            <div class="controls-sep"></div>
-            <button class="btn btn-assist"      id="btnEnterAssist" onclick="sendCmd('assist-enter')"   data-tooltip="ASSIST"><img class="btn-icon" src="icons/assist.svg"></button>
-            <button class="btn btn-return-auto" id="btnReturnAuto"  onclick="sendCmd('return-auto')"    data-tooltip="Voltar Auto" style="display:none"><img class="btn-icon" src="icons/auto_mode.svg"></button>
-            <button class="btn btn-panic"       id="btnPanicToggle" onclick="sendCmd('panic-toggle')"   data-tooltip="Panic"><img class="btn-icon" src="icons/panic.svg"></button>
-          </div>
-        </div>
+      <!-- Barra utilitária (funcionalidades secundárias) -->
+      <div class="pn-utility-bar">
+        <button class="pn-util-btn" id="btnAudios"      onclick="advModalOpen()"           data-tooltip="Catálogo"><img class="btn-icon" src="icons/catalogo.svg"></button>
+        <button class="pn-util-btn" id="btnLibrary"     onclick="toggleLibrary()"          data-tooltip="Biblioteca"><img class="btn-icon" src="icons/biblioteca.svg"></button>
+        <button class="pn-util-btn" id="btnHotkeys"     onclick="openHotkeys()"            data-tooltip="Botoneira"><img class="btn-icon" src="icons/botoneira.svg"></button>
+        <div class="pn-util-sep"></div>
+        <button class="pn-util-btn" id="btnEnterAssist" onclick="sendCmd('assist-enter')"  data-tooltip="ASSIST"><img class="btn-icon" src="icons/assist.svg"></button>
+        <button class="pn-util-btn" id="btnReturnAuto"  onclick="sendCmd('return-auto')"   data-tooltip="Voltar Auto" style="display:none"><img class="btn-icon" src="icons/auto_mode.svg"></button>
+        <button class="pn-util-btn" id="btnStop"        onclick="sendCmd('stop')"          data-tooltip="Stop"><img class="btn-icon" src="icons/panic.svg"></button>
       </div>
 
       <!-- ASSIST Banner (visible when engine is waiting in ASSIST) -->
@@ -2421,33 +2450,102 @@ canvas.vu-canvas {
         </div>
       </div>
 
-      <!-- Queue -->
-      <div class="queue-section">
-        <div class="queue-header">
-          <span class="queue-title-label">Fila de Reprodução</span>
-          <span class="queue-count" id="queueCount">0 itens</span>
-          <span class="queue-duration" id="queueDuration"></span>
-          <div style="margin-left:auto;display:flex;gap:6px">
-            <button class="queue-refresh btn-sq tip-below" onclick="fetchQueue()" data-tooltip="Atualizar"><img class="btn-icon" src="icons/atualizar.svg"></button>
-            <button class="queue-refresh btn-sq tip-below" id="btnClearQueue" onclick="assistClearQueue()" data-tooltip="Limpar Fila"><img class="btn-icon" src="icons/limpar_fila.svg"></button>
-            <button class="queue-refresh btn-sq queue-refresh-orange tip-below" onclick="assistInsertHoraCerta()" data-tooltip="Hora Certa"><img class="btn-icon" src="icons/hora_certa.svg"></button>
+    </div><!-- /col-playnow -->
+
+    <!-- ─── Col 3: Direita ──────────────────────────────── -->
+    <div class="col-right">
+
+      <!-- Modo Operacional -->
+      <div class="or-card">
+        <div class="or-card-header">
+          <span class="or-card-title">MODO DE OPERAÇÃO</span>
+          <span class="or-studio-badge" id="orEngineLabel">Studio A</span>
+        </div>
+        <div class="or-mode-btns">
+          <button class="or-mode-btn" id="orBtnAssist"  onclick="sendCmd('assist-enter')">Live Assist</button>
+          <button class="or-mode-btn" id="orBtnAuto"    onclick="sendCmd('return-auto')">Automático</button>
+          <button class="or-mode-btn" id="orBtnManual"  disabled>Manual</button>
+        </div>
+      </div>
+
+      <!-- Programa / PFL -->
+      <div class="or-card">
+        <div class="or-card-header">
+          <span class="or-card-title">Programa / PFL</span>
+          <span class="or-lufs-badge" id="orLufsBadge">LUFS —</span>
+        </div>
+        <div class="or-meters">
+          <div class="or-meter-row">
+            <span class="or-meter-ch">L</span>
+            <div class="or-meter-bar-wrap"><div class="or-meter-bar-fill" id="orMeterL"></div></div>
+            <span class="or-meter-val" id="orValL">—</span>
+          </div>
+          <div class="or-meter-row">
+            <span class="or-meter-ch">R</span>
+            <div class="or-meter-bar-wrap"><div class="or-meter-bar-fill" id="orMeterR"></div></div>
+            <span class="or-meter-val" id="orValR">—</span>
+          </div>
+          <div class="or-meter-row">
+            <span class="or-meter-ch">P</span>
+            <div class="or-meter-bar-wrap"><div class="or-meter-bar-fill" id="orMeterP"></div></div>
+            <span class="or-meter-val" id="orValP">—</span>
+          </div>
+          <div class="or-meter-row">
+            <span class="or-meter-ch">M</span>
+            <div class="or-meter-bar-wrap"><div class="or-meter-bar-fill" id="orMeterM"></div></div>
+            <span class="or-meter-val" id="orValM">—</span>
           </div>
         </div>
-        <div class="queue-scroll-host">
-          <div class="queue-list-wrap" id="queueScrollPane">
-            <div class="queue-list" id="queueBody"
-              ondragover="tableDragOver(event)"
-              ondrop="tableDrop(event)">
-              <div class="queue-empty">Fila vazia</div>
-            </div>
+        <div class="or-meter-scale">
+          <span>-60</span><span>-30</span><span>-18</span><span>-9</span><span>-3</span><span>0</span>
+        </div>
+      </div>
+
+      <!-- Volume -->
+      <div class="or-card">
+        <div class="or-card-header">
+          <span class="or-card-title">Volume</span>
+        </div>
+        <div class="or-vol-body">
+          <div class="or-vol-row">
+            <span class="or-vol-label">Programa</span>
+            <input class="or-vol-slider" id="orVolMain" type="range" min="0" max="100" step="1" value="100"
+              oninput="orVolInput('main',this)" onchange="onVolChange('main',this)"
+              onmousedown="_draggingMain=true" onmouseup="_draggingMain=false"
+              ontouchstart="_draggingMain=true" ontouchend="_draggingMain=false">
+            <span class="or-vol-pct" id="orVolMainPct">100%</span>
           </div>
-          <div class="q-sb-track" id="queueSbTrack">
-            <div class="q-sb-thumb" id="queueSbThumb"></div>
+          <div class="or-vol-row">
+            <span class="or-vol-label">Preview</span>
+            <input class="or-vol-slider" id="orVolPreview" type="range" min="0" max="100" step="1" value="100"
+              oninput="orVolInput('preview',this)" onchange="onVolChange('preview',this)"
+              onmousedown="_draggingPreview=true" onmouseup="_draggingPreview=false"
+              ontouchstart="_draggingPreview=true" ontouchend="_draggingPreview=false">
+            <span class="or-vol-pct" id="orVolPreviewPct">100%</span>
+          </div>
+          <div class="or-vol-row">
+            <span class="or-vol-label">Botoneira</span>
+            <input class="or-vol-slider" id="orVolCart" type="range" min="0" max="100" step="1" value="100"
+              oninput="orVolInput('cart',this)" onchange="onVolChange('cart',this)"
+              onmousedown="_draggingCart=true" onmouseup="_draggingCart=false"
+              ontouchstart="_draggingCart=true" ontouchend="_draggingCart=false">
+            <span class="or-vol-pct" id="orVolCartPct">100%</span>
           </div>
         </div>
       </div>
 
-    </div><!-- /col-player -->
+      <!-- Contexto da Operação -->
+      <div class="or-card">
+        <div class="or-card-header">
+          <span class="or-card-title">Contexto da Operação</span>
+          <button class="or-ctx-btn" onclick="fetchTodaySchedule()">Atualizar</button>
+        </div>
+        <div class="or-ctx-list" id="orCtxList">
+          <div class="or-ctx-empty">Carregando…</div>
+        </div>
+      </div>
+
+    </div><!-- /col-right -->
 
 
     <!-- ─── Library Drawer ──────────────────────────────────── -->
@@ -2811,8 +2909,11 @@ function initCanvas(canvas) {
 let ctxL, wL, hL, ctxR, wR, hR;
 
 function setupCanvases() {
-  ({ ctx: ctxL, w: wL, h: hL } = initCanvas(document.getElementById('vuL')));
-  ({ ctx: ctxR, w: wR, h: hR } = initCanvas(document.getElementById('vuR')));
+  const elL = document.getElementById('vuL');
+  const elR = document.getElementById('vuR');
+  if (!elL || !elR) return;
+  ({ ctx: ctxL, w: wL, h: hL } = initCanvas(elL));
+  ({ ctx: ctxR, w: wR, h: hR } = initCanvas(elR));
   buildScale();
 }
 
@@ -2898,50 +2999,34 @@ function applyVU(p) {
   smooth.lufsM = lerp(smooth.lufsM, p.lufs_momentary  ?? smooth.lufsM, LERP);
   smooth.lufsI = lerp(smooth.lufsI, p.lufs_integrated ?? smooth.lufsI, LERP);
   smooth.clip  = p.clip ?? false;
-  wavePush(lRms, rRms);
 }
 
 /* ─── Render loop ────────────────────────────────────────────── */
 function renderLoop() {
   requestAnimationFrame(renderLoop);
-  if (!ctxL) return;
 
   if (lastVuTime > 0 && Date.now() - lastVuTime > VU_TIMEOUT) decaySmooth();
 
-  drawMeter(ctxL, wL, hL, smooth.rmsL, smooth.peakHold);
-  drawMeter(ctxR, wR, hR, smooth.rmsR, smooth.peakHold);
-
-  document.getElementById('rmsL').textContent  = fmt(smooth.rmsL);
-  document.getElementById('rmsR').textContent  = fmt(smooth.rmsR);
-  document.getElementById('peakL').textContent = fmt(smooth.peakL);
-  document.getElementById('peakR').textContent = fmt(smooth.peakR);
-  document.getElementById('peakHoldL').innerHTML = `<span>${fmt(smooth.peakHoldL)}</span><span>dBFS</span>`;
-  document.getElementById('peakHoldR').innerHTML = `<span>${fmt(smooth.peakHoldR)}</span><span>dBFS</span>`;
-
-  const LUFS_MIN = -40, LUFS_MAX = -6;
-  const lufsMonPct = Math.max(0, Math.min(100, ((smooth.lufsM - LUFS_MIN) / (LUFS_MAX - LUFS_MIN)) * 100));
-  const lufsIntPct = Math.max(0, Math.min(100, ((smooth.lufsI - LUFS_MIN) / (LUFS_MAX - LUFS_MIN)) * 100));
-  document.getElementById('lufsMonBar').style.width = lufsMonPct + '%';
-  document.getElementById('lufsIntBar').style.width = lufsIntPct + '%';
-  document.getElementById('lufsMonVal').textContent = smooth.lufsM > -100 ? smooth.lufsM.toFixed(1) : '—';
-  document.getElementById('lufsIntVal').textContent = smooth.lufsI > -100 ? smooth.lufsI.toFixed(1) : '—';
-  const refPct = Math.max(0, Math.min(100, ((-23 - LUFS_MIN) / (LUFS_MAX - LUFS_MIN)) * 100));
-  document.getElementById('lufsRef').style.left = refPct + '%';
-
-  const clipLed  = document.getElementById('clipLed');
-  const clipText = document.getElementById('clipText');
-  if (smooth.clip) {
-    clipLed.className = 'clip-led active';
-    clipText.textContent = 'CLIP'; clipText.style.color = 'var(--red)';
-  } else {
-    clipLed.className = 'clip-led';
-    clipText.textContent = 'OK'; clipText.style.color = 'var(--cyan)';
+  if (ctxL) {
+    drawMeter(ctxL, wL, hL, smooth.rmsL, smooth.peakHold);
+    drawMeter(ctxR, wR, hR, smooth.rmsR, smooth.peakHold);
   }
 
-  const rmsAvg = (smooth.rmsL + smooth.rmsR) / 2;
-  const rmsPct = Math.max(0, Math.min(100, ((rmsAvg - DB_MIN) / DB_RANGE) * 100));
-  document.getElementById('rmsBar').style.width = rmsPct + '%';
-  document.getElementById('rmsVal').textContent = fmt(rmsAvg) + ' dBFS';
+  // ─── Painel direito: Programa / PFL ───────────────────────────
+  const OR_MIN = -60, OR_RANGE = 60;
+  function orPct(db) { return Math.max(0, Math.min(100, ((db - OR_MIN) / OR_RANGE) * 100)); }
+  function orSetMeter(barId, valId, db) {
+    const bar = document.getElementById(barId);
+    const val = document.getElementById(valId);
+    if (bar) bar.style.clipPath = 'inset(0 ' + (100 - orPct(db)).toFixed(1) + '% 0 0)';
+    if (val) val.textContent = db > -100 ? db.toFixed(1) : '-∞';
+  }
+  orSetMeter('orMeterL', 'orValL', smooth.rmsL);
+  orSetMeter('orMeterR', 'orValR', smooth.rmsR);
+  orSetMeter('orMeterP', 'orValP', smooth.peakHoldL);
+  orSetMeter('orMeterM', 'orValM', smooth.lufsM > -100 ? smooth.lufsM : -Infinity);
+  const lufsBadge = document.getElementById('orLufsBadge');
+  if (lufsBadge) lufsBadge.textContent = smooth.lufsM > -100 ? 'LUFS ' + smooth.lufsM.toFixed(1) : 'LUFS —';
 }
 
 /* ─── Helpers ────────────────────────────────────────────────── */
@@ -2985,6 +3070,10 @@ const btnMap = {
   'return-auto':  'btnReturnAuto',
 };
 
+function playStopToggle() {
+  sendCmd(_enginePlaying ? 'stop' : 'play');
+}
+
 function updateButtons(state) {
   const allowed = new Set(BTN_ALLOWED[state] || []);
   // SKIP só faz sentido se há itens na fila (ao menos o item em reprodução)
@@ -2995,16 +3084,31 @@ function updateButtons(state) {
     if (!btn) continue;
     let ok = allowed.has(cmd);
     if (cmd === 'skip' && !hasPending)                                   ok = false;
-    if (cmd === 'play' && !hasItems)                                     ok = false;
-    if (cmd === 'play' && _inAssist && !_assistWaiting)                  ok = false;
-    if (cmd === 'play' && _enginePlaying)                                ok = false;
+    if (cmd === 'play' && !hasItems && !_enginePlaying)                  ok = false;
+    if (cmd === 'play' && _inAssist && !_assistWaiting && !_enginePlaying) ok = false;
     if (cmd === 'stop' && _assistWaiting)                                ok = false;
     if (cmd === 'skip' && _assistWaiting)                                ok = false;
     if (cmd === 'pause-toggle' && _assistWaiting)                        ok = false;
     if (cmd === 'panic-toggle' && (state === 'IDLE' || state === ''))    ok = false;
     if (cmd === 'return-auto' && _inAssist)                              ok = true;
+    // btnPlay is always enabled when playing (acts as stop)
+    if (cmd === 'play' && _enginePlaying)                                ok = true;
     btn.disabled = !ok;
     btn.classList.toggle('disabled', !ok);
+  }
+
+  // Sync btnPlay appearance: toggle between NO AR and Stop
+  const btnPlay = document.getElementById('btnPlay');
+  if (btnPlay) {
+    if (_enginePlaying) {
+      btnPlay.textContent = '⏹ Stop';
+      btnPlay.classList.remove('pn-btn-primary');
+      btnPlay.classList.add('pn-btn-stop');
+    } else {
+      btnPlay.textContent = '▶ NO AR';
+      btnPlay.classList.remove('pn-btn-stop');
+      btnPlay.classList.add('pn-btn-primary');
+    }
   }
 }
 
@@ -3031,7 +3135,8 @@ async function sendCmd(cmd) {
     endpoints['panic-enter'] = '/v1/panic/enter';
     endpoints['panic-exit']  = '/v1/panic/exit';
   }
-  const url  = API_URL + endpoints[cmd];
+  const url  = endpoints[cmd] ? API_URL + endpoints[cmd] : null;
+  if (!url) { console.warn('sendCmd: unknown command', cmd); return; }
   const body = cmd === 'panic-enter' ? JSON.stringify({ reason: 'operador' }) : undefined;
 
   try {
@@ -3068,6 +3173,17 @@ function showToast(ok, msg) {
 /* ─── Queue ──────────────────────────────────────────────────── */
 let queueItems = []; // flat list (for button logic / count)
 let queueData  = null; // raw API response (for polymorphic rendering)
+
+let _queueFilter = '';
+function queueFilterInput(val) {
+  _queueFilter = (val || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#queueBody .queue-row');
+  rows.forEach(row => {
+    if (!_queueFilter) { row.style.display = ''; return; }
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(_queueFilter) ? '' : 'none';
+  });
+}
 
 async function fetchQueue() {
   try {
@@ -3122,31 +3238,60 @@ function renderQueue() {
 
   // "A Seguir" — first pending QUEUED item
   const nextItem = queueItems.find(i => i && (i.status || '').toUpperCase() === 'QUEUED');
-  document.getElementById('npNextTitle').textContent = nextItem ? (nextItem.title || '—') : '—';
   // Track which item ID is first-pending for ASSIST "← PRÓXIMA" marker
   window._assistNextId = nextItem ? (nextItem.queue_item_id || nextItem.id) : null;
 
   if (!queueItems.length) {
     tbody.innerHTML = '<div class="queue-empty">Fila vazia</div>';
-    document.getElementById('npNextTitle').textContent = '—';
     return;
+  }
+
+  // Compute estimated start times for each item
+  let _nextMs = Date.now();
+  if (queueData?.current) {
+    _nextMs = Date.now() + (_lastRemainingMs > 0 ? _lastRemainingMs : 0);
+  }
+  const _estTimes = {};
+  function _trackTime(item) {
+    if (!item) return;
+    const id = item.queue_item_id || item.id || '';
+    const st = (item.status || '').toUpperCase();
+    if (st === 'PLAYING' || st === 'PAUSED') {
+      _estTimes[id] = Date.now() - ((item.duration_ms || 0) - (_lastRemainingMs || 0));
+    } else if (st !== 'PLAYED' && st !== 'SKIPPED' && st !== 'FAILED' && st !== 'MISSED') {
+      _estTimes[id] = _nextMs;
+      _nextMs += (item.duration_ms || 0);
+    }
+  }
+  if (queueData?.current) _trackTime(queueData.current);
+  if (queueData && Array.isArray(queueData.pending)) {
+    queueData.pending.forEach(entry => {
+      if (!entry) return;
+      if (entry.kind === 'break') {
+        (entry.break?.items || []).forEach(s => s?.item && _trackTime(s.item));
+      } else if (entry.kind === 'item' && entry.item) {
+        _trackTime(entry.item);
+      }
+    });
+  } else {
+    (queueData?.items || queueItems).forEach(item => _trackTime(item));
   }
 
   const rows = [];
 
   // New polymorphic API
   if (queueData && Array.isArray(queueData.pending)) {
-    if (queueData.current) rows.push(renderItemRow(queueData.current));
+    if (queueData.current) rows.push(renderItemRow(queueData.current, _estTimes));
     rows.push(dropZoneRow(''));  // drop zone before first pending item
     queueData.pending.forEach(entry => {
       if (!entry) return;
       if (entry.kind === 'break') {
-        renderBreakRows(entry.break, rows);
+        renderBreakRows(entry.break, rows, _estTimes);
         const spots = entry.break?.items || [];
         const lastSpotId = spots.length ? (spots[spots.length - 1]?.item?.queue_item_id || '') : '';
         rows.push(dropZoneRow(lastSpotId));
       } else if (entry.kind === 'item' && entry.item) {
-        rows.push(renderItemRow(entry.item));
+        rows.push(renderItemRow(entry.item, _estTimes));
         rows.push(dropZoneRow(entry.item.queue_item_id || ''));
       }
     });
@@ -3154,13 +3299,15 @@ function renderQueue() {
     // Legacy flat API
     rows.push(dropZoneRow(''));
     (queueData?.items || queueItems).forEach(item => {
-      rows.push(renderItemRow(item));
+      rows.push(renderItemRow(item, _estTimes));
       rows.push(dropZoneRow(item?.queue_item_id || ''));
     });
   }
 
   tbody.innerHTML = rows.join('');
   syncPlayNextBtn();
+  updateNextBreakCard(_estTimes);
+  updateNextDeckCard();
 
   // If in ASSIST and waiting, refresh banner "A seguir" text from fresh queue data.
   // Only updates display text — never touches _assistWaiting or _enginePlaying flags.
@@ -3178,7 +3325,123 @@ function renderQueue() {
   }
 }
 
-function renderItemRow(item) {
+function updateNextDeckCard() {
+  const card    = document.getElementById('nextDeckCard');
+  const titleEl = document.getElementById('nextDeckTitle');
+  const artEl   = document.getElementById('nextDeckArtist');
+  const metaEl  = document.getElementById('nextDeckMeta');
+  const durEl   = document.getElementById('nextDeckDuration');
+  if (!card) return;
+
+  // Find first QUEUED item that is not currently playing
+  const pending = queueData?.pending || [];
+  let nextItem = null;
+  for (const entry of pending) {
+    if (!entry) continue;
+    if (entry.kind === 'item' && entry.item && (entry.item.status || '').toUpperCase() === 'QUEUED') {
+      nextItem = entry.item; break;
+    }
+    if (entry.kind === 'break') {
+      for (const sp of (entry.break?.items || [])) {
+        if (sp?.item && (sp.item.status || '').toUpperCase() === 'QUEUED') {
+          nextItem = sp.item; break;
+        }
+      }
+      if (nextItem) break;
+    }
+  }
+  // Also check legacy flat list
+  if (!nextItem && queueData?.items) {
+    nextItem = queueData.items.find(i => i && (i.status || '').toUpperCase() === 'QUEUED') || null;
+  }
+
+  if (!nextItem) {
+    card.classList.add('hidden');
+    return;
+  }
+
+  card.classList.remove('hidden');
+  titleEl.textContent  = nextItem.title || '—';
+  artEl.textContent    = [nextItem.artist, nextItem.type].filter(Boolean).join(' · ');
+  durEl.textContent    = nextItem.duration_ms ? msToDuration(nextItem.duration_ms) : '—';
+
+  // Meta pills
+  const pills = [];
+  if (nextItem.transition)     pills.push(nextItem.transition);
+  if (nextItem.fade_duration)  pills.push('Fade ' + nextItem.fade_duration + 's');
+  if (nextItem.normalized)     pills.push('Normalizado');
+  metaEl.innerHTML = pills.map(p => `<span class="meta-pill">${escHtml(p)}</span>`).join('');
+}
+
+let _nextBreakEstMs = 0;
+
+function updateNextBreakCard(estTimes) {
+  const card    = document.getElementById('nextBreakCard');
+  const titleEl = document.getElementById('nextBreakTitle');
+  const subEl   = document.getElementById('nextBreakSub');
+  const cdEl    = document.getElementById('nextBreakCountdown');
+  if (!card || !titleEl || !subEl || !cdEl) return;
+
+  // Find first pending break entry
+  const pending = queueData?.pending || [];
+  const brk = pending.find(e => e && e.kind === 'break');
+
+  if (!brk || !brk.break) {
+    card.classList.add('empty');
+    titleEl.textContent = 'Próximo break';
+    subEl.textContent   = 'Nenhum break agendado';
+    cdEl.textContent    = '—';
+    _nextBreakEstMs = 0;
+    return;
+  }
+  card.classList.remove('empty');
+
+  const b = brk.break;
+  // Get estimated start time from first break item
+  const firstSpot = (b.items || [])[0];
+  const firstId   = firstSpot?.item ? (firstSpot.item.queue_item_id || firstSpot.item.id || '') : '';
+  const estMs     = firstId && estTimes[firstId] ? estTimes[firstId] : 0;
+  _nextBreakEstMs = estMs;
+
+  const spotCount  = (b.items || []).length;
+  const totalBrkMs = (b.items || []).reduce((s, sp) => s + (sp?.item?.duration_ms || 0), 0);
+  const tolSec     = b.tolerance_seconds || 0;
+
+  // Format estimated start time as HH:MM for the title
+  let timeLabel = '';
+  if (estMs) {
+    const d = new Date(estMs);
+    timeLabel = ': ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+  titleEl.textContent = (b.title || 'Próximo break') + timeLabel;
+
+  const tolStr = tolSec > 0
+    ? ` · tolerância ±${String(Math.floor(tolSec/60)).padStart(2,'0')}:${String(tolSec%60).padStart(2,'0')}`
+    : '';
+  subEl.textContent = `${spotCount} ${spotCount !== 1 ? 'peças' : 'peça'} · ${msToDuration(totalBrkMs)}${tolStr}`;
+
+  card.classList.remove('hidden');
+  _tickNextBreak();
+}
+
+function _tickNextBreak() {
+  const cdEl = document.getElementById('nextBreakCountdown');
+  if (!cdEl) return;
+  if (!_nextBreakEstMs) { cdEl.textContent = '—'; return; }
+  const diffMs = _nextBreakEstMs - Date.now();
+  if (diffMs <= 0) { cdEl.textContent = '00:00'; return; }
+  const totalSec = Math.round(diffMs / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  cdEl.textContent = h > 0
+    ? String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
+    : String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+setInterval(_tickNextBreak, 1000);
+
+function renderItemRow(item, estTimes) {
   if (!item) return '';
   const status   = item.status || 'QUEUED';
   const isHC      = (item.type || '').toUpperCase() === 'HORA_CERTA';
@@ -3227,27 +3490,52 @@ function renderItemRow(item) {
   }
 
   const typeStr  = (item.type || 'UNKNOWN').toUpperCase();
-  const artistStr = isHC ? ''
-    : item.artist ? `${escHtml(item.artist)} · ${typeStr}`
-    : typeStr;
+  const typeLabel2 = {
+    'MUSIC':'Música','JINGLE':'Jingle','VINHETA':'Vinheta','SPOT':'Spot',
+    'HORA_CERTA':'Hora Certa','COMERCIAL':'Comercial','EFEITO':'Efeito','NOTICIA':'Notícia',
+  }[typeStr] || typeStr;
+  const typePillCls = typeStr === 'SPOT' || typeStr === 'COMERCIAL' ? 'spot'
+    : typeStr === 'VINHETA' || typeStr === 'JINGLE' ? 'vinheta'
+    : typeStr === 'HORA_CERTA' ? 'hora-certa'
+    : '';
 
   const typeIcon = isHC      ? 'icons/hora_certa.svg'
                 : isVinheta ? 'icons/vinheta.svg'
                 : isMusic   ? 'icons/musica.svg'
                 : (item.type||'').toUpperCase() === 'SPOT' ? 'icons/spot.svg'
                 : 'icons/musica.svg';
-  const eqHTML  = isPlaying
-    ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
-    : isPlayed ? '<span style="color:#3a5a58">✓</span>'
-    : isFailed ? '<span style="color:var(--red)">✗</span>'
-    : `<img src="${typeIcon}" class="q-type-icon" alt="${typeStr}">`;
+  // Estimated start time for this item
+  const estId = itemId || (item.path || item.file_path || '');
+  const estMs = estTimes && estId ? estTimes[estId] : null;
+  let timeStr = '';
+  if (estMs) {
+    const d = new Date(estMs);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    timeStr = `${hh}:${mm}:${ss}`;
+  }
+
+  const typeBarCls = typePillCls || (isMusic ? '' : '');
+  const timeColHTML = `<div class="q-index">${
+    isPlaying ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>` :
+    isPlayed  ? `<span style="font-size:11px">✓</span>` :
+    isFailed  ? `<span style="color:#ff4d67;font-size:11px">✗</span>` :
+    `<img src="${typeIcon}" class="q-type-icon" alt="${typeStr}">`
+  }<span>${timeStr}</span></div>
+  <div class="q-type-bar ${typeBarCls}"></div>`;
 
   const badgeHTML = isPlaying ? `<span class="q-badge">Atual</span>` : '';
   const nextTag   = isAssistNext && !isPlaying ? `<span class="q-next-tag">← PRÓXIMA</span>` : '';
 
   const titleHTML = isHC
-    ? `<span style="font-size:15px;font-weight:900;color:#20e6ff;letter-spacing:0.15em">HORA CERTA</span>`
+    ? `<span style="font-size:12px;font-weight:900;color:#20e6ff;letter-spacing:0.12em">HORA CERTA</span>`
     : escHtml(item.title || '—');
+
+  const metaParts = [];
+  if (item.artist && !isHC) metaParts.push(`<span>${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>`);
+  metaParts.push(`<span class="row-badge">${typeLabel2}</span>`);
+  const metaHTML = metaParts.join('');
 
   const progressHTML = isPlaying
     ? `<div class="q-progress"><span style="width:0%"></span></div>`
@@ -3257,7 +3545,7 @@ function renderItemRow(item) {
     ? `draggable="true" ondragstart="dndStart(event,'item','${escHtml(itemId)}')" ondragend="dndEnd()"`
     : '';
 
-  // Registrar no map para CUE (usa path como fallback quando não há queue_item_id)
+  // Registrar no map para CUE
   const cuePath = item.path || item.file_path || '';
   const cueKey  = itemId || cuePath;
   if (cueKey) _queueItemMap[cueKey] = { path: cuePath, title: item.title || '—', artist: item.artist || '' };
@@ -3280,19 +3568,18 @@ function renderItemRow(item) {
     </div>`;
 
   return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
-    <div class="q-index">${eqHTML}</div>
+    ${timeColHTML}
     <div class="q-track">
       <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}</div>
-      <span class="q-artist">${artistStr}</span>
+      <div class="q-meta">${metaHTML}</div>
     </div>
-    <div class="q-status-pill ${statusCls}">${statusLabel}</div>
     <div class="q-time">${msToTime(item.duration_ms)}</div>
     ${actionsHTML}
     ${progressHTML}
   </article>`;
 }
 
-function renderBreakRows(brk, rows) {
+function renderBreakRows(brk, rows, estTimes) {
   if (!brk) return;
   const subItems  = brk.items || [];
   const totalDur  = subItems.length
@@ -3317,12 +3604,12 @@ function renderBreakRows(brk, rows) {
   let html = `<div class="break-group" data-break-id="${breakId}" ${dragAttrs}>`;
 
   html += `<article class="queue-row break-header" data-break-id="${breakId}">
-    <div class="q-index"><img src="icons/commercial_break.svg" class="q-type-icon" alt="Bloco Comercial"></div>
+    <div class="q-index"><img src="icons/commercial_break.svg" class="q-type-icon" alt="Bloco Comercial"><span></span></div>
+    <div class="q-type-bar spot"></div>
     <div class="q-track">
       <div class="q-track-name" style="color:#e6820a">BLOCO: ${escHtml(brk.title || '—')}</div>
-      <span class="q-artist" style="color:rgba(230,130,10,0.65)">${cnt} item${cnt !== 1 ? 's' : ''}</span>
+      <div class="q-meta">${cnt} item${cnt !== 1 ? 's' : ''}</div>
     </div>
-    <div class="q-status-pill" style="color:#e6820a;border-color:rgba(230,130,10,0.3)">${brkStatus === 'QUEUED' ? 'NA FILA' : brkStatus}</div>
     <div class="q-time" style="color:#e6820a">${msToTime(totalDur)}</div>
     ${brkActionsHTML}
   </article>`;
@@ -3352,15 +3639,12 @@ function renderBreakRows(brk, rows) {
       ? `<button class="q-cue-btn tip-left${isBrkCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(brkCueKey)}" data-tooltip="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(brkCueKey)}')"><img src="icons/cue_preview.svg"></button>`
       : '';
     html += `<article class="queue-row break-item${isPlaying ? ' is-current' : ''}" data-id="${escHtml(item.queue_item_id || '')}" data-break-group="${breakId}">
-      <div class="q-index">${idxHTML}</div>
+      <div class="q-index">${idxHTML}<span></span></div>
+      <div class="q-type-bar spot"></div>
       <div class="q-track">
-        <div class="q-track-name" title="${escHtml(item.title || '')}">
-          <span style="font-size:10px;color:rgba(230,130,10,0.5);text-transform:uppercase;letter-spacing:0.5px">${escHtml(role)}</span>
-          ${escHtml(item.title || '')}
-        </div>
-        <span class="q-artist">${item.artist ? escHtml(item.artist) + ' · ' : ''}${typeStr}</span>
+        <div class="q-track-name" title="${escHtml(item.title || '')}">${escHtml(item.title || '')}</div>
+        <div class="q-meta">${item.artist ? `<span>${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>` : ''}<span class="row-badge">${typeStr}</span></div>
       </div>
-      <div class="q-status-pill" style="color:rgba(230,130,10,0.8);border-color:rgba(230,130,10,0.2)">${st === 'QUEUED' ? 'NA FILA' : st}</div>
       <div class="q-time" style="color:rgba(230,130,10,0.8)">${msToTime(item.duration_ms)}</div>
       <div class="q-actions-wrap">${brkCueBtnHTML}</div>
     </article>`;
@@ -3406,76 +3690,126 @@ function updateQueueItemStatus(queueItemId, newStatus) {
 }
 
 /* ─── Event handlers ─────────────────────────────────────────── */
-/* ─── Waveform visualizer ────────────────────────────────────── */
-const WAVE_SAMPLES = 180;
-const waveBuffer = new Float32Array(WAVE_SAMPLES); // 0..1
-let waveHead = 0;
-let waveActive = false;
+/* ─── Static waveform (pnWaveCanvas) ─────────────────────────── */
+let _pnWavePeaks    = null;   // Float32Array of peak values 0..1
+let _pnWaveDurMS    = 0;
+let _pnWaveCueInMS  = 0;
+let _pnWaveIntroMS  = 0;
+let _pnWaveOutroMS  = 0;
+let _pnWaveCueOutMS = 0;
+let _pnWavePos      = 0;      // 0..1 playhead position
+let _pnInicioSet   = false;  // wall-clock start time shown once per track
 
-function wavePush(rmsL, rmsR) {
-  // Convert dBFS to linear 0..1 (clamp)
-  const toLinear = db => db <= -80 ? 0 : Math.min(1, Math.pow(10, db / 20));
-  const val = Math.pow((toLinear(rmsL) + toLinear(rmsR)) * 0.5, 0.25);
-  waveBuffer[waveHead % WAVE_SAMPLES] = val;
-  waveHead++;
-  waveActive = true;
+async function pnLoadWaveform(filePath, durMS, cueInMS, introMS, outroMS, cueOutMS) {
+  _pnWaveDurMS    = durMS    || 0;
+  _pnWaveCueInMS  = cueInMS  || 0;
+  _pnWaveIntroMS  = introMS  || 0;
+  _pnWaveOutroMS  = outroMS  || 0;
+  _pnWaveCueOutMS = cueOutMS || 0;
+  _pnWavePos      = 0;
+  _pnWavePeaks   = null;
+  if (!filePath || !durMS) { pnDrawWaveform(); return; }
+  try {
+    const resp = await fetch(filePath);
+    if (!resp.ok) { pnDrawWaveform(); return; }
+    const buf = await resp.arrayBuffer();
+    const ac  = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await ac.decodeAudioData(buf);
+    ac.close();
+    const ch   = decoded.getChannelData(0);
+    const BINS = 300;
+    const step = Math.floor(ch.length / BINS);
+    const peaks = new Float32Array(BINS);
+    for (let i = 0; i < BINS; i++) {
+      let max = 0;
+      const off = i * step;
+      for (let j = 0; j < step; j++) max = Math.max(max, Math.abs(ch[off + j] || 0));
+      peaks[i] = max;
+    }
+    _pnWavePeaks = peaks;
+  } catch (_) { _pnWavePeaks = null; }
+  pnDrawWaveform();
 }
 
-function waveReset() {
-  waveBuffer.fill(0);
-  waveHead = 0;
-  waveActive = false;
-}
-
-(function waveRenderLoop() {
-  requestAnimationFrame(waveRenderLoop);
-  const canvas = document.getElementById('waveCanvas');
+function pnDrawWaveform() {
+  const canvas = document.getElementById('pnWaveCanvas');
   if (!canvas) return;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  if (canvas.width !== rect.width || canvas.height !== rect.height) {
-    canvas.width  = rect.width;
-    canvas.height = rect.height;
-  }
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.offsetWidth || 400;
+  const H = canvas.offsetHeight || 56;
+  if (canvas.width !== W) canvas.width = W;
+  if (canvas.height !== H) canvas.height = H;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, W, H);
-  if (!waveActive) return;
 
-  const mid = H / 2;
-  const sliceW = W / WAVE_SAMPLES;
+  const peaks = _pnWavePeaks;
+  const mid   = H / 2;
 
-  // Gradient fill
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0,   'rgba(255,255,255,0.6)');
-  grad.addColorStop(0.5, 'rgba(255,255,255,0.15)');
-  grad.addColorStop(1,   'rgba(255,255,255,0.6)');
-
-  ctx.beginPath();
-  for (let i = 0; i < WAVE_SAMPLES; i++) {
-    const idx = (waveHead + i) % WAVE_SAMPLES;
-    const amp = waveBuffer[idx] * mid * 0.95;
-    const x = i * sliceW;
-    if (i === 0) ctx.moveTo(x, mid - amp);
-    else ctx.lineTo(x, mid - amp);
+  if (!peaks) {
+    // Flat line when no waveform
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    ctx.lineTo(W, mid);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+    return;
   }
-  for (let i = WAVE_SAMPLES - 1; i >= 0; i--) {
-    const idx = (waveHead + i) % WAVE_SAMPLES;
-    const amp = waveBuffer[idx] * mid * 0.95;
-    const x = i * sliceW;
-    ctx.lineTo(x, mid + amp);
-  }
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
 
-  // Center line
+  const BINS = peaks.length;
+
+  // Draw bars
+  const barW = W / BINS;
+  for (let i = 0; i < BINS; i++) {
+    const x   = i * barW;
+    const amp = peaks[i] * mid * 0.60;
+    const pos = i / BINS;
+    const played = pos <= _pnWavePos;
+    ctx.fillStyle = played ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.22)';
+    ctx.fillRect(x, mid - amp, Math.max(1, barW - 1), amp * 2);
+  }
+
+  // Helper: draw a cue pin with a small label triangle at the top
+  function drawPin(xMs, color, label) {
+    if (!(_pnWaveDurMS > 0 && xMs > 0)) return;
+    const x = (xMs / _pnWaveDurMS) * W;
+    // vertical line
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+    // label background + text at top
+    ctx.font = 'bold 9px sans-serif';
+    const tw = ctx.measureText(label).width;
+    const pad = 3;
+    const bw = tw + pad * 2;
+    const bh = 13;
+    const bx = Math.min(x - bw / 2, W - bw);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(bx, 1, bw, bh, 3);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, bx + pad, 1 + bh / 2);
+  }
+
+  drawPin(_pnWaveCueInMS,  'rgba(0,212,255,0.85)',    'CUE');
+  drawPin(_pnWaveIntroMS,  'rgba(54,211,153,0.85)',   'INTRO');
+  drawPin(_pnWaveOutroMS,  'rgba(255,191,75,0.85)',   'OUTRO');
+  drawPin(_pnWaveCueOutMS, 'rgba(248,114,114,0.85)',  'COUT');
+
+  // Playhead
+  const px = _pnWavePos * W;
   ctx.beginPath();
-  ctx.moveTo(0, mid);
-  ctx.lineTo(W, mid);
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
+  ctx.moveTo(px, 0);
+  ctx.lineTo(px, H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth   = 2;
   ctx.stroke();
-})();
+}
 
 /* ─── Volume ─────────────────────────────────────────────────── */
 
@@ -3489,22 +3823,37 @@ let _volCartPrev     = 1.0;
 function setVolDisplay(channel, level) {
   const pct = Math.round(level * 100);
   if (channel === 'main') {
-    document.getElementById('volMain').value        = pct;
-    document.getElementById('volMainPct').textContent = pct + '%';
+    const el = document.getElementById('volMain');    if (el) el.value = pct;
+    const ep = document.getElementById('volMainPct'); if (ep) ep.textContent = pct + '%';
+    const s  = document.getElementById('orVolMain');    if (s) s.value = pct;
+    const p  = document.getElementById('orVolMainPct'); if (p) p.textContent = pct + '%';
     _volMainPrev = level;
   } else if (channel === 'preview') {
-    document.getElementById('volPreview').value       = pct;
-    document.getElementById('volPreviewPct').textContent = pct + '%';
+    const el = document.getElementById('volPreview');    if (el) el.value = pct;
+    const ep = document.getElementById('volPreviewPct'); if (ep) ep.textContent = pct + '%';
+    const s  = document.getElementById('orVolPreview');    if (s) s.value = pct;
+    const p  = document.getElementById('orVolPreviewPct'); if (p) p.textContent = pct + '%';
     _volPreviewPrev = level;
     const advSlider = document.getElementById('advPrevVol');
     const advPct    = document.getElementById('advPrevVolPct');
     if (advSlider) advSlider.value    = pct;
     if (advPct)    advPct.textContent = pct + '%';
   } else if (channel === 'cart') {
-    document.getElementById('volCart').value        = pct;
-    document.getElementById('volCartPct').textContent = pct + '%';
+    const el = document.getElementById('volCart');    if (el) el.value = pct;
+    const ep = document.getElementById('volCartPct'); if (ep) ep.textContent = pct + '%';
+    const s  = document.getElementById('orVolCart');    if (s) s.value = pct;
+    const p  = document.getElementById('orVolCartPct'); if (p) p.textContent = pct + '%';
     _volCartPrev = level;
   }
+}
+
+function orVolInput(channel, el) {
+  const pct = el.value + '%';
+  const map = { main: ['volMainPct','orVolMainPct'], preview: ['volPreviewPct','orVolPreviewPct'], cart: ['volCartPct','orVolCartPct'] };
+  (map[channel] || []).forEach(id => { const e = document.getElementById(id); if (e) e.textContent = pct; });
+  // keep primary slider in sync while dragging
+  const primary = { main: 'volMain', preview: 'volPreview', cart: 'volCart' };
+  const pr = document.getElementById(primary[channel]); if (pr) pr.value = el.value;
 }
 
 function onVolInput(channel, el) {
@@ -4034,15 +4383,18 @@ function handleEvent({ type, payload }) {
     case 'ScheduleEntryFired':
       fecharBannerEvento();
       fetchNextScheduledEvent();
+      fetchTodaySchedule();
       break;
     case 'ScheduleEntryMissed':
       showToast(false, 'Evento pulado: ' + (payload.entry_name || ''));
       fetchNextScheduledEvent();
+      fetchTodaySchedule();
       break;
     case 'ScheduleEntryAdded':
     case 'ScheduleEntryRemoved':
     case 'ScheduleEntryUpdated':
       fetchNextScheduledEvent();
+      fetchTodaySchedule();
       break;
     case 'CartProgress':
     case 'CartStopped':
@@ -4078,18 +4430,22 @@ function onHealth(p) {
   if (bufVal) bufVal.textContent = pct + '%';
   const sil = document.getElementById('silenceBadge');
   const dur = document.getElementById('silenceDur');
-  if (!isActive()) {
-    sil.className   = 'silence-badge';
-    sil.textContent = '—';
-    dur.textContent = '';
-  } else {
-    sil.className   = 'silence-badge' + (p.silence ? ' active' : '');
-    sil.textContent = p.silence ? 'SILÊNCIO' : 'NÃO';
-    dur.textContent = p.silence ? msToTime(p.silence_duration_ms) + ' em silêncio' : '';
+  if (sil) {
+    if (!isActive()) {
+      sil.className   = 'silence-badge';
+      sil.textContent = '—';
+      if (dur) dur.textContent = '';
+    } else {
+      sil.className   = 'silence-badge' + (p.silence ? ' active' : '');
+      sil.textContent = p.silence ? 'SILÊNCIO' : 'NÃO';
+      if (dur) dur.textContent = p.silence ? msToTime(p.silence_duration_ms) + ' em silêncio' : '';
+    }
   }
   const uEl = document.getElementById('underrunVal');
-  uEl.textContent = p.underrun_count ?? 0;
-  uEl.className   = 'underrun-val' + ((p.underrun_count ?? 0) > 0 ? ' warn' : '');
+  if (uEl) {
+    uEl.textContent = p.underrun_count ?? 0;
+    uEl.className   = 'underrun-val' + ((p.underrun_count ?? 0) > 0 ? ' warn' : '');
+  }
 }
 
 /* zero-padded mm:ss (or h:mm:ss) for the v5 progress display */
@@ -4166,32 +4522,84 @@ function onNowPlaying(p) {
   if (!p || !p.title) { setIdle(); return; }
   document.getElementById('npTitle').style.color  = '';
   document.getElementById('npArtist').style.color = '';
-  document.getElementById('npTitle').textContent        = p.title || '—';
-  document.getElementById('npArtist').textContent       = p.artist || '';
+  document.getElementById('npTitle').textContent  = p.title || '—';
+  document.getElementById('npArtist').textContent = p.artist || '';
   _npCurrentType = p.type || '';
-  document.getElementById('npTypeVal').textContent      = typeLabel(_npCurrentType);
-  document.getElementById('npStatusVal').textContent    = statusLabel(p.status || 'PLAYING');
-  document.getElementById('npSampleVal').textContent    = '48 kHz / Stereo';
+
+  const catEl = document.getElementById('pnCategory');
+  if (catEl) catEl.textContent = typeLabel(_npCurrentType) || '—';
+
+  _pnInicioSet = false;
+  const inicioEl = document.getElementById('pnInicio');
+  if (inicioEl) inicioEl.textContent = '—';
+
+  const cueEl = document.getElementById('pnCue');
+  if (cueEl) cueEl.textContent = p.cue_in_ms > 0 ? _msToCueTime(p.cue_in_ms) : '—';
+
+  const introEl = document.getElementById('pnIntro');
+  if (introEl) introEl.textContent = p.intro_ms > 0 ? _msToCueTime(p.intro_ms) : '—';
+
+  const outroEl = document.getElementById('pnOutro');
+  if (outroEl) outroEl.textContent = p.outro_ms > 0 ? _msToCueTime(p.outro_ms) : '—';
+
+  const cueOutEl = document.getElementById('pnCueOut');
+  if (cueOutEl) cueOutEl.textContent = p.cue_out_ms > 0 ? _msToCueTime(p.cue_out_ms) : '—';
+
+  const gainEl = document.getElementById('pnGain');
+  if (gainEl) gainEl.textContent = p.gain_db != null ? (p.gain_db >= 0 ? '+' : '') + p.gain_db.toFixed(1) + ' dB' : '—';
+
   if (p.duration_ms) {
     npDurationMS = p.duration_ms;
     document.getElementById('npTotal').textContent = msToTime2(npDurationMS);
   }
+
+  pnLoadWaveform(p.path || null, p.duration_ms || 0, p.cue_in_ms || 0, p.intro_ms || 0, p.outro_ms || 0, p.cue_out_ms || 0);
 }
 
 function onProgress(p) {
-  const pct = p.percent ?? 0;
-  document.getElementById('npBar').style.width     = pct + '%';
-  document.getElementById('npThumb').style.left    = pct + '%';
-  document.getElementById('npPos').textContent     = msToTime2(p.position_ms);
-  document.getElementById('npRem').textContent     = pct.toFixed(1) + '%';
-  const remMs = Math.max(0, p.remaining_ms);
-  const remEl = document.getElementById('npRemCol');
-  remEl.textContent = msToTime2(remMs);
-  remEl.style.color = (_npCurrentType.toUpperCase() === 'MUSIC' && remMs <= 10000) ? 'var(--red)' : 'var(--cyan)';
-  if (!npDurationMS && p.position_ms && p.remaining_ms) {
-    npDurationMS = (p.position_ms || 0) + (p.remaining_ms || 0);
+  const pct   = p.percent ?? 0;
+  const remMs = Math.max(0, p.remaining_ms ?? 0);
+  const posMs = p.position_ms ?? 0;
+
+  // Progress fill
+  const fillEl = document.getElementById('pnProgressFill');
+  if (fillEl) fillEl.style.width = pct + '%';
+
+  // Elapsed
+  const elapsedEl = document.getElementById('pnElapsed');
+  if (elapsedEl) elapsedEl.textContent = msToTime2(posMs);
+
+  // Countdown (-MM:SS)
+  const cdEl = document.getElementById('pnCountdown');
+  if (cdEl) {
+    const neg   = remMs > 0;
+    const secs  = Math.floor(remMs / 1000);
+    const mm    = Math.floor(secs / 60).toString().padStart(2, '0');
+    const ss    = (secs % 60).toString().padStart(2, '0');
+    cdEl.textContent  = (neg ? '-' : '') + mm + ':' + ss;
+    cdEl.style.color  = (_npCurrentType.toUpperCase() === 'MUSIC' && remMs <= 10000) ? 'var(--red)' : '';
+  }
+
+  // Total
+  if (!npDurationMS && posMs && remMs) {
+    npDurationMS = posMs + remMs;
     document.getElementById('npTotal').textContent = msToTime2(npDurationMS);
   }
+
+  // Waveform playhead
+  if (npDurationMS > 0) {
+    _pnWavePos = posMs / npDurationMS;
+    pnDrawWaveform();
+  }
+
+  // pnInicio: wall-clock time the track started (computed once per track)
+  if (!_pnInicioSet && posMs >= 0) {
+    const startedAt = new Date(Date.now() - posMs);
+    const inicioEl  = document.getElementById('pnInicio');
+    if (inicioEl) inicioEl.textContent = startedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    _pnInicioSet = true;
+  }
+
   // Only update dynamic queue total when engine is actively playing
   if (engineState === 'PLAYING' || engineState === 'ASSIST') {
     _lastRemainingMs = p.remaining_ms || 0;
@@ -4210,8 +4618,9 @@ function syncPauseToggle(st) {
   const btn = document.getElementById('btnPauseToggle');
   if (!btn) return;
   const paused = st === 'PAUSED';
-  btn.textContent = paused ? '▶▶ Resume' : '⏸ Pause';
-  btn.className   = 'btn ' + (paused ? 'btn-resume' : 'btn-pause');
+  btn.textContent     = paused ? '▶ Retomar' : '⏸ Pausar';
+  btn.dataset.tooltip = paused ? 'Retomar' : 'Pausar';
+  btn.className       = 'pn-btn' + (paused ? ' pn-btn-active' : '');
 }
 
 function syncPanicToggle(st) {
@@ -4219,10 +4628,10 @@ function syncPanicToggle(st) {
   if (!btn) return;
   const inPanic = st === 'PANIC';
   btn.innerHTML = inPanic
-    ? '✓'
+    ? '&#10003;'
     : '<img class="btn-icon" src="icons/panic.svg">';
   btn.dataset.tooltip = inPanic ? 'Sair do Panic' : 'Panic';
-  btn.className = 'btn ' + (inPanic ? 'btn-exit-panic' : 'btn-panic');
+  btn.className = 'pn-btn' + (inPanic ? ' pn-btn-danger pn-btn-active' : ' pn-btn-danger');
 }
 
 function _syncCurrentItemStatus(newStatus) {
@@ -4250,10 +4659,8 @@ function onStateChange(p) {
   // Sync queue item badge and Now Playing STATUS with engine pause/resume
   if (st === 'PAUSED' && prev === 'PLAYING') {
     _syncCurrentItemStatus('PAUSED');
-    document.getElementById('npStatusVal').textContent = statusLabel('PAUSED');
   } else if (st === 'PLAYING' && prev === 'PAUSED') {
     _syncCurrentItemStatus('PLAYING');
-    document.getElementById('npStatusVal').textContent = statusLabel('PLAYING');
   }
   // Sync ASSIST UI when state transitions
   if (st === 'ASSIST' && !_inAssist) enterAssistUI();
@@ -4262,19 +4669,26 @@ function onStateChange(p) {
     setIdle();
     lastVuTime = 1;
     const sil = document.getElementById('silenceBadge');
-    sil.className   = 'silence-badge';
-    sil.textContent = '—';
-    document.getElementById('silenceDur').textContent = '';
+    if (sil) { sil.className = 'silence-badge'; sil.textContent = '—'; }
+    const silDur = document.getElementById('silenceDur');
+    if (silDur) silDur.textContent = '';
   }
 }
 
 function onEngineStarted(p) {
-  document.getElementById('tEngineId').textContent = p.engine_id || '—';
+  const name = p.engine_id || '—';
+  const eId = document.getElementById('tEngineId'); if (eId) eId.textContent = name;
+  const lbl = document.getElementById('orEngineLabel');
+  if (lbl) lbl.textContent = name;
 }
 
 function onSnapshot(p) {
   const engineId = p.EngineID || p.engine_id;
-  if (engineId) document.getElementById('tEngineId').textContent = engineId;
+  if (engineId) {
+    const eIdEl = document.getElementById('tEngineId'); if (eIdEl) eIdEl.textContent = engineId;
+    const lbl = document.getElementById('orEngineLabel');
+    if (lbl) lbl.textContent = engineId;
+  }
   engineState = p.State || p.state || '';
   engineMode  = p.Mode || p.mode || engineMode;
   // Restore _enginePlaying from snapshot so setStateBadge shows the correct
@@ -4292,13 +4706,21 @@ function onSnapshot(p) {
 
   const np = p.NowPlaying || p.now_playing;
   if (np) {
+    const durMS = np.DurationMS ?? np.duration_ms ?? 0;
     onNowPlaying({
-      title:  np.Title  || np.title,
-      artist: np.Artist || np.artist,
-      type:   np.Type   || np.type,
+      title:       np.Title      || np.title,
+      artist:      np.Artist     || np.artist,
+      type:        np.Type       || np.type,
+      duration_ms: durMS,
+      cue_in_ms:   np.CueInMS   ?? np.cue_in_ms   ?? null,
+      intro_ms:    np.IntroMS   ?? np.intro_ms    ?? null,
+      outro_ms:    np.OutroMS   ?? np.outro_ms    ?? null,
+      cue_out_ms:  np.CueOutMS  ?? np.cue_out_ms  ?? null,
+      gain_db:     np.GainDB    ?? np.gain_db     ?? null,
+      isrc:        np.ISRC      || np.isrc        || '',
+      path:        np.Path      || np.path        || null,
     });
     const posMS = np.PositionMS ?? np.position_ms ?? 0;
-    const durMS = np.DurationMS ?? np.duration_ms ?? 0;
     onProgress({ position_ms: posMS, remaining_ms: durMS - posMS, percent: np.Percent ?? np.percent ?? 0 });
   }
 
@@ -4389,9 +4811,65 @@ function tickNextEvent() {
 
 async function initSchedule() {
   await fetchNextScheduledEvent();
+  await fetchTodaySchedule();
   if (_nextEvtTimer) clearInterval(_nextEvtTimer);
   _nextEvtTimer = setInterval(tickNextEvent, 1000);
   setInterval(fetchNextScheduledEvent, 60_000);
+  setInterval(fetchTodaySchedule, 60_000);
+}
+
+async function fetchTodaySchedule() {
+  try {
+    const r = await fetch(API_URL + '/v1/schedule');
+    if (!r.ok) return;
+    const d = await r.json();
+    const today = new Date().toDateString();
+    const entries = (d.entries || [])
+      .filter(e => e.enabled && e.next_fire_at && new Date(e.next_fire_at).toDateString() === today)
+      .sort((a, b) => new Date(a.next_fire_at) - new Date(b.next_fire_at));
+    renderTodaySchedule(entries);
+  } catch (_) {}
+}
+
+function _ctxIcon(entry) {
+  if (entry.break)                         return '⊞';
+  if (entry.item?.type === 'HORA_CERTA')   return '◔';
+  return '▶';
+}
+
+function _ctxSub(entry) {
+  if (entry.break) {
+    const n = (entry.break.items || []).length;
+    return n ? n + (n === 1 ? ' peça' : ' peças') : 'Break comercial';
+  }
+  if (entry.item?.type === 'HORA_CERTA') return 'Hora certa';
+  return entry.item?.title || 'Item agendado';
+}
+
+function renderTodaySchedule(entries) {
+  const list = document.getElementById('orCtxList');
+  if (!list) return;
+  if (!entries.length) {
+    list.innerHTML = '<div class="or-ctx-empty">Nenhum evento agendado para hoje</div>';
+    return;
+  }
+  const now  = Date.now();
+  const rows = entries.map(e => {
+    const fireMs = new Date(e.next_fire_at).getTime();
+    const isPast = fireMs < now;
+    const isNext = !isPast && entries.find(x => new Date(x.next_fire_at).getTime() > now) === e;
+    const hhmm   = new Date(e.next_fire_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const cls    = isPast ? 'or-ctx-past' : isNext ? 'or-ctx-next' : '';
+    return `<div class="or-ctx-item ${cls}">
+      <div class="or-ctx-icon">${_ctxIcon(e)}</div>
+      <div class="or-ctx-body">
+        <div class="or-ctx-name">${escHtml(e.name || '—')}</div>
+        <div class="or-ctx-sub">${escHtml(_ctxSub(e))}</div>
+      </div>
+      <div class="or-ctx-time">${hhmm}</div>
+    </div>`;
+  });
+  list.innerHTML = rows.join('');
 }
 
 function onPanic(entering) {
@@ -4411,25 +4889,45 @@ function onQueueChanged() {
 }
 
 function setIdle() {
-  npDurationMS = 0;
-  waveReset();
+  npDurationMS   = 0;
+  _pnWavePeaks    = null;
+  _pnWaveDurMS    = 0;
+  _pnWaveCueInMS  = 0;
+  _pnWaveIntroMS  = 0;
+  _pnWaveOutroMS  = 0;
+  _pnWaveCueOutMS = 0;
+  _pnWavePos      = 0;
+  _pnInicioSet   = false;
+  pnDrawWaveform();
+
   document.getElementById('npTitle').textContent  = '';
   document.getElementById('npTitle').style.color  = 'var(--text-dim)';
   document.getElementById('npArtist').textContent = '';
   document.getElementById('npArtist').style.color = '';
-  document.getElementById('npStatusVal').textContent = '—';
-  document.getElementById('npNextTitle').textContent = '—';
-  document.getElementById('npTypeVal').textContent   = '—';
-  document.getElementById('npSampleVal').textContent = '—';
-  document.getElementById('npBar').style.width       = '0%';
-  document.getElementById('npThumb').style.left      = '0%';
+  document.getElementById('npTotal').textContent  = '00:00';
 
-  document.getElementById('npPos').textContent       = '00:00';
-  document.getElementById('npTotal').textContent     = '00:00';
-  document.getElementById('npRem').textContent       = '0%';
-  const remColEl = document.getElementById('npRemCol');
-  remColEl.textContent = '00:00';
-  remColEl.style.color = 'var(--cyan)';
+  const catEl = document.getElementById('pnCategory');
+  if (catEl) catEl.textContent = '—';
+  const inicioEl = document.getElementById('pnInicio');
+  if (inicioEl) inicioEl.textContent = '—';
+  const cueEl = document.getElementById('pnCue');
+  if (cueEl) cueEl.textContent = '—';
+  const introEl2 = document.getElementById('pnIntro');
+  if (introEl2) introEl2.textContent = '—';
+  const outroEl = document.getElementById('pnOutro');
+  if (outroEl) outroEl.textContent = '—';
+  const cueOutEl2 = document.getElementById('pnCueOut');
+  if (cueOutEl2) cueOutEl2.textContent = '—';
+  const gainEl = document.getElementById('pnGain');
+  if (gainEl) gainEl.textContent = '—';
+
+  const fillEl = document.getElementById('pnProgressFill');
+  if (fillEl) fillEl.style.width = '0%';
+  const elapsedEl = document.getElementById('pnElapsed');
+  if (elapsedEl) elapsedEl.textContent = '00:00';
+  const cdEl = document.getElementById('pnCountdown');
+  if (cdEl) { cdEl.textContent = '-00:00'; cdEl.style.color = ''; }
+
   clearBreakBanner();
 }
 
@@ -4437,11 +4935,47 @@ function setStateBadge(state, mode) {
   const stEl = document.getElementById('tState');
   // When audio is playing in ASSIST mode, show PLAYING as the state
   const displayState = (_enginePlaying && state === 'ASSIST') ? 'PLAYING' : state;
-  stEl.textContent = displayState || '—';
-  stEl.className   = 'badge ' + (displayState || '');
+  if (stEl) { stEl.textContent = displayState || '—'; stEl.className = 'badge ' + (displayState || ''); }
   const mEl = document.getElementById('tMode');
-  mEl.textContent = mode || '—';
-  mEl.className   = 'badge ' + (mode === 'ASSIST' ? 'ASSIST_MODE' : mode === 'PANIC' ? 'PANIC_MODE' : (mode || ''));
+  if (mEl) { mEl.textContent = mode || '—'; mEl.className = 'badge ' + (mode === 'ASSIST' ? 'ASSIST_MODE' : mode === 'PANIC' ? 'PANIC_MODE' : (mode || '')); }
+
+  // pn-live-badge
+  const liveBadge = document.getElementById('pnLiveBadge');
+  if (liveBadge) {
+    const active = displayState === 'PLAYING' || displayState === 'PAUSED' || displayState === 'ASSIST';
+    liveBadge.classList.toggle('idle', !active);
+  }
+
+  // pn-mode-badge (only show in ASSIST or PANIC mode)
+  const modeBadge = document.getElementById('pnModeBadge');
+  if (modeBadge) {
+    if (mode === 'PANIC') {
+      modeBadge.textContent       = 'PANIC';
+      modeBadge.style.color       = '#f87272';
+      modeBadge.style.borderColor = 'rgba(255,77,103,.4)';
+      modeBadge.style.background  = 'rgba(255,77,103,.1)';
+    } else if (mode === 'ASSIST') {
+      modeBadge.textContent       = 'LIVE ASSIST';
+      modeBadge.style.color       = '';
+      modeBadge.style.borderColor = '';
+      modeBadge.style.background  = '';
+    } else {
+      modeBadge.textContent       = 'AUTOMÁTICO';
+      modeBadge.style.color       = '';
+      modeBadge.style.borderColor = '';
+      modeBadge.style.background  = '';
+    }
+    modeBadge.style.display = '';
+  }
+
+  // Painel direito: modo operacional
+  const btnAssist = document.getElementById('orBtnAssist');
+  const btnAuto   = document.getElementById('orBtnAuto');
+  if (btnAssist && btnAuto) {
+    const inAssist = mode === 'ASSIST';
+    btnAssist.classList.toggle('active', inAssist);
+    btnAuto.classList.toggle('active', !inAssist);
+  }
 }
 
 /* ─── WebSocket ──────────────────────────────────────────────── */
@@ -4450,9 +4984,8 @@ let ws = null;
 function setConn(ok) {
   const dot   = document.getElementById('connDot');
   const label = document.getElementById('connLabel');
-  dot.className     = 'conn-dot ' + (ok ? 'ok' : 'error');
-  label.textContent = ok ? 'On-line' : 'Off-line';
-  label.style.color = ok ? 'var(--cyan)' : 'var(--red)';
+  if (dot)   dot.className   = 'conn-dot ' + (ok ? 'ok' : 'error');
+  if (label) label.style.color = ok ? 'var(--cyan)' : 'var(--red)';
 }
 
 function connect() {
@@ -4718,12 +5251,10 @@ async function checkLibraryHealth() {
     const r = await fetch(LIBRARY_URL + '/v1/health', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
     _libOnline            = r.ok;
     dot.className         = 'conn-dot ' + (r.ok ? 'ok' : 'error');
-    label.textContent     = r.ok ? 'On-line' : 'Off-line';
     label.style.color     = r.ok ? 'var(--cyan)' : 'var(--red)';
   } catch {
     _libOnline            = false;
     dot.className         = 'conn-dot error';
-    label.textContent     = 'Off-line';
     label.style.color     = 'var(--red)';
   }
   // Quando a library fica online pela primeira vez, recarrega o pane ativo
