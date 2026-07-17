@@ -1393,15 +1393,11 @@ input[type=range].vol-slider:disabled {
 .cue-float-btns button { background: rgba(45,216,255,0.08); border: 1px solid rgba(45,216,255,0.22); color: var(--cyan); border-radius: 6px; width: 32px; height: 32px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.12s; }
 .cue-float-btns button:hover { background: rgba(45,216,255,0.20); }
 /* CUE button in queue rows */
-.q-cue-btn { background: none; border: none; cursor: pointer; width: 39px; height: 39px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s; flex-shrink: 0; }
-.q-cue-btn img { height: 34px; width: auto; opacity: 0.75; transition: opacity 0.12s; }
-.break-group .q-cue-btn img { filter: brightness(0) saturate(100%) invert(55%) sepia(90%) saturate(700%) hue-rotate(12deg) brightness(1.05); opacity: 0.9; }
+.q-cue-btn { background: none; border: none; cursor: pointer; width: 39px; height: 39px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s; flex-shrink: 0; font-size: 22px; opacity: 0.75; }
 .break-group .q-type-icon { filter: brightness(0) saturate(100%) invert(55%) sepia(90%) saturate(700%) hue-rotate(12deg) brightness(1.05); opacity: 0.9; }
-.q-cue-btn:hover img { opacity: 1; }
+.q-cue-btn:hover { opacity: 1; color: var(--cyan); background: rgba(45,216,255,0.10); }
 .q-cue-btn--disabled, .q-cue-btn--disabled:hover { opacity: 0.25; cursor: not-allowed; background: none; }
-.q-cue-btn.is-cuing img { opacity: 1; }
-.q-cue-btn:hover { color: var(--cyan); background: rgba(45,216,255,0.10); }
-.q-cue-btn.is-cuing { color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
+.q-cue-btn.is-cuing { opacity: 1; color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
 @keyframes cueBtnPulse {
   0%, 100% { transform: scale(1);    box-shadow: 0 0 0px rgba(45,216,255,0);    color: var(--cyan); }
   50%       { transform: scale(1.18); box-shadow: 0 0 10px rgba(45,216,255,0.55); color: #fff; }
@@ -1811,12 +1807,11 @@ input[type=range].vol-slider:disabled {
   background: transparent; border: 1px solid rgba(255,255,255,.08);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; opacity: 0; transition: opacity 0.15s, background 0.12s;
+  font-size: 15px;
 }
 .queue-row:hover .q-cue-btn { opacity: 1; }
-.q-cue-btn img { width: 13px; height: 13px; opacity: 0.55; }
 .q-cue-btn:hover { background: rgba(0,212,255,.10); border-color: rgba(0,212,255,.3); }
 .q-cue-btn.is-cuing { opacity: 1; background: rgba(0,212,255,.16); border-color: #00d4ff; }
-.q-cue-btn.is-cuing img { opacity: 1; }
 .q-reorder-btns { display: flex; flex-direction: column; gap: 2px; }
 .q-btn { font-size: 10px; padding: 1px 4px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #7ab0b8; }
 .q-btn:hover { background: rgba(255,255,255,0.06); }
@@ -3747,7 +3742,7 @@ function renderItemRow(item, estTimes) {
   const canCue = (status === 'QUEUED' || status === 'PRELOADING' || status === 'PLAYING' || status === 'PAUSED') && !!cueKey;
   const isCuing = canCue && _cueQueueItemId === cueKey && _preview.state !== 'idle';
   const cueBtnHTML = canCue
-    ? `<button class="q-cue-btn tip-left${isCuing ? ' is-cuing' : ''}${isHC ? ' q-cue-btn--disabled' : ''}" data-item-id="${escHtml(cueKey)}" data-tooltip="CUE — Preview" ${isHC ? 'disabled' : `onclick="cueToggleQueueItem('${escHtml(cueKey)}')"`}><img src="icons/cue_preview.svg"></button>`
+    ? `<button class="q-cue-btn tip-left${isCuing ? ' is-cuing' : ''}${isHC ? ' q-cue-btn--disabled' : ''}" data-item-id="${escHtml(cueKey)}" data-tooltip="CUE — Preview" ${isHC ? 'disabled' : `onclick="cueToggleQueueItem('${escHtml(cueKey)}')"`}>🎧</button>`
     : '';
 
   const actionsHTML = `
@@ -3830,7 +3825,7 @@ function renderBreakRows(brk, rows, estTimes) {
     const canBrkCue = (st === 'QUEUED' || st === 'PRELOADING') && !!brkCueKey;
     const isBrkCuing = canBrkCue && _cueQueueItemId === brkCueKey && _preview.state !== 'idle';
     const brkCueBtnHTML = canBrkCue
-      ? `<button class="q-cue-btn tip-left${isBrkCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(brkCueKey)}" data-tooltip="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(brkCueKey)}')"><img src="icons/cue_preview.svg"></button>`
+      ? `<button class="q-cue-btn tip-left${isBrkCuing ? ' is-cuing' : ''}" data-item-id="${escHtml(brkCueKey)}" data-tooltip="CUE — Preview" onclick="cueToggleQueueItem('${escHtml(brkCueKey)}')">🎧</button>`
       : '';
     html += `<article class="queue-row break-item${isPlaying ? ' is-current' : ''}" data-id="${escHtml(item.queue_item_id || '')}" data-break-group="${breakId}">
       <div class="q-index">${idxHTML}<span></span></div>
