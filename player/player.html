@@ -770,11 +770,9 @@ input[type=range].vol-slider:disabled {
 .hkp-card-toprow { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
 .hkp-card-slot { font-size: 9px; font-weight: 800; color: rgba(255,255,255,.75); background: rgba(0,0,0,.30); border-radius: 4px; padding: 1px 5px; letter-spacing:.04em; }
 .hkp-card-toprow-right { display: flex; align-items: center; gap: 2px; }
-.hkp-card-cue { background: none; border: none; padding: 0; width: 20px; height: 20px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s; flex-shrink: 0; }
-.hkp-card-cue img { width: 14px; height: 14px; filter: brightness(0) invert(1); opacity: 0.50; transition: opacity .12s; }
-.hkp-card-cue:hover img { opacity: 1; }
-.hkp-card-cue.is-cuing { background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
-.hkp-card-cue.is-cuing img { opacity: 1; filter: brightness(0) saturate(100%) invert(75%) sepia(80%) hue-rotate(155deg) brightness(1.1); }
+.hkp-card-cue { background: none; border: none; padding: 0; width: 20px; height: 20px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s; flex-shrink: 0; font-size: 13px; opacity: 0.50; transition: opacity .12s; }
+.hkp-card-cue:hover { opacity: 1; }
+.hkp-card-cue.is-cuing { background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; opacity: 1; }
 .hkp-card-stop {
   display: none; width: 18px; height: 18px; border-radius: 4px;
   background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.22);
@@ -8296,7 +8294,7 @@ function hkpMakeCard(b, slotNum) {
         <span class="hkp-card-slot">${slotNum}</span>
         <div class="hkp-card-toprow-right">
           <button class="hkp-card-stop" onclick="hkpStopCard(event)">■</button>
-          <button class="hkp-card-cue${_hkpCueBtnId === b.id && _preview.state !== 'idle' ? ' is-cuing' : ''}" data-btn-id="${b.id}" title="Preview (CUE)" onclick="hkpCueToggle(event,'${b.id}')"><img src="icons/cue_preview.svg" alt="CUE"></button>
+          <button class="hkp-card-cue${_hkpCueBtnId === b.id && _preview.state !== 'idle' ? ' is-cuing' : ''}" data-btn-id="${b.id}" title="Preview (CUE)" onclick="hkpCueToggle(event,'${b.id}')">🎧</button>
         </div>
       </div>
       <div class="hkp-card-name">${escHtml(b.label || b.track_title || '—')}</div>
