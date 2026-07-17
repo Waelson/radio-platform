@@ -4466,7 +4466,6 @@ function handleEvent({ type, payload }) {
       _renderPreviewPanel(); break;
     // Scheduler
     case 'ScheduleEntryFired':
-      fecharBannerEvento();
       fetchNextScheduledEvent();
       fetchTodaySchedule();
       break;
