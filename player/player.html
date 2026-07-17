@@ -446,7 +446,7 @@ input[type=range].vol-slider:disabled {
 /* Modo Operacional — botões */
 .or-mode-btns {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 7px;
   padding: 9px;
 }
@@ -566,7 +566,7 @@ input[type=range].vol-slider:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── Contexto da Operação ───────────────────────────────────── */
+/* ─── Agendamentos ───────────────────────────────────── */
 .or-ctx-btn {
   height: 27px;
   border: 1px solid #20384c;
@@ -681,6 +681,7 @@ input[type=range].vol-slider:disabled {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .75px;
+  text-transform: uppercase;
   flex-shrink: 0;
 }
 .pn-dot {
@@ -693,6 +694,8 @@ input[type=range].vol-slider:disabled {
 }
 .pn-live-badge.idle { background: rgba(255,255,255,.04); color: #88a0b5; border-color: #20384c; }
 .pn-live-badge.idle .pn-dot { background: #4a6478; box-shadow: none; animation: none; }
+.pn-live-badge.paused { background: rgba(251,191,36,.08); color: #fbbf24; border-color: rgba(251,191,36,.3); }
+.pn-live-badge.paused .pn-dot { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,.6); animation: none; }
 .pn-topbar-spacer { flex: 1; }
 .pn-source {
   font-size: 10px;
@@ -2235,47 +2238,48 @@ canvas.vu-canvas {
 
 /* ─── Streaming — Panel ───────────────────────────────────── */
 .streaming-panel { padding: 12px; flex-direction: column; gap: 10px; overflow-y: auto; }
-.streaming-top { display: flex; align-items: center; justify-content: space-between; padding-bottom: 6px; }
-.streaming-top-title { font-size: 13px; font-weight: 700; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.08em; }
 .streaming-card {
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
-  border-radius: 5px;
-  background: var(--bg2);
-  padding: 10px 12px 44px;
+  background: #0a1520;
+  border: 1px solid #20384c;
+  border-radius: 10px;
+  padding: 9px 11px 40px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 5px;
+  margin-bottom: 7px;
   height: 130px;
   flex-shrink: 0;
-  overflow: hidden;
   position: relative;
-  transition: border-left-color 0.2s;
+  overflow: hidden;
 }
-.streaming-card.connected    { border-left-color: #27ae60; }
-.streaming-card.reconnecting { border-left-color: #ffb400; }
-.streaming-card.error        { border-left-color: var(--red); }
-.streaming-card-header { display: flex; align-items: center; justify-content: space-between; }
-.streaming-card-name { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
-.streaming-card-state-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
-.streaming-card.connected    .streaming-card-state-dot { background: #27ae60; box-shadow: 0 0 5px #27ae60; }
-.streaming-card.reconnecting .streaming-card-state-dot { background: #ffb400; box-shadow: 0 0 5px #ffb400; animation: blink 0.8s step-start infinite; }
-.streaming-card.error        .streaming-card-state-dot { background: var(--red); }
-.streaming-card-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: rgba(39,174,96,0.15); color: #27ae60; border: 1px solid rgba(39,174,96,0.4); }
-.streaming-card.reconnecting .streaming-card-badge { background: rgba(255,180,0,0.12); color: #ffb400; border-color: rgba(255,180,0,0.4); }
-.streaming-card.error .streaming-card-badge { background: rgba(220,50,50,0.12); color: var(--red); border-color: rgba(220,50,50,0.35); }
-.streaming-card.disconnected .streaming-card-badge { background: rgba(220,50,50,0.12); color: var(--red); border-color: rgba(220,50,50,0.35); }
-.streaming-card-info { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-.streaming-card-meta { font-size: 11px; color: var(--text-dim); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.streaming-card-actions { display: flex; gap: 6px; position: absolute; bottom: 10px; left: 12px; right: 12px; }
-.streaming-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 3px; border: 1px solid var(--border); background: var(--bg); color: var(--text-dim); cursor: pointer; transition: all 0.15s; }
-.streaming-btn:hover { background: #1e1e1e; color: var(--text); }
-.streaming-btn.primary { border-color: rgba(32,230,255,0.4); color: var(--cyan); }
-.streaming-btn.primary:hover { background: rgba(32,230,255,0.1); }
-.streaming-btn.danger { border-color: rgba(220,50,50,0.4); color: var(--red); }
-.streaming-btn.danger:hover { background: rgba(220,50,50,0.08); }
-.streaming-empty { padding: 24px 12px; text-align: center; color: var(--text-dim); font-size: 13px; }
+.streaming-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.streaming-card-name { font-size: 12px; font-weight: 700; color: #d7e3ec; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.streaming-card-state-dot { width: 7px; height: 7px; border-radius: 50%; background: #4a6478; flex-shrink: 0; }
+.streaming-card.connected    .streaming-card-state-dot { background: var(--green, #36d399); box-shadow: 0 0 5px rgba(54,211,153,.7); }
+.streaming-card.reconnecting .streaming-card-state-dot { background: #ffb400; box-shadow: 0 0 5px #ffb400; animation: blink .8s step-start infinite; }
+.streaming-card.error        .streaming-card-state-dot { background: var(--red, #f87272); }
+.streaming-card-badge {
+  font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px;
+  background: rgba(74,100,120,.25); color: #4a6478; border: 1px solid #20384c;
+  letter-spacing: .5px; flex-shrink: 0;
+}
+.streaming-card.connected    .streaming-card-badge { background: rgba(54,211,153,.12); color: #36d399; border-color: rgba(54,211,153,.35); }
+.streaming-card.reconnecting .streaming-card-badge { background: rgba(255,180,0,.12); color: #ffb400; border-color: rgba(255,180,0,.35); }
+.streaming-card.error        .streaming-card-badge { background: rgba(248,114,114,.12); color: var(--red, #f87272); border-color: rgba(248,114,114,.35); }
+.streaming-card-info { font-size: 10px; color: #4a6478; }
+.streaming-card-meta { font-size: 10px; color: #4a6478; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.streaming-card-actions { display: flex; gap: 5px; position: absolute; bottom: 9px; left: 11px; right: 11px; }
+.streaming-btn {
+  font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 6px;
+  border: 1px solid #20384c; background: #0e1b28; color: #88a0b5;
+  cursor: pointer; transition: .15s ease;
+}
+.streaming-btn:hover { background: #122334; color: #d7e3ec; border-color: #31536d; }
+.streaming-btn.primary { border-color: rgba(32,230,255,.35); color: var(--cyan); }
+.streaming-btn.primary:hover { background: rgba(32,230,255,.08); }
+.streaming-btn.danger { border-color: rgba(248,114,114,.35); color: var(--red, #f87272); }
+.streaming-btn.danger:hover { background: rgba(248,114,114,.08); }
+.streaming-empty { padding: 20px 8px; text-align: center; color: #4a6478; font-size: 11px; }
 
 /* ─── Streaming — Modal ───────────────────────────────────── */
 #streamingModal {
@@ -2438,9 +2442,9 @@ canvas.vu-canvas {
         <!-- Top bar -->
         <div class="pn-topbar">
           <span class="pn-live-badge idle" id="pnLiveBadge">
-            <span class="pn-dot"></span>TOCANDO AGORA
+            <span class="pn-dot"></span><span id="pnLiveLabel">Nada Tocando</span>
           </span>
-          <span class="pn-source" id="pnSource">Player A · Saída principal</span>
+          <span class="pn-source" id="pnSource"></span>
           <span class="pn-topbar-spacer"></span>
           <span class="pn-mode-badge" id="pnModeBadge">LIVE ASSIST</span>
         </div>
@@ -2476,7 +2480,7 @@ canvas.vu-canvas {
         <!-- Linha de tempo -->
         <div class="pn-times">
           <span class="pn-time-side" id="pnElapsed">00:00</span>
-          <span class="pn-time-countdown" id="pnCountdown">-00:00</span>
+          <span class="pn-time-countdown" id="pnCountdown">00:00</span>
           <span class="pn-time-side" id="npTotal">00:00</span>
         </div>
 
@@ -2544,7 +2548,6 @@ canvas.vu-canvas {
         <div class="or-mode-btns">
           <button class="or-mode-btn" id="orBtnAssist"  onclick="sendCmd('assist-enter')">Live Assist</button>
           <button class="or-mode-btn" id="orBtnAuto"    onclick="sendCmd('return-auto')">Automático</button>
-          <button class="or-mode-btn" id="orBtnManual"  disabled>Manual</button>
         </div>
       </div>
 
@@ -2614,14 +2617,25 @@ canvas.vu-canvas {
         </div>
       </div>
 
-      <!-- Contexto da Operação -->
-      <div class="or-card">
+      <!-- Agendamentos -->
+      <div class="or-card" style="flex:0 0 25%;display:flex;flex-direction:column;overflow:hidden;">
         <div class="or-card-header">
-          <span class="or-card-title">Contexto da Operação</span>
+          <span class="or-card-title">Agendamentos</span>
           <button class="or-ctx-btn" onclick="fetchTodaySchedule()">Atualizar</button>
         </div>
-        <div class="or-ctx-list" id="orCtxList">
+        <div class="or-ctx-list" id="orCtxList" style="flex:1;">
           <div class="or-ctx-empty">Carregando…</div>
+        </div>
+      </div>
+
+      <!-- Streaming -->
+      <div class="or-card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div class="or-card-header">
+          <span class="or-card-title">Streaming</span>
+          <button class="or-ctx-btn" onclick="stmOpenModal(null)">+ Servidor</button>
+        </div>
+        <div id="streamingCardList" style="padding:7px;flex:1;overflow-y:auto;">
+          <div class="streaming-empty">Carregando…</div>
         </div>
       </div>
 
@@ -2819,14 +2833,10 @@ canvas.vu-canvas {
           </div>
 
         </div><!-- /libPanelRotacao -->
-        <!-- Streaming -->
+        <!-- Streaming (gerenciado pelo card lateral) -->
         <div class="lib-panel streaming-panel" id="libPanelStreaming">
           <div class="streaming-top">
-            <span class="streaming-top-title">Streaming ao vivo</span>
-            <button class="streaming-btn primary" onclick="stmOpenModal(null)">+ Servidor</button>
-          </div>
-          <div id="streamingCardList">
-            <div class="streaming-empty">Nenhum servidor configurado.<br>Clique em <strong>+ Servidor</strong> para adicionar.</div>
+            <span class="streaming-top-title">Streaming gerenciado no painel lateral direito.</span>
           </div>
         </div><!-- /libPanelStreaming -->
 
@@ -3399,6 +3409,7 @@ function renderQueue() {
     });
   }
 
+  _lastEstTimes = _estTimes;
   tbody.innerHTML = rows.join('');
   syncPlayNextBtn();
   updateNextBreakCard(_estTimes);
@@ -3473,6 +3484,7 @@ function updateNextDeckCard() {
 }
 
 let _nextBreakEstMs = 0;
+let _lastEstTimes   = {};
 
 function updateNextBreakCard(estTimes) {
   const card    = document.getElementById('nextBreakCard');
@@ -4141,9 +4153,12 @@ window._assistNextId = null;
 function enterAssistUI() {
   _inAssist      = true;
   _assistWaiting = false;  // not waiting yet — current track may still be playing
-  document.getElementById('btnEnterAssist').style.display = 'none';
-  document.getElementById('btnReturnAuto').style.display  = '';
-  document.getElementById('assistBanner').classList.add('visible');
+  const btnEnter  = document.getElementById('btnEnterAssist');
+  const btnReturn = document.getElementById('btnReturnAuto');
+  const banner    = document.getElementById('assistBanner');
+  if (btnEnter)  btnEnter.style.display  = 'none';
+  if (btnReturn) btnReturn.style.display = '';
+  if (banner)    banner.classList.add('visible');
   document.querySelector('.queue-section')?.classList.add('assist-active');
 
   // Fetch fresh queue data, then populate banner with the next QUEUED item
@@ -4151,11 +4166,13 @@ function enterAssistUI() {
     if (_assistWaiting) return; // onAssistWaiting already took over
     const nextItem = queueItems.find(i => i && (i.status || '').toUpperCase() === 'QUEUED');
     const nextEl   = document.getElementById('assistBannerNext');
-    if (nextItem) {
-      const typeTag = '';
-      nextEl.innerHTML = `<span>A seguir:</span><strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag">${typeTag}</span>` : ''}`;
-    } else {
-      nextEl.textContent = 'Fila vazia';
+    if (nextEl) {
+      if (nextItem) {
+        const typeTag = '';
+        nextEl.innerHTML = `<span>A seguir:</span><strong>${escHtml(nextItem.title || '—')}</strong>${typeTag ? `<span class="assist-type-tag">${typeTag}</span>` : ''}`;
+      } else {
+        nextEl.textContent = 'Fila vazia';
+      }
     }
     updateButtons(engineState);
   });
@@ -4164,9 +4181,12 @@ function enterAssistUI() {
 function exitAssistUI() {
   _inAssist      = false;
   _assistWaiting = false;
-  document.getElementById('btnEnterAssist').style.display = '';
-  document.getElementById('btnReturnAuto').style.display  = 'none';
-  document.getElementById('assistBanner').classList.remove('visible');
+  const btnEnter  = document.getElementById('btnEnterAssist');
+  const btnReturn = document.getElementById('btnReturnAuto');
+  const banner    = document.getElementById('assistBanner');
+  if (btnEnter)  btnEnter.style.display  = '';
+  if (btnReturn) btnReturn.style.display = 'none';
+  if (banner)    banner.classList.remove('visible');
   document.querySelector('.queue-section')?.classList.remove('assist-active');
   renderQueue(); // refresh to hide reorder buttons
 }
@@ -4697,11 +4717,10 @@ function onProgress(p) {
   // Countdown (-MM:SS)
   const cdEl = document.getElementById('pnCountdown');
   if (cdEl) {
-    const neg   = remMs > 0;
     const secs  = Math.floor(remMs / 1000);
     const mm    = Math.floor(secs / 60).toString().padStart(2, '0');
     const ss    = (secs % 60).toString().padStart(2, '0');
-    cdEl.textContent  = (neg ? '-' : '') + mm + ':' + ss;
+    cdEl.textContent  = mm + ':' + ss;
     cdEl.style.color  = (_npCurrentType.toUpperCase() === 'MUSIC' && remMs <= 10000) ? 'var(--red)' : '';
   }
 
@@ -4889,7 +4908,7 @@ function _nextEvtTipo(entry) {
 async function fetchNextScheduledEvent() {
   try {
     const r = await fetch(API_URL + '/v1/schedule');
-    if (!r.ok) { _nextEvent = null; return; }
+    if (!r.ok) { _nextEvent = null; updateNextBreakCard(_lastEstTimes); return; }
     const d = await r.json();
     const now = Date.now();
     _nextEvent = (d.entries || [])
@@ -4898,6 +4917,7 @@ async function fetchNextScheduledEvent() {
   } catch (_) {
     _nextEvent = null;
   }
+  updateNextBreakCard(_lastEstTimes);
 }
 
 function abrirBannerEvento(countdown) {
@@ -5051,7 +5071,7 @@ function setIdle() {
   const elapsedEl = document.getElementById('pnElapsed');
   if (elapsedEl) elapsedEl.textContent = '00:00';
   const cdEl = document.getElementById('pnCountdown');
-  if (cdEl) { cdEl.textContent = '-00:00'; cdEl.style.color = ''; }
+  if (cdEl) { cdEl.textContent = '00:00'; cdEl.style.color = ''; }
 
   clearBreakBanner();
 }
@@ -5067,8 +5087,19 @@ function setStateBadge(state, mode) {
   // pn-live-badge
   const liveBadge = document.getElementById('pnLiveBadge');
   if (liveBadge) {
-    const active = displayState === 'PLAYING' || displayState === 'PAUSED' || displayState === 'ASSIST';
-    liveBadge.classList.toggle('idle', !active);
+    const label = document.getElementById('pnLiveLabel');
+    if (displayState === 'PLAYING' || displayState === 'ASSIST') {
+      liveBadge.classList.remove('idle', 'paused');
+      if (label) label.textContent = 'Tocando Agora';
+    } else if (displayState === 'PAUSED') {
+      liveBadge.classList.remove('idle');
+      liveBadge.classList.add('paused');
+      if (label) label.textContent = 'Em Pausa';
+    } else {
+      liveBadge.classList.remove('paused');
+      liveBadge.classList.add('idle');
+      if (label) label.textContent = 'Nada Tocando';
+    }
   }
 
   // pn-mode-badge (only show in ASSIST or PANIC mode)
@@ -8115,6 +8146,12 @@ async function stmSave() {
     stmRenderList();
   } catch(e) { showToast(false, 'Erro de rede: ' + e.message); }
 }
+
+/* ── Bootstrap do painel lateral de Streaming ─────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  stmInit();
+  setInterval(stmFetchStatuses, 15000);
+});
 </script>
 
 </body>
