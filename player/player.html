@@ -700,7 +700,7 @@ input[type=range].vol-slider:disabled {
 /* ─── Hot Keys Panel (embedded) ──────────────────────────────── */
 .hkp-panel {
   flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-  margin: 0 10px 10px; background: #0a1520;
+  margin: 10px 10px 10px; background: #0a1520;
   border: 1px solid #20384c; border-radius: 12px;
 }
 .hkp-tabs {
@@ -2556,6 +2556,11 @@ canvas.vu-canvas {
         </div>
       </div>
 
+      <!-- Barra utilitária (funcionalidades secundárias) -->
+      <div class="pn-utility-bar">
+        <button class="pn-util-btn" id="btnReturnAuto"  onclick="sendCmd('return-auto')"   data-tooltip="Voltar Auto" style="display:none"><img class="btn-icon" src="icons/auto_mode.svg"></button>
+      </div>
+
       <!-- Hot Keys Panel -->
       <div class="hkp-panel" id="hkpPanel">
         <div class="hkp-tabs">
@@ -2579,11 +2584,6 @@ canvas.vu-canvas {
             <div class="hkp-empty" style="grid-column:1/-1">Carregando…</div>
           </div>
         </div>
-      </div>
-
-      <!-- Barra utilitária (funcionalidades secundárias) -->
-      <div class="pn-utility-bar">
-        <button class="pn-util-btn" id="btnReturnAuto"  onclick="sendCmd('return-auto')"   data-tooltip="Voltar Auto" style="display:none"><img class="btn-icon" src="icons/auto_mode.svg"></button>
       </div>
 
 
