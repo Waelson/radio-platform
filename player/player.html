@@ -704,15 +704,15 @@ input[type=range].vol-slider:disabled {
   border: 1px solid #20384c; border-radius: 12px;
 }
 .hkp-tabs {
-  display: flex; border-bottom: 1px solid #20384c; flex-shrink: 0; padding: 0 10px;
+  display: flex; gap: 5px; padding: 7px 8px 0;
+  background: rgba(5,14,22,.4); flex-shrink: 0;
 }
 .hkp-tab {
-  padding: 8px 13px; font-size: 11px; font-weight: 700; color: #4a6478;
-  background: none; border: none; border-bottom: 2px solid transparent;
-  cursor: pointer; transition: color .15s, border-color .15s;
-  margin-bottom: -1px; letter-spacing: .04em;
+  height: 30px; border: 1px solid transparent; border-radius: 8px 8px 0 0;
+  background: transparent; color: #4a6478; padding: 0 10px;
+  cursor: pointer; font-size: 10px; font-weight: 700; transition: color .15s;
 }
-.hkp-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+.hkp-tab.active { color: var(--cyan); border-color: #20384c; border-bottom-color: #0a1520; background: #0a1520; }
 .hkp-tab:disabled { color: #2a3f52; cursor: not-allowed; }
 .hkp-tab:not(:disabled):not(.active):hover { color: #88a0b5; }
 .hkp-header {
@@ -769,6 +769,12 @@ input[type=range].vol-slider:disabled {
 .hkp-card-inner { position: relative; z-index: 2; display: flex; flex-direction: column; padding: 5px 7px 0; flex: 1; }
 .hkp-card-toprow { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
 .hkp-card-slot { font-size: 9px; font-weight: 800; color: rgba(255,255,255,.75); background: rgba(0,0,0,.30); border-radius: 4px; padding: 1px 5px; letter-spacing:.04em; }
+.hkp-card-toprow-right { display: flex; align-items: center; gap: 2px; }
+.hkp-card-cue { background: none; border: none; padding: 0; width: 20px; height: 20px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background .12s; flex-shrink: 0; }
+.hkp-card-cue img { width: 14px; height: 14px; filter: brightness(0) invert(1); opacity: 0.50; transition: opacity .12s; }
+.hkp-card-cue:hover img { opacity: 1; }
+.hkp-card-cue.is-cuing { background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
+.hkp-card-cue.is-cuing img { opacity: 1; filter: brightness(0) saturate(100%) invert(75%) sepia(80%) hue-rotate(155deg) brightness(1.1); }
 .hkp-card-stop {
   display: none; width: 18px; height: 18px; border-radius: 4px;
   background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.22);
@@ -5301,9 +5307,11 @@ function cueToggleQueueItem(itemId) {
 async function cueStop() {
   _cueQueueItemId = null;
   _drwHkCueBtnId  = null;
+  _hkpCueBtnId    = null;
   document.getElementById('cueFloat').classList.remove('open');
   document.querySelectorAll('.q-cue-btn').forEach(b => { b.classList.remove('is-cuing'); });
   document.querySelectorAll('.drw-hk-cue').forEach(b => { b.classList.remove('is-cuing'); });
+  document.querySelectorAll('.hkp-card-cue').forEach(b => { b.classList.remove('is-cuing'); });
   await previewStop();
 }
 
@@ -5347,10 +5355,17 @@ function _updateCueFloat() {
     btn.classList.toggle('is-cuing', isBotActive && btn.dataset.btnId === _drwHkCueBtnId);
   });
 
+  // Sincronizar botões CUE do painel Hot Keys embutido
+  const isHkpActive = _hkpCueBtnId && (s.state === 'playing' || s.state === 'paused');
+  document.querySelectorAll('.hkp-card-cue').forEach(btn => {
+    btn.classList.toggle('is-cuing', isHkpActive && btn.dataset.btnId === _hkpCueBtnId);
+  });
+
   // Fechar painel se preview parou
-  if (s.state === 'idle' && (_cueQueueItemId !== null || _drwHkCueBtnId !== null)) {
+  if (s.state === 'idle' && (_cueQueueItemId !== null || _drwHkCueBtnId !== null || _hkpCueBtnId !== null)) {
     _cueQueueItemId = null;
     _drwHkCueBtnId  = null;
+    _hkpCueBtnId    = null;
     document.getElementById('cueFloat').classList.remove('open');
   }
 }
@@ -6482,7 +6497,8 @@ let _drwHkCartBtnId     = null;
 let _drwHkPendingBtnId  = null; // btn id aguardando confirmação de switch
 let _drwHkCartDurMS     = 0;
 let _drwHkCartPosMS     = 0;
-let _drwHkCueBtnId      = null; // btn id sendo ouvido em CUE preview
+let _drwHkCueBtnId      = null; // btn id sendo ouvido em CUE preview (drawer)
+let _hkpCueBtnId        = null; // btn id sendo ouvido em CUE preview (panel)
 
 function drwHkIconForType(type) {
   const t = (type || '').toUpperCase();
@@ -6650,6 +6666,25 @@ async function drwHkCueToggle(e, btnId) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: btn.track_path, seek_ms: 0 }),
   }).catch(err => console.warn('[DRW-HK CUE] play error', err));
+}
+
+async function hkpCueToggle(e, btnId) {
+  e.stopPropagation();
+  const btn = _hkpButtons.find(b => b.id === btnId);
+  if (!btn || !btn.track_path) { showToast(false, 'Botão sem áudio configurado'); return; }
+  if (_hkpCueBtnId === btnId && _preview.state !== 'idle') { cueStop(); return; }
+  if (_preview.state !== 'idle') await previewStop();
+  _cueQueueItemId = null;
+  _drwHkCueBtnId  = null;
+  _hkpCueBtnId    = btnId;
+  _preview.path   = btn.track_path;
+  document.getElementById('cueFloatTitle').textContent  = btn.label || btn.track_title || '—';
+  document.getElementById('cueFloatArtist').textContent = btn.track_artist || btn.track_type || '';
+  document.getElementById('cueFloat').classList.add('open');
+  fetch(API_URL + '/v1/preview/play', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: btn.track_path, seek_ms: 0 }),
+  }).catch(err => console.warn('[HKP CUE] play error', err));
 }
 
 function drwHkUpdateFromWs(type, payload) {
@@ -8259,7 +8294,10 @@ function hkpMakeCard(b, slotNum) {
     <div class="hkp-card-inner">
       <div class="hkp-card-toprow">
         <span class="hkp-card-slot">${slotNum}</span>
-        <button class="hkp-card-stop" onclick="hkpStopCard(event)">■</button>
+        <div class="hkp-card-toprow-right">
+          <button class="hkp-card-stop" onclick="hkpStopCard(event)">■</button>
+          <button class="hkp-card-cue${_hkpCueBtnId === b.id && _preview.state !== 'idle' ? ' is-cuing' : ''}" data-btn-id="${b.id}" title="Preview (CUE)" onclick="hkpCueToggle(event,'${b.id}')"><img src="icons/cue_preview.svg" alt="CUE"></button>
+        </div>
       </div>
       <div class="hkp-card-name">${escHtml(b.label || b.track_title || '—')}</div>
       <div class="hkp-card-sub">${escHtml(b.sub_label || b.track_artist || b.track_type || '')}</div>
