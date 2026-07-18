@@ -27,8 +27,14 @@ type Manager struct {
 	// audioIn receives the mixed PCM stream from the MixBus.
 	// Set once via SetAudioIn before Run is called.
 	audioIn <-chan []float32
-	evtBus  *events.Bus
-	log     *slog.Logger
+
+	// tapCh is a buffered channel exposed via TapCh() so callers (tests,
+	// audio pipeline) can push PCM frames directly into the fan-out loop
+	// without going through SetAudioIn.
+	tapCh chan []float32
+
+	evtBus *events.Bus
+	log    *slog.Logger
 }
 
 // NewManager creates a Manager. evtBus and log may not be nil.
@@ -39,10 +45,17 @@ func NewManager(evtBus *events.Bus, log *slog.Logger) *Manager {
 	return &Manager{
 		targets:      make(map[string]*Target),
 		reconnecting: make(map[string]bool),
+		tapCh:        make(chan []float32, 128),
 		evtBus:       evtBus,
 		log:          log,
 	}
 }
+
+// TapCh returns the buffered PCM tap channel. Callers may push []float32
+// frames into it; fanOut will forward them to all connected targets.
+// The channel is never nil and writes are always non-blocking when the
+// buffer is full (callers should use a select/default guard).
+func (m *Manager) TapCh() chan []float32 { return m.tapCh }
 
 // SetAudioIn sets the channel from which fanOut reads mixed PCM frames.
 // Must be called before Run.
@@ -156,6 +169,8 @@ func (m *Manager) fanOut(ctx context.Context) {
 			if !ok {
 				return
 			}
+			send(frames)
+		case frames := <-m.tapCh:
 			send(frames)
 		}
 	}
