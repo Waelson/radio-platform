@@ -726,6 +726,7 @@ input[type=range].vol-slider:disabled {
   transition: color .14s, background .14s; flex-shrink: 0;
 }
 .hkp-reload-btn:hover { background: rgba(220,239,242,0.05); color: #dceff2; }
+.hkp-open-btn { margin-left: auto; font-size: 16px; }
 .hkp-profile-pill {
   display: flex; align-items: center; gap: 8px;
   background: rgba(255,255,255,.04); border: 1px solid #20384c;
@@ -2476,7 +2477,7 @@ canvas.vu-canvas {
         </div>
         <!-- Toolbar: busca + ações -->
         <div class="queue-toolbar">
-          <input class="queue-search-input" type="text" placeholder="Buscar no log..." id="queueSearch" oninput="queueFilterInput(this.value)">
+          <input class="queue-search-input" type="text" placeholder="Buscar na fila..." id="queueSearch" oninput="queueFilterInput(this.value)">
           <button class="q-insert-btn" onclick="advModalOpen()" data-tooltip="Inserir na fila">+ Inserir</button>
           <button class="queue-refresh btn-sq tip-below" onclick="fetchQueue()" data-tooltip="Atualizar"><img class="btn-icon" src="icons/atualizar.svg"></button>
         </div>
@@ -2624,6 +2625,7 @@ canvas.vu-canvas {
             <div class="hkp-profile-dd" id="hkpProfileDD"></div>
           </div>
           <button class="hkp-reload-btn tip-below" onclick="hkpInit()" data-tooltip="Recarregar perfis">↺</button>
+          <button class="hkp-reload-btn hkp-open-btn tip-left" onclick="hkpOpenWindow(event)" data-tooltip="Abrir botoneira">↗</button>
         </div>
         <div class="hkp-grid-wrap">
           <div class="hkp-grid" id="hkpGrid">
@@ -8415,6 +8417,11 @@ async function _hkpStopCart() {
 }
 
 function hkpStopCard(e) { e.stopPropagation(); _hkpStopCart(); }
+
+function hkpOpenWindow(e) {
+  e.stopPropagation();
+  window.electronAPI?.openHotkeys({ api: API_URL, lib: LIBRARY_URL });
+}
 
 function hkpUpdateFromWs(type, payload) {
   if (type === 'CartProgress') {
