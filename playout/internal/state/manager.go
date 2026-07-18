@@ -46,6 +46,12 @@ type NowPlaying struct {
 	Percent     float64
 	Transition  *TransitionInfo
 
+	// Cue / marker fields — zero means not set.
+	CueInMS  int64
+	IntroMS  int64
+	OutroMS  int64
+	CueOutMS int64
+
 	// Break fields — non-empty when the item belongs to a commercial break.
 	BreakID       string
 	BreakTitle    string
