@@ -1780,6 +1780,7 @@ input[type=range].vol-slider:disabled {
   color: #88a0b5; font-size: 9px; min-width: 0;
 }
 .q-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-artist { color: #fff !important; font-size: 10px; }
 .q-meta-sep { color: #3d5a6a; flex-shrink: 0; }
 .row-badge, .q-type-pill {
   display: inline-flex; align-items: center; padding: 2px 5px;
@@ -3725,7 +3726,7 @@ function renderItemRow(item, estTimes) {
     : escHtml(item.title || '—');
 
   const metaParts = [];
-  if (item.artist && !isHC) metaParts.push(`<span>${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>`);
+  if (item.artist && !isHC) metaParts.push(`<span class="q-artist">${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>`);
   metaParts.push(`<span class="row-badge">${typeLabel2}</span>`);
   const metaHTML = metaParts.join('');
 
@@ -3831,7 +3832,7 @@ function renderBreakRows(brk, rows, estTimes) {
       <div class="q-type-bar spot"></div>
       <div class="q-track">
         <div class="q-track-name" title="${escHtml(item.title || '')}">${escHtml(item.title || '')}</div>
-        <div class="q-meta">${item.artist ? `<span>${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>` : ''}<span class="row-badge">${typeStr}</span></div>
+        <div class="q-meta">${item.artist ? `<span class="q-artist">${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>` : ''}<span class="row-badge">${typeStr}</span></div>
       </div>
       <div class="q-actions-wrap">${brkCueBtnHTML}</div>
     </article>`;
