@@ -1724,7 +1724,7 @@ input[type=range].vol-slider:disabled {
 .queue-row {
   position: relative;
   display: grid;
-  grid-template-columns: 48px 4px minmax(0,1fr) 50px auto;
+  grid-template-columns: 48px 4px minmax(0,1fr) auto;
   gap: 8px;
   align-items: center;
   min-height: 52px;
@@ -1856,7 +1856,7 @@ input[type=range].vol-slider:disabled {
   border-radius: 0;
   border: none;
   border-bottom: 1px solid rgba(230,130,10,0.15);
-  grid-template-columns: 48px 4px minmax(0,1fr) 50px auto;
+  grid-template-columns: 48px 4px minmax(0,1fr) auto;
 }
 .break-group .queue-row.break-header { min-height: 52px; background: rgba(230,130,10,0.12); }
 .break-group .queue-row.break-header .q-actions-wrap::before { display: block; }
@@ -3764,7 +3764,6 @@ function renderItemRow(item, estTimes) {
       <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}</div>
       <div class="q-meta">${metaHTML}</div>
     </div>
-    <div class="q-time">${msToTime(item.duration_ms)}</div>
     ${actionsHTML}
     ${progressHTML}
   </article>`;
@@ -3801,7 +3800,6 @@ function renderBreakRows(brk, rows, estTimes) {
       <div class="q-track-name" style="color:#e6820a">BLOCO: ${escHtml(brk.title || '—')}</div>
       <div class="q-meta">${cnt} item${cnt !== 1 ? 's' : ''}</div>
     </div>
-    <div class="q-time" style="color:#e6820a">${msToTime(totalDur)}</div>
     ${brkActionsHTML}
   </article>`;
 
@@ -3836,7 +3834,6 @@ function renderBreakRows(brk, rows, estTimes) {
         <div class="q-track-name" title="${escHtml(item.title || '')}">${escHtml(item.title || '')}</div>
         <div class="q-meta">${item.artist ? `<span>${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>` : ''}<span class="row-badge">${typeStr}</span></div>
       </div>
-      <div class="q-time" style="color:rgba(230,130,10,0.8)">${msToTime(item.duration_ms)}</div>
       <div class="q-actions-wrap">${brkCueBtnHTML}</div>
     </article>`;
   });
