@@ -3728,9 +3728,7 @@ function renderItemRow(item, estTimes) {
   metaParts.push(`<span class="row-badge">${typeLabel2}</span>`);
   const metaHTML = metaParts.join('');
 
-  const progressHTML = isPlaying
-    ? `<div class="q-progress"><span style="width:0%"></span></div>`
-    : '';
+  const progressHTML = '';
 
   const dragAttrs = canReorder && itemId
     ? `draggable="true" ondragstart="dndStart(event,'item','${escHtml(itemId)}')" ondragend="dndEnd()"`
