@@ -1798,7 +1798,7 @@ input[type=range].vol-slider:disabled {
   display: flex; align-items: center; gap: 6px;
 }
 .q-meta {
-  margin-top: 4px; display: flex; align-items: center; gap: 6px;
+  margin-top: 2px; display: flex; align-items: center; gap: 6px;
   color: #88a0b5; font-size: 9px; min-width: 0;
 }
 .q-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3767,12 +3767,11 @@ function renderItemRow(item, estTimes) {
 
   const titleHTML = isHC
     ? `<span style="font-size:12px;font-weight:900;color:#20e6ff;letter-spacing:0.12em">HORA CERTA</span>`
-    : escHtml(item.title || '—');
+    : escHtml(truncTitle(item.title || '—'));
 
-  const metaParts = [];
-  if (item.artist && !isHC) metaParts.push(`<span class="q-artist">${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>`);
-  metaParts.push(`<span class="row-badge">${typeLabel2}</span>`);
-  const metaHTML = metaParts.join('');
+  const artistHTML = (item.artist && !isHC) ? `<div class="q-meta"><span class="q-artist">${escHtml(truncTitle(item.artist))}</span></div>` : '';
+  const typeHTML   = `<div class="q-meta"><span class="row-badge">${typeLabel2}</span></div>`;
+  const metaHTML   = artistHTML + typeHTML;
 
   const progressHTML = '';
 
@@ -3812,7 +3811,7 @@ function renderItemRow(item, estTimes) {
     ${timeColHTML}
     <div class="q-track">
       <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}</div>
-      <div class="q-meta">${metaHTML}</div>
+      ${metaHTML}
     </div>
     ${hoverActionsHTML}
     ${actionsHTML}
@@ -3849,7 +3848,7 @@ function renderBreakRows(brk, rows, estTimes) {
     <div class="q-index"><img src="icons/commercial_break.svg" class="q-type-icon" alt="Bloco Comercial"><span></span></div>
     <div class="q-type-bar spot"></div>
     <div class="q-track">
-      <div class="q-track-name" style="color:#e6820a">BLOCO: ${escHtml(brk.title || '—')}</div>
+      <div class="q-track-name" style="color:#e6820a">BLOCO: ${escHtml(truncTitle(brk.title || '—'))}</div>
       <div class="q-meta">${cnt} item${cnt !== 1 ? 's' : ''}</div>
     </div>
     ${brkActionsHTML}
@@ -3883,8 +3882,9 @@ function renderBreakRows(brk, rows, estTimes) {
       <div class="q-index">${idxHTML}<span></span></div>
       <div class="q-type-bar spot"></div>
       <div class="q-track">
-        <div class="q-track-name" title="${escHtml(item.title || '')}">${escHtml(item.title || '')}</div>
-        <div class="q-meta">${item.artist ? `<span class="q-artist">${escHtml(item.artist)}</span><span class="q-meta-sep">·</span>` : ''}<span class="row-badge">${typeStr}</span></div>
+        <div class="q-track-name" title="${escHtml(item.title || '')}">${escHtml(truncTitle(item.title || ''))}</div>
+        ${item.artist ? `<div class="q-meta"><span class="q-artist">${escHtml(truncTitle(item.artist))}</span></div>` : ''}
+        <div class="q-meta"><span class="row-badge">${typeStr}</span></div>
       </div>
       <div class="q-actions-wrap">${brkCueBtnHTML}</div>
     </article>`;
@@ -3904,6 +3904,10 @@ function escHtml(s) {
   return String(s || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function truncTitle(s, max = 30) {
+  const t = String(s || '');
+  return t.length > max ? t.slice(0, max) + '…' : t;
 }
 
 function updateQueueItemStatus(queueItemId, newStatus) {
