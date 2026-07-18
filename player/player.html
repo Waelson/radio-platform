@@ -1750,6 +1750,7 @@ input[type=range].vol-slider:disabled {
   color: #88a0b5; font-size: 10px; font-variant-numeric: tabular-nums;
   text-align: center; line-height: 1.4; gap: 2px;
 }
+.q-index-dur { font-size: 9px; color: #4a6478; font-variant-numeric: tabular-nums; }
 .queue-row.is-current .q-index { color: #ff8fa1; }
 .queue-row.is-played  .q-index { color: #3d5a6a; }
 
@@ -3706,12 +3707,13 @@ function renderItemRow(item, estTimes) {
   }
 
   const typeBarCls = typePillCls || (isMusic ? '' : '');
+  const durStr = item.duration_ms ? msToTime(item.duration_ms) : '';
   const timeColHTML = `<div class="q-index">${
     isPlaying ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>` :
     isPlayed  ? `<span style="font-size:11px">✓</span>` :
     isFailed  ? `<span style="color:#ff4d67;font-size:11px">✗</span>` :
     `<img src="${typeIcon}" class="q-type-icon" alt="${typeStr}">`
-  }<span>${timeStr}</span></div>
+  }<span>${timeStr}</span>${durStr ? `<span class="q-index-dur">${durStr}</span>` : ''}</div>
   <div class="q-type-bar ${typeBarCls}"></div>`;
 
   const badgeHTML = '';
