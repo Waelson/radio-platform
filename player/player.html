@@ -710,7 +710,7 @@ input[type=range].vol-slider:disabled {
 .hkp-tab {
   height: 30px; border: 1px solid transparent; border-radius: 8px 8px 0 0;
   background: transparent; color: #4a6478; padding: 0 10px;
-  cursor: pointer; font-size: 10px; font-weight: 700; transition: color .15s;
+  cursor: pointer; font-size: 12px; font-weight: 700; transition: color .15s;
 }
 .hkp-tab.active { color: var(--cyan); border-color: #20384c; border-bottom-color: #0a1520; background: #0a1520; }
 .hkp-tab:disabled { color: #2a3f52; cursor: not-allowed; }
@@ -719,6 +719,13 @@ input[type=range].vol-slider:disabled {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; border-bottom: 1px solid #20384c; flex-shrink: 0;
 }
+.hkp-reload-btn {
+  width: 40px; min-height: 32px; border-radius: 6px; border: none;
+  background: transparent; color: #9cb5ba; font-size: 24px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color .14s, background .14s; flex-shrink: 0;
+}
+.hkp-reload-btn:hover { background: rgba(220,239,242,0.05); color: #dceff2; }
 .hkp-profile-pill {
   display: flex; align-items: center; gap: 8px;
   background: rgba(255,255,255,.04); border: 1px solid #20384c;
@@ -840,14 +847,12 @@ input[type=range].vol-slider:disabled {
 .pn-meta-row {
   margin-top: 13px;
   display: flex;
-  gap: 16px;
-  color: #88a0b5;
-  font-size: 10px;
+  gap: 20px;
   flex-wrap: wrap;
 }
-.pn-meta-label { color: #88a0b5; }
-.pn-meta-item  { color: #88a0b5; }
-.pn-meta-item strong { color: #d8e6ef; font-weight: 700; }
+.pn-meta-item { display: flex; flex-direction: column; gap: 3px; }
+.pn-meta-label { font-size: 9px; font-weight: 700; letter-spacing: 0.10em; color: #4a6478; text-transform: uppercase; }
+.pn-meta-item strong { font-size: 12px; color: #d8e6ef; font-weight: 700; font-family: 'Courier New', monospace; }
 .pn-meta-sep   { display: none; }
 
 /* Waveform */
@@ -855,11 +860,11 @@ input[type=range].vol-slider:disabled {
   position: relative;
   height: 67px;
   overflow: hidden;
-  background: rgba(4,12,19,.52);
+  background: transparent;
   margin: 9px 16px 0;
-  border: 1px solid rgba(49,83,109,.55);
-  border-radius: 9px;
-  padding: 0 10px;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 .pn-wave-canvas { display: block; width: 100%; height: 100%; }
@@ -1026,6 +1031,22 @@ input[type=range].vol-slider:disabled {
 .next-count { min-width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
 .next-count strong { display: block; font-size: 23px; color: #3978ff; font-weight: 800; }
 .next-count span   { color: #88a0b5; font-size: 9px; text-transform: uppercase; letter-spacing: .6px; }
+.next-assist-badge {
+  display: none; align-items: center; gap: 5px;
+  margin-left: 6px;
+  font-size: 10px; font-weight: 780; text-transform: uppercase;
+  letter-spacing: .9px; color: #e6820a;
+}
+.next-assist-badge.visible { display: inline-flex; }
+.next-assist-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #e6820a; flex-shrink: 0;
+  animation: assistDotPulse 1.4s ease-in-out infinite;
+}
+@keyframes assistDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.6); }
+}
 
 /* ─── Barra utilitária ────────────────────────────────────────── */
 .pn-utility-bar {
@@ -1727,7 +1748,7 @@ input[type=range].vol-slider:disabled {
   grid-template-columns: 48px 4px minmax(0,1fr) auto;
   gap: 8px;
   align-items: center;
-  min-height: 56px;
+  min-height: 76px;
   padding: 6px 8px 6px 5px;
   border: 1px solid transparent;
   border-radius: 9px;
@@ -1736,6 +1757,7 @@ input[type=range].vol-slider:disabled {
 }
 .queue-row:hover { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.045); }
 .queue-row.is-current {
+  min-height: 76px;
   background: linear-gradient(90deg, rgba(255,77,103,.13), rgba(255,77,103,.025));
   border-color: rgba(255,77,103,.28);
   box-shadow: inset 3px 0 0 rgba(255,77,103,.8);
@@ -1757,7 +1779,7 @@ input[type=range].vol-slider:disabled {
 
 /* Type bar column */
 .q-type-bar {
-  width: 4px; height: 32px; border-radius: 4px; flex-shrink: 0;
+  width: 4px; height: 100%; min-height: 32px; border-radius: 4px; align-self: stretch; flex-shrink: 0;
   background: #00d4ff;
 }
 .q-type-bar.spot      { background: #ffbf4b; }
@@ -1885,6 +1907,8 @@ input[type=range].vol-slider:disabled {
 .break-group .queue-row.break-item .q-track-name { color: #e6820a; }
 .break-group .queue-row.break-item:hover { background: rgba(230,130,10,0.09) !important; }
 .break-group .queue-row.break-item.is-current { background: rgba(230,130,10,0.16) !important; }
+/* Oculta itens filhos do bloco enquanto o bloco estiver tocando */
+.break-group.is-playing .break-item { display: none; }
 
 .queue-empty {
   padding: 40px; text-align: center; color: var(--text-dim);
@@ -2024,9 +2048,6 @@ input[type=range].vol-slider:disabled {
 .q-actions-wrap::before { display: none; }
 .q-reorder-btns { display: none; flex-direction: column; gap: 3px; align-items: center; padding: 6px 0; }
 .q-reorder-btns::before { content: ''; display: none; }
-.assist-active .q-reorder-btns { display: flex; }
-.assist-active .queue-row { grid-template-columns: 58px minmax(0,1fr) 110px 86px 80px; }
-.assist-active .break-group .queue-row { grid-template-columns: 58px minmax(0,1fr) 110px 86px 80px; }
 .q-btn {
   background: none; border: 1px solid rgba(37,183,242,0.30); border-radius: 3px;
   color: #25B7F2; font-size: 11px; font-weight: 700;
@@ -2100,7 +2121,7 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 .dnd-dragging { opacity: 0.32; }
 
 .dnd-drop-zone { display: none; height: 6px; border-radius: 4px; background: transparent; transition: background 0.12s, box-shadow 0.12s; pointer-events: none; }
-.assist-active .dnd-drop-zone { display: block; }
+.assist-active .dnd-drop-zone { display: none; }
 .dnd-drop-zone.dnd-over {
   background: linear-gradient(to right, transparent 0%, var(--orange) 12%, var(--orange) 88%, transparent 100%);
   box-shadow: 0 0 10px rgba(255,119,0,0.4);
@@ -2518,12 +2539,13 @@ canvas.vu-canvas {
           <div class="pn-title"    id="npTitle">—</div>
           <div class="pn-artist"   id="npArtist"></div>
           <div class="pn-meta-row">
-            <span class="pn-meta-item">Início <strong id="pnInicio">—</strong></span>
-            <span class="pn-meta-item">Cue <strong id="pnCue">—</strong></span>
-            <span class="pn-meta-item">Intro <strong id="pnIntro">—</strong></span>
-            <span class="pn-meta-item">Outro <strong id="pnOutro">—</strong></span>
-            <span class="pn-meta-item">CueOut <strong id="pnCueOut">—</strong></span>
-            <span class="pn-meta-item">Gain <strong id="pnGain">—</strong></span>
+            <div class="pn-meta-item"><span class="pn-meta-label">Início</span><strong id="pnInicio">—</strong></div>
+            <div class="pn-meta-item"><span class="pn-meta-label">Cue</span><strong id="pnCue">—</strong></div>
+            <div class="pn-meta-item"><span class="pn-meta-label">Intro</span><strong id="pnIntro">—</strong></div>
+            <div class="pn-meta-item"><span class="pn-meta-label">Outro</span><strong id="pnOutro">—</strong></div>
+            <div class="pn-meta-item"><span class="pn-meta-label">Cue Out</span><strong id="pnCueOut">—</strong></div>
+            <div class="pn-meta-item"><span class="pn-meta-label">Gain</span><strong id="pnGain">—</strong></div>
+            <div class="pn-meta-item"><span class="pn-meta-label">ID</span><strong id="pnAssetId">—</strong></div>
           </div>
         </div>
 
@@ -2565,7 +2587,10 @@ canvas.vu-canvas {
       <div class="next-deck" id="nextDeckCard">
         <div class="next-cover">♫</div>
         <div>
-          <div class="next-label">Próximo no ar</div>
+          <div class="next-label">
+            <span id="nextLabelNormal">Próximo no ar</span>
+            <span class="next-assist-badge" id="nextAssistBadge"><span class="next-assist-dot"></span>Próxima faixa não toca automaticamente</span>
+          </div>
           <div class="next-title"  id="nextDeckTitle">—</div>
           <div class="next-artist" id="nextDeckArtist"></div>
           <div class="next-meta"   id="nextDeckMeta"></div>
@@ -2598,6 +2623,7 @@ canvas.vu-canvas {
             <span class="hkp-pp-arrow">▾</span>
             <div class="hkp-profile-dd" id="hkpProfileDD"></div>
           </div>
+          <button class="hkp-reload-btn tip-below" onclick="hkpInit()" data-tooltip="Recarregar perfis">↺</button>
         </div>
         <div class="hkp-grid-wrap">
           <div class="hkp-grid" id="hkpGrid">
@@ -3550,7 +3576,7 @@ function updateNextDeckCard() {
 
   // Meta pills
   const pills = [];
-  if (nextItem.transition)     pills.push(nextItem.transition);
+  if (nextItem.transition && typeof nextItem.transition === 'string') pills.push(nextItem.transition);
   if (nextItem.fade_duration)  pills.push('Fade ' + nextItem.fade_duration + 's');
   if (nextItem.normalized)     pills.push('Normalizado');
   metaEl.innerHTML = pills.map(p => `<span class="meta-pill">${escHtml(p)}</span>`).join('');
@@ -3659,13 +3685,13 @@ function renderItemRow(item, estTimes) {
   const isVinheta = (item.type || '').toUpperCase() === 'VINHETA';
   const isMusic   = (item.type || '').toUpperCase() === 'MUSIC';
   const itemId   = item.queue_item_id || item.id || '';
-  const isAssistNext = _inAssist && itemId && itemId === window._assistNextId;
+  const isAssistNext = false;
   const isPlaying  = status === 'PLAYING';
   const isPaused   = status === 'PAUSED';
   const isPreload  = status === 'PRELOADING';
   const isPlayed   = status === 'PLAYED' || status === 'SKIPPED';
   const isFailed   = status === 'FAILED' || status === 'MISSED';
-  const canReorder = _inAssist && !isPlaying && !isPlayed && !isFailed;
+  const canReorder = false;
 
   if (isHE) {
     const itemId2 = item.queue_item_id || item.id || '';
@@ -3803,7 +3829,7 @@ function renderBreakRows(brk, rows, estTimes) {
   const brkStatus = brk.status || 'QUEUED';
   const cnt       = subItems.length;
   const breakId   = escHtml(brk.id || brk.break_id || '');
-  const isDraggable = _inAssist && brkStatus === 'QUEUED' && breakId;
+  const isDraggable = false;
   const dragAttrs = isDraggable
     ? `draggable="true" ondragstart="dndStart(event,'break','${breakId}')" ondragend="dndEnd()"`
     : '';
@@ -3816,7 +3842,8 @@ function renderBreakRows(brk, rows, estTimes) {
       </div>` : ''}
     </div>`;
 
-  let html = `<div class="break-group" data-break-id="${breakId}" ${dragAttrs}>`;
+  const brkIsPlaying = (brk.items || []).some(sub => (sub?.item?.status || '') === 'PLAYING');
+  let html = `<div class="break-group${brkIsPlaying ? ' is-playing' : ''}" data-break-id="${breakId}" ${dragAttrs}>`;
 
   html += `<article class="queue-row break-header" data-break-id="${breakId}">
     <div class="q-index"><img src="icons/commercial_break.svg" class="q-type-icon" alt="Bloco Comercial"><span></span></div>
@@ -3981,38 +4008,53 @@ function pnDrawWaveform() {
     ctx.fillRect(x, mid - amp, Math.max(1, barW - 1), amp * 2);
   }
 
-  // Helper: draw a cue pin with a small label triangle at the top
-  function drawPin(xMs, color, label) {
+  // Helper: draw a cue pin — labelRow controls vertical stagger to avoid overlap
+  function drawPin(xMs, color, label, labelRow) {
     if (!(_pnWaveDurMS > 0 && xMs > 0)) return;
     const x = (xMs / _pnWaveDurMS) * W;
-    // vertical line
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, H);
     ctx.strokeStyle = color;
     ctx.lineWidth   = 1.5;
     ctx.stroke();
-    // label background + text at top
     ctx.font = 'bold 9px sans-serif';
     const tw = ctx.measureText(label).width;
     const pad = 3;
     const bw = tw + pad * 2;
     const bh = 13;
-    const bx = Math.min(x - bw / 2, W - bw);
+    const bx = Math.max(0, Math.min(x - bw / 2, W - bw));
+    const by = 1 + (labelRow || 0) * (bh + 2);
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.roundRect(bx, 1, bw, bh, 3);
+    ctx.roundRect(bx, by, bw, bh, 3);
     ctx.fill();
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, bx + pad, 1 + bh / 2);
+    ctx.fillText(label, bx + pad, by + bh / 2);
   }
 
-  drawPin(_pnWaveCueInMS,  'rgba(0,212,255,0.85)',    'CUE');
-  drawPin(_pnWaveIntroMS,  'rgba(54,211,153,0.85)',   'INTRO');
-  drawPin(_pnWaveOutroMS,  'rgba(255,191,75,0.85)',   'OUTRO');
-  drawPin(_pnWaveCueOutMS, 'rgba(248,114,114,0.85)',  'COUT');
+  // Assign label rows to avoid overlap (greedy, sorted by x position)
+  const _pins = [
+    { ms: _pnWaveCueInMS,  color: 'rgba(0,212,255,0.85)',   label: 'CUE-IN'  },
+    { ms: _pnWaveIntroMS,  color: 'rgba(54,211,153,0.85)',  label: 'INTRO'   },
+    { ms: _pnWaveOutroMS,  color: 'rgba(255,191,75,0.85)',  label: 'OUTRO'   },
+    { ms: _pnWaveCueOutMS, color: 'rgba(248,114,114,0.85)', label: 'CUE-OUT' },
+  ].filter(p => _pnWaveDurMS > 0 && p.ms > 0);
+  ctx.font = 'bold 9px sans-serif';
+  const _pinPad = 3, _pinBh = 13;
+  const _rowEnds = [0, 0, 0];
+  _pins.slice().sort((a, b) => a.ms - b.ms).forEach(p => {
+    const x  = (p.ms / _pnWaveDurMS) * W;
+    const bw = ctx.measureText(p.label).width + _pinPad * 2;
+    const bx = Math.max(0, Math.min(x - bw / 2, W - bw));
+    let row  = _rowEnds.findIndex(end => bx >= end);
+    if (row === -1) row = 0;
+    _rowEnds[row] = bx + bw + 2;
+    p.row = row;
+  });
+  _pins.forEach(p => drawPin(p.ms, p.color, p.label, p.row));
 
   // Playhead
   const px = _pnWavePos * W;
@@ -4233,8 +4275,9 @@ function enterAssistUI() {
   const btnReturn = document.getElementById('btnReturnAuto');
   const banner    = document.getElementById('assistBanner');
   if (btnEnter)  btnEnter.style.display  = 'none';
-  if (btnReturn) btnReturn.style.display = '';
   if (banner)    banner.classList.add('visible');
+  document.getElementById('nextLabelNormal')?.style.setProperty('display', 'none');
+  document.getElementById('nextAssistBadge')?.classList.add('visible');
   document.querySelector('.queue-section')?.classList.add('assist-active');
 
   // Fetch fresh queue data, then populate banner with the next QUEUED item
@@ -4261,8 +4304,9 @@ function exitAssistUI() {
   const btnReturn = document.getElementById('btnReturnAuto');
   const banner    = document.getElementById('assistBanner');
   if (btnEnter)  btnEnter.style.display  = '';
-  if (btnReturn) btnReturn.style.display = 'none';
   if (banner)    banner.classList.remove('visible');
+  document.getElementById('nextLabelNormal')?.style.removeProperty('display');
+  document.getElementById('nextAssistBadge')?.classList.remove('visible');
   document.querySelector('.queue-section')?.classList.remove('assist-active');
   renderQueue(); // refresh to hide reorder buttons
 }
@@ -4564,9 +4608,9 @@ function handleEvent({ type, payload }) {
     case 'ItemStarted':        _assistWaiting = false; _enginePlaying = true;  setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); { const t = document.getElementById('assistBannerTitle'); if (t) t.textContent = 'Modo ASSIST ativado'; } break;
     case 'ItemFinished':       _enginePlaying = false; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); clearIntroCountdown(); break;
     case 'BreakStarted':       break;
-    case 'BreakEnded':         clearBreakBanner(); break;
-    case 'SpotStarted':        updateBreakBanner(payload); break;
-    case 'SpotEnded':          /* banner updated on next SpotStarted */ break;
+    case 'BreakEnded':         clearBreakBanner(); fetchQueue(); break;
+    case 'SpotStarted':        updateBreakBanner(payload); if (payload.queue_item_id) updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); break;
+    case 'SpotEnded':          if (payload.queue_item_id) updateQueueItemStatus(payload.queue_item_id, 'PLAYED'); break;
     case 'AssistEntered':      enterAssistUI(); break;
     case 'AssistExited':       exitAssistUI();  break;
     case 'AssistWaiting':      onAssistWaiting(payload); break;
@@ -4769,6 +4813,9 @@ function onNowPlaying(p) {
   const gainEl = document.getElementById('pnGain');
   if (gainEl) gainEl.textContent = p.gain_db != null ? (p.gain_db >= 0 ? '+' : '') + p.gain_db.toFixed(1) + ' dB' : '—';
 
+  const assetIdEl = document.getElementById('pnAssetId');
+  if (assetIdEl) assetIdEl.textContent = p.asset_id || '—';
+
   if (p.duration_ms) {
     npDurationMS = p.duration_ms;
     document.getElementById('npTotal').textContent = msToTime2(npDurationMS);
@@ -4939,6 +4986,7 @@ function onSnapshot(p) {
       gain_db:     np.GainDB    ?? np.gain_db     ?? null,
       isrc:        np.ISRC      || np.isrc        || '',
       path:        np.Path      || np.path        || null,
+      asset_id:    np.AssetID   || np.asset_id    || '',
     });
     const posMS = np.PositionMS ?? np.position_ms ?? 0;
     onProgress({ position_ms: posMS, remaining_ms: durMS - posMS, percent: np.Percent ?? np.percent ?? 0 });
@@ -5113,6 +5161,8 @@ function setIdle() {
   if (cueOutEl2) cueOutEl2.textContent = '—';
   const gainEl = document.getElementById('pnGain');
   if (gainEl) gainEl.textContent = '—';
+  const assetIdEl2 = document.getElementById('pnAssetId');
+  if (assetIdEl2) assetIdEl2.textContent = '—';
 
   const fillEl = document.getElementById('pnProgressFill');
   if (fillEl) fillEl.style.width = '0%';
