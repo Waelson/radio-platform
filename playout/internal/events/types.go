@@ -148,8 +148,13 @@ type NowPlayingChangedPayload struct {
 	ISRC        string `json:"isrc,omitempty"`
 	Composer    string `json:"composer,omitempty"`
 	Publisher   string `json:"publisher,omitempty"`
-	Type        string `json:"type"`
-	DurationMS  int64  `json:"duration_ms"`
+	Type        string  `json:"type"`
+	DurationMS  int64   `json:"duration_ms"`
+	CueInMS     int64   `json:"cue_in_ms,omitempty"`
+	IntroMS     int64   `json:"intro_ms,omitempty"`
+	OutroMS     int64   `json:"outro_ms,omitempty"`
+	CueOutMS    int64   `json:"cue_out_ms,omitempty"`
+	GainDB      float64 `json:"gain_db,omitempty"`
 
 	// Break fields — non-empty when the item belongs to a commercial break.
 	BreakID       string `json:"break_id,omitempty"`

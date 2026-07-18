@@ -65,3 +65,4 @@ O `go.work` permite importar módulos locais entre si durante desenvolvimento. N
 
 - **Nunca fazer commit nem push diretamente na branch `main`.** Todo trabalho deve ser feito em uma branch dedicada e integrado via Pull Request.
 - **Nunca criar branches sem aprovação prévia.** Sempre sugerir o nome e propósito da branch e aguardar confirmação antes de criá-la.
+- **Nunca executar commit ou push sem solicitação explícita do usuário.** Aplicar as alterações nos arquivos e aguardar o comando.
