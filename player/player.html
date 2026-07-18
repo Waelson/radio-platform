@@ -1711,7 +1711,7 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Queue list (card layout) ───────────────────────────────── */
 .queue-scroll-host { position: relative; flex: 1; display: flex; overflow: hidden; }
-.queue-list-wrap { flex: 1; overflow-y: scroll; background: #0e1b28; padding: 5px 20px 5px 5px; scrollbar-width: thin; scrollbar-color: #31536d transparent; transition: padding-right 0.25s ease; }
+.queue-list-wrap { flex: 1; overflow-y: scroll; background: #0e1b28; padding: 5px 12px 5px 5px; scrollbar-width: thin; scrollbar-color: #31536d transparent; transition: padding-right 0.25s ease; }
 .queue-list-wrap::-webkit-scrollbar { display: none; }
 /* Custom scrollbar */
 .q-sb-track { position: absolute; right: 0; top: 0; bottom: 0; width: 20px; background: rgba(255,255,255,0.04); pointer-events: auto; cursor: pointer; display: flex; align-items: stretch; justify-content: center; padding: 8px 0; box-sizing: border-box; opacity: 1; transition: opacity 0.25s ease; }
@@ -1719,7 +1719,7 @@ input[type=range].vol-slider:disabled {
 .q-sb-thumb:hover { background: rgba(45,212,200,0.58); }
 .q-sb-thumb.is-dragging { background: rgba(45,212,200,0.72); cursor: grabbing; }
 /* ─── Queue list — reference style ───────────────────────────── */
-.queue-list { display: flex; flex-direction: column; }
+.queue-list { display: flex; flex-direction: column; gap: 6px; }
 
 .queue-row {
   position: relative;
@@ -1819,6 +1819,24 @@ input[type=range].vol-slider:disabled {
 .q-btn { font-size: 10px; padding: 1px 4px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #7ab0b8; }
 .q-btn:hover { background: rgba(255,255,255,0.06); }
 .q-btn.q-btn-del { color: #e05050; }
+
+/* Hover action buttons (play / remove) */
+.q-hover-actions {
+  position: absolute; right: 36px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 2px;
+  opacity: 0; transition: opacity 0.15s; pointer-events: none;
+}
+.queue-row:hover .q-hover-actions { opacity: 1; pointer-events: all; }
+.q-ha-btn {
+  width: 28px; height: 28px; border-radius: 7px; border: 1px solid rgba(255,255,255,.12);
+  background: rgba(10,21,32,.85); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 13px; color: rgba(255,255,255,.7);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.q-ha-btn.play  { color: #20e6ff; }
+.q-ha-btn.play:hover  { background: rgba(32,230,255,.15); border-color: rgba(32,230,255,.4); color: #20e6ff; }
+.q-ha-btn.remove:hover { background: rgba(255,77,103,.15); border-color: rgba(255,77,103,.4); color: #ff4d67; }
 
 /* Progress bar */
 .q-progress {
@@ -2003,7 +2021,7 @@ input[type=range].vol-slider:disabled {
 
 /* ─── Queue reorder buttons (ASSIST only) ────────────────────── */
 .q-actions-wrap { display: flex; gap: 6px; align-items: center; min-width: 39px; justify-content: flex-start; padding-left: 12px; position: relative; }
-.q-actions-wrap::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 1px; height: 24px; background: rgba(255,255,255,0.12); }
+.q-actions-wrap::before { display: none; }
 .q-reorder-btns { display: none; flex-direction: column; gap: 3px; align-items: center; padding: 6px 0; }
 .q-reorder-btns::before { content: ''; display: none; }
 .assist-active .q-reorder-btns { display: flex; }
@@ -3744,7 +3762,7 @@ function renderItemRow(item, estTimes) {
   const canCue = (status === 'QUEUED' || status === 'PRELOADING' || status === 'PLAYING' || status === 'PAUSED') && !!cueKey;
   const isCuing = canCue && _cueQueueItemId === cueKey && _preview.state !== 'idle';
   const cueBtnHTML = canCue
-    ? `<button class="q-cue-btn tip-left${isCuing ? ' is-cuing' : ''}${isHC ? ' q-cue-btn--disabled' : ''}" data-item-id="${escHtml(cueKey)}" data-tooltip="CUE — Preview" ${isHC ? 'disabled' : `onclick="cueToggleQueueItem('${escHtml(cueKey)}')"`}>🎧</button>`
+    ? `<button class="q-cue-btn tip-below${isCuing ? ' is-cuing' : ''}${isHC ? ' q-cue-btn--disabled' : ''}" data-item-id="${escHtml(cueKey)}" data-tooltip="CUE — Preview" ${isHC ? 'disabled' : `onclick="cueToggleQueueItem('${escHtml(cueKey)}')"`}>🎧</button>`
     : '';
 
   const actionsHTML = `
@@ -3758,12 +3776,19 @@ function renderItemRow(item, estTimes) {
       </div>` : ''}
     </div>`;
 
+  const hoverActionsHTML = itemId && !isPlaying ? `
+    <div class="q-hover-actions">
+      <button class="q-ha-btn play tip-below"   data-tooltip="Tocar agora"  onclick="event.stopPropagation()">▶</button>
+      <button class="q-ha-btn remove tip-below" data-tooltip="Remover"      onclick="event.stopPropagation();queueRemoveItem('${escHtml(itemId)}')">✕</button>
+    </div>` : '';
+
   return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
     ${timeColHTML}
     <div class="q-track">
       <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}</div>
       <div class="q-meta">${metaHTML}</div>
     </div>
+    ${hoverActionsHTML}
     ${actionsHTML}
     ${progressHTML}
   </article>`;
@@ -5189,8 +5214,8 @@ function initQueueScrollbar() {
     const viewH = pane.clientHeight;
     const fullH = pane.scrollHeight;
     const ratio = viewH / fullH;
-    if (ratio >= 1) { track.style.opacity = '0'; track.style.pointerEvents = 'none'; pane.style.paddingRight = '10px'; return; }
-    track.style.opacity = '1'; track.style.pointerEvents = ''; pane.style.paddingRight = '30px';
+    if (ratio >= 1) { track.style.opacity = '0'; track.style.pointerEvents = 'none'; pane.style.paddingRight = '12px'; return; }
+    track.style.opacity = '1'; track.style.pointerEvents = ''; pane.style.paddingRight = '22px';
     const trackH  = track.clientHeight;
     const thumbH  = Math.max(28, trackH * ratio);
     const maxScroll = fullH - viewH;
@@ -6709,8 +6734,8 @@ function drwHkInitScrollbar() {
     const viewH = pane.clientHeight;
     const fullH = pane.scrollHeight;
     const ratio = viewH / fullH;
-    if (ratio >= 1) { track.style.opacity = '0'; track.style.pointerEvents = 'none'; pane.style.paddingRight = '10px'; return; }
-    track.style.opacity = '1'; track.style.pointerEvents = ''; pane.style.paddingRight = '30px';
+    if (ratio >= 1) { track.style.opacity = '0'; track.style.pointerEvents = 'none'; pane.style.paddingRight = '12px'; return; }
+    track.style.opacity = '1'; track.style.pointerEvents = ''; pane.style.paddingRight = '22px';
     const trackH = track.clientHeight;
     const thumbH = Math.max(28, trackH * ratio);
     const maxScroll = fullH - viewH;
