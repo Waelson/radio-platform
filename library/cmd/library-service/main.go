@@ -16,10 +16,34 @@ import (
 	"github.com/Waelson/radio-library-service/internal/indexsvc"
 	"github.com/Waelson/radio-library-service/internal/logging"
 	"github.com/Waelson/radio-library-service/internal/loudness"
+	"github.com/Waelson/radio-library-service/internal/mailer"
 	"github.com/Waelson/radio-library-service/internal/scanner"
 	"github.com/Waelson/radio-library-service/internal/scheduler"
 	"github.com/Waelson/radio-library-service/internal/store"
 )
+
+// seedAdmin creates the default admin user on first startup if no users exist.
+func seedAdmin(ctx context.Context, cfg *config.Config, us *store.UserStore, log *slog.Logger) error {
+	exists, err := us.Exists(ctx)
+	if err != nil {
+		return fmt.Errorf("check users: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	_, err = us.Create(ctx, store.UserInput{
+		Email:          cfg.Auth.DefaultAdminEmail,
+		Name:           cfg.Auth.DefaultAdminName,
+		Password:       cfg.Auth.DefaultAdminPassword,
+		Role:           "admin",
+		ForceChangePwd: true,
+	})
+	if err != nil {
+		return fmt.Errorf("create seed admin: %w", err)
+	}
+	log.Info("seed admin created", "email", cfg.Auth.DefaultAdminEmail)
+	return nil
+}
 
 // Version is injected at build time:
 //
@@ -71,6 +95,13 @@ func run(args []string) error {
 	log.Info("database ready", "path", cfg.DB.Path)
 
 	// 5. Build stores and scanner.
+	userStore := store.NewUserStore(db)
+	resetCodeStore := store.NewResetCodeStore(db)
+	ml := mailer.New(cfg.Mailer, logging.With(log, "mailer"))
+	if err := seedAdmin(ctx, cfg, userStore, log); err != nil {
+		return fmt.Errorf("seed admin: %w", err)
+	}
+
 	settingsStore := store.NewSettingsStore(db)
 	tlStore := store.NewTransmissionLogStore(db)
 	ilStore := store.NewTransmissionImportLogStore(db)
@@ -167,9 +198,9 @@ func run(args []string) error {
 		&scheduler.RotationLogStoreAdapter{S: rotationLogStore},
 	)
 
-	srv := api.New(cfg.API, trackStore, playlistStore, breakStore, hotkeyStore, idxSvc,
+	srv := api.New(cfg.API, cfg.Auth, trackStore, playlistStore, breakStore, hotkeyStore, idxSvc,
 		categoryStore, clockStore, separationStore, rotationLogStore, gen,
-		tlStore, ilStore, settingsStore, settingsStore, streamingStore,
+		tlStore, ilStore, settingsStore, settingsStore, streamingStore, userStore, resetCodeStore, ml,
 		logging.With(log, "api"))
 	srv.SetLoudnessWorker(loudnessWorker, trackStore)
 	srv.SetCueInWorker(cueinWorker, trackStore)

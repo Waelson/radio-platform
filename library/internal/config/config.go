@@ -17,6 +17,37 @@ type Config struct {
 	DB      DBConfig      `yaml:"database"`
 	Scanner ScannerConfig `yaml:"scanner"`
 	Logging LoggingConfig `yaml:"logging"`
+	Auth    AuthConfig    `yaml:"auth"`
+	Mailer  MailerConfig  `yaml:"mailer"`
+}
+
+// MailerConfig holds SMTP settings for outbound e-mail.
+type MailerConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	From     string `yaml:"from"`
+	UseTLS   bool   `yaml:"use_tls"`
+	// Enabled controls whether e-mail is actually sent.
+	// When false the Library logs the e-mail body instead of sending it.
+	Enabled bool `yaml:"enabled"`
+}
+
+// AuthConfig holds authentication and JWT settings.
+type AuthConfig struct {
+	// JWTSecret is the HMAC-SHA256 signing key. Must be set to a strong random value in production.
+	JWTSecret string `yaml:"jwt_secret"`
+	// TokenTTLHours is the JWT lifetime in hours (default: 8 — one work shift).
+	TokenTTLHours int `yaml:"token_ttl_hours"`
+	// DefaultAdminEmail is the e-mail of the seed admin created on first run.
+	DefaultAdminEmail string `yaml:"default_admin_email"`
+	// DefaultAdminName is the display name of the seed admin.
+	DefaultAdminName string `yaml:"default_admin_name"`
+	// DefaultAdminPassword is the initial password for the seed admin (force_change_pwd=true).
+	DefaultAdminPassword string `yaml:"default_admin_password"`
+	// DefaultResetPassword is the temporary password set when an admin resets a user's password.
+	DefaultResetPassword string `yaml:"default_reset_password"`
 }
 
 // ServiceConfig holds process-level settings.
@@ -109,6 +140,19 @@ func defaults() Config {
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
+		},
+		Mailer: MailerConfig{
+			Port:    587,
+			From:    "noreply@radioflow.local",
+			Enabled: false, // disabled by default; configure in config.yaml
+		},
+		Auth: AuthConfig{
+			JWTSecret:            "change-me-in-production",
+			TokenTTLHours:        8,
+			DefaultAdminEmail:    "admin@radioflow.local",
+			DefaultAdminName:     "Administrador",
+			DefaultAdminPassword: "Admin123",
+			DefaultResetPassword: "Reset123",
 		},
 	}
 }
