@@ -48,11 +48,20 @@ body.auth-locked .app {
 .ao-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 0px;
   margin-bottom: 4px;
+  width: 100%;
 }
-.ao-logo-text { font-size: 18px; font-weight: 700; color: #c8e6f5; letter-spacing: 0.5px; }
-.ao-logo-sub  { font-size: 10px; color: #4a6478; font-weight: 600; letter-spacing: 1.5px; }
+.ao-logo img { height: 52px; width: auto; margin-right: 20px; }
+.ao-logo-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: -20px;
+}
+.ao-logo-text { font-size: 22px; font-weight: 700; color: #c8e6f5; letter-spacing: 0.5px; line-height: 1; }
+.ao-logo-sub  { font-size: 10px; color: #4a6478; font-weight: 600; letter-spacing: 2px; }
 .ao-title { font-size: 14px; font-weight: 600; color: #7abed6; text-transform: uppercase; letter-spacing: 1px; }
 .ao-field { display: flex; flex-direction: column; gap: 5px; }
 .ao-field label { font-size: 11px; color: #4a6478; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
@@ -170,7 +179,8 @@ body.auth-locked .app {
     div.innerHTML = `
 <div class="ao-card">
   <div class="ao-logo">
-    <div>
+    <img src="audion-logo.png" alt="Audion">
+    <div class="ao-logo-titles">
       <div class="ao-logo-text">Audion Play</div>
       <div class="ao-logo-sub">BROADCAST SUITE</div>
     </div>
@@ -350,7 +360,10 @@ body.auth-locked .app {
   function onAuthSuccess(claims) {
     hideOverlay()
     updateChip(claims)
-    // Trigger queue and status refresh if available
+    // Initialise panels that require Library auth
+    if (typeof stmInit       === 'function') try { stmInit()       } catch {}
+    if (typeof hkpInit       === 'function') try { hkpInit()       } catch {}
+    // Refresh engine-side data
     if (typeof fetchQueue    === 'function') try { fetchQueue()    } catch {}
     if (typeof fetchStatus   === 'function') try { fetchStatus()   } catch {}
     if (typeof stmFetchStatuses === 'function') try { stmFetchStatuses() } catch {}
@@ -503,6 +516,9 @@ body.auth-locked .app {
     document.getElementById('aumLogout').addEventListener('click', async () => {
       document.getElementById('authUserMenu').classList.remove('open')
       await window.sessionManager.logout()
+      document.getElementById('aoEmail').value    = ''
+      document.getElementById('aoPassword').value = ''
+      setError('aoLoginErr', '')
       showOverlay('aoT1')
     })
   }
@@ -517,12 +533,13 @@ body.auth-locked .app {
       injectUserChip()
       wireEvents()
 
+      // Always require the user to enter their password on startup.
+      // Pre-fill email from saved session if available, but never skip login.
       const claims = await window.sessionManager.init(libUrl)
-      if (claims) {
-        onAuthSuccess(claims)
-      } else {
-        showOverlay('aoT1')
+      if (claims && claims.email) {
+        document.getElementById('aoEmail').value = claims.email
       }
+      showOverlay('aoT1')
     },
   }
 

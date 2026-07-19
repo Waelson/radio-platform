@@ -28,9 +28,11 @@
     "asar": false,
     "files": [
       "main.js",
+      "preload.js",
+      "preload-hotkeys.js",
       "player.html",
       "hotkeys.html",
-      "preload-hotkeys.js",
+      "auth",
       "icons",
       "logo.svg",
       "radio-flow.png",

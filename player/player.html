@@ -8482,9 +8482,7 @@ function hkpCloseDD() {
 
 /* ── Bootstrap do painel lateral de Streaming ─────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-  stmInit();
   setInterval(stmFetchStatuses, 15000);
-  hkpInit();
   loginOverlay.init(LIBRARY_URL);
 });
 </script>

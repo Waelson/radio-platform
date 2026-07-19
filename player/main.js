@@ -21,7 +21,7 @@ function createWindow() {
   })
 
   win.loadFile(path.join(__dirname, 'player.html'))
-  win.webContents.openDevTools({ mode: 'detach' })
+  //win.webContents.openDevTools({ mode: 'detach' })
 
   // Bloqueia window.open() no player principal — janelas de botoneira
   // são sempre abertas via IPC pelo processo principal, sem parent-child.
@@ -127,6 +127,10 @@ function apiPost(libUrl, endpoint, body, token) {
 // ── Auth IPC handlers ────────────────────────────────────────────────────────
 
 ipcMain.handle('auth:get-session', () => {
+  return loadSession()
+})
+
+ipcMain.handle('auth:get-token', () => {
   return loadSession()
 })
 
