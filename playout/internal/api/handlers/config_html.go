@@ -712,13 +712,13 @@ var configPageTpl = `<!DOCTYPE html>
     <div id="p-cart" class="panel">
       <div class="section-title">Cart Player (Botoneira)</div>
       <label class="check-row">
-        <input id="cart-enabled" type="checkbox" />
+        <input id="cart-enabled" type="checkbox" onchange="syncCartFields()" />
         <div>
           <div class="check-lbl">Habilitar cart player</div>
           <div class="check-desc">Canal de áudio dedicado para reprodução via hotkeys, isolado do sinal ao ar e do preview/CUE.</div>
         </div>
       </label>
-      <div class="field" style="margin-top:16px">
+      <div id="cart-device-field" class="field" style="margin-top:16px">
         <label class="lbl">Dispositivo de saída do cart</label>
         <select id="cart-device"></select>
         <div class="hint">Deve ser diferente do dispositivo principal e do dispositivo de preview. Vazio = padrão do driver.</div>
@@ -800,6 +800,17 @@ var configPageTpl = `<!DOCTYPE html>
     var fields = document.getElementById('auto-xfade-fields');
     fields.style.opacity = on ? '1' : '0.35';
     fields.style.pointerEvents = on ? '' : 'none';
+  }
+
+  function syncCartFields() {
+    var on = document.getElementById('cart-enabled').checked;
+    var field = document.getElementById('cart-device-field');
+    if (field) {
+      field.style.opacity = on ? '1' : '0.35';
+      field.style.pointerEvents = on ? '' : 'none';
+    }
+    var sel = document.getElementById('cart-device');
+    if (sel) sel.disabled = !on;
   }
 
   function syncPanicAutoFields() {
@@ -1024,6 +1035,7 @@ var configPageTpl = `<!DOCTYPE html>
     var ct = cfg.cart || {};
     setCheck('cart-enabled', ct.enabled);
     cartDeviceID = (ct.output && ct.output.device_id) || '';
+    syncCartFields();
 
     var tl = cfg.transmission_log || {};
     setCheck('tl-enabled', tl.enabled);
