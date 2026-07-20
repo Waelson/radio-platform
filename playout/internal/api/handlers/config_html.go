@@ -510,13 +510,13 @@ var configPageTpl = `<!DOCTYPE html>
     <div id="p-panic" class="panel">
       <div class="section-title">Panic</div>
       <label class="check-row">
-        <input id="panic-enabled" type="checkbox" />
+        <input id="panic-enabled" type="checkbox" onchange="syncPanicFields()" />
         <div>
           <div class="check-lbl">Modo Panic habilitado</div>
           <div class="check-desc">Permite entrar em PANIC via comando ou automaticamente por silêncio detectado.</div>
         </div>
       </label>
-      <div class="field" style="margin-top:14px">
+      <div id="panic-bed-field" class="field" style="margin-top:14px">
         <label class="lbl">Arquivo de cama (panic bed)</label>
         <div class="picker-row">
           <input id="panic-bed" type="text" />
@@ -524,14 +524,14 @@ var configPageTpl = `<!DOCTYPE html>
         </div>
         <div class="hint">Áudio tocado em loop enquanto o engine estiver em modo PANIC.</div>
       </div>
-      <label class="check-row">
-        <input id="panic-auto" type="checkbox" />
+      <label id="panic-auto-row" class="check-row">
+        <input id="panic-auto" type="checkbox" onchange="syncPanicAutoFields()" />
         <div>
           <div class="check-lbl">Auto-panic por silêncio</div>
           <div class="check-desc">Entra em PANIC automaticamente ao detectar silêncio sustentado.</div>
         </div>
       </label>
-      <div class="field-row" style="margin-top:6px">
+      <div id="panic-silence-fields" class="field-row" style="margin-top:6px">
         <div class="field">
           <label class="lbl">Threshold de silêncio</label>
           <div class="unit-row"><input id="panic-silence-thresh" type="number" step="1" /><span class="unit-badge">dBFS</span></div>
@@ -802,6 +802,39 @@ var configPageTpl = `<!DOCTYPE html>
     fields.style.pointerEvents = on ? '' : 'none';
   }
 
+  function syncPanicAutoFields() {
+    var on = document.getElementById('panic-auto').checked;
+    var silenceFields = document.getElementById('panic-silence-fields');
+    silenceFields.style.opacity = on ? '1' : '0.35';
+    silenceFields.style.pointerEvents = on ? '' : 'none';
+  }
+
+  function syncPanicFields() {
+    var on = document.getElementById('panic-enabled').checked;
+    var dependents = ['panic-bed', 'panic-auto', 'panic-silence-thresh', 'panic-silence-ms'];
+    dependents.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = !on;
+    });
+    var browseBtn = document.querySelector('#p-panic .btn-browse');
+    if (browseBtn) browseBtn.disabled = !on;
+    var panicAutoRow = document.getElementById('panic-auto-row');
+    if (panicAutoRow) {
+      panicAutoRow.style.opacity = on ? '1' : '0.35';
+      panicAutoRow.style.pointerEvents = on ? '' : 'none';
+    }
+    var bedField = document.getElementById('panic-bed-field');
+    if (bedField) {
+      bedField.style.opacity = on ? '1' : '0.35';
+      bedField.style.pointerEvents = on ? '' : 'none';
+    }
+    if (on) syncPanicAutoFields();
+    else {
+      var silenceFields = document.getElementById('panic-silence-fields');
+      if (silenceFields) { silenceFields.style.opacity = '0.35'; silenceFields.style.pointerEvents = 'none'; }
+    }
+  }
+
   // ── Engine health polling ────────────────────────────────────
   function setEngine(online) {
     engineOnline = online;
@@ -953,6 +986,7 @@ var configPageTpl = `<!DOCTYPE html>
     setCheck('panic-auto', p.auto_on_silence);
     setVal('panic-silence-thresh', p.silence_threshold_dbfs);
     setVal('panic-silence-ms', p.silence_duration_ms);
+    syncPanicFields();
 
     var l = cfg.logging || {};
     setRadio('log-level', l.level);
