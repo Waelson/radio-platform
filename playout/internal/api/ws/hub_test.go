@@ -102,7 +102,7 @@ func TestHub_ClientReceivesPublishedEvent(t *testing.T) {
 		Size:   1,
 		Reason: "enqueue",
 		Items: []events.QueueItemSummary{
-			{QueueItemID: "qi_test", AssetID: "a1", Title: "Track", Type: "musicas", DurationMS: 180000},
+			{QueueItemID: "qi_test", AssetID: "a1", Title: "Track", Type: "MUSIC", DurationMS: 180000},
 		},
 	}))
 
@@ -166,7 +166,7 @@ func TestHub_QueueChangedAfterEnqueue(t *testing.T) {
 
 	// Enqueue an item via the queue manager (which publishes QueueChanged).
 	queueMgr.Enqueue([]commands.QueueItemInput{
-		{AssetID: "a1", Path: "/music/track.mp3", Type: "musicas", DurationMS: 200000},
+		{AssetID: "a1", Path: "/music/track.mp3", Type: "MUSIC", DurationMS: 200000},
 	})
 
 	evt := readEvent(t, conn, 5*time.Second)

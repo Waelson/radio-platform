@@ -46,6 +46,10 @@ type Config struct {
 	// DefaultCrossfadeMS is the crossfade duration applied between eligible items.
 	// 0 disables crossfade entirely.
 	DefaultCrossfadeMS int
+	// DefaultStopFadeMS is the fade-out duration applied when STOP is issued.
+	// The main stream gain is ramped from 100% to 0% before the session is
+	// cancelled, avoiding an abrupt cut. 0 disables the fade (hard stop).
+	DefaultStopFadeMS int
 	// PanicBedPath is the audio file to loop when panic mode is entered without
 	// an explicit bed in the command payload. Loaded from config.panic.bed_path.
 	PanicBedPath string
@@ -160,6 +164,13 @@ type Manager struct {
 	// end and fans out to connected Icecast/SHOUTcast targets.
 	// Set once via SetStreamingTap before any play session starts; no lock needed.
 	streamingTap chan<- []float32
+
+	// stopping is set to true during the stop fade-out to prevent the crossfade
+	// trigger from popping the next item off the queue while the session is
+	// about to be cancelled. Without this guard, the next item is consumed by
+	// Pop() inside runPlayLoop but never returned to the queue, causing it to
+	// disappear from the visible queue after stop.
+	stopping atomic.Bool
 }
 
 // NewManager creates a Manager. healthMon may be nil to disable audio health
@@ -472,6 +483,16 @@ func (m *Manager) HandleStop(_ context.Context, cmd commands.Command) error {
 	}
 
 	m.forceResume()
+
+	// Fade-out before cancelling the session.
+	// Set stopping=true first so runPlayLoop does not trigger a crossfade during
+	// the fade and pop the next item off the queue.
+	if m.cfg.DefaultStopFadeMS > 0 {
+		m.stopping.Store(true)
+		m.log.Info("stop fade-out started", "duration_ms", m.cfg.DefaultStopFadeMS)
+		m.rampDuckGain(context.Background(), 0, m.cfg.DefaultStopFadeMS)
+	}
+
 	cancel()
 
 	select {
@@ -479,6 +500,10 @@ func (m *Manager) HandleStop(_ context.Context, cmd commands.Command) error {
 	case <-time.After(2 * time.Second):
 		m.log.Warn("playback session did not stop in time")
 	}
+
+	// Restore gain and stopping flag so the next play session starts cleanly.
+	m.stopping.Store(false)
+	m.duckGain.Store(100)
 
 	if p.ClearQueue {
 		m.queueMgr.Clear(false)
@@ -1135,11 +1160,28 @@ func (m *Manager) sessionLoop(ctx context.Context, cancel context.CancelFunc, do
 			playedMS = item.DurationMS
 		}
 
+		// If the context was cancelled while a crossfade was in progress (or
+		// completed in the same iteration as the cancel), the preloading item
+		// must be reset to QUEUED so it can play on the next session. Unlike
+		// the old Pop() approach, MarkPreloading keeps the item in pending, so
+		// we only need to reset its status — not re-insert it.
+		if nextItem != nil && ctx.Err() != nil {
+			if nextStream != nil {
+				nextStream.Close()
+				nextStream = nil
+			}
+			m.queueMgr.CancelPreloading(nextItem)
+			nextItem = nil
+		}
+
 		// If crossfade completed, set up the next item before clearing the current.
 		if nextStream != nil && nextItem != nil && ctx.Err() == nil {
 			// Notify break boundary before the next item starts so that
 			// SpotEnded / BreakEnded fire before SpotStarted of the next item.
 			m.notifyBreakTransition(item, nextItem.BreakID)
+			// Atomically move the preloading item from pending to current so
+			// GET /v1/queue never shows a gap between old and new current.
+			m.queueMgr.PopPreloadingAsCurrent(nextItem)
 			// Back-date the start frame so progress is continuous for the listener.
 			m.startItem(nextItem, m.framesTotal.Load()-xFramesDone)
 			carryStream = nextStream
@@ -1157,12 +1199,18 @@ func (m *Manager) sessionLoop(ctx context.Context, cancel context.CancelFunc, do
 		}
 
 		// Clear the finished item from state.
+		// When a crossfade completed (carryStream != nil), startItem already
+		// called SetCurrent for the next item — do NOT call ClearCurrent or it
+		// would wipe the newly-set current, making the playing track invisible
+		// in the queue list for the duration of the next item.
 		m.currentMu.Lock()
 		if carryStream == nil {
 			m.current = nil
 		}
 		m.currentMu.Unlock()
-		m.queueMgr.ClearCurrent()
+		if carryStream == nil {
+			m.queueMgr.ClearCurrent()
+		}
 		if carryStream == nil {
 			m.stateMgr.ClearNowPlaying()
 			// No crossfade: notify break boundary now (after ClearCurrent so
@@ -1471,6 +1519,12 @@ func (m *Manager) runPlayLoop(
 		// Stop check (context cancelled by STOP command).
 		if ctx.Err() != nil {
 			result = queue.ItemResultStopped
+			// If a crossfade was in progress, the next item was already
+			// popped from the queue. Signal the sessionLoop to return it.
+			if xStarted && xItem != nil {
+				nextItem = xItem
+				// xStream is closed by the defer; nextStream stays nil.
+			}
 			return
 		}
 
@@ -1537,13 +1591,13 @@ func (m *Manager) runPlayLoop(
 				triggerType = "energy"
 			}
 
-			if (xStartMS > 0 && posMS >= xStartMS) || energyTriggered {
+			if ((xStartMS > 0 && posMS >= xStartMS) || energyTriggered) && !m.stopping.Load() {
 				if ni, ok := m.queueMgr.Peek(); ok && m.shouldCrossfade(item, ni) {
 					ns, err := m.dec.Open(ctx, decoder.Source{
 						Path: ni.Path, CueInMS: ni.CueInMS, CueOutMS: ni.CueOutMS,
 					})
 					if err == nil {
-						m.queueMgr.Pop() // consume from queue
+						m.queueMgr.MarkPreloading(ni) // keep visible in queue as PRELOADING
 						xStream = ns
 						xItem = ni
 						xStarted = true

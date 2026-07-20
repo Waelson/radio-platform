@@ -124,7 +124,7 @@ func collectEvents(evtBus *events.Bus, wantType events.EventType) func() []event
 func TestPlay_TransitionsToPlayingThenIdle(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480}
 	f := newFixture(t, dec, false, 0)
-	f.enqueue("musicas", 480)
+	f.enqueue("MUSIC", 480)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StateIdle, 3*time.Second)
 }
@@ -141,8 +141,8 @@ func TestPlay_RejectsWhenQueueEmpty(t *testing.T) {
 func TestPlay_RejectsWhenAlreadyPlaying(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000}
 	f := newFixture(t, dec, true, 0)
-	f.enqueue("musicas", 480000)
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
+	f.enqueue("MUSIC", 480000)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 
@@ -157,7 +157,7 @@ func TestPlay_RejectsWhenAlreadyPlaying(t *testing.T) {
 func TestStop_StopsSession(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000}
 	f := newFixture(t, dec, true, 0)
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 	f.stop(t)
@@ -167,8 +167,8 @@ func TestStop_StopsSession(t *testing.T) {
 func TestStop_ClearsQueueWhenRequested(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000}
 	f := newFixture(t, dec, true, 0)
-	f.enqueue("musicas", 480000)
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
+	f.enqueue("MUSIC", 480000)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 	_ = f.mgr.HandleStop(context.Background(),
@@ -182,7 +182,7 @@ func TestStop_ClearsQueueWhenRequested(t *testing.T) {
 func TestPauseResume(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000}
 	f := newFixture(t, dec, true, 0)
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 
@@ -207,7 +207,7 @@ func TestSkip_MandatoryItemRejected(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000}
 	f := newFixture(t, dec, true, 0)
 	f.queueMgr.Enqueue([]commands.QueueItemInput{{
-		Path: "/fake/mandatory.mp3", Type: "spots", DurationMS: 10000, Mandatory: true,
+		Path: "/fake/mandatory.mp3", Type: "SPOT", DurationMS: 10000, Mandatory: true,
 	}})
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
@@ -222,7 +222,7 @@ func TestSkip_MandatoryItemRejected(t *testing.T) {
 func TestSkip_NonMandatoryItemAdvances(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000}
 	f := newFixture(t, dec, true, 0)
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 	if err := f.mgr.HandleSkip(context.Background(),
@@ -263,8 +263,8 @@ func TestCrossfade_MusicToMusic(t *testing.T) {
 	getNowPlaying := collectEvents(f.evtBus, events.EvtNowPlayingChanged)
 
 	// Two musicas items.
-	f.enqueue("musicas", totalFrames)
-	f.enqueue("musicas", totalFrames)
+	f.enqueue("MUSIC", totalFrames)
+	f.enqueue("MUSIC", totalFrames)
 
 	f.play(t)
 	waitSessionEnd(t, f.evtBus, 3*time.Second)
@@ -301,8 +301,8 @@ func TestCrossfade_NotTriggeredForSpot(t *testing.T) {
 
 	getXfade := collectEvents(f.evtBus, events.EvtCrossfadeStarted)
 
-	f.enqueue("musicas", totalFrames)
-	f.enqueue("spots", totalFrames)
+	f.enqueue("MUSIC", totalFrames)
+	f.enqueue("SPOT", totalFrames)
 
 	f.play(t)
 	waitSessionEnd(t, f.evtBus, 3*time.Second)
@@ -321,8 +321,8 @@ func TestCrossfade_DisabledWhenZero(t *testing.T) {
 
 	getXfade := collectEvents(f.evtBus, events.EvtCrossfadeStarted)
 
-	f.enqueue("musicas", totalFrames)
-	f.enqueue("musicas", totalFrames)
+	f.enqueue("MUSIC", totalFrames)
+	f.enqueue("MUSIC", totalFrames)
 
 	f.play(t)
 	waitSessionEnd(t, f.evtBus, 3*time.Second)
@@ -347,14 +347,14 @@ func TestCrossfade_ExplicitTransitionOverride(t *testing.T) {
 	f.queueMgr.Enqueue([]commands.QueueItemInput{{
 		AssetID:    "a1",
 		Path:       "/fake/a.mp3",
-		Type:       "musicas",
+		Type:       "MUSIC",
 		DurationMS: durMS,
 		Transition: &commands.TransitionInput{
 			Type:       "CROSSFADE",
 			DurationMS: customXfadeMS,
 		},
 	}})
-	f.enqueue("musicas", totalFrames)
+	f.enqueue("MUSIC", totalFrames)
 
 	f.play(t)
 	waitSessionEnd(t, f.evtBus, 3*time.Second)
@@ -383,11 +383,11 @@ func TestCrossfade_CutTransitionSkipsXfade(t *testing.T) {
 	f.queueMgr.Enqueue([]commands.QueueItemInput{{
 		AssetID:    "a1",
 		Path:       "/fake/a.mp3",
-		Type:       "musicas",
+		Type:       "MUSIC",
 		DurationMS: durMS,
 		Transition: &commands.TransitionInput{Type: "CUT"},
 	}})
-	f.enqueue("musicas", totalFrames)
+	f.enqueue("MUSIC", totalFrames)
 
 	f.play(t)
 	waitSessionEnd(t, f.evtBus, 3*time.Second)
@@ -438,7 +438,7 @@ func TestEnterPanic_FromIdle(t *testing.T) {
 func TestEnterPanic_StopsPlayingSession(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000}
 	f := newFixture(t, dec, true, 0)
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 
@@ -551,14 +551,14 @@ func TestEnterPanic_WithBed(t *testing.T) {
 func TestHotButton_AfterCurrent(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 480000} // long enough not to finish during test
 	f := newFixture(t, dec, true, 0)
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 
 	err := f.mgr.HandleTriggerHotButton(context.Background(),
 		commands.New(commands.CmdTriggerHotButton, commands.TriggerHotButtonPayload{
 			ButtonID: "btn-1",
-			Asset:    commands.QueueItemInput{Path: "/fake/jingle.mp3", Type: "spots"},
+			Asset:    commands.QueueItemInput{Path: "/fake/jingle.mp3", Type: "SPOT"},
 			PlayMode: "AFTER_CURRENT",
 		}))
 	if err != nil {
@@ -587,7 +587,7 @@ func TestHotButton_Interrupt(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 4800}
 	f := newFixture(t, dec, true, 0)
 	// The main queue item is long; it will be interrupted.
-	f.enqueue("musicas", 4800)
+	f.enqueue("MUSIC", 4800)
 	f.play(t)
 	waitState(t, f.stateMgr, state.StatePlaying, 500*time.Millisecond)
 
@@ -596,7 +596,7 @@ func TestHotButton_Interrupt(t *testing.T) {
 	err := f.mgr.HandleTriggerHotButton(context.Background(),
 		commands.New(commands.CmdTriggerHotButton, commands.TriggerHotButtonPayload{
 			ButtonID: "btn-interrupt",
-			Asset:    commands.QueueItemInput{Path: "/fake/hotbutton.mp3", Type: "spots"},
+			Asset:    commands.QueueItemInput{Path: "/fake/hotbutton.mp3", Type: "SPOT"},
 			PlayMode: "INTERRUPT",
 		}))
 	if err != nil {
@@ -629,7 +629,7 @@ func TestHotButton_Overlay_WithDucking(t *testing.T) {
 	f := newFixture(t, dec, false, 0)
 
 	// Main session must be running for OVERLAY to make sense.
-	f.enqueue("musicas", 480000)
+	f.enqueue("MUSIC", 480000)
 	// Note: we don't play the main session here — overlay works even without it
 	// (it just writes to output). We test the ducking logic specifically.
 
@@ -639,7 +639,7 @@ func TestHotButton_Overlay_WithDucking(t *testing.T) {
 	err := f.mgr.HandleTriggerHotButton(context.Background(),
 		commands.New(commands.CmdTriggerHotButton, commands.TriggerHotButtonPayload{
 			ButtonID:   "btn-overlay",
-			Asset:      commands.QueueItemInput{Path: "/fake/overlay.mp3", Type: "spots"},
+			Asset:      commands.QueueItemInput{Path: "/fake/overlay.mp3", Type: "SPOT"},
 			PlayMode:   "OVERLAY",
 			DuckMain:   true,
 			DuckGainDB: -6,

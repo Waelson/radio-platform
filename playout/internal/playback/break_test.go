@@ -18,7 +18,7 @@ func (f *fixture) enqueueBreak(t *testing.T, title string, numSpots int) string 
 	for i := range spots {
 		spots[i] = commands.QueueItemInput{
 			Path:       "/fake/spot.mp3",
-			Type:       "spots",
+			Type:       "SPOT",
 			Title:      "Spot",
 			DurationMS: 10,
 		}
@@ -194,7 +194,7 @@ func TestBreak_MusicThenBreak_BreakStartedAfterMusic(t *testing.T) {
 	f := newFixture(t, dec, false, 0)
 
 	// Enqueue music first, then break.
-	f.enqueue("musicas", 48)
+	f.enqueue("MUSIC", 48)
 	f.enqueueBreak(t, "Bloco", 2)
 	f.play(t)
 	waitSessionEnd(t, f.evtBus, 8*time.Second)
@@ -207,7 +207,7 @@ func TestBreak_MusicThenBreak_BreakStartedAfterMusic(t *testing.T) {
 	for i, e := range allEvts {
 		if e.Type == events.EvtItemStarted {
 			p := e.Payload.(events.ItemStartedPayload)
-			if p.AssetID == "asset-musicas" && musicStartIdx == -1 {
+			if p.AssetID == "asset-MUSIC" && musicStartIdx == -1 {
 				musicStartIdx = i
 			}
 		}

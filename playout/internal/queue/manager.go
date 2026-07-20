@@ -474,6 +474,61 @@ func (m *Manager) ClearCurrent() {
 	m.mu.Unlock()
 }
 
+// PrependItem inserts an already-built QueueItem at the front of the pending
+// queue with status QUEUED. Used by the playback manager to return a
+// crossfade-preloaded item to the queue when stop is issued mid-crossfade.
+// Deprecated: prefer CancelPreloading when the item is already in the pending
+// list with PRELOADING status.
+func (m *Manager) PrependItem(item *QueueItem) {
+	m.mu.Lock()
+	item.Status = ItemStatusQueued
+	m.pending = append([]*QueueItem{item}, m.pending...)
+	m.publishAndUpdateLocked("return_to_front")
+	m.persist()
+	m.mu.Unlock()
+}
+
+// MarkPreloading changes the status of a pending item to PRELOADING to signal
+// that its decoder has been opened ahead of the currently playing track
+// (crossfade pre-roll). The item stays in the pending list so it remains
+// visible in GET /v1/queue responses during the crossfade mixing period.
+func (m *Manager) MarkPreloading(item *QueueItem) {
+	m.mu.Lock()
+	item.Status = ItemStatusPreloading
+	m.publishAndUpdateLocked("preload")
+	m.persist()
+	m.mu.Unlock()
+}
+
+// PopPreloadingAsCurrent removes a PRELOADING item from the front of the
+// pending queue and atomically marks it as the currently playing item. Called
+// by the Playback Manager when a crossfade completes and the preloaded item
+// takes over as the primary stream. If the item is no longer at the front of
+// pending (e.g., user inserted another item ahead of it), the current pointer
+// is still updated without a double-removal.
+func (m *Manager) PopPreloadingAsCurrent(item *QueueItem) {
+	m.mu.Lock()
+	if len(m.pending) > 0 && m.pending[0].QueueItemID == item.QueueItemID {
+		m.pending = m.pending[1:]
+	}
+	item.Status = ItemStatusPlaying
+	m.current = item
+	m.publishAndUpdateLocked("preload_as_current")
+	m.persist()
+	m.mu.Unlock()
+}
+
+// CancelPreloading resets a PRELOADING item back to QUEUED. Used when playback
+// is stopped mid-crossfade: the item stays in the pending list (it was never
+// removed by Pop) so it will be played on the next Play command.
+func (m *Manager) CancelPreloading(item *QueueItem) {
+	m.mu.Lock()
+	item.Status = ItemStatusQueued
+	m.publishAndUpdateLocked("cancel_preload")
+	m.persist()
+	m.mu.Unlock()
+}
+
 // ReturnCurrentToFront puts the current item back at the front of the pending
 // queue with status QUEUED. Used when playback is stopped by the operator so
 // the item can be played again later.
