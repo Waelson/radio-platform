@@ -319,9 +319,10 @@ body.auth-locked .app {
 
   // ── State machine ─────────────────────────────────────────────────────────────
 
-  let _libUrl     = ''
-  let _resetEmail = ''
-  let _resetToken = ''
+  let _libUrl          = ''
+  let _resetEmail      = ''
+  let _resetToken      = ''
+  let _changePwdFromMenu = false  // true quando T5 é aberto pelo menu (não por force_change_pwd)
 
   function showScreen(id) {
     document.querySelectorAll('.ao-screen').forEach(s => s.classList.remove('active'))
@@ -430,6 +431,7 @@ body.auth-locked .app {
       setLoading('aoLoginBtn', false)
       if (!r.ok) { setError('aoLoginErr', r.message); return }
       if (r.claims?.force_change_pwd) {
+        _changePwdFromMenu = false
         showScreen('aoT5')
         return
       }
@@ -496,7 +498,7 @@ body.auth-locked .app {
       onAuthSuccess(r.claims)
     })
 
-    // T5 — Troca de senha obrigatória
+    // T5 — Troca de senha obrigatória / Alterar senha pelo menu
     document.getElementById('aoForceBtn').addEventListener('click', async () => {
       setError('aoForceErr', '')
       const cur = document.getElementById('aoForceCur').value
@@ -508,7 +510,13 @@ body.auth-locked .app {
       const r = await window.sessionManager.changePwd(cur, p1)
       setLoading('aoForceBtn', false)
       if (!r.ok) { setError('aoForceErr', r.message); return }
-      onAuthSuccess(r.claims)
+      if (_changePwdFromMenu) {
+        // Senha alterada pelo menu: desloga e pede re-autenticação.
+        await window.sessionManager.logout()
+        showOverlay('aoT1')
+      } else {
+        onAuthSuccess(r.claims)
+      }
     })
 
     // T6 — Handover
@@ -527,7 +535,7 @@ body.auth-locked .app {
       const r = await window.sessionManager.login(email, pwd)
       setLoading('aoHOBtn', false)
       if (!r.ok) { setError('aoHOErr', r.message); return }
-      if (r.claims?.force_change_pwd) { showScreen('aoT5'); return }
+      if (r.claims?.force_change_pwd) { _changePwdFromMenu = false; showScreen('aoT5'); return }
       onAuthSuccess(r.claims)
     })
 
@@ -543,6 +551,7 @@ body.auth-locked .app {
 
     document.getElementById('aumChangePwd').addEventListener('click', () => {
       document.getElementById('authUserMenu').classList.remove('open')
+      _changePwdFromMenu = true
       showOverlay('aoT5')
       document.getElementById('aoForceCur').value  = ''
       document.getElementById('aoForceNew1').value = ''
@@ -600,7 +609,13 @@ body.auth-locked .app {
       injectUserChip()
       wireEvents()
 
-      await window.sessionManager.init(libUrl)
+      const claims = await window.sessionManager.init(libUrl)
+      if (claims) {
+        // Token ainda válido — restaura sessão sem pedir login.
+        onAuthSuccess(claims)
+        return
+      }
+
       const savedScreen = sessionStorage.getItem('ao-screen')
       showOverlay(savedScreen || 'aoT1')
     },

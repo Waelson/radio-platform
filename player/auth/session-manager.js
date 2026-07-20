@@ -6,6 +6,30 @@
 ;(function () {
   'use strict'
 
+  // ── Error translation ────────────────────────────────────────────────────────
+
+  const ERROR_MESSAGES = {
+    invalid_credentials: 'E-mail ou senha inválidos.',
+    missing_fields:      'Preencha todos os campos obrigatórios.',
+    invalid_body:        'Requisição inválida.',
+    internal_error:      'Erro interno. Tente novamente.',
+    token_expired:       'Sessão expirada. Faça login novamente.',
+    invalid_token:       'Token inválido.',
+    weak_password:       'Senha fraca. Use ao menos 8 caracteres, incluindo letras e números.',
+    same_password:       'A nova senha deve ser diferente da atual.',
+    wrong_password:      'Senha atual incorreta.',
+    not_found:           'Usuário não encontrado.',
+    rate_limited:        'Aguarde 60 segundos antes de solicitar outro código.',
+    invalid_code:        'Código inválido ou expirado.',
+    code_expired:        'Código expirado. Solicite um novo.',
+    max_attempts:        'Número máximo de tentativas atingido. Solicite um novo código.',
+  }
+
+  function translateError(body, fallback) {
+    if (body?.error && ERROR_MESSAGES[body.error]) return ERROR_MESSAGES[body.error]
+    return fallback || body?.message || 'Erro desconhecido.'
+  }
+
   // ── JWT helpers ─────────────────────────────────────────────────────────────
 
   function jwtDecode(token) {
@@ -87,8 +111,7 @@
         _store(res.body.data.token)
         return { ok: true, claims: _claims }
       }
-      const msg = res.body?.message || 'Credenciais inválidas.'
-      return { ok: false, message: msg, status: res.status }
+      return { ok: false, message: translateError(res.body, 'Credenciais inválidas.'), status: res.status }
     },
 
     async logout() {
@@ -117,7 +140,7 @@
       if (res.status === 429) {
         return { ok: false, message: 'Muitas tentativas. Aguarde e tente novamente.' }
       }
-      return { ok: false, message: res.body?.message || 'Erro ao solicitar código.' }
+      return { ok: false, message: translateError(res.body, 'Erro ao solicitar código.') }
     },
 
     async resetVerify(email, code) {
@@ -125,7 +148,7 @@
       if (res.status === 200 && res.body?.data?.reset_token) {
         return { ok: true, resetToken: res.body.data.reset_token }
       }
-      return { ok: false, message: res.body?.message || 'Código inválido.' }
+      return { ok: false, message: translateError(res.body, 'Código inválido.') }
     },
 
     async resetConfirm(resetToken, newPwd) {
@@ -134,16 +157,15 @@
         _store(res.body.data.token)
         return { ok: true, claims: _claims }
       }
-      return { ok: false, message: res.body?.message || 'Erro ao redefinir senha.' }
+      return { ok: false, message: translateError(res.body, 'Erro ao redefinir senha.') }
     },
 
     async changePwd(curPwd, newPwd) {
       const res = await window.electronAPI.authChangePwd(_libUrl, _token, curPwd, newPwd)
-      if (res.status === 200 && res.body?.data?.token) {
-        _store(res.body.data.token)
+      if (res.status === 200) {
         return { ok: true, claims: _claims }
       }
-      return { ok: false, message: res.body?.message || 'Erro ao alterar senha.' }
+      return { ok: false, message: translateError(res.body, 'Erro ao alterar senha.') }
     },
 
     getToken()         { return _token },
