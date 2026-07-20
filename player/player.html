@@ -1048,6 +1048,22 @@ input[type=range].vol-slider:disabled {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.3; transform: scale(0.6); }
 }
+.next-xfade-badge {
+  display: none; align-items: center; gap: 5px;
+  margin-left: 6px;
+  font-size: 10px; font-weight: 780; text-transform: uppercase;
+  letter-spacing: .9px; color: #00d4ff;
+}
+.next-xfade-badge.visible { display: inline-flex; }
+.next-xfade-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #00d4ff; flex-shrink: 0;
+  animation: xfadeDotPulse 0.9s ease-in-out infinite;
+}
+@keyframes xfadeDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.25; transform: scale(0.55); }
+}
 
 /* ─── Barra utilitária ────────────────────────────────────────── */
 .pn-utility-bar {
@@ -2591,6 +2607,7 @@ canvas.vu-canvas {
           <div class="next-label">
             <span id="nextLabelNormal">Próximo no ar</span>
             <span class="next-assist-badge" id="nextAssistBadge"><span class="next-assist-dot"></span>Próxima faixa não toca automaticamente</span>
+            <span class="next-xfade-badge" id="nextXfadeBadge"><span class="next-xfade-dot"></span>Em transição</span>
           </div>
           <div class="next-title"  id="nextDeckTitle">—</div>
           <div class="next-artist" id="nextDeckArtist"></div>
@@ -3450,8 +3467,8 @@ function renderQueue() {
   const durEl = document.getElementById('queueDuration');
   durEl.innerHTML = totalMs > 0 ? '<span style="font-size:17px;vertical-align:middle">⏱</span> ' + msToDuration(totalMs) : '';
 
-  // "A Seguir" — first pending QUEUED item
-  const nextItem = queueItems.find(i => i && (i.status || '').toUpperCase() === 'QUEUED');
+  // "A Seguir" — first pending QUEUED or PRELOADING item (PRELOADING = crossfade in progress)
+  const nextItem = queueItems.find(i => i && ((i.status || '').toUpperCase() === 'QUEUED' || (i.status || '').toUpperCase() === 'PRELOADING'));
   // Track which item ID is first-pending for ASSIST "← PRÓXIMA" marker
   window._assistNextId = nextItem ? (nextItem.queue_item_id || nextItem.id) : null;
 
@@ -3548,18 +3565,28 @@ function updateNextDeckCard() {
   const durEl   = document.getElementById('nextDeckDuration');
   if (!card) return;
 
-  // Find first QUEUED item that is not currently playing
+  // During crossfade, the next item has status PRELOADING (its decoder is open
+  // and it is already fading in). We show it with priority over QUEUED items so
+  // "Próximo no Ar" stays on the correct track during the transition.
   const pending = queueData?.pending || [];
   let nextItem = null;
+  let isPreloading = false;
+
   for (const entry of pending) {
     if (!entry) continue;
-    if (entry.kind === 'item' && entry.item && (entry.item.status || '').toUpperCase() === 'QUEUED') {
-      nextItem = entry.item; break;
+    const st = entry.kind === 'item' ? (entry.item?.status || '').toUpperCase() : '';
+    if (entry.kind === 'item' && entry.item && (st === 'PRELOADING' || st === 'QUEUED')) {
+      nextItem = entry.item;
+      isPreloading = st === 'PRELOADING';
+      break;
     }
     if (entry.kind === 'break') {
       for (const sp of (entry.break?.items || [])) {
-        if (sp?.item && (sp.item.status || '').toUpperCase() === 'QUEUED') {
-          nextItem = sp.item; break;
+        const sst = (sp?.item?.status || '').toUpperCase();
+        if (sp?.item && (sst === 'PRELOADING' || sst === 'QUEUED')) {
+          nextItem = sp.item;
+          isPreloading = sst === 'PRELOADING';
+          break;
         }
       }
       if (nextItem) break;
@@ -3567,8 +3594,11 @@ function updateNextDeckCard() {
   }
   // Also check legacy flat list
   if (!nextItem && queueData?.items) {
-    nextItem = queueData.items.find(i => i && (i.status || '').toUpperCase() === 'QUEUED') || null;
+    const found = queueData.items.find(i => i && ((i.status || '').toUpperCase() === 'PRELOADING' || (i.status || '').toUpperCase() === 'QUEUED')) || null;
+    if (found) { nextItem = found; isPreloading = (found.status || '').toUpperCase() === 'PRELOADING'; }
   }
+
+  const xfadeBadge = document.getElementById('nextXfadeBadge');
 
   card.classList.remove('hidden');
 
@@ -3577,8 +3607,11 @@ function updateNextDeckCard() {
     artEl.textContent   = '';
     durEl.textContent   = '—';
     metaEl.innerHTML    = '';
+    if (xfadeBadge) xfadeBadge.classList.remove('visible');
     return;
   }
+
+  if (xfadeBadge) xfadeBadge.classList.toggle('visible', isPreloading);
 
   titleEl.textContent  = nextItem.title || '—';
   artEl.textContent    = [nextItem.artist, nextItem.type].filter(Boolean).join(' · ');
