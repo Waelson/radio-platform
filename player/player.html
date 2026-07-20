@@ -3402,6 +3402,19 @@ function showToast(ok, msg) {
   }, 3000);
 }
 
+async function cartErrorMessage(r) {
+  const MESSAGES = {
+    cart_disabled: 'Cart player desabilitado nas configurações do engine',
+  };
+  try {
+    const body = await r.json();
+    const code = body.code || body.error || '';
+    return MESSAGES[code] || body.message || 'Erro ao acionar botão';
+  } catch (_) {
+    return 'Erro ao acionar botão';
+  }
+}
+
 /* ─── Queue ──────────────────────────────────────────────────── */
 let queueItems = []; // flat list (for button logic / count)
 let queueData  = null; // raw API response (for polymorphic rendering)
@@ -6761,7 +6774,7 @@ async function drwHkPlayCart(btn) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist, gain_db: btn.gain_db || 0, cue_in_ms: btn.cue_in_ms || 0, intro_ms: btn.intro_ms || 0, outro_ms: btn.outro_ms || 0, cue_out_ms: btn.cue_out_ms || 0 }),
     });
-    if (!r.ok) { _drwHkPendingBtnId = null; showToast(false, 'Erro ao acionar botão'); return; }
+    if (!r.ok) { _drwHkPendingBtnId = null; showToast(false, await cartErrorMessage(r)); return; }
     _drwHkCartBtnId = btn.id;
     _drwHkCartDurMS = btn.duration_ms || 0;
     _drwHkCartPosMS = 0;
@@ -8469,7 +8482,7 @@ async function _hkpPlayCart(btn) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: btn.track_path, title: btn.track_title, artist: btn.track_artist, gain_db: btn.gain_db || 0, cue_in_ms: btn.cue_in_ms || 0, intro_ms: btn.intro_ms || 0, outro_ms: btn.outro_ms || 0, cue_out_ms: btn.cue_out_ms || 0 }),
     });
-    if (!r.ok) { _hkpPendingBtnId = null; showToast(false, 'Erro ao acionar botão'); return; }
+    if (!r.ok) { _hkpPendingBtnId = null; showToast(false, await cartErrorMessage(r)); return; }
     _hkpCartBtnId = btn.id;
     _hkpCartDurMS = btn.duration_ms || 0;
     _hkpCartPosMS = 0;
