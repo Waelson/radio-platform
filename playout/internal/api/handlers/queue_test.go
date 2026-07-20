@@ -105,8 +105,8 @@ func TestQueueList_EmptyQueue(t *testing.T) {
 func TestQueueList_WithItems(t *testing.T) {
 	qMgr := newRealQueueMgr(t)
 	qMgr.Enqueue([]commands.QueueItemInput{
-		{Path: "/a.mp3", Title: "Song A", Type: "musicas"},
-		{Path: "/b.mp3", Title: "Song B", Type: "musicas"},
+		{Path: "/a.mp3", Title: "Song A", Type: "MUSIC"},
+		{Path: "/b.mp3", Title: "Song B", Type: "MUSIC"},
 	})
 	h := handlers.QueueList(qMgr)
 
@@ -141,7 +141,7 @@ func TestQueueList_WithBreak(t *testing.T) {
 	qMgr := newRealQueueMgr(t)
 	// Enqueue a music item then a break via HandleEnqueueBreak directly.
 	qMgr.Enqueue([]commands.QueueItemInput{
-		{Path: "/music.mp3", Title: "Song A", Type: "musicas", DurationMS: 180000},
+		{Path: "/music.mp3", Title: "Song A", Type: "MUSIC", DurationMS: 180000},
 	})
 	_ = qMgr.HandleEnqueueBreak(context.Background(), commands.New(
 		commands.CmdEnqueueBreak,
@@ -150,8 +150,8 @@ func TestQueueList_WithBreak(t *testing.T) {
 			Break: commands.BreakItemInput{
 				Title: "Bloco Teste",
 				Spots: []commands.QueueItemInput{
-					{Path: "/spot1.mp3", Title: "Spot 1", Type: "spots", DurationMS: 30000},
-					{Path: "/spot2.mp3", Title: "Spot 2", Type: "spots", DurationMS: 30000},
+					{Path: "/spot1.mp3", Title: "Spot 1", Type: "SPOT", DurationMS: 30000},
+					{Path: "/spot2.mp3", Title: "Spot 2", Type: "SPOT", DurationMS: 30000},
 				},
 			},
 		},
@@ -217,7 +217,7 @@ func TestEnqueue_ValidItems_Accepted(t *testing.T) {
 
 	body := map[string]any{
 		"items": []map[string]any{
-			{"path": "/music/a.mp3", "type": "musicas", "title": "Song A", "duration_ms": 180000},
+			{"path": "/music/a.mp3", "type": "MUSIC", "title": "Song A", "duration_ms": 180000},
 		},
 	}
 	rr := postJSON(t, h, "/v1/queue/enqueue", body)
@@ -259,7 +259,7 @@ func TestEnqueue_MissingPath_400(t *testing.T) {
 	h := handlers.Enqueue(bus, qMgr)
 
 	rr := postJSON(t, h, "/v1/queue/enqueue", map[string]any{
-		"items": []map[string]any{{"title": "No path", "type": "musicas"}},
+		"items": []map[string]any{{"title": "No path", "type": "MUSIC"}},
 	})
 
 	if rr.Code != http.StatusBadRequest {
@@ -287,7 +287,7 @@ func TestEnqueue_Rejected_ByEngine(t *testing.T) {
 	h := handlers.Enqueue(bus, qMgr)
 
 	body := map[string]any{
-		"items": []map[string]any{{"path": "/a.mp3", "type": "musicas"}},
+		"items": []map[string]any{{"path": "/a.mp3", "type": "MUSIC"}},
 	}
 	rr := postJSON(t, h, "/v1/queue/enqueue", body)
 
@@ -312,7 +312,7 @@ func TestInsertNext_Valid(t *testing.T) {
 	h := handlers.InsertNext(bus, qMgr)
 
 	body := map[string]any{
-		"item": map[string]any{"path": "/x.mp3", "type": "jingles"},
+		"item": map[string]any{"path": "/x.mp3", "type": "JINGLE"},
 	}
 	rr := postJSON(t, h, "/v1/queue/insert-next", body)
 
@@ -332,7 +332,7 @@ func TestInsertNext_MissingPath_400(t *testing.T) {
 	h := handlers.InsertNext(bus, qMgr)
 
 	rr := postJSON(t, h, "/v1/queue/insert-next", map[string]any{
-		"item": map[string]any{"type": "jingles"},
+		"item": map[string]any{"type": "JINGLE"},
 	})
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)
@@ -348,7 +348,7 @@ func TestInsertAfter_Valid(t *testing.T) {
 
 	body := map[string]any{
 		"after_queue_item_id": "qi_001",
-		"item":                map[string]any{"path": "/x.mp3", "type": "musicas"},
+		"item":                map[string]any{"path": "/x.mp3", "type": "MUSIC"},
 	}
 	rr := postJSON(t, h, "/v1/queue/insert-after", body)
 
@@ -363,7 +363,7 @@ func TestInsertAfter_MissingAfterID_400(t *testing.T) {
 	h := handlers.InsertAfter(bus, qMgr)
 
 	body := map[string]any{
-		"item": map[string]any{"path": "/x.mp3", "type": "musicas"},
+		"item": map[string]any{"path": "/x.mp3", "type": "MUSIC"},
 	}
 	rr := postJSON(t, h, "/v1/queue/insert-after", body)
 	if rr.Code != http.StatusBadRequest {
@@ -400,8 +400,8 @@ func TestEnqueueBreak_Valid_Accepted(t *testing.T) {
 	body := map[string]any{
 		"title": "Bloco 14h",
 		"spots": []map[string]any{
-			{"path": "/spot1.mp3", "type": "spots", "title": "Spot 1", "duration_ms": 30000},
-			{"path": "/spot2.mp3", "type": "spots", "title": "Spot 2", "duration_ms": 30000},
+			{"path": "/spot1.mp3", "type": "SPOT", "title": "Spot 1", "duration_ms": 30000},
+			{"path": "/spot2.mp3", "type": "SPOT", "title": "Spot 2", "duration_ms": 30000},
 		},
 	}
 	rr := postJSON(t, h, "/v1/queue/enqueue-break", body)
@@ -439,11 +439,11 @@ func TestEnqueueBreak_WithOpenAndClose(t *testing.T) {
 
 	body := map[string]any{
 		"title": "Bloco Completo",
-		"open":  map[string]any{"path": "/open.mp3", "type": "jingles", "duration_ms": 8000},
+		"open":  map[string]any{"path": "/open.mp3", "type": "JINGLE", "duration_ms": 8000},
 		"spots": []map[string]any{
-			{"path": "/spot1.mp3", "type": "spots", "duration_ms": 30000},
+			{"path": "/spot1.mp3", "type": "SPOT", "duration_ms": 30000},
 		},
-		"close": map[string]any{"path": "/close.mp3", "type": "jingles", "duration_ms": 7000},
+		"close": map[string]any{"path": "/close.mp3", "type": "JINGLE", "duration_ms": 7000},
 	}
 	rr := postJSON(t, h, "/v1/queue/enqueue-break", body)
 
@@ -480,7 +480,7 @@ func TestEnqueueBreak_NoTitle_400(t *testing.T) {
 	h := handlers.EnqueueBreak(bus, qMgr)
 
 	rr := postJSON(t, h, "/v1/queue/enqueue-break", map[string]any{
-		"spots": []map[string]any{{"path": "/s.mp3", "type": "spots"}},
+		"spots": []map[string]any{{"path": "/s.mp3", "type": "SPOT"}},
 	})
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)
@@ -494,7 +494,7 @@ func TestEnqueueBreak_MissingSpotPath_400(t *testing.T) {
 
 	rr := postJSON(t, h, "/v1/queue/enqueue-break", map[string]any{
 		"title": "Break",
-		"spots": []map[string]any{{"title": "No path", "type": "spots"}},
+		"spots": []map[string]any{{"title": "No path", "type": "SPOT"}},
 	})
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)

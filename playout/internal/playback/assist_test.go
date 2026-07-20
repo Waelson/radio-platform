@@ -71,8 +71,8 @@ func TestAssist_EngineWaitsAtItemBoundary(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 48}
 	f := newFixture(t, dec, false, 0)
 
-	f.enqueue("musicas", 48)
-	f.enqueue("musicas", 48) // second item so queue is non-empty after first finishes
+	f.enqueue("MUSIC", 48)
+	f.enqueue("MUSIC", 48) // second item so queue is non-empty after first finishes
 	f.enterAssist(t)         // set ASSIST before play so the fast decoder can't race ahead
 	f.play(t)
 
@@ -92,8 +92,8 @@ func TestAssist_PlayResumesAfterWait(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 48}
 	f := newFixture(t, dec, false, 0)
 
-	f.enqueue("musicas", 48)
-	f.enqueue("musicas", 48)
+	f.enqueue("MUSIC", 48)
+	f.enqueue("MUSIC", 48)
 	f.enterAssist(t)
 	f.play(t)
 	waitAssistWaiting(t, f.evtBus, 5*time.Second)
@@ -147,7 +147,7 @@ func TestAssist_WaitsAtBreakEnd(t *testing.T) {
 	f := newFixture(t, dec, false, 0)
 
 	f.enqueueBreak(t, "Bloco", 2)
-	f.enqueue("musicas", 48) // music follows the break
+	f.enqueue("MUSIC", 48) // music follows the break
 
 	f.enterAssist(t)
 	f.play(t)
@@ -194,8 +194,8 @@ func TestAssist_ReturnAutoUnblocks(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 48}
 	f := newFixture(t, dec, false, 0)
 
-	f.enqueue("musicas", 48)
-	f.enqueue("musicas", 48)
+	f.enqueue("MUSIC", 48)
+	f.enqueue("MUSIC", 48)
 	f.enterAssist(t)
 	f.play(t)
 	waitAssistWaiting(t, f.evtBus, 5*time.Second)
@@ -227,8 +227,8 @@ func TestAssist_StopWhileWaiting(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 48}
 	f := newFixture(t, dec, false, 0)
 
-	f.enqueue("musicas", 48)
-	f.enqueue("musicas", 48)
+	f.enqueue("MUSIC", 48)
+	f.enqueue("MUSIC", 48)
 	f.enterAssist(t)
 	f.play(t)
 	waitAssistWaiting(t, f.evtBus, 5*time.Second)
@@ -243,11 +243,11 @@ func TestAssist_EvtAssistWaitingPublished(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 48}
 	f := newFixture(t, dec, false, 0)
 
-	f.enqueue("musicas", 48)
+	f.enqueue("MUSIC", 48)
 	// Second item is the "next" that should appear in AssistWaiting payload.
 	f.queueMgr.Enqueue([]commands.QueueItemInput{{
 		Path:       "/fake/second.mp3",
-		Type:       "musicas",
+		Type:       "MUSIC",
 		Title:      "Second Track",
 		DurationMS: 1000,
 	}})
@@ -271,8 +271,8 @@ func TestAssist_EvtAssistWaitingPublished(t *testing.T) {
 	if payload.NextTitle != "Second Track" {
 		t.Errorf("NextTitle = %q, want %q", payload.NextTitle, "Second Track")
 	}
-	if payload.NextType != "musicas" {
-		t.Errorf("NextType = %q, want %q", payload.NextType, "musicas")
+	if payload.NextType != "MUSIC" {
+		t.Errorf("NextType = %q, want %q", payload.NextType, "MUSIC")
 	}
 }
 
@@ -284,7 +284,7 @@ func TestAssist_PauseResumeRestoresAssistState(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 240000} // ~5 s at 48 kHz
 	f := newFixture(t, dec, true, 0)
 
-	f.enqueue("musicas", 240000)
+	f.enqueue("MUSIC", 240000)
 	f.enterAssist(t)
 	f.play(t)
 
@@ -334,8 +334,8 @@ func TestAssist_EnterDuringPlayback(t *testing.T) {
 	dec := &testutil.FakeDecoder{Frames: 48}
 	f := newFixture(t, dec, false, 0)
 
-	f.enqueue("musicas", 48)
-	f.enqueue("musicas", 48)
+	f.enqueue("MUSIC", 48)
+	f.enqueue("MUSIC", 48)
 	f.enterAssist(t) // set before play; session starts in ASSIST mode
 	f.play(t)
 

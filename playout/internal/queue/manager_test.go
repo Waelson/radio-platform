@@ -22,7 +22,7 @@ func itemInput(title string) commands.QueueItemInput {
 	return commands.QueueItemInput{
 		AssetID:    "asset_" + title,
 		Path:       "/audio/" + title + ".mp3",
-		Type:       "musicas",
+		Type:       "MUSIC",
 		Title:      title,
 		DurationMS: 180000,
 	}
@@ -508,7 +508,7 @@ func breakInput(title string, spots ...string) commands.BreakItemInput {
 	for _, s := range spots {
 		b.Spots = append(b.Spots, commands.QueueItemInput{
 			Path:       "/audio/" + s + ".mp3",
-			Type:       "spots",
+			Type:       "SPOT",
 			Title:      s,
 			DurationMS: 30000,
 		})
@@ -522,14 +522,14 @@ func TestInsertBreakNext_Order(t *testing.T) {
 	// Pre-existing items in the queue.
 	mgr.Enqueue([]commands.QueueItemInput{itemInput("Existing")})
 
-	open := commands.QueueItemInput{Path: "/open.mp3", Type: "jingles", Title: "Open"}
-	close_ := commands.QueueItemInput{Path: "/close.mp3", Type: "jingles", Title: "Close"}
+	open := commands.QueueItemInput{Path: "/open.mp3", Type: "JINGLE", Title: "Open"}
+	close_ := commands.QueueItemInput{Path: "/close.mp3", Type: "JINGLE", Title: "Close"}
 	b := commands.BreakItemInput{
 		Title: "Bloco",
 		Open:  &open,
 		Spots: []commands.QueueItemInput{
-			{Path: "/spot1.mp3", Type: "spots", Title: "Spot1", DurationMS: 30000},
-			{Path: "/spot2.mp3", Type: "spots", Title: "Spot2", DurationMS: 30000},
+			{Path: "/spot1.mp3", Type: "SPOT", Title: "Spot1", DurationMS: 30000},
+			{Path: "/spot2.mp3", Type: "SPOT", Title: "Spot2", DurationMS: 30000},
 		},
 		Close: &close_,
 	}
@@ -581,12 +581,12 @@ func TestInsertBreakNext_SharedBreakID(t *testing.T) {
 func TestInsertBreakNext_BreakRolesAndSeq(t *testing.T) {
 	mgr, _ := newManager(t)
 
-	open := commands.QueueItemInput{Path: "/open.mp3", Type: "jingles", Title: "Open"}
-	close_ := commands.QueueItemInput{Path: "/close.mp3", Type: "jingles", Title: "Close"}
+	open := commands.QueueItemInput{Path: "/open.mp3", Type: "JINGLE", Title: "Open"}
+	close_ := commands.QueueItemInput{Path: "/close.mp3", Type: "JINGLE", Title: "Close"}
 	b := commands.BreakItemInput{
 		Title: "Bloco",
 		Open:  &open,
-		Spots: []commands.QueueItemInput{{Path: "/spot.mp3", Type: "spots", Title: "Spot"}},
+		Spots: []commands.QueueItemInput{{Path: "/spot.mp3", Type: "SPOT", Title: "Spot"}},
 		Close: &close_,
 	}
 	cmd := commands.Command{

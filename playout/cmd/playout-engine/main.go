@@ -252,6 +252,7 @@ func run(args []string) error {
 		ProgressIntervalMS:            cfg.Health.ProgressIntervalMS,
 		MaxConsecutiveFailures:        cfg.Playback.MaxConsecutiveItemFailures,
 		DefaultCrossfadeMS:            cfg.Playback.DefaultCrossfadeMS,
+		DefaultStopFadeMS:             cfg.Playback.DefaultStopFadeMS,
 		PanicBedPath:                  cfg.Panic.BedPath,
 		AutoCrossfadeEnabled:          cfg.Playback.AutoCrossfadeEnabled,
 		AutoCrossfadeEnergyThreshDBFS: cfg.Playback.AutoCrossfadeEnergyThreshDBFS,

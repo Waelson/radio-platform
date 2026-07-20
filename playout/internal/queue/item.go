@@ -5,10 +5,11 @@ package queue
 type AssetType string
 
 const (
-	AssetTypeMusic      AssetType = "musicas"
-	AssetTypeSpot       AssetType = "spots"
+	AssetTypeMusic      AssetType = "MUSIC"
+	AssetTypeVinheta    AssetType = "VINHETA"
+	AssetTypeSpot       AssetType = "SPOT"
 	AssetTypeCommercial AssetType = "COMMERCIAL"
-	AssetTypeJingle     AssetType = "jingles"
+	AssetTypeJingle     AssetType = "JINGLE"
 	AssetTypeBed        AssetType = "BED"
 	AssetTypeEffect     AssetType = "EFFECT"
 	AssetTypeVoice      AssetType = "VOICE"

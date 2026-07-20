@@ -45,7 +45,7 @@ func TestStatus_NowPlaying_Present(t *testing.T) {
 		AssetID:     "a1",
 		Title:       "Track A",
 		Artist:      "Artist A",
-		Type:        "musicas",
+		Type:        "MUSIC",
 		DurationMS:  240000,
 		PositionMS:  60000,
 		Percent:     25.0,
