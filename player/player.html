@@ -4279,7 +4279,8 @@ async function tableDrop(ev) {
 
 let _inAssist      = false;
 let _assistWaiting  = false;  // true only when engine sent AssistWaiting (no track running)
-let _enginePlaying  = false;  // true from ItemStarted until ItemFinished/IDLE
+let _enginePlaying       = false;  // true from ItemStarted until ItemFinished/IDLE
+let _enginePlayingItemId = null;   // queue_item_id of the item that set _enginePlaying=true
 window._assistNextId = null;
 
 function enterAssistUI() {
@@ -4619,8 +4620,8 @@ function handleEvent({ type, payload }) {
     case 'VolumeChanged':         if (!_draggingMain)    setVolDisplay('main',    payload.level); break;
     case 'PreviewVolumeChanged':  if (!_draggingPreview) setVolDisplay('preview', payload.level); break;
     case 'CartVolumeChanged':     if (!_draggingCart)    setVolDisplay('cart',    payload.level); break;
-    case 'ItemStarted':        _assistWaiting = false; _enginePlaying = true;  setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); { const t = document.getElementById('assistBannerTitle'); if (t) t.textContent = 'Modo ASSIST ativado'; } break;
-    case 'ItemFinished':       _enginePlaying = false; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); clearIntroCountdown(); break;
+    case 'ItemStarted':        _assistWaiting = false; _enginePlaying = true; _enginePlayingItemId = payload.queue_item_id; setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); { const t = document.getElementById('assistBannerTitle'); if (t) t.textContent = 'Modo ASSIST ativado'; } break;
+    case 'ItemFinished':       if (_enginePlayingItemId === payload.queue_item_id) { _enginePlaying = false; _enginePlayingItemId = null; } setStateBadge(engineState, engineMode); syncPlayNextBtn(); updateQueueItemStatus(payload.queue_item_id, payload.result || 'PLAYED'); clearIntroCountdown(); break;
     case 'BreakStarted':       break;
     case 'BreakEnded':         clearBreakBanner(); fetchQueue(); break;
     case 'SpotStarted':        updateBreakBanner(payload); if (payload.queue_item_id) updateQueueItemStatus(payload.queue_item_id, 'PLAYING'); break;
@@ -4931,7 +4932,7 @@ function onStateChange(p) {
   engineState = st;
   if (mo) engineMode = mo;
   if (st === 'IDLE' || st === 'STOPPING') _lastRemainingMs = 0;
-  if (st === 'IDLE') { _enginePlaying = false; _assistWaiting = false; }
+  if (st === 'IDLE') { _enginePlaying = false; _enginePlayingItemId = null; _assistWaiting = false; }
   if (st === 'IDLE' && _inAssist) _assistWaiting = true; // IDLE+ASSIST: operador ainda precisa pressionar PLAY
   setStateBadge(st, engineMode);
   updateButtons(st);
@@ -5261,7 +5262,7 @@ function setConn(ok) {
 function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen    = () => { setConn(true); };
-  ws.onclose   = () => { setConn(false); _enginePlaying = false; _assistWaiting = false; _lastRemainingMs = 0; setIdle(); updateButtons(''); setTimeout(connect, 2000); };
+  ws.onclose   = () => { setConn(false); _enginePlaying = false; _enginePlayingItemId = null; _assistWaiting = false; _lastRemainingMs = 0; setIdle(); updateButtons(''); setTimeout(connect, 2000); };
   ws.onerror   = () => ws.close();
   ws.onmessage = (e) => { try { handleEvent(JSON.parse(e.data)); } catch(err) { console.warn(err); } };
 }
