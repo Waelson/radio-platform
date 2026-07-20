@@ -13,6 +13,7 @@ import (
 type IndexService interface {
 	Status(ctx context.Context) (indexsvc.Status, error)
 	TriggerScan(ctx context.Context) error
+	TriggerCategorySync(ctx context.Context) error
 }
 
 // GetIndexStatus handles GET /v1/index/status.
@@ -41,5 +42,23 @@ func TriggerScan(svc IndexService) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusAccepted, map[string]string{"status": "scan_started"})
+	}
+}
+
+// SyncCategories handles POST /v1/index/sync-categories.
+// Links all existing tracks to their category entities based on the category
+// string stored in each track row. Missing categories are created automatically.
+// Returns 202 Accepted when the sync is started, 409 if already running.
+func SyncCategories(svc IndexService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := svc.TriggerCategorySync(r.Context()); errors.Is(err, indexsvc.ErrAlreadyRunning) {
+			writeError(w, http.StatusConflict, "already_running", "scan or sync already in progress")
+			return
+		} else if err != nil {
+			slog.Error("SyncCategories: error", "error", err)
+			writeError(w, http.StatusInternalServerError, "internal_error", "trigger sync failed")
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]string{"status": "sync_started"})
 	}
 }

@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/Waelson/radio-library-service/internal/api/handlers"
+	"github.com/Waelson/radio-library-service/internal/api/middleware"
 	"github.com/Waelson/radio-library-service/internal/config"
 )
 
 // Server is the HTTP API server for the Library Service.
 type Server struct {
 	cfg  config.APIConfig
+	auth config.AuthConfig
 	ts   handlers.TrackStore
 	ps   handlers.PlaylistStore
 	bs   handlers.BreakStore
@@ -37,6 +39,9 @@ type Server struct {
 	cits handlers.CueInTrackStore
 	nr   handlers.NormalizationReader
 	sts  handlers.StreamingStore
+	us   handlers.AuthUserStore
+	rcs  handlers.ResetCodeStore
+	ml   handlers.Mailer
 	log  *slog.Logger
 	http *http.Server
 }
@@ -66,6 +71,7 @@ func (s *Server) SetNormalizationReader(nr handlers.NormalizationReader) {
 // New creates a Server ready to be started.
 func New(
 	cfg config.APIConfig,
+	authCfg config.AuthConfig,
 	ts handlers.TrackStore,
 	ps handlers.PlaylistStore,
 	bs handlers.BreakStore,
@@ -81,11 +87,14 @@ func New(
 	stg handlers.SettingsStore,
 	srw handlers.SettingsReadWriter,
 	sts handlers.StreamingStore,
+	us  handlers.AuthUserStore,
+	rcs handlers.ResetCodeStore,
+	ml  handlers.Mailer,
 	log *slog.Logger,
 ) *Server {
-	s := &Server{cfg: cfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix,
+	s := &Server{cfg: cfg, auth: authCfg, ts: ts, ps: ps, bs: bs, hs: hs, ix: ix,
 		cs: cs, cls: cls, ss: ss, rls: rls, svc: svc,
-		tls: tls, ils: ils, stg: stg, srw: srw, sts: sts, log: log}
+		tls: tls, ils: ils, stg: stg, srw: srw, sts: sts, us: us, rcs: rcs, ml: ml, log: log}
 	return s
 }
 
@@ -122,115 +131,132 @@ func (s *Server) routes() http.Handler {
 
 	mux.HandleFunc("GET /v1/health", s.handleHealth)
 
-	mux.HandleFunc("GET /v1/tracks/artists", handlers.ListArtists(s.ts))
-	mux.HandleFunc("GET /v1/tracks/{id}", handlers.GetTrack(s.ts, s.nr))
-	mux.HandleFunc("GET /v1/tracks", handlers.SearchTracks(s.ts, s.nr))
-	mux.HandleFunc("PATCH /v1/tracks/{id}", handlers.PatchTrack(s.ts, s.nr))
-	mux.HandleFunc("PUT /v1/tracks/{id}/cuepoints", handlers.SaveCuePoints(s.ts))
+	// ── Auth routes (public) ──────────────────────────────────────────────────
+	authCfg := handlers.AuthConfig{
+		JWTSecret: s.auth.JWTSecret,
+		TokenTTL:  time.Duration(s.auth.TokenTTLHours) * time.Hour,
+	}
+	mux.HandleFunc("POST /v1/auth/login",          handlers.Login(s.us, authCfg))
+	mux.HandleFunc("POST /v1/auth/reset-request",  handlers.ResetRequest(s.us, s.rcs, s.ml))
+	mux.HandleFunc("POST /v1/auth/reset-verify",   handlers.ResetVerify(s.us, s.rcs, authCfg))
+	mux.HandleFunc("POST /v1/auth/reset-confirm",  handlers.ResetConfirm(s.us, authCfg))
 
-	mux.HandleFunc("GET /v1/playlists", handlers.ListPlaylists(s.ps))
-	mux.HandleFunc("POST /v1/playlists", handlers.CreatePlaylist(s.ps))
-	mux.HandleFunc("GET /v1/playlists/{id}", handlers.GetPlaylist(s.ps))
-	mux.HandleFunc("PUT /v1/playlists/{id}", handlers.UpdatePlaylist(s.ps))
-	mux.HandleFunc("DELETE /v1/playlists/{id}", handlers.DeletePlaylist(s.ps))
-	mux.HandleFunc("POST /v1/playlists/{id}/items", handlers.AddPlaylistItem(s.ps))
-	mux.HandleFunc("DELETE /v1/playlists/{id}/items/{item_id}", handlers.RemovePlaylistItem(s.ps))
-	mux.HandleFunc("PUT /v1/playlists/{id}/items/reorder", handlers.ReorderPlaylistItems(s.ps))
+	// ── Auth routes (require valid JWT) ───────────────────────────────────────
+	requireAuth := middleware.RequireAuth(s.auth.JWTSecret)
+	mux.Handle("POST /v1/auth/change-password",              requireAuth(handlers.ChangePassword(s.us)))
+	mux.Handle("POST /v1/users",                             requireAuth(handlers.CreateUser(s.us)))
+	mux.Handle("POST /v1/users/{id}/reset-password",         requireAuth(handlers.AdminResetPassword(s.us, s.auth.DefaultResetPassword)))
 
-	mux.HandleFunc("GET /v1/breaks", handlers.ListBreaks(s.bs))
-	mux.HandleFunc("POST /v1/breaks", handlers.CreateBreak(s.bs))
-	mux.HandleFunc("GET /v1/breaks/{id}", handlers.GetBreak(s.bs, s.nr))
-	mux.HandleFunc("PUT /v1/breaks/{id}", handlers.UpdateBreak(s.bs))
-	mux.HandleFunc("DELETE /v1/breaks/{id}", handlers.DeleteBreak(s.bs))
-	mux.HandleFunc("POST /v1/breaks/{id}/items", handlers.AddBreakItem(s.bs))
-	mux.HandleFunc("DELETE /v1/breaks/{id}/items/{item_id}", handlers.RemoveBreakItem(s.bs))
-	mux.HandleFunc("PUT /v1/breaks/{id}/items/reorder", handlers.ReorderBreakItems(s.bs))
+	mux.Handle("GET /v1/tracks/artists",           requireAuth(handlers.ListArtists(s.ts)))
+	mux.Handle("GET /v1/tracks/{id}",             requireAuth(handlers.GetTrack(s.ts, s.nr)))
+	mux.Handle("GET /v1/tracks",                  requireAuth(handlers.SearchTracks(s.ts, s.nr)))
+	mux.Handle("PATCH /v1/tracks/{id}",           requireAuth(handlers.PatchTrack(s.ts, s.nr)))
+	mux.Handle("PUT /v1/tracks/{id}/cuepoints",   requireAuth(handlers.SaveCuePoints(s.ts)))
 
-	mux.HandleFunc("GET /v1/index/status", handlers.GetIndexStatus(s.ix))
-	mux.HandleFunc("POST /v1/index/scan", handlers.TriggerScan(s.ix))
+	mux.Handle("GET /v1/playlists",                            requireAuth(handlers.ListPlaylists(s.ps)))
+	mux.Handle("POST /v1/playlists",                           requireAuth(handlers.CreatePlaylist(s.ps)))
+	mux.Handle("GET /v1/playlists/{id}",                       requireAuth(handlers.GetPlaylist(s.ps)))
+	mux.Handle("PUT /v1/playlists/{id}",                       requireAuth(handlers.UpdatePlaylist(s.ps)))
+	mux.Handle("DELETE /v1/playlists/{id}",                    requireAuth(handlers.DeletePlaylist(s.ps)))
+	mux.Handle("POST /v1/playlists/{id}/items",                requireAuth(handlers.AddPlaylistItem(s.ps)))
+	mux.Handle("DELETE /v1/playlists/{id}/items/{item_id}",    requireAuth(handlers.RemovePlaylistItem(s.ps)))
+	mux.Handle("PUT /v1/playlists/{id}/items/reorder",         requireAuth(handlers.ReorderPlaylistItems(s.ps)))
 
-	mux.HandleFunc("GET /v1/hotkeys/profiles",                          handlers.ListHotkeyProfiles(s.hs))
-	mux.HandleFunc("POST /v1/hotkeys/profiles",                         handlers.CreateHotkeyProfile(s.hs))
-	mux.HandleFunc("GET /v1/hotkeys/profiles/{id}",                     handlers.GetHotkeyProfile(s.hs, s.nr))
-	mux.HandleFunc("PUT /v1/hotkeys/profiles/{id}",                     handlers.UpdateHotkeyProfile(s.hs))
-	mux.HandleFunc("DELETE /v1/hotkeys/profiles/{id}",                  handlers.DeleteHotkeyProfile(s.hs))
-	mux.HandleFunc("POST /v1/hotkeys/profiles/{id}/buttons",            handlers.AddHotkeyButton(s.hs))
-	mux.HandleFunc("PUT /v1/hotkeys/profiles/{id}/buttons/reorder",     handlers.ReorderHotkeyButtons(s.hs))
-	mux.HandleFunc("PATCH /v1/hotkeys/buttons/{id}",                    handlers.PatchHotkeyButton(s.hs))
-	mux.HandleFunc("DELETE /v1/hotkeys/buttons/{id}",                   handlers.DeleteHotkeyButton(s.hs))
+	mux.Handle("GET /v1/breaks",                               requireAuth(handlers.ListBreaks(s.bs)))
+	mux.Handle("POST /v1/breaks",                              requireAuth(handlers.CreateBreak(s.bs)))
+	mux.Handle("GET /v1/breaks/{id}",                          requireAuth(handlers.GetBreak(s.bs, s.nr)))
+	mux.Handle("PUT /v1/breaks/{id}",                          requireAuth(handlers.UpdateBreak(s.bs)))
+	mux.Handle("DELETE /v1/breaks/{id}",                       requireAuth(handlers.DeleteBreak(s.bs)))
+	mux.Handle("POST /v1/breaks/{id}/items",                   requireAuth(handlers.AddBreakItem(s.bs)))
+	mux.Handle("DELETE /v1/breaks/{id}/items/{item_id}",       requireAuth(handlers.RemoveBreakItem(s.bs)))
+	mux.Handle("PUT /v1/breaks/{id}/items/reorder",            requireAuth(handlers.ReorderBreakItems(s.bs)))
+
+	mux.Handle("GET /v1/index/status",              requireAuth(handlers.GetIndexStatus(s.ix)))
+	mux.Handle("POST /v1/index/scan",                requireAuth(handlers.TriggerScan(s.ix)))
+	mux.Handle("POST /v1/index/sync-categories",     requireAuth(handlers.SyncCategories(s.ix)))
+
+	mux.Handle("GET /v1/hotkeys/profiles",                          requireAuth(handlers.ListHotkeyProfiles(s.hs)))
+	mux.Handle("POST /v1/hotkeys/profiles",                         requireAuth(handlers.CreateHotkeyProfile(s.hs)))
+	mux.Handle("GET /v1/hotkeys/profiles/{id}",                     requireAuth(handlers.GetHotkeyProfile(s.hs, s.nr)))
+	mux.Handle("PUT /v1/hotkeys/profiles/{id}",                     requireAuth(handlers.UpdateHotkeyProfile(s.hs)))
+	mux.Handle("DELETE /v1/hotkeys/profiles/{id}",                  requireAuth(handlers.DeleteHotkeyProfile(s.hs)))
+	mux.Handle("POST /v1/hotkeys/profiles/{id}/buttons",            requireAuth(handlers.AddHotkeyButton(s.hs)))
+	mux.Handle("PUT /v1/hotkeys/profiles/{id}/buttons/reorder",     requireAuth(handlers.ReorderHotkeyButtons(s.hs)))
+	mux.Handle("PATCH /v1/hotkeys/buttons/{id}",                    requireAuth(handlers.PatchHotkeyButton(s.hs)))
+	mux.Handle("DELETE /v1/hotkeys/buttons/{id}",                   requireAuth(handlers.DeleteHotkeyButton(s.hs)))
 
 	// Categories
-	mux.HandleFunc("GET /v1/categories",                                handlers.ListCategories(s.cs))
-	mux.HandleFunc("POST /v1/categories",                               handlers.CreateCategory(s.cs))
-	mux.HandleFunc("GET /v1/categories/{id}",                           handlers.GetCategory(s.cs))
-	mux.HandleFunc("PUT /v1/categories/{id}",                           handlers.UpdateCategory(s.cs))
-	mux.HandleFunc("DELETE /v1/categories/{id}",                        handlers.DeleteCategory(s.cs))
-	mux.HandleFunc("GET /v1/categories/{id}/tracks",                    handlers.ListCategoryTracks(s.cs))
-	mux.HandleFunc("POST /v1/categories/{id}/tracks",                   handlers.AddCategoryTracks(s.cs))
-	mux.HandleFunc("DELETE /v1/categories/{id}/tracks/{track_id}",      handlers.RemoveCategoryTrack(s.cs))
-	mux.HandleFunc("PUT /v1/tracks/{id}/categories",                    handlers.SetTrackCategories(s.cs))
+	mux.Handle("GET /v1/categories",                                requireAuth(handlers.ListCategories(s.cs)))
+	mux.Handle("POST /v1/categories",                               requireAuth(handlers.CreateCategory(s.cs)))
+	mux.Handle("GET /v1/categories/{id}",                           requireAuth(handlers.GetCategory(s.cs)))
+	mux.Handle("PUT /v1/categories/{id}",                           requireAuth(handlers.UpdateCategory(s.cs)))
+	mux.Handle("DELETE /v1/categories/{id}",                        requireAuth(handlers.DeleteCategory(s.cs)))
+	mux.Handle("GET /v1/categories/{id}/tracks",                    requireAuth(handlers.ListCategoryTracks(s.cs)))
+	mux.Handle("POST /v1/categories/{id}/tracks",                   requireAuth(handlers.AddCategoryTracks(s.cs)))
+	mux.Handle("DELETE /v1/categories/{id}/tracks/{track_id}",      requireAuth(handlers.RemoveCategoryTrack(s.cs)))
+	mux.Handle("PUT /v1/tracks/{id}/categories",                    requireAuth(handlers.SetTrackCategories(s.cs)))
 
 	// Clocks
-	mux.HandleFunc("GET /v1/clocks",                                    handlers.ListClocks(s.cls))
-	mux.HandleFunc("POST /v1/clocks",                                   handlers.CreateClock(s.cls))
-	mux.HandleFunc("GET /v1/clocks/{id}",                               handlers.GetClock(s.cls))
-	mux.HandleFunc("PUT /v1/clocks/{id}",                               handlers.UpdateClock(s.cls))
-	mux.HandleFunc("DELETE /v1/clocks/{id}",                            handlers.DeleteClock(s.cls))
-	mux.HandleFunc("POST /v1/clocks/{id}/slots",                        handlers.AddClockSlot(s.cls))
-	mux.HandleFunc("PUT /v1/clocks/{id}/slots/reorder",                 handlers.ReorderClockSlots(s.cls))
-	mux.HandleFunc("PUT /v1/clocks/{id}/slots/{slot_id}",               handlers.UpdateClockSlot(s.cls))
-	mux.HandleFunc("DELETE /v1/clocks/{id}/slots/{slot_id}",            handlers.DeleteClockSlot(s.cls))
+	mux.Handle("GET /v1/clocks",                                    requireAuth(handlers.ListClocks(s.cls)))
+	mux.Handle("POST /v1/clocks",                                   requireAuth(handlers.CreateClock(s.cls)))
+	mux.Handle("GET /v1/clocks/{id}",                               requireAuth(handlers.GetClock(s.cls)))
+	mux.Handle("PUT /v1/clocks/{id}",                               requireAuth(handlers.UpdateClock(s.cls)))
+	mux.Handle("DELETE /v1/clocks/{id}",                            requireAuth(handlers.DeleteClock(s.cls)))
+	mux.Handle("POST /v1/clocks/{id}/slots",                        requireAuth(handlers.AddClockSlot(s.cls)))
+	mux.Handle("PUT /v1/clocks/{id}/slots/reorder",                 requireAuth(handlers.ReorderClockSlots(s.cls)))
+	mux.Handle("PUT /v1/clocks/{id}/slots/{slot_id}",               requireAuth(handlers.UpdateClockSlot(s.cls)))
+	mux.Handle("DELETE /v1/clocks/{id}/slots/{slot_id}",            requireAuth(handlers.DeleteClockSlot(s.cls)))
 
 	// Schedule grid
-	mux.HandleFunc("GET /v1/schedule/clock-grid",                       handlers.GetClockGrid(s.cls))
-	mux.HandleFunc("PUT /v1/schedule/clock-grid",                       handlers.SetClockGrid(s.cls))
+	mux.Handle("GET /v1/schedule/clock-grid",                       requireAuth(handlers.GetClockGrid(s.cls)))
+	mux.Handle("PUT /v1/schedule/clock-grid",                       requireAuth(handlers.SetClockGrid(s.cls)))
 
 	// Separation rules
-	mux.HandleFunc("GET /v1/schedule/separation-rules",                 handlers.ListSeparationRules(s.ss))
-	mux.HandleFunc("POST /v1/schedule/separation-rules",                handlers.CreateSeparationRule(s.ss))
-	mux.HandleFunc("PUT /v1/schedule/separation-rules/{id}",            handlers.UpdateSeparationRule(s.ss))
-	mux.HandleFunc("DELETE /v1/schedule/separation-rules/{id}",         handlers.DeleteSeparationRule(s.ss))
+	mux.Handle("GET /v1/schedule/separation-rules",                 requireAuth(handlers.ListSeparationRules(s.ss)))
+	mux.Handle("POST /v1/schedule/separation-rules",                requireAuth(handlers.CreateSeparationRule(s.ss)))
+	mux.Handle("PUT /v1/schedule/separation-rules/{id}",            requireAuth(handlers.UpdateSeparationRule(s.ss)))
+	mux.Handle("DELETE /v1/schedule/separation-rules/{id}",         requireAuth(handlers.DeleteSeparationRule(s.ss)))
 
 	// Playlist generator
-	mux.HandleFunc("POST /v1/schedule/generate",                        handlers.GenerateSchedule(s.svc, s.nr))
+	mux.Handle("POST /v1/schedule/generate",                        requireAuth(handlers.GenerateSchedule(s.svc, s.nr)))
 
 	// Rotation log
-	mux.HandleFunc("POST /v1/rotation-log",                             handlers.AppendRotationLog(s.rls))
-	mux.HandleFunc("GET /v1/rotation-log",                              handlers.GetRotationLog(s.rls))
+	mux.Handle("POST /v1/rotation-log",                             requireAuth(handlers.AppendRotationLog(s.rls)))
+	mux.Handle("GET /v1/rotation-log",                              requireAuth(handlers.GetRotationLog(s.rls)))
 
 	// Settings
-	mux.HandleFunc("GET /v1/settings",                                  handlers.ListSettings(s.srw))
-	mux.HandleFunc("GET /v1/settings/{key}",                            handlers.GetSetting(s.srw))
-	mux.HandleFunc("PUT /v1/settings/{key}",                            handlers.UpdateSetting(s.srw))
+	mux.Handle("GET /v1/settings",                                  requireAuth(handlers.ListSettings(s.srw)))
+	mux.Handle("GET /v1/settings/{key}",                            requireAuth(handlers.GetSetting(s.srw)))
+	mux.Handle("PUT /v1/settings/{key}",                            requireAuth(handlers.UpdateSetting(s.srw)))
 
 	// Loudness analysis
 	if s.lw != nil {
-		mux.HandleFunc("GET /v1/loudness/status",          handlers.GetLoudnessStatus(s.lw))
-		mux.HandleFunc("POST /v1/loudness/analyze/{id}",   handlers.ReanalyzeTrack(s.lw, s.lts))
-		mux.HandleFunc("POST /v1/loudness/analyze",        handlers.ReanalyzeAll(s.lw, s.lts))
-		mux.HandleFunc("DELETE /v1/loudness/analyze",      handlers.CancelLoudness(s.lw))
+		mux.Handle("GET /v1/loudness/status",          requireAuth(handlers.GetLoudnessStatus(s.lw)))
+		mux.Handle("POST /v1/loudness/analyze/{id}",   requireAuth(handlers.ReanalyzeTrack(s.lw, s.lts)))
+		mux.Handle("POST /v1/loudness/analyze",        requireAuth(handlers.ReanalyzeAll(s.lw, s.lts)))
+		mux.Handle("DELETE /v1/loudness/analyze",      requireAuth(handlers.CancelLoudness(s.lw)))
 	}
 
 	// CueIn reanalysis
 	if s.ciw != nil {
-		mux.HandleFunc("GET /v1/tracks/reanalyze-cuepoints/status", handlers.GetCueInReanalyzeStatus(s.ciw))
-		mux.HandleFunc("POST /v1/tracks/reanalyze-cuepoints",       handlers.TriggerCueInReanalyze(s.ciw, s.cits))
-		mux.HandleFunc("DELETE /v1/tracks/reanalyze-cuepoints",     handlers.CancelCueInReanalyze(s.ciw))
+		mux.Handle("GET /v1/tracks/reanalyze-cuepoints/status", requireAuth(handlers.GetCueInReanalyzeStatus(s.ciw)))
+		mux.Handle("POST /v1/tracks/reanalyze-cuepoints",       requireAuth(handlers.TriggerCueInReanalyze(s.ciw, s.cits)))
+		mux.Handle("DELETE /v1/tracks/reanalyze-cuepoints",     requireAuth(handlers.CancelCueInReanalyze(s.ciw)))
 	}
 
 	// Streaming targets
-	mux.HandleFunc("GET /v1/streaming",          handlers.ListStreamingTargets(s.sts))
-	mux.HandleFunc("POST /v1/streaming",         handlers.CreateStreamingTarget(s.sts))
-	mux.HandleFunc("GET /v1/streaming/{id}",     handlers.GetStreamingTarget(s.sts))
-	mux.HandleFunc("PUT /v1/streaming/{id}",     handlers.UpdateStreamingTarget(s.sts))
-	mux.HandleFunc("DELETE /v1/streaming/{id}",  handlers.DeleteStreamingTarget(s.sts))
+	mux.Handle("GET /v1/streaming",          requireAuth(handlers.ListStreamingTargets(s.sts)))
+	mux.Handle("POST /v1/streaming",         requireAuth(handlers.CreateStreamingTarget(s.sts)))
+	mux.Handle("GET /v1/streaming/{id}",     requireAuth(handlers.GetStreamingTarget(s.sts)))
+	mux.Handle("PUT /v1/streaming/{id}",     requireAuth(handlers.UpdateStreamingTarget(s.sts)))
+	mux.Handle("DELETE /v1/streaming/{id}",  requireAuth(handlers.DeleteStreamingTarget(s.sts)))
 
 	// Transmission log — order matters: more specific paths first
-	mux.HandleFunc("GET /v1/transmission-log/export/ecad",              handlers.ExportECAD(s.tls, s.stg))
-	mux.HandleFunc("GET /v1/transmission-log/export",                   handlers.ExportTransmissionLog(s.tls))
-	mux.HandleFunc("GET /v1/transmission-log/summary",                  handlers.GetTransmissionLogSummary(s.tls))
-	mux.HandleFunc("GET /v1/transmission-log/imports",                  handlers.ListImportLog(s.ils))
-	mux.HandleFunc("GET /v1/transmission-log",                          handlers.ListTransmissionLog(s.tls))
+	mux.Handle("GET /v1/transmission-log/export/ecad",              requireAuth(handlers.ExportECAD(s.tls, s.stg)))
+	mux.Handle("GET /v1/transmission-log/export",                   requireAuth(handlers.ExportTransmissionLog(s.tls)))
+	mux.Handle("GET /v1/transmission-log/summary",                  requireAuth(handlers.GetTransmissionLogSummary(s.tls)))
+	mux.Handle("GET /v1/transmission-log/imports",                  requireAuth(handlers.ListImportLog(s.ils)))
+	mux.Handle("GET /v1/transmission-log",                          requireAuth(handlers.ListTransmissionLog(s.tls)))
 
 	return corsMiddleware(s.cfg.CORS.AllowedOrigins, mux)
 }

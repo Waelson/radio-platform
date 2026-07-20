@@ -9,8 +9,13 @@ Fornece busca de faixas, playlists, blocos comerciais, botoneira e **rotação m
 
 - [Visão geral](#visão-geral)
 - [Porta padrão](#porta-padrão)
+- [Configuração](#configuração)
+  - [Autenticação (JWT)](#autenticação-jwt)
+  - [SMTP — reset de senha por e-mail](#smtp--reset-de-senha-por-e-mail)
 - [API REST](#api-rest)
   - [Health](#health)
+  - [Autenticação](#autenticação)
+  - [Usuários (admin)](#usuários-admin)
   - [Faixas](#faixas)
   - [Playlists](#playlists)
   - [Blocos comerciais (Breaks)](#blocos-comerciais-breaks)
@@ -45,6 +50,102 @@ Configurável no player via query string `?lib=http://<host>:<port>`.
 
 ---
 
+## Configuração
+
+### Autenticação (JWT)
+
+O serviço usa JWT HMAC-SHA256 para proteger todas as rotas exceto `/v1/health` e `/v1/auth/*`. Configure em `library.yaml`:
+
+```yaml
+auth:
+  jwt_secret: "troque-em-producao"   # mínimo 32 chars em prod
+  token_ttl_hours: 8                 # TTL do token de sessão (padrão: 8h = 1 turno)
+
+  # Usuário admin criado automaticamente na primeira execução (sem usuários no banco).
+  # Faça login com estas credenciais e troque a senha imediatamente.
+  default_admin_email: "admin@radio.com"
+  default_admin_name: "Administrador"
+  default_admin_password: "Admin123"
+
+  # Senha definida pelo admin ao fazer reset de outro operador via
+  # POST /v1/users/{id}/reset-password. O operador é forçado a trocar no próximo login.
+  default_reset_password: "RadioFlow@2025"
+```
+
+> **Produção:** `jwt_secret` deve ter no mínimo 32 caracteres aleatórios. Use `openssl rand -hex 32` para gerar.
+
+---
+
+### SMTP — reset de senha por e-mail
+
+O reset de senha por e-mail é **desabilitado por padrão** (`enabled: false`). Quando desabilitado, o código é apenas logado no stderr — útil em desenvolvimento.
+
+Configure em `library.yaml`:
+
+```yaml
+mailer:
+  enabled: true              # false = loga o código em vez de enviar
+  host: "smtp.gmail.com"
+  port: 587
+  username: "noreply@suaradio.com.br"
+  password: "sua-senha-de-app"
+  from: "RadioFlow <noreply@suaradio.com.br>"
+  use_tls: true              # true = STARTTLS na porta 587; false = plain (porta 25)
+```
+
+#### Exemplos de provedor
+
+**Gmail (recomendado para testes):**
+```yaml
+mailer:
+  enabled: true
+  host: "smtp.gmail.com"
+  port: 587
+  username: "seu.email@gmail.com"
+  password: "xxxx xxxx xxxx xxxx"   # Senha de app (não a senha da conta)
+  from: "RadioFlow <seu.email@gmail.com>"
+  use_tls: true
+```
+
+> Gere uma senha de app em: Conta Google → Segurança → Verificação em duas etapas → Senhas de app.
+
+**SendGrid:**
+```yaml
+mailer:
+  enabled: true
+  host: "smtp.sendgrid.net"
+  port: 587
+  username: "apikey"
+  password: "SG.xxxxxxxxxxxxxxxx"   # Sua API key do SendGrid
+  from: "RadioFlow <noreply@suaradio.com.br>"
+  use_tls: true
+```
+
+**SMTP corporativo / sem TLS (porta 25):**
+```yaml
+mailer:
+  enabled: true
+  host: "mail.suaradio.com.br"
+  port: 25
+  username: "noreply@suaradio.com.br"
+  password: "senha"
+  from: "RadioFlow <noreply@suaradio.com.br>"
+  use_tls: false
+```
+
+#### Fluxo de fallback quando SMTP não está configurado
+
+Se `mailer.enabled: false` ou o envio falhar, o reset de senha por e-mail fica indisponível para o operador. Nesse caso, o **administrador** pode redefinir a senha do operador manualmente via:
+
+```
+POST /v1/users/{id}/reset-password
+Authorization: Bearer <admin-token>
+```
+
+Isso define a senha para o valor de `auth.default_reset_password` e força a troca no próximo login.
+
+---
+
 ## API REST
 
 ### Health
@@ -58,6 +159,120 @@ Verifica disponibilidade do serviço. Usado pelo player para indicar se a Biblio
 **Resposta:**
 ```json
 { "status": "ok" }
+```
+
+---
+
+### Autenticação
+
+Todas as rotas protegidas exigem o header:
+```
+Authorization: Bearer <token>
+```
+
+#### Login
+
+```
+POST /v1/auth/login
+```
+
+**Body:**
+```json
+{ "email": "op@radio.com", "password": "Senha123" }
+```
+
+**Resposta (200):**
+```json
+{
+  "ok": true,
+  "data": {
+    "token":           "eyJ...",
+    "expires_at":      "2026-07-19T07:00:00Z",
+    "user_id":         "01JA...",
+    "email":           "op@radio.com",
+    "name":            "João Silva",
+    "role":            "operator",
+    "force_change_pwd": false
+  }
+}
+```
+
+Se `force_change_pwd: true`, o Player exibe a tela de troca de senha obrigatória antes de liberar acesso.
+
+#### Alterar senha (autenticado)
+
+```
+POST /v1/auth/change-password
+Authorization: Bearer <token>
+```
+
+**Body:**
+```json
+{ "current_password": "SenhaAtual1", "new_password": "NovaSenha2" }
+```
+
+Regras: mínimo 8 caracteres, ao menos 1 maiúscula, ao menos 1 número.
+
+#### Reset por e-mail — solicitar código
+
+```
+POST /v1/auth/reset-request
+```
+
+**Body:**
+```json
+{ "email": "op@radio.com" }
+```
+
+Sempre retorna `200` independente de o e-mail existir (previne enumeração de usuários). O código de 6 dígitos é enviado por e-mail, tem TTL de 15 min e máximo de 5 tentativas.
+
+#### Reset por e-mail — verificar código
+
+```
+POST /v1/auth/reset-verify
+```
+
+**Body:**
+```json
+{ "email": "op@radio.com", "code": "382941" }
+```
+
+**Resposta (200):**
+```json
+{ "ok": true, "data": { "reset_token": "eyJ..." } }
+```
+
+O `reset_token` é um JWT de curta duração (10 min) com `scope=reset`.
+
+#### Reset por e-mail — confirmar nova senha
+
+```
+POST /v1/auth/reset-confirm
+```
+
+**Body:**
+```json
+{ "reset_token": "eyJ...", "new_password": "NovaSenha2" }
+```
+
+Em caso de sucesso, retorna um token de sessão completo (mesmo formato do login).
+
+---
+
+### Usuários (admin)
+
+#### Reset de senha pelo administrador
+
+```
+POST /v1/users/{id}/reset-password
+Authorization: Bearer <admin-token>
+```
+
+Requer `role=admin`. Define a senha do usuário como `auth.default_reset_password` e ativa `force_change_pwd`. O usuário precisará trocar a senha no próximo login. Não envia e-mail.
+
+**Resposta (200):**
+```json
+{ "ok": true }
 ```
 
 ---

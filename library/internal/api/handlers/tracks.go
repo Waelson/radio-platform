@@ -113,7 +113,7 @@ func toTrackJSON(t store.Track) trackJSON {
 }
 
 // SearchTracks handles GET /v1/tracks
-// Query params: q, type, artist, album, category, limit (default 50, max 200), offset,
+// Query params: q, type, artist, album, category, category_id, limit (default 50, max 200), offset,
 // loudness_status, loudness_min, loudness_max.
 func SearchTracks(ts TrackStore, nr NormalizationReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -128,6 +128,7 @@ func SearchTracks(ts TrackStore, nr NormalizationReader) http.HandlerFunc {
 			Artist:         q.Get("artist"),
 			Album:          q.Get("album"),
 			Category:       q.Get("category"),
+			CategoryID:     q.Get("category_id"),
 			Limit:          limit,
 			Offset:         offset,
 			LoudnessStatus: q.Get("loudness_status"),

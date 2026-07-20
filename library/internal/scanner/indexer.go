@@ -12,6 +12,11 @@ import (
 	"github.com/Waelson/radio-library-service/internal/store"
 )
 
+// TrackCategoryLister returns all tracks eligible for category sync.
+type TrackCategoryLister interface {
+	ListForCategorySync(ctx context.Context) ([]store.Track, error)
+}
+
 // TrackWriter is the store method subset the Indexer needs.
 type TrackWriter interface {
 	Upsert(ctx context.Context, t store.Track) error
@@ -19,6 +24,12 @@ type TrackWriter interface {
 	FindByPath(ctx context.Context, path string) (store.Track, error)
 	// SetCueIn sets cue_in_ms only when it is currently NULL (never overwrites).
 	SetCueIn(ctx context.Context, id string, ms int64) error
+}
+
+// CategoryLinker syncs a track with its category entity after indexing.
+type CategoryLinker interface {
+	FindOrCreateByName(ctx context.Context, name string) (store.Category, error)
+	LinkTrack(ctx context.Context, categoryID, trackID string) error
 }
 
 // LoudnessEnqueuer is an optional hook called after each successful file index.
@@ -34,6 +45,7 @@ type Indexer struct {
 	store    TrackWriter
 	log      *slog.Logger
 	loudness LoudnessEnqueuer // optional; nil = no loudness analysis
+	catLink  CategoryLinker   // optional; nil = no category sync
 }
 
 // NewIndexer creates an Indexer.
@@ -45,6 +57,12 @@ func NewIndexer(cfg config.ScannerConfig, ts TrackWriter, log *slog.Logger) *Ind
 // successful file index. Safe to call before Start/Scan.
 func (ix *Indexer) SetLoudnessEnqueuer(e LoudnessEnqueuer) {
 	ix.loudness = e
+}
+
+// SetCategoryLinker attaches a CategoryLinker that automatically creates and
+// links category entities for each indexed track. Safe to call before Scan.
+func (ix *Indexer) SetCategoryLinker(cl CategoryLinker) {
+	ix.catLink = cl
 }
 
 // ScanResult contains statistics from a full library scan.
@@ -59,10 +77,16 @@ type ScanResult struct {
 func (ix *Indexer) Scan(ctx context.Context) (ScanResult, error) {
 	var res ScanResult
 
+	ix.log.Info("scan started",
+		"library_root", ix.cfg.LibraryRoot,
+		"directories", len(ix.cfg.Directories),
+	)
+
 	for subdir, assetType := range ix.cfg.Directories {
 		dir := filepath.Join(ix.cfg.LibraryRoot, subdir)
 		ix.log.Info("scanning directory", "dir", dir, "type", assetType)
 
+		dirIndexed := 0
 		err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				ix.log.Warn("walk error", "path", path, "error", err)
@@ -70,9 +94,13 @@ func (ix *Indexer) Scan(ctx context.Context) (ScanResult, error) {
 				return nil // keep walking
 			}
 			if d.IsDir() {
+				if path != dir {
+					ix.log.Info("entering subdirectory", "path", path)
+				}
 				return nil
 			}
 			if !ix.isSupportedExt(path) {
+				ix.log.Info("skipping unsupported file", "path", path, "ext", filepath.Ext(path))
 				res.Skipped++
 				return nil
 			}
@@ -82,6 +110,15 @@ func (ix *Indexer) Scan(ctx context.Context) (ScanResult, error) {
 				res.ErrCount++
 			} else {
 				res.Indexed++
+				dirIndexed++
+				if dirIndexed%50 == 0 {
+					ix.log.Info("scan progress",
+						"dir", dir,
+						"indexed_in_dir", dirIndexed,
+						"total_indexed", res.Indexed,
+						"total_errors", res.ErrCount,
+					)
+				}
 			}
 
 			// Respect cancellation without aborting the whole walk prematurely.
@@ -95,6 +132,12 @@ func (ix *Indexer) Scan(ctx context.Context) (ScanResult, error) {
 		if err != nil {
 			return res, fmt.Errorf("scan %q: %w", dir, err)
 		}
+
+		ix.log.Info("directory scan complete",
+			"dir", dir,
+			"type", assetType,
+			"indexed", dirIndexed,
+		)
 	}
 
 	ix.log.Info("scan complete",
@@ -147,6 +190,16 @@ func (ix *Indexer) IndexFile(ctx context.Context, path, assetType string) error 
 		Publisher: meta.Publisher,
 	}
 
+	ix.log.Info("upserting track",
+		"path", path,
+		"title", title,
+		"artist", artist,
+		"album", album,
+		"category", category,
+		"type", assetType,
+		"duration_ms", t.DurationMS,
+	)
+
 	if err := ix.store.Upsert(ctx, t); err != nil {
 		return fmt.Errorf("upsert %q: %w", path, err)
 	}
@@ -154,25 +207,97 @@ func (ix *Indexer) IndexFile(ctx context.Context, path, assetType string) error 
 	// After upsert, fetch the stored track (needed for ID and current cue_in_ms).
 	tr, err := ix.store.FindByPath(ctx, path)
 	if err == nil {
+		ix.log.Info("track upserted", "id", tr.ID, "path", path)
+
 		// Auto-detect cue_in_ms when enabled and not already set.
 		if ix.cfg.AutoDetectCueIn && tr.CueInMS == nil {
+			ix.log.Info("detecting cue_in", "path", path)
 			if ms := DetectCueIn(ix.cfg.FFmpegPath, path); ms > 0 {
 				if setErr := ix.store.SetCueIn(ctx, tr.ID, ms); setErr != nil {
 					ix.log.Warn("set cue_in failed", "path", path, "error", setErr)
 				} else {
-					ix.log.Debug("cue_in detected", "path", path, "cue_in_ms", ms)
+					ix.log.Info("cue_in detected", "path", path, "cue_in_ms", ms)
+				}
+			} else {
+				ix.log.Info("cue_in not detected (no leading silence)", "path", path)
+			}
+		}
+
+		// Sync category entity and link track.
+		if ix.catLink != nil && category != "" {
+			ix.log.Info("syncing category", "category", category, "track_id", tr.ID)
+			if cat, catErr := ix.catLink.FindOrCreateByName(ctx, category); catErr != nil {
+				ix.log.Warn("category sync failed", "category", category, "error", catErr)
+			} else {
+				ix.log.Info("category resolved", "category", category, "category_id", cat.ID)
+				if linkErr := ix.catLink.LinkTrack(ctx, cat.ID, tr.ID); linkErr != nil {
+					ix.log.Warn("category link failed", "track_id", tr.ID, "category_id", cat.ID, "error", linkErr)
+				} else {
+					ix.log.Info("track linked to category", "track_id", tr.ID, "category_id", cat.ID, "category", category)
 				}
 			}
 		}
+
 		// Enqueue for loudness analysis.
 		if ix.loudness != nil {
 			ix.loudness.Enqueue(tr.ID)
+			ix.log.Info("enqueued for loudness analysis", "track_id", tr.ID, "path", path)
 		}
+	} else {
+		ix.log.Warn("could not fetch track after upsert", "path", path, "error", err)
 	}
 
-	ix.log.Debug("indexed", "path", path, "title", title, "artist", artist,
-		"album", album, "category", category, "type", assetType)
 	return nil
+}
+
+// SyncCategoryResult holds statistics from a category sync operation.
+type SyncCategoryResult struct {
+	Linked  int
+	Created int
+	Errors  int
+}
+
+// SyncCategories iterates all tracks with a non-empty category string and
+// ensures each one is linked to a category entity via track_categories.
+// Missing categories are created automatically using NormalizeCategory.
+// This is safe to call concurrently with ongoing indexing.
+func (ix *Indexer) SyncCategories(ctx context.Context, lister TrackCategoryLister) (SyncCategoryResult, error) {
+	if ix.catLink == nil {
+		return SyncCategoryResult{}, fmt.Errorf("no CategoryLinker configured")
+	}
+	tracks, err := lister.ListForCategorySync(ctx)
+	if err != nil {
+		return SyncCategoryResult{}, fmt.Errorf("sync categories: list tracks: %w", err)
+	}
+
+	// Cache category lookups to avoid hitting the DB for every track.
+	catCache := make(map[string]string) // normalizedName → category ID
+	var res SyncCategoryResult
+
+	for _, t := range tracks {
+		if ctx.Err() != nil {
+			break
+		}
+		cat, catErr := ix.catLink.FindOrCreateByName(ctx, t.Category)
+		if catErr != nil {
+			ix.log.Warn("sync: category lookup/create failed", "category", t.Category, "error", catErr)
+			res.Errors++
+			continue
+		}
+		_, exists := catCache[t.Category]
+		if !exists {
+			catCache[t.Category] = cat.ID
+			res.Created++ // approximate: counts first time we see each category
+		}
+		if linkErr := ix.catLink.LinkTrack(ctx, cat.ID, t.ID); linkErr != nil {
+			ix.log.Warn("sync: link track failed", "track_id", t.ID, "error", linkErr)
+			res.Errors++
+			continue
+		}
+		res.Linked++
+	}
+	ix.log.Info("category sync complete", "linked", res.Linked, "categories", len(catCache), "errors", res.Errors)
+	return res, ctx.Err()
 }
 
 func (ix *Indexer) isSupportedExt(path string) bool {

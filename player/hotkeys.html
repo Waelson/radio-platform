@@ -589,6 +589,13 @@ const params   = new URLSearchParams(window.location.search);
 const API_URL  = params.get('api') || 'http://127.0.0.1:8080';
 const LIB_URL  = params.get('lib') || 'http://127.0.0.1:8081';
 
+async function libFetch(path, opts = {}) {
+  const token = window.electronAPI ? await window.electronAPI.getToken() : null;
+  const headers = Object.assign({}, opts.headers);
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return fetch(LIB_URL + path, Object.assign({}, opts, { headers }));
+}
+
 /* ══ PALETTES ════════════════════════════════════════════════ */
 const PALETTES = [
   { id:'purple', grad:'linear-gradient(145deg,#9b59b6,#5b2c6f)', accent:'#d7bde2', glow:'rgba(155,89,182,0.60)',  border:'rgba(189,147,220,0.60)' },
@@ -632,7 +639,7 @@ connectWS();
 /* ══ LIBRARY API ═════════════════════════════════════════════ */
 async function loadProfiles() {
   try {
-    const r = await fetch(LIB_URL + '/v1/hotkeys/profiles');
+    const r = await libFetch('/v1/hotkeys/profiles');
     const j = await r.json();
     _profiles = (j.data || []).map(p => ({
       id: p.id, name: p.name, columns: p.columns || 4, buttons: [],
@@ -654,7 +661,7 @@ async function loadProfiles() {
 
 async function loadButtons(profileId) {
   try {
-    const r = await fetch(LIB_URL + '/v1/hotkeys/profiles/' + profileId);
+    const r = await libFetch('/v1/hotkeys/profiles/' + profileId);
     const j = await r.json();
     const prof = _profiles.find(p => p.id === profileId);
     if (!prof) return;
@@ -669,7 +676,7 @@ async function loadButtons(profileId) {
 }
 
 async function apiCreateProfile(name, columns) {
-  const r = await fetch(LIB_URL + '/v1/hotkeys/profiles', {
+  const r = await libFetch('/v1/hotkeys/profiles', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, columns }),
   });
@@ -677,18 +684,18 @@ async function apiCreateProfile(name, columns) {
 }
 
 async function apiDeleteProfile(id) {
-  await fetch(LIB_URL + '/v1/hotkeys/profiles/' + id, { method: 'DELETE' });
+  await libFetch('/v1/hotkeys/profiles/' + id, { method: 'DELETE' });
 }
 
 async function apiUpdateProfile(id, name, columns) {
-  await fetch(LIB_URL + '/v1/hotkeys/profiles/' + id, {
+  await libFetch('/v1/hotkeys/profiles/' + id, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, columns }),
   });
 }
 
 async function apiAddButton(profileId, btn) {
-  const r = await fetch(LIB_URL + '/v1/hotkeys/profiles/' + profileId + '/buttons', {
+  const r = await libFetch('/v1/hotkeys/profiles/' + profileId + '/buttons', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(btn),
   });
@@ -696,7 +703,7 @@ async function apiAddButton(profileId, btn) {
 }
 
 async function apiPatchButton(btnId, patch) {
-  const r = await fetch(LIB_URL + '/v1/hotkeys/buttons/' + btnId, {
+  const r = await libFetch('/v1/hotkeys/buttons/' + btnId, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
   });
@@ -704,7 +711,7 @@ async function apiPatchButton(btnId, patch) {
 }
 
 async function apiDeleteButton(btnId) {
-  await fetch(LIB_URL + '/v1/hotkeys/buttons/' + btnId, { method: 'DELETE' });
+  await libFetch('/v1/hotkeys/buttons/' + btnId, { method: 'DELETE' });
 }
 
 /* ══ TRACK SEARCH ════════════════════════════════════════════ */
@@ -718,7 +725,7 @@ function onSearchInput(q) {
 
 async function searchTracks(q) {
   try {
-    const r = await fetch(LIB_URL + '/v1/tracks?q=' + encodeURIComponent(q) + '&limit=8');
+    const r = await libFetch('/v1/tracks?q=' + encodeURIComponent(q) + '&limit=8');
     const j = await r.json();
     document.getElementById('apSpinner').style.display = 'none';
     renderTrackResults(j.tracks || j.data || []);

@@ -34,8 +34,13 @@ func DetectCueIn(ffmpegPath, path string) int64 {
 	return parseSilenceEnd(string(out))
 }
 
+// maxLeadingSilenceMS is the maximum accepted cue_in value.
+// Leading silence (intro) is always within the first few seconds.
+// Any silence_end beyond this threshold is trailing/mid-track silence and must be ignored.
+const maxLeadingSilenceMS = 10_000 // 10 seconds
+
 // parseSilenceEnd extracts the first silence_end value (in milliseconds) from
-// ffmpeg silencedetect output. Returns 0 when not found.
+// ffmpeg silencedetect output. Returns 0 when not found or beyond the leading-silence threshold.
 func parseSilenceEnd(output string) int64 {
 	m := reSilenceEnd.FindStringSubmatch(output)
 	if m == nil {
@@ -46,5 +51,9 @@ func parseSilenceEnd(output string) int64 {
 	if err != nil || f <= 0 {
 		return 0
 	}
-	return int64(f * 1000)
+	ms := int64(f * 1000)
+	if ms > maxLeadingSilenceMS {
+		return 0
+	}
+	return ms
 }

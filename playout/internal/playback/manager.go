@@ -499,6 +499,13 @@ func (m *Manager) HandleSkip(_ context.Context, _ commands.Command) error {
 		return &commands.RejectedError{Reason: fmt.Sprintf("item %s is mandatory and cannot be skipped", cur.QueueItemID)}
 	}
 
+	m.log.Info("operator requested skip",
+		"queue_item_id", cur.QueueItemID,
+		"asset_id", cur.AssetID,
+		"path", cur.Path,
+		"title", cur.Title,
+	)
+
 	select {
 	case m.skipCh <- struct{}{}:
 	default:
@@ -1093,6 +1100,13 @@ func (m *Manager) sessionLoop(ctx context.Context, cancel context.CancelFunc, do
 			}
 			if err != nil {
 				m.log.Error("decoder open failed", "path", item.Path, "error", err)
+				m.log.Info("auto-skipping item: could not open audio file",
+					"reason", err.Error(),
+					"queue_item_id", item.QueueItemID,
+					"asset_id", item.AssetID,
+					"path", item.Path,
+					"title", item.Title,
+				)
 				m.queueMgr.ClearCurrent() // item was set as current by PopAsCurrent; undo on failure
 				m.evtBus.Publish(events.New(events.EvtDecoderError, events.DecoderErrorPayload{
 					Code: "DECODER_OPEN_FAILED", Message: err.Error(),
@@ -1184,6 +1198,28 @@ func (m *Manager) sessionLoop(ctx context.Context, cancel context.CancelFunc, do
 			}
 		}
 
+		m.log.Info("item finished",
+			"queue_item_id", item.QueueItemID,
+			"asset_id", item.AssetID,
+			"title", item.Title,
+			"result", result,
+			"played_ms", playedMS,
+			"expected_ms", item.DurationMS,
+		)
+
+		if result == queue.ItemResultPlayed && item.DurationMS > 0 && playedMS < item.DurationMS/10 {
+			m.log.Warn("item finished suspiciously fast (possible cue misconfiguration or corrupt file)",
+				"queue_item_id", item.QueueItemID,
+				"asset_id", item.AssetID,
+				"title", item.Title,
+				"path", item.Path,
+				"played_ms", playedMS,
+				"expected_ms", item.DurationMS,
+				"cue_in_ms", item.CueInMS,
+				"cue_out_ms", item.CueOutMS,
+			)
+		}
+
 		m.evtBus.Publish(events.New(events.EvtItemFinished, events.ItemFinishedPayload{
 			QueueItemID:      item.QueueItemID,
 			AssetID:          item.AssetID,
@@ -1193,6 +1229,13 @@ func (m *Manager) sessionLoop(ctx context.Context, cancel context.CancelFunc, do
 
 		switch result {
 		case queue.ItemResultFailed:
+			m.log.Info("auto-skipping item: playback failed",
+				"queue_item_id", item.QueueItemID,
+				"asset_id", item.AssetID,
+				"path", item.Path,
+				"title", item.Title,
+				"played_ms", playedMS,
+			)
 			if m.handleFailure(ctx, gen) {
 				break
 			}
@@ -1286,6 +1329,19 @@ func (m *Manager) startItem(item *queue.QueueItem, startFrame int64) {
 		QueueItemID: item.QueueItemID,
 		AssetID:     item.AssetID,
 	}))
+
+	m.log.Info("item started",
+		"queue_item_id", item.QueueItemID,
+		"asset_id", item.AssetID,
+		"title", item.Title,
+		"artist", item.Artist,
+		"type", item.Type,
+		"path", item.Path,
+		"duration_ms", item.DurationMS,
+		"cue_in_ms", item.CueInMS,
+		"cue_out_ms", item.CueOutMS,
+		"gain_db", item.GainDB,
+	)
 }
 
 // notifyBreakTransition publishes SpotEnded and, when the break is over,

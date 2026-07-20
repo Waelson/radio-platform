@@ -61,12 +61,46 @@ func (s *CategoryStore) Create(ctx context.Context, name, description, color str
 	}
 	id := newID()
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO categories(id, name, description, color) VALUES (?, ?, ?, ?)`,
-		id, name, description, color,
+		`INSERT INTO categories(id, name, name_key, description, color) VALUES (?, ?, ?, ?, ?)`,
+		id, name, NormalizeCategory(name), description, color,
 	); err != nil {
 		return Category{}, fmt.Errorf("category create: %w", err)
 	}
 	return s.Get(ctx, id)
+}
+
+// FindOrCreateByName looks up a category by its normalized name and creates it
+// if it does not exist. The display name is preserved on creation; subsequent
+// calls with differently-cased or accented variants return the same category.
+func (s *CategoryStore) FindOrCreateByName(ctx context.Context, name string) (Category, error) {
+	key := NormalizeCategory(name)
+	if key == "" {
+		return Category{}, fmt.Errorf("category name must not be empty")
+	}
+	var id string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id FROM categories WHERE name_key = ?`, key,
+	).Scan(&id)
+	if err == nil {
+		return s.Get(ctx, id)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return Category{}, fmt.Errorf("category lookup: %w", err)
+	}
+	// Not found — create with the display name as provided.
+	return s.Create(ctx, name, "", "#888888")
+}
+
+// LinkTrack links a single track to a category. Idempotent.
+func (s *CategoryStore) LinkTrack(ctx context.Context, categoryID, trackID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO track_categories(track_id, category_id) VALUES (?, ?)`,
+		trackID, categoryID,
+	)
+	if err != nil {
+		return fmt.Errorf("link track to category: %w", err)
+	}
+	return nil
 }
 
 // Get returns a category by ID (with track count), or ErrNotFound.

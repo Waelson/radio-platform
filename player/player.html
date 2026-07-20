@@ -3074,6 +3074,14 @@ const WS_URL       = params.get('ws')  || 'ws://127.0.0.1:8080/v1/events';
 const API_URL      = params.get('api') || 'http://127.0.0.1:8080';
 const LIBRARY_URL  = params.get('lib') || 'http://127.0.0.1:8081';
 
+/* ─── Authenticated fetch helper — adds JWT to every Library request ─── */
+function libFetch(path, opts = {}) {
+  const token = window.sessionManager?.getToken()
+  const headers = Object.assign({}, opts.headers)
+  if (token) headers['Authorization'] = 'Bearer ' + token
+  return fetch(LIBRARY_URL + path, Object.assign({}, opts, { headers }))
+}
+
 /* ─── Canvas / VU meter ──────────────────────────────────────── */
 const SEGS    = 48;
 const SEG_GAP = 2;
@@ -5519,7 +5527,7 @@ async function checkLibraryHealth() {
   const label = document.getElementById('libLabel');
   const wasOnline = _libOnline;
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/health', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+    const r = await libFetch('/v1/health', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
     _libOnline            = r.ok;
     dot.className         = 'conn-dot ' + (r.ok ? 'ok' : 'error');
     label.style.color     = r.ok ? 'var(--cyan)' : 'var(--red)';
@@ -5567,6 +5575,22 @@ function advModalOpen() {
   document.getElementById('advBackdrop').classList.add('open');
   document.getElementById('advModal').style.display = 'flex';
   document.getElementById('advQ').focus();
+  advLoadCategories();
+}
+
+async function advLoadCategories() {
+  const sel = document.getElementById('advCategory');
+  if (!sel || sel.options.length > 1) return; // already loaded
+  try {
+    const res  = await libFetch('/v1/categories');
+    const data = await res.json();
+    (data.data || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value       = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  } catch {}
 }
 
 function advModalClose() {
@@ -5587,17 +5611,19 @@ async function advSearch(resetPage = true) {
   if (!_libOnline) { showToast(false, 'Library offline'); return; }
   if (resetPage) _advPage = 1;
 
-  const q      = document.getElementById('advQ').value.trim();
-  const type   = document.getElementById('advType').value;
-  const artist = document.getElementById('advArtist').value.trim();
-  const album  = document.getElementById('advAlbum').value.trim();
+  const q          = document.getElementById('advQ').value.trim();
+  const type       = document.getElementById('advType').value;
+  const artist     = document.getElementById('advArtist').value.trim();
+  const album      = document.getElementById('advAlbum').value.trim();
+  const categoryId = document.getElementById('advCategory').value;
   const offset = (_advPage - 1) * ADV_LIMIT;
 
   const qs = new URLSearchParams({ limit: ADV_LIMIT, offset });
-  if (q)      qs.set('q',      q);
-  if (type)   qs.set('type',   type);
-  if (artist) qs.set('artist', artist);
-  if (album)  qs.set('album',  album);
+  if (q)          qs.set('q',           q);
+  if (type)       qs.set('type',        type);
+  if (artist)     qs.set('artist',      artist);
+  if (album)      qs.set('album',       album);
+  if (categoryId) qs.set('category_id', categoryId);
 
   const resultsEl = document.getElementById('advResults');
   resultsEl.innerHTML = '<div class="adv-empty">Buscando…</div>';
@@ -5605,7 +5631,7 @@ async function advSearch(resetPage = true) {
   document.getElementById('advPagination').style.display    = 'none';
 
   try {
-    const res  = await fetch(LIBRARY_URL + '/v1/tracks?' + qs);
+    const res  = await libFetch('/v1/tracks?' + qs);
     const data = await res.json();
     _advTracks = data.tracks || [];
     _advTotal  = typeof data.total === 'number' ? data.total : _advTracks.length;
@@ -5680,10 +5706,11 @@ function advRender() {
 
 // 2.5 — Clear all filters and results
 function advClear() {
-  document.getElementById('advQ').value      = '';
-  document.getElementById('advType').value   = '';
-  document.getElementById('advArtist').value = '';
-  document.getElementById('advAlbum').value  = '';
+  document.getElementById('advQ').value        = '';
+  document.getElementById('advType').value     = '';
+  document.getElementById('advArtist').value   = '';
+  document.getElementById('advAlbum').value    = '';
+  document.getElementById('advCategory').value = '';
   _advPage   = 1;
   _advTotal  = 0;
   _advTracks = [];
@@ -6077,7 +6104,7 @@ async function cueEditorSave() {
     cue_out_ms: _cueEditor.cueOutMS ?? null,
   };
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/tracks/' + t.id + '/cuepoints', {
+    const r = await libFetch('/v1/tracks/' + t.id + '/cuepoints', {
       method: 'PUT', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body),
     });
@@ -6597,7 +6624,7 @@ async function drwHkInit() {
 
 async function drwHkLoadProfiles() {
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/hotkeys/profiles');
+    const r = await libFetch('/v1/hotkeys/profiles');
     const j = await r.json();
     _drwHkProfiles = (j.data || []).map(p => ({ id: p.id, name: p.name, buttons: [] }));
     const sel = document.getElementById('drwHkSelect');
@@ -6625,7 +6652,7 @@ async function drwHkSelectProfile(id) {
   _drwHkCurId = id;
   localStorage.setItem('drwHkProfileId', id);
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/hotkeys/profiles/' + id);
+    const r = await libFetch('/v1/hotkeys/profiles/' + id);
     const j = await r.json();
     _drwHkButtons = (j.data && j.data.buttons) || [];
     drwHkRenderGrid();
@@ -6871,7 +6898,7 @@ async function rotCatLoad() {
   const list = document.getElementById('rotCatList');
   list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/categories');
+    const r = await libFetch('/v1/categories');
     const j = await r.json();
     _rotCategories = j.data || [];
     rotCatRender();
@@ -6916,7 +6943,7 @@ async function rotCatToggle(id) {
   // Load tracks
   const tracksEl = document.getElementById('rotCatTracks_' + id);
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/categories/' + id + '/tracks?limit=100');
+    const r = await libFetch('/v1/categories/' + id + '/tracks?limit=100');
     const j = await r.json();
     const tracks = j.data || [];
     if (tracks.length === 0) {
@@ -6946,7 +6973,7 @@ async function rotCatCreate() {
   const color = document.getElementById('rotCatNewColor').value;
   if (!name) { alert('Nome obrigatório'); return; }
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/categories', {
+    const r = await libFetch('/v1/categories', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({name, description: desc, color})
     });
@@ -6960,14 +6987,14 @@ async function rotCatCreate() {
 
 async function rotCatDelete(id, name) {
   if (!confirm('Remover categoria "' + name + '"?')) return;
-  const r = await fetch(LIBRARY_URL + '/v1/categories/' + id, {method: 'DELETE'});
+  const r = await libFetch('/v1/categories/' + id, {method: 'DELETE'});
   if (!r.ok) { const j = await r.json(); alert(j.message || 'Não foi possível remover'); return; }
   rotCatLoad();
 }
 
 async function rotCatRemoveTrack(catId, trackId, btn) {
   btn.disabled = true;
-  const r = await fetch(LIBRARY_URL + '/v1/categories/' + catId + '/tracks/' + trackId, {method: 'DELETE'});
+  const r = await libFetch('/v1/categories/' + catId + '/tracks/' + trackId, {method: 'DELETE'});
   if (!r.ok) { btn.disabled = false; return; }
   btn.closest('.rot-cat-track').remove();
   // Update count in _rotCategories
@@ -6984,7 +7011,7 @@ async function rotCatSearch(catId) {
   resultsEl.style.display = 'block';
   resultsEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim);padding:4px">Buscando…</div>';
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/tracks?q=' + encodeURIComponent(q) + '&limit=12');
+    const r = await libFetch('/v1/tracks?q=' + encodeURIComponent(q) + '&limit=12');
     const j = await r.json();
     const tracks = j.tracks || j.data || [];
     if (tracks.length === 0) {
@@ -7005,7 +7032,7 @@ async function rotCatAddTrack(catId, trackId, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/categories/' + catId + '/tracks', {
+    const r = await libFetch('/v1/categories/' + catId + '/tracks', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({track_ids: [trackId]})
     });
@@ -7015,7 +7042,7 @@ async function rotCatAddTrack(catId, trackId, btn) {
     // refresh track list
     const tracksEl = document.getElementById('rotCatTracks_' + catId);
     const cat = _rotCategories.find(c => c.id === catId);
-    const tr2 = await fetch(LIBRARY_URL + '/v1/categories/' + catId + '/tracks?limit=100');
+    const tr2 = await libFetch('/v1/categories/' + catId + '/tracks?limit=100');
     const j2  = await tr2.json();
     const tracks = j2.data || [];
     if (cat) { cat.track_count = tracks.length; }
@@ -7035,7 +7062,7 @@ async function rotCatAddTrack(catId, trackId, btn) {
 async function rotClockLoad() {
   if (!_libOnline) return;
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/clocks');
+    const r = await libFetch('/v1/clocks');
     const j = await r.json();
     _rotClocks = j.data || [];
     if (_rotPane === 'clocks') rotClockRender();
@@ -7091,7 +7118,7 @@ async function rotClockToggle(id) {
   card.classList.add('expanded');
   const slotsEl = document.getElementById('rotSlotsList_' + id);
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/clocks/' + id);
+    const r = await libFetch('/v1/clocks/' + id);
     const j = await r.json();
     const clock = j.data;
     const slots = clock.slots || [];
@@ -7128,7 +7155,7 @@ function rotClockHideNew() { document.getElementById('rotClockNewForm').style.di
 async function rotClockCreate() {
   const name = document.getElementById('rotClockNewName').value.trim();
   if (!name) { alert('Nome obrigatório'); return; }
-  const r = await fetch(LIBRARY_URL + '/v1/clocks', {
+  const r = await libFetch('/v1/clocks', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({name})
   });
@@ -7141,7 +7168,7 @@ async function rotClockCreate() {
 
 async function rotClockDelete(id, name) {
   if (!confirm('Remover clock "' + name + '"?\nIsso também removerá os slots.')) return;
-  const r = await fetch(LIBRARY_URL + '/v1/clocks/' + id, {method: 'DELETE'});
+  const r = await libFetch('/v1/clocks/' + id, {method: 'DELETE'});
   if (!r.ok) { const j = await r.json(); alert(j.message || 'Não foi possível remover'); return; }
   rotClockLoad();
   setTimeout(rotClockRender, 200);
@@ -7151,7 +7178,7 @@ async function rotClockRefreshSlots(clockId) {
   const slotsEl = document.getElementById('rotSlotsList_' + clockId);
   if (!slotsEl) return;
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/clocks/' + clockId);
+    const r = await libFetch('/v1/clocks/' + clockId);
     const j = await r.json();
     const slots = (j.data && j.data.slots) || [];
     if (slots.length === 0) {
@@ -7178,7 +7205,7 @@ async function rotSlotAdd(clockId) {
   const type  = document.getElementById('rotSlotType_' + clockId).value;
   const catEl = document.getElementById('rotSlotCat_' + clockId);
   const catId = (type === 'CATEGORY' && catEl) ? catEl.value : '';
-  const r = await fetch(LIBRARY_URL + '/v1/clocks/' + clockId + '/slots', {
+  const r = await libFetch('/v1/clocks/' + clockId + '/slots', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({slot_type: type, category_id: catId})
   });
@@ -7187,7 +7214,7 @@ async function rotSlotAdd(clockId) {
 }
 
 async function rotSlotDelete(clockId, slotId) {
-  const r = await fetch(LIBRARY_URL + '/v1/clocks/' + clockId + '/slots/' + slotId, {method: 'DELETE'});
+  const r = await libFetch('/v1/clocks/' + clockId + '/slots/' + slotId, {method: 'DELETE'});
   if (!r.ok) { alert('Erro ao remover slot'); return; }
   document.getElementById('rotSlotRow_' + slotId)?.remove();
   // Renum positions and update badge without re-render
@@ -7202,7 +7229,7 @@ async function rotSlotDelete(clockId, slotId) {
 /* ── Grade 24x7 ──────────────────────────────────────────────── */
 async function rotGridLoad() {
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/schedule/clock-grid');
+    const r = await libFetch('/v1/schedule/clock-grid');
     const j = await r.json();
     _rotGrid = (j.data && j.data.grid) || [];
     rotGridRender();
@@ -7295,7 +7322,7 @@ async function rotGridPickSelect(clockId) {
   const ctx = _rotGridPickerCtx;
   rotGridClosePicker();
   if (!ctx) return;
-  await fetch(LIBRARY_URL + '/v1/schedule/clock-grid', {
+  await libFetch('/v1/schedule/clock-grid', {
     method: 'PUT', headers: {'Content-Type':'application/json'},
     body: JSON.stringify([{weekday: ctx.weekday, hour: ctx.hour, clock_id: clockId}])
   });
@@ -7310,7 +7337,7 @@ async function rotRulesLoad() {
   const list = document.getElementById('rotRulesList');
   list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/schedule/separation-rules');
+    const r = await libFetch('/v1/schedule/separation-rules');
     const j = await r.json();
     _rotRules = j.data || [];
     rotRulesRender();
@@ -7343,7 +7370,7 @@ async function rotRuleCreate() {
   const field = document.getElementById('rotRuleNewField').value;
   const min   = parseInt(document.getElementById('rotRuleNewMin').value);
   if (!min || min < 1) { alert('Separação mínima inválida'); return; }
-  const r = await fetch(LIBRARY_URL + '/v1/schedule/separation-rules', {
+  const r = await libFetch('/v1/schedule/separation-rules', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({field, min_sep_minutes: min})
   });
@@ -7354,7 +7381,7 @@ async function rotRuleCreate() {
 
 async function rotRuleDelete(id) {
   if (!confirm('Remover esta regra?')) return;
-  await fetch(LIBRARY_URL + '/v1/schedule/separation-rules/' + id, {method: 'DELETE'});
+  await libFetch('/v1/schedule/separation-rules/' + id, {method: 'DELETE'});
   rotRulesLoad();
 }
 
@@ -7419,7 +7446,7 @@ async function rotGenerate() {
   await new Promise(resolve => setTimeout(resolve, delay));
 
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/schedule/generate', {
+    const r = await libFetch('/v1/schedule/generate', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({from: fromStr || undefined, hours})
     });
@@ -7548,7 +7575,7 @@ async function rotEnqueue() {
   // Register in rotation log
   if (logEntries.length > 0) {
     try {
-      await fetch(LIBRARY_URL + '/v1/rotation-log', {
+      await libFetch('/v1/rotation-log', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify(logEntries)
       });
@@ -7573,7 +7600,7 @@ async function libLoadBreaks() {
   list.innerHTML = '<div class="lib-status">Carregando…</div>';
   _libBreaks = [];
   try {
-    const res  = await fetch(LIBRARY_URL + '/v1/breaks');
+    const res  = await libFetch('/v1/breaks');
     const data = await res.json();
     _libBreaks = data.breaks || [];
     if (!_libBreaks.length) {
@@ -7599,7 +7626,7 @@ async function libEnqueueBreak(idx) {
   const b = _libBreaks[idx];
   if (!b) return;
   try {
-    const res  = await fetch(LIBRARY_URL + '/v1/breaks/' + encodeURIComponent(b.id) + '?format=engine-payload');
+    const res  = await libFetch('/v1/breaks/' + encodeURIComponent(b.id) + '?format=engine-payload');
     const data = await res.json();
     if (!data.spots || !data.spots.length) { showToast(false, 'Break sem spots cadastrados'); return; }
     const body = {
@@ -7658,6 +7685,12 @@ async function libEnqueueBreak(idx) {
           <label class="adv-filter-label" for="advAlbum">Álbum</label>
           <input class="adv-filter-input" id="advAlbum" type="text" placeholder="ex: Greatest Hits…"
             onkeydown="if(event.key==='Enter')advSearch()">
+        </div>
+        <div class="adv-filter-group">
+          <label class="adv-filter-label" for="advCategory">Categoria</label>
+          <select class="adv-filter-select" id="advCategory">
+            <option value="">Todas as categorias</option>
+          </select>
         </div>
       </div>
       <div class="adv-actions">
@@ -7881,7 +7914,7 @@ async function stmInit() {
    com os campos de config, preservando o estado ao vivo se já existir. */
 async function stmLoadFromLibrary() {
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/streaming');
+    const r = await libFetch('/v1/streaming');
     if (!r.ok) return;
     const j = await r.json();
     const items = j.data || [];
@@ -8073,7 +8106,7 @@ function stmOnMetadata(p) {
 async function stmConnect(id) {
   let fullCfg;
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(id));
+    const r = await libFetch('/v1/streaming/' + encodeURIComponent(id));
     if (!r.ok) { showToast(false, 'Config não encontrada no Library. Salve antes de conectar.'); return; }
     const j = await r.json();
     fullCfg = j.data;
@@ -8118,7 +8151,7 @@ async function stmDisconnect(id) {
 async function stmRemove(id) {
   await stmDisconnect(id).catch(() => {});
   try {
-    await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(id), { method: 'DELETE' });
+    await libFetch('/v1/streaming/' + encodeURIComponent(id), { method: 'DELETE' });
   } catch(_) {}
   delete _stmTargets[id];
   stmRenderList();
@@ -8137,7 +8170,7 @@ async function stmOpenModal(id) {
   if (id) {
     // Carrega config completa (com senha) do Library
     try {
-      const r = await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(id));
+      const r = await libFetch('/v1/streaming/' + encodeURIComponent(id));
       if (r.ok) {
         const j = await r.json();
         const cfg = j.data;
@@ -8253,13 +8286,13 @@ async function stmSave() {
   try {
     let r;
     if (isEdit) {
-      r = await fetch(LIBRARY_URL + '/v1/streaming/' + encodeURIComponent(editId), {
+      r = await libFetch('/v1/streaming/' + encodeURIComponent(editId), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cfg),
       });
     } else {
-      r = await fetch(LIBRARY_URL + '/v1/streaming', {
+      r = await libFetch('/v1/streaming', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cfg),
@@ -8307,7 +8340,7 @@ let _hkpCartPosMS    = 0;
 
 async function hkpInit() {
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/hotkeys/profiles');
+    const r = await libFetch('/v1/hotkeys/profiles');
     const j = await r.json();
     _hkpProfiles = (j.data || []).map(p => ({ id: p.id, name: p.name }));
     hkpRenderDD();
@@ -8331,7 +8364,7 @@ async function hkpSelectProfile(id) {
   const nameEl = document.getElementById('hkpPpName');
   if (nameEl && prof) nameEl.textContent = prof.name;
   try {
-    const r = await fetch(LIBRARY_URL + '/v1/hotkeys/profiles/' + id);
+    const r = await libFetch('/v1/hotkeys/profiles/' + id);
     const j = await r.json();
     _hkpButtons = (j.data && j.data.buttons) || [];
     hkpRenderGrid();
@@ -8474,11 +8507,13 @@ function hkpCloseDD() {
 
 /* ── Bootstrap do painel lateral de Streaming ─────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-  stmInit();
   setInterval(stmFetchStatuses, 15000);
-  hkpInit();
+  loginOverlay.init(LIBRARY_URL);
 });
 </script>
+
+<script src="auth/session-manager.js"></script>
+<script src="auth/login-overlay.js"></script>
 
 </body>
 </html>

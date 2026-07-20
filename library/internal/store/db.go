@@ -44,6 +44,15 @@ var migration011 string
 //go:embed migrations/012_streaming_targets.sql
 var migration012 string
 
+//go:embed migrations/013_users.sql
+var migration013 string
+
+//go:embed migrations/014_password_reset_codes.sql
+var migration014 string
+
+//go:embed migrations/015_category_name_key.sql
+var migration015 string
+
 // Open opens (or creates) the SQLite database at path, applies required PRAGMAs,
 // runs migrations and returns a ready-to-use *sql.DB.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
@@ -211,6 +220,38 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("012_streaming_targets: %w", err)
 		}
 		if err := markMigration(ctx, db, "012_streaming_targets"); err != nil {
+			return err
+		}
+	}
+
+	// 013_users: tabela de usuários para autenticação do Player.
+	if !migrationDone(ctx, db, "013_users") {
+		if _, err := db.ExecContext(ctx, migration013); err != nil {
+			return fmt.Errorf("013_users: %w", err)
+		}
+		if err := markMigration(ctx, db, "013_users"); err != nil {
+			return err
+		}
+	}
+
+	// 014_password_reset_codes: códigos de reset de senha via e-mail.
+	if !migrationDone(ctx, db, "014_password_reset_codes") {
+		if _, err := db.ExecContext(ctx, migration014); err != nil {
+			return fmt.Errorf("014_password_reset_codes: %w", err)
+		}
+		if err := markMigration(ctx, db, "014_password_reset_codes"); err != nil {
+			return err
+		}
+	}
+
+	// 015_category_name_key: adiciona name_key normalizado à tabela categories.
+	if !migrationDone(ctx, db, "015_category_name_key") {
+		if _, err := db.ExecContext(ctx, migration015); err != nil {
+			if !isDuplicateColumn(err) {
+				return fmt.Errorf("015_category_name_key: %w", err)
+			}
+		}
+		if err := markMigration(ctx, db, "015_category_name_key"); err != nil {
 			return err
 		}
 	}
