@@ -99,6 +99,11 @@ type Monitor struct {
 	// Written by Push (audio goroutine), read by Run (timer goroutine).
 	latest atomic.Value // *windowResult
 
+	// lastWindowAt is the Unix nanosecond timestamp of the most recently
+	// completed measurement window. 0 means Push has never been called.
+	// Written by Push (audio goroutine), read by Run (timer goroutine).
+	lastWindowAt atomic.Int64
+
 	// underrunCount is incremented by the output device on buffer underruns.
 	underrunCount atomic.Int64
 
@@ -166,6 +171,7 @@ func (m *Monitor) Push(samples []float32) {
 				levelDBFS: linearToDBFS(rms),
 				peakDBFS:  linearToDBFS(peak),
 			})
+			m.lastWindowAt.Store(time.Now().UnixNano())
 			m.mu.Lock()
 		}
 	}
@@ -219,6 +225,11 @@ func (m *Monitor) Run(ctx context.Context) {
 	}
 }
 
+// staleWindowThresholdMS is how long without a completed window before the
+// audio pipeline is considered silent. 3× windowDurationMS (150 ms) gives
+// enough headroom for jitter while reacting quickly when audio stops.
+const staleWindowThresholdMS = windowDurationMS * 3
+
 // report is called by Run on each tick. All pointer parameters are owned
 // exclusively by the Run goroutine — no locking is needed for them.
 func (m *Monitor) report(now time.Time, silenceStart *time.Time, inSilence *bool, autoPanicFired *bool) {
@@ -228,7 +239,12 @@ func (m *Monitor) report(now time.Time, silenceStart *time.Time, inSilence *bool
 		return
 	}
 
-	isSilent := wr.levelDBFS < m.cfg.SilenceThresholdDBFS
+	// If Push() has stopped being called (e.g. queue exhausted, session ended)
+	// the last window stays stale. Treat stale audio as silence so that
+	// auto-panic fires correctly when the queue empties.
+	lastAt := m.lastWindowAt.Load()
+	stale := lastAt > 0 && now.Sub(time.Unix(0, lastAt)).Milliseconds() > staleWindowThresholdMS
+	isSilent := stale || wr.levelDBFS < m.cfg.SilenceThresholdDBFS
 	silenceMS := int64(0)
 
 	if isSilent {
