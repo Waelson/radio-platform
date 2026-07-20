@@ -331,53 +331,48 @@ func run(args []string) error {
 	// its CoreAudio client lives in a separate Mach task. This prevents
 	// HAL notifications from the BT/A2DP preview device from disrupting the
 	// main engine's AudioQueue during preview start/stop.
-	previewDeps := api.PreviewDeps{Enabled: cfg.Preview.Enabled}
-	if cfg.Preview.Enabled {
-		prevProxy := cue.NewProxy(evtBus, stateMgr, args, log)
-		disp.Handle(commands.CmdPreviewPlay,        prevProxy.HandlePlay)
-		disp.Handle(commands.CmdPreviewPause,       prevProxy.HandlePause)
-		disp.Handle(commands.CmdPreviewResume,      prevProxy.HandleResume)
-		disp.Handle(commands.CmdPreviewStop,        prevProxy.HandleStop)
-		disp.Handle(commands.CmdPreviewSeek,        prevProxy.HandleSeek)
-		disp.Handle(commands.CmdPreviewSetVolume,   prevProxy.HandleSetVolume)
-		previewDeps.GetStatus = func() any { return prevProxy.GetStatus() }
-		go prevProxy.Run(ctx)
-		log.Info("preview player enabled as subprocess", "driver", outfactory.BuiltinDriverName())
-	}
+	prevProxy := cue.NewProxy(evtBus, stateMgr, args, log)
+	disp.Handle(commands.CmdPreviewPlay,      prevProxy.HandlePlay)
+	disp.Handle(commands.CmdPreviewPause,     prevProxy.HandlePause)
+	disp.Handle(commands.CmdPreviewResume,    prevProxy.HandleResume)
+	disp.Handle(commands.CmdPreviewStop,      prevProxy.HandleStop)
+	disp.Handle(commands.CmdPreviewSeek,      prevProxy.HandleSeek)
+	disp.Handle(commands.CmdPreviewSetVolume, prevProxy.HandleSetVolume)
+	previewDeps := api.PreviewDeps{GetStatus: func() any { return prevProxy.GetStatus() }}
+	go prevProxy.Run(ctx)
+	log.Info("preview player initialized as subprocess", "driver", outfactory.BuiltinDriverName())
 
-	// 11d. Cart player — optional dedicated audio channel for hotkey-triggered playback.
+	// 11d. Cart player — dedicated audio channel for hotkey-triggered playback.
 	// Isolated from both the main pipeline and the preview/CUE channel.
-	cartDeps := api.CartDeps{Enabled: cfg.Cart.Enabled}
-	if cfg.Cart.Enabled {
-		cartOut, err := outfactory.NewCartOutputDevice(cfg)
-		if err != nil {
-			return fmt.Errorf("cart output device: %w", err)
-		}
-		cartVolAtomic := stateMgr.CartVolAtomicPtr()
-		cartAudioCfg := cart.AudioConfig{
-			DeviceID:     cfg.Cart.Output.DeviceID,
-			SampleRate:   cfg.Audio.SampleRate,
-			Channels:     cfg.Audio.Channels,
-			BufferFrames: cfg.Audio.BufferFrames,
-		}
-		cartPlayer := cart.New(evtBus, decoder.NewFFmpegDecoder(log), cartOut, cartAudioCfg, cartVolAtomic, log)
-		cartPlayer.SetStreamingTap(mb.CartIn())
-		disp.Handle(commands.CmdCartPlay,      cartPlayer.HandlePlay)
-		disp.Handle(commands.CmdCartStop,      cartPlayer.HandleStop)
-		disp.Handle(commands.CmdCartSetVolume, func(_ context.Context, cmd commands.Command) error {
-			payload, ok := cmd.Payload.(commands.CartSetVolumePayload)
-			if !ok {
-				return fmt.Errorf("cart: SetVolume: unexpected payload %T", cmd.Payload)
-			}
-			stateMgr.SetCartVolume(payload.Level)
-			evtBus.Publish(events.New(events.EvtCartVolumeChanged, events.CartVolumeChangedPayload{Level: payload.Level}))
-			return nil
-		})
-		cartDeps.GetStatus = func() any { return cartPlayer.GetStatus() }
-		go cartPlayer.Run(ctx)
-		stateMgr.SetCartEnabled(true)
-		log.Info("cart player enabled", "device", cfg.Cart.Output.DeviceID)
+	// Always initialized; device_id empty = driver default.
+	cartOut, err := outfactory.NewCartOutputDevice(cfg)
+	if err != nil {
+		return fmt.Errorf("cart output device: %w", err)
 	}
+	cartVolAtomic := stateMgr.CartVolAtomicPtr()
+	cartAudioCfg := cart.AudioConfig{
+		DeviceID:     cfg.HotKeys.Output.DeviceID,
+		SampleRate:   cfg.Audio.SampleRate,
+		Channels:     cfg.Audio.Channels,
+		BufferFrames: cfg.Audio.BufferFrames,
+	}
+	cartPlayer := cart.New(evtBus, decoder.NewFFmpegDecoder(log), cartOut, cartAudioCfg, cartVolAtomic, log)
+	cartPlayer.SetStreamingTap(mb.CartIn())
+	disp.Handle(commands.CmdCartPlay, cartPlayer.HandlePlay)
+	disp.Handle(commands.CmdCartStop, cartPlayer.HandleStop)
+	disp.Handle(commands.CmdCartSetVolume, func(_ context.Context, cmd commands.Command) error {
+		payload, ok := cmd.Payload.(commands.CartSetVolumePayload)
+		if !ok {
+			return fmt.Errorf("cart: SetVolume: unexpected payload %T", cmd.Payload)
+		}
+		stateMgr.SetCartVolume(payload.Level)
+		evtBus.Publish(events.New(events.EvtCartVolumeChanged, events.CartVolumeChangedPayload{Level: payload.Level}))
+		return nil
+	})
+	cartDeps := api.CartDeps{GetStatus: func() any { return cartPlayer.GetStatus() }}
+	go cartPlayer.Run(ctx)
+	stateMgr.SetCartEnabled(true)
+	log.Info("cart player initialized", "device", cfg.HotKeys.Output.DeviceID)
 
 	// 12. WebSocket Hub — fans out events to connected clients.
 	wsHub := apiws.NewHub(evtBus, stateMgr, log)
@@ -550,7 +545,7 @@ func runCuePlayer(args []string) error {
 	}
 
 	audioCfg := preview.AudioConfig{
-		DeviceID:     cfg.Preview.OutputDevice,
+		DeviceID:     cfg.Preview.Output.DeviceID,
 		SampleRate:   cfg.Audio.SampleRate,
 		Channels:     cfg.Audio.Channels,
 		BufferFrames: cfg.Audio.BufferFrames,

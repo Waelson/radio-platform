@@ -17,7 +17,7 @@ type Config struct {
 	HoraCerta       HoraCertaConfig       `yaml:"hora_certa"       json:"hora_certa"`
 	Preview         PreviewConfig         `yaml:"preview"          json:"preview"`
 	Scheduler       SchedulerConfig       `yaml:"scheduler"        json:"scheduler"`
-	Cart            CartConfig            `yaml:"cart"             json:"cart"`
+	HotKeys         HotKeysConfig         `yaml:"hotkeys"          json:"hotkeys"`
 	TransmissionLog TransmissionLogConfig `yaml:"transmission_log" json:"transmission_log"`
 }
 
@@ -51,8 +51,7 @@ type AudioConfig struct {
 // OutputConfig configures the audio output adapter.
 // The driver is determined at compile-time via build tag (-tags coreaudio, -tags portaudio, etc.).
 type OutputConfig struct {
-	DeviceID        string `yaml:"device_id"         json:"device_id"`        // "default" or platform-specific ID
-	AllowNullOutput bool   `yaml:"allow_null_output" json:"allow_null_output"` // degrade gracefully when device fails
+	DeviceID string `yaml:"device_id" json:"device_id"` // "default" or platform-specific ID
 }
 
 // PlaybackConfig holds queue and playback behaviour settings.
@@ -167,16 +166,12 @@ type SchedulerConfig struct {
 	MissedThresholdMS int `yaml:"missed_threshold_ms" json:"missed_threshold_ms"`
 }
 
-// CartConfig configures the cart player — a dedicated audio channel for
+// HotKeysConfig configures the hot keys player — a dedicated audio channel for
 // hotkey-triggered playback, completely isolated from the main pipeline and
-// the preview/CUE channel. The cart player uses its own output device and
+// the preview/CUE channel. The hot keys player uses its own output device and
 // supports one active cart at a time.
 // The audio driver is determined at compile-time via build tag, same as the main output.
-type CartConfig struct {
-	// Enabled controls whether the cart player is available.
-	// When false, all /v1/cart/* endpoints return 503.
-	Enabled bool `yaml:"enabled" json:"enabled"`
-
+type HotKeysConfig struct {
 	// Output configures the dedicated output device for cart playback.
 	// device_id should differ from the main output and preview output devices.
 	// Leave device_id empty to use the driver's default device.
@@ -189,14 +184,10 @@ type CartConfig struct {
 // without affecting the on-air signal.
 // The audio driver is determined at compile-time via build tag, same as the main output.
 type PreviewConfig struct {
-	// Enabled controls whether the preview feature is available.
-	// When false, all /v1/preview/* endpoints return 503.
-	Enabled bool `yaml:"enabled" json:"enabled"`
-
-	// OutputDevice is the platform-specific device identifier for preview output.
-	// Leave empty to use the driver's default device.
-	// Examples: "BlackHole 2ch" (macOS), "hw:1,0" (ALSA/Linux).
-	OutputDevice string `yaml:"output_device" json:"output_device"`
+	// Output configures the dedicated output device for preview playback.
+	// device_id should differ from the main output and hot keys output devices.
+	// Leave device_id empty to use the driver's default device.
+	Output OutputConfig `yaml:"output" json:"output"`
 }
 
 // TransmissionLogConfig configures the append-only JSONL log writer that records

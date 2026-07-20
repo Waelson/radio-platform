@@ -85,8 +85,7 @@ func defaults() *Config {
 			Channels:     2,
 			BufferFrames: 2048,
 			Output: OutputConfig{
-				DeviceID:        "default",
-				AllowNullOutput: true,
+				DeviceID: "default",
 			},
 		},
 		Playback: PlaybackConfig{
@@ -115,12 +114,10 @@ func defaults() *Config {
 			ShutdownEnabled: false,
 		},
 		Preview: PreviewConfig{
-			Enabled:      false,
-			OutputDevice: "",
+			Output: OutputConfig{DeviceID: ""},
 		},
-		Cart: CartConfig{
-			Enabled: false,
-			Output:  OutputConfig{DeviceID: "default"},
+		HotKeys: HotKeysConfig{
+			Output: OutputConfig{DeviceID: "default"},
 		},
 		Scheduler: SchedulerConfig{
 			Enabled:           true,
@@ -196,17 +193,11 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("PLAYOUT_PANIC_BED_PATH"); v != "" {
 		cfg.Panic.BedPath = v
 	}
-	if v := os.Getenv("RADIOCORE_PREVIEW_ENABLED"); v != "" {
-		cfg.Preview.Enabled = v == "true" || v == "1"
-	}
 	if v := os.Getenv("RADIOCORE_PREVIEW_OUTPUT_DEVICE"); v != "" {
-		cfg.Preview.OutputDevice = v
+		cfg.Preview.Output.DeviceID = v
 	}
-	if v := os.Getenv("RADIOCORE_CART_ENABLED"); v != "" {
-		cfg.Cart.Enabled = v == "true" || v == "1"
-	}
-	if v := os.Getenv("RADIOCORE_CART_OUTPUT_DEVICE"); v != "" {
-		cfg.Cart.Output.DeviceID = v
+	if v := os.Getenv("RADIOCORE_HOTKEYS_OUTPUT_DEVICE"); v != "" {
+		cfg.HotKeys.Output.DeviceID = v
 	}
 }
 

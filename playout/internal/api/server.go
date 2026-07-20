@@ -33,18 +33,14 @@ type Config struct {
 	AudioDriver    string    // driver compiled into this binary: "coreaudio" | "portaudio" | "wasapi" | "null"
 }
 
-// PreviewDeps carries optional preview player dependencies for the API server.
-// When Enabled is false all /v1/preview/* endpoints return 503.
+// PreviewDeps carries preview player dependencies for the API server.
 type PreviewDeps struct {
-	Enabled   bool
-	GetStatus func() any // returns preview.Status as any; nil when disabled
+	GetStatus func() any // returns preview.Status as any
 }
 
-// CartDeps carries optional cart player dependencies for the API server.
-// When Enabled is false all /v1/cart/* endpoints return 503.
+// CartDeps carries cart player dependencies for the API server.
 type CartDeps struct {
-	Enabled   bool
-	GetStatus func() any // returns cart.Status as any; nil when disabled
+	GetStatus func() any // returns cart.Status as any
 }
 
 // DevicesDeps carries the device-listing function for GET /v1/devices.
@@ -80,9 +76,7 @@ type Server struct {
 	queueMgr       *queue.Manager
 	wsHub          *ws.Hub
 	metrics        *metrics.Collector
-	previewEnabled bool
-	previewStatus  func() any
-	cartEnabled    bool
+	previewStatus func() any
 	cartStatus     func() any
 	listDevices    func() ([]handlers.AudioDevice, error)
 	scheduleMgr    handlers.ScheduleManager
@@ -107,9 +101,7 @@ func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *qu
 		queueMgr:       queueMgr,
 		wsHub:          wsHub,
 		metrics:        col,
-		previewEnabled: previewDeps.Enabled,
-		previewStatus:  previewDeps.GetStatus,
-		cartEnabled:    cartDeps.Enabled,
+		previewStatus: previewDeps.GetStatus,
 		cartStatus:     cartDeps.GetStatus,
 		listDevices:    devicesDeps.List,
 		scheduleMgr:    scheduleDeps.Mgr,
@@ -175,22 +167,22 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Hot buttons
 	mux.HandleFunc("POST /v1/hotbuttons/trigger", handlers.TriggerHotButton(s.cmdBus))
 
-	// Preview (cue) player — always registered; returns 503 when disabled.
-	mux.HandleFunc("POST /v1/preview/play",   handlers.PreviewPlay(s.cmdBus, s.previewEnabled))
-	mux.HandleFunc("POST /v1/preview/pause",  handlers.PreviewPause(s.cmdBus, s.previewEnabled))
-	mux.HandleFunc("POST /v1/preview/resume", handlers.PreviewResume(s.cmdBus, s.previewEnabled))
-	mux.HandleFunc("POST /v1/preview/stop",   handlers.PreviewStop(s.cmdBus, s.previewEnabled))
-	mux.HandleFunc("POST /v1/preview/seek",   handlers.PreviewSeek(s.cmdBus, s.previewEnabled))
-	mux.HandleFunc("GET /v1/preview/status",  handlers.PreviewStatus(s.previewStatus, s.previewEnabled))
-	mux.HandleFunc("GET /v1/preview/volume",  handlers.GetPreviewVolume(s.stateMgr, s.previewEnabled))
-	mux.HandleFunc("PUT /v1/preview/volume",  handlers.SetPreviewVolume(s.cmdBus, s.stateMgr, s.previewEnabled))
+	// Preview (cue) player — always registered.
+	mux.HandleFunc("POST /v1/preview/play",   handlers.PreviewPlay(s.cmdBus, s.previewDeviceValidator()))
+	mux.HandleFunc("POST /v1/preview/pause",  handlers.PreviewPause(s.cmdBus))
+	mux.HandleFunc("POST /v1/preview/resume", handlers.PreviewResume(s.cmdBus))
+	mux.HandleFunc("POST /v1/preview/stop",   handlers.PreviewStop(s.cmdBus))
+	mux.HandleFunc("POST /v1/preview/seek",   handlers.PreviewSeek(s.cmdBus))
+	mux.HandleFunc("GET /v1/preview/status",  handlers.PreviewStatus(s.previewStatus))
+	mux.HandleFunc("GET /v1/preview/volume",  handlers.GetPreviewVolume(s.stateMgr))
+	mux.HandleFunc("PUT /v1/preview/volume",  handlers.SetPreviewVolume(s.cmdBus, s.stateMgr))
 
-	// Cart player — always registered; returns 503 when disabled.
-	mux.HandleFunc("POST /v1/cart/play",   handlers.CartPlay(s.cmdBus, s.cartEnabled))
-	mux.HandleFunc("POST /v1/cart/stop",   handlers.CartStop(s.cmdBus, s.cartEnabled))
-	mux.HandleFunc("GET /v1/cart/status",  handlers.CartStatus(s.cartStatus, s.cartEnabled))
-	mux.HandleFunc("GET /v1/cart/volume",  handlers.GetCartVolume(s.stateMgr, s.cartEnabled))
-	mux.HandleFunc("PUT /v1/cart/volume",  handlers.SetCartVolume(s.cmdBus, s.stateMgr, s.cartEnabled))
+	// Cart player — always available.
+	mux.HandleFunc("POST /v1/cart/play",   handlers.CartPlay(s.cmdBus))
+	mux.HandleFunc("POST /v1/cart/stop",   handlers.CartStop(s.cmdBus))
+	mux.HandleFunc("GET /v1/cart/status",  handlers.CartStatus(s.cartStatus))
+	mux.HandleFunc("GET /v1/cart/volume",  handlers.GetCartVolume(s.stateMgr))
+	mux.HandleFunc("PUT /v1/cart/volume",  handlers.SetCartVolume(s.cmdBus, s.stateMgr))
 
 	// Devices
 	mux.HandleFunc("GET /v1/devices", handlers.Devices(s.listDevices))
@@ -262,6 +254,28 @@ func (s *Server) Addr() string {
 // withMiddleware wraps the mux with CORS and recovery middleware.
 func (s *Server) withMiddleware(next http.Handler) http.Handler {
 	return s.recovery(s.cors(next))
+}
+
+// previewDeviceValidator returns a function that checks whether the preview
+// output device is explicitly configured and does not conflict with the main
+// audio device or the hot keys device.
+func (s *Server) previewDeviceValidator() func() error {
+	return func() error {
+		if s.configSnapshot == nil {
+			return nil
+		}
+		prevDev := s.configSnapshot.Preview.Output.DeviceID
+		if prevDev == "" {
+			return errors.New("dispositivo de preview não configurado")
+		}
+		if prevDev == s.configSnapshot.Audio.Output.DeviceID {
+			return errors.New("dispositivo de preview não pode ser igual ao dispositivo de saída principal")
+		}
+		if prevDev == s.configSnapshot.HotKeys.Output.DeviceID {
+			return errors.New("dispositivo de preview não pode ser igual ao dispositivo de hot keys")
+		}
+		return nil
+	}
 }
 
 // cors adds Access-Control-Allow-Origin headers when the request Origin

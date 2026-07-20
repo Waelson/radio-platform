@@ -64,10 +64,6 @@ audio:
     # do sistema operacional.
     device_id: "default"
 
-    # Quando true, o engine degrada para NullOutput se o dispositivo de áudio
-    # falhar ao abrir, em vez de encerrar com erro.
-    allow_null_output: false
-
 # -----------------------------------------------------------------------------
 # Comportamento de reprodução
 # -----------------------------------------------------------------------------
@@ -235,14 +231,11 @@ hora_certa:
 # O preview permite que o locutor ouça um áudio em um dispositivo separado
 # antes de colocá-lo na fila de reprodução, sem interferir no sinal ao ar.
 preview:
-  # Habilita o recurso de preview. Quando false, os endpoints /v1/preview/*
-  # retornam 503 Service Unavailable.
-  enabled: true
-
-  # Identificador do dispositivo de saída para preview.
+  # Dispositivo de saída dedicado para preview.
   # Vazio = dispositivo padrão do driver selecionado.
   # Exemplos: "BlackHole 2ch" (macOS virtual), "hw:1,0" (ALSA/Linux)
-  output_device: "AirPods Pro 2 2025"
+  output:
+    device_id: "AirPods Pro 2 2025"
 
 # -----------------------------------------------------------------------------
 # Scheduler (programação horária)

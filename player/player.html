@@ -4604,15 +4604,33 @@ async function previewPlayOrResume() {
   return previewPlay();
 }
 
-async function previewPlay() {
-  if (!_preview.path) return;
+// Central preview play request. Returns true on success, false on error.
+// On error, shows a toast and optionally calls onError().
+async function previewPlayRequest(path, seekMS, onError) {
   try {
-    await fetch(API_URL + '/v1/preview/play', {
+    const r = await fetch(API_URL + '/v1/preview/play', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ path: _preview.path, seek_ms: 0 }),
+      body: JSON.stringify({ path, seek_ms: seekMS || 0 }),
     });
-  } catch(e) { console.warn('[preview] play error', e); }
+    if (!r.ok) {
+      let msg = 'Erro ao iniciar preview';
+      try { const d = await r.json(); msg = d.message || d.error || msg; } catch(_) {}
+      showToast(false, msg);
+      if (onError) onError();
+      return false;
+    }
+    return true;
+  } catch(e) {
+    showToast(false, 'Erro ao iniciar preview');
+    if (onError) onError();
+    return false;
+  }
+}
+
+async function previewPlay() {
+  if (!_preview.path) return;
+  await previewPlayRequest(_preview.path, 0);
 }
 
 function previewPauseResume() {
@@ -5428,10 +5446,10 @@ function cueToggleQueueItem(itemId) {
   document.getElementById('cueFloatTitle').textContent  = info.title  || '—';
   document.getElementById('cueFloatArtist').textContent = info.artist || '';
   document.getElementById('cueFloat').classList.add('open');
-  fetch(API_URL + '/v1/preview/play', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ path: info.path, seek_ms: 0 }),
-  }).catch(e => console.warn('[CUE] play error', e));
+  previewPlayRequest(info.path, 0, () => {
+    _cueQueueItemId = null;
+    document.getElementById('cueFloat').classList.remove('open');
+  });
 }
 
 async function cueStop() {
@@ -6102,19 +6120,16 @@ async function cueEditorPlayFrom(field) {
   const ms  = _cueEditor[map[field]] != null ? _cueEditor[map[field]] : 0;
   _preview.path       = _cueEditor.track.path || '';
   _preview.durationMS = _cueEditor.track.duration_ms || 0;
-  try {
-    if (_preview.state === 'idle') {
-      await fetch(API_URL + '/v1/preview/play', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ path: _preview.path, seek_ms: ms }),
-      });
-    } else {
+  if (_preview.state === 'idle') {
+    await previewPlayRequest(_preview.path, ms);
+  } else {
+    try {
       await fetch(API_URL + '/v1/preview/seek', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ position_ms: ms }),
       });
-    }
-  } catch(e) { console.warn('[cueEditor] playFrom error', e); }
+    } catch(e) { console.warn('[cueEditor] playFrom error', e); }
+  }
 }
 
 async function cueEditorSeekClick(event) {
@@ -6126,21 +6141,18 @@ async function cueEditorSeekClick(event) {
   // Account for zoom: ratio maps into the visible window, not the full duration
   const frac  = _cueWaveOffset + ratio / _cueWaveZoom;
   const posMS = Math.round(Math.max(0, Math.min(1, frac)) * dur);
-  try {
-    if (_preview.state === 'idle') {
-      _preview.path       = _cueEditor.track.path || '';
-      _preview.durationMS = dur;
-      await fetch(API_URL + '/v1/preview/play', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ path: _preview.path, seek_ms: posMS }),
-      });
-    } else {
+  if (_preview.state === 'idle') {
+    _preview.path       = _cueEditor.track.path || '';
+    _preview.durationMS = dur;
+    await previewPlayRequest(_preview.path, posMS);
+  } else {
+    try {
       await fetch(API_URL + '/v1/preview/seek', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ position_ms: posMS }),
       });
-    }
-  } catch(e) { console.warn('[cueEditor] seekClick error', e); }
+    } catch(e) { console.warn('[cueEditor] seekClick error', e); }
+  }
 }
 
 async function cueEditorSave() {
@@ -6301,21 +6313,18 @@ document.addEventListener('mouseup', async function(e) {
     const dur   = _preview.durationMS > 0 ? _preview.durationMS
                 : (_cueEditor.track ? (_cueEditor.track.duration_ms || 0) : 0);
     const posMS = Math.round(Math.max(0, Math.min(1, _cueSel.startFrac)) * dur);
-    try {
-      if (_preview.state === 'idle') {
-        _preview.path       = _cueEditor.track.path || '';
-        _preview.durationMS = dur;
-        await fetch(API_URL + '/v1/preview/play', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: _preview.path, seek_ms: posMS }),
-        });
-      } else {
+    if (_preview.state === 'idle') {
+      _preview.path       = _cueEditor.track.path || '';
+      _preview.durationMS = dur;
+      await previewPlayRequest(_preview.path, posMS);
+    } else {
+      try {
         await fetch(API_URL + '/v1/preview/seek', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ position_ms: posMS }),
         });
-      }
-    } catch(ex) { console.warn('[cueEditor] seek error', ex); }
+      } catch(ex) { console.warn('[cueEditor] seek error', ex); }
+    }
   } else {
     // ── Zoom na região selecionada ─────────────────────────────────────────
     const span = selMax - selMin;
@@ -6811,10 +6820,10 @@ async function drwHkCueToggle(e, btnId) {
   document.getElementById('cueFloatTitle').textContent  = btn.label || btn.track_title || '—';
   document.getElementById('cueFloatArtist').textContent = btn.track_artist || btn.track_type || '';
   document.getElementById('cueFloat').classList.add('open');
-  fetch(API_URL + '/v1/preview/play', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: btn.track_path, seek_ms: 0 }),
-  }).catch(err => console.warn('[DRW-HK CUE] play error', err));
+  previewPlayRequest(btn.track_path, 0, () => {
+    _drwHkCueBtnId = null;
+    document.getElementById('cueFloat').classList.remove('open');
+  });
 }
 
 async function hkpCueToggle(e, btnId) {
@@ -6830,10 +6839,10 @@ async function hkpCueToggle(e, btnId) {
   document.getElementById('cueFloatTitle').textContent  = btn.label || btn.track_title || '—';
   document.getElementById('cueFloatArtist').textContent = btn.track_artist || btn.track_type || '';
   document.getElementById('cueFloat').classList.add('open');
-  fetch(API_URL + '/v1/preview/play', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: btn.track_path, seek_ms: 0 }),
-  }).catch(err => console.warn('[HKP CUE] play error', err));
+  previewPlayRequest(btn.track_path, 0, () => {
+    _hkpCueBtnId = null;
+    document.getElementById('cueFloat').classList.remove('open');
+  });
 }
 
 function drwHkUpdateFromWs(type, payload) {
@@ -7559,10 +7568,9 @@ function rotCueItem(idx) {
   document.getElementById('cueFloatTitle').textContent  = title  || '—';
   document.getElementById('cueFloatArtist').textContent = artist;
   document.getElementById('cueFloat').classList.add('open');
-  fetch(API_URL + '/v1/preview/play', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({path, seek_ms: 0}),
-  }).catch(e => console.warn('[CUE] rotCueItem error', e));
+  previewPlayRequest(path, 0, () => {
+    document.getElementById('cueFloat').classList.remove('open');
+  });
 }
 
 async function rotEnqueue() {

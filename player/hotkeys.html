@@ -942,10 +942,24 @@ async function hkCueToggle(e, btnId) {
   document.getElementById('hkCueFloatTitle').textContent  = btn.label || btn.track_title || '—';
   document.getElementById('hkCueFloatArtist').textContent = btn.track_artist || btn.track_type || '';
   document.getElementById('hkCueFloat').classList.add('open');
-  fetch(API_URL + '/v1/preview/play', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: btn.track_path, seek_ms: 0 }),
-  }).catch(err => console.warn('[HK CUE] play error', err));
+  try {
+    const r = await fetch(API_URL + '/v1/preview/play', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: btn.track_path, seek_ms: 0 }),
+    });
+    if (!r.ok) {
+      let msg = 'Erro ao iniciar preview';
+      try { const d = await r.json(); msg = d.message || d.error || msg; } catch(_) {}
+      showToast(false, msg);
+      _hkCueBtnId = null;
+      document.getElementById('hkCueFloat').classList.remove('open');
+    }
+  } catch(err) {
+    console.warn('[HK CUE] play error', err);
+    showToast(false, 'Erro ao iniciar preview');
+    _hkCueBtnId = null;
+    document.getElementById('hkCueFloat').classList.remove('open');
+  }
 }
 
 async function hkCueStop() {

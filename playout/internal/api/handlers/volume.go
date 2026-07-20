@@ -48,23 +48,15 @@ func SetVolume(bus queueBus, stateMgr *state.Manager) http.HandlerFunc {
 }
 
 // GetPreviewVolume returns a handler for GET /v1/preview/volume.
-func GetPreviewVolume(stateMgr *state.Manager, enabled bool) http.HandlerFunc {
+func GetPreviewVolume(stateMgr *state.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
-			return
-		}
 		writeJSON(w, http.StatusOK, volumeResponse{Level: stateMgr.PreviewVolume()})
 	}
 }
 
 // SetPreviewVolume returns a handler for PUT /v1/preview/volume.
-func SetPreviewVolume(bus queueBus, stateMgr *state.Manager, enabled bool) http.HandlerFunc {
+func SetPreviewVolume(bus queueBus, stateMgr *state.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
-			return
-		}
 		var req struct {
 			Level float32 `json:"level"`
 		}
@@ -91,23 +83,15 @@ func SetPreviewVolume(bus queueBus, stateMgr *state.Manager, enabled bool) http.
 }
 
 // GetCartVolume returns a handler for GET /v1/cart/volume.
-func GetCartVolume(stateMgr *state.Manager, enabled bool) http.HandlerFunc {
+func GetCartVolume(stateMgr *state.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			cartUnavailable(w)
-			return
-		}
 		writeJSON(w, http.StatusOK, volumeResponse{Level: stateMgr.CartVolume()})
 	}
 }
 
 // SetCartVolume returns a handler for PUT /v1/cart/volume.
-func SetCartVolume(bus queueBus, stateMgr *state.Manager, enabled bool) http.HandlerFunc {
+func SetCartVolume(bus queueBus, stateMgr *state.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			cartUnavailable(w)
-			return
-		}
 		var req struct {
 			Level float32 `json:"level"`
 		}

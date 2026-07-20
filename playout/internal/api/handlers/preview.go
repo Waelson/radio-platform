@@ -7,17 +7,12 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/commands"
 )
 
-// previewUnavailable writes the standard 503 response when preview is disabled.
-func previewUnavailable(w http.ResponseWriter) {
-	writeError(w, http.StatusServiceUnavailable, "preview_disabled",
-		"audio preview is not enabled — set preview.enabled: true in config")
-}
-
 // PreviewPlay returns a handler for POST /v1/preview/play.
-func PreviewPlay(bus queueBus, enabled bool) http.HandlerFunc {
+// validate is called before forwarding the command; a non-nil error aborts with 422.
+func PreviewPlay(bus queueBus, validate func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
+		if err := validate(); err != nil {
+			writeError(w, http.StatusUnprocessableEntity, "preview_device_invalid", err.Error())
 			return
 		}
 		var req struct {
@@ -50,12 +45,8 @@ func PreviewPlay(bus queueBus, enabled bool) http.HandlerFunc {
 }
 
 // PreviewPause returns a handler for POST /v1/preview/pause.
-func PreviewPause(bus queueBus, enabled bool) http.HandlerFunc {
+func PreviewPause(bus queueBus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
-			return
-		}
 		cmd, replyCh := commands.NewSync(commands.CmdPreviewPause, nil)
 		result, ok := sendAndWait(w, bus, cmd, replyCh)
 		if !ok {
@@ -71,12 +62,8 @@ func PreviewPause(bus queueBus, enabled bool) http.HandlerFunc {
 }
 
 // PreviewResume returns a handler for POST /v1/preview/resume.
-func PreviewResume(bus queueBus, enabled bool) http.HandlerFunc {
+func PreviewResume(bus queueBus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
-			return
-		}
 		cmd, replyCh := commands.NewSync(commands.CmdPreviewResume, nil)
 		result, ok := sendAndWait(w, bus, cmd, replyCh)
 		if !ok {
@@ -92,12 +79,8 @@ func PreviewResume(bus queueBus, enabled bool) http.HandlerFunc {
 }
 
 // PreviewStop returns a handler for POST /v1/preview/stop.
-func PreviewStop(bus queueBus, enabled bool) http.HandlerFunc {
+func PreviewStop(bus queueBus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
-			return
-		}
 		cmd, replyCh := commands.NewSync(commands.CmdPreviewStop, nil)
 		result, ok := sendAndWait(w, bus, cmd, replyCh)
 		if !ok {
@@ -113,12 +96,8 @@ func PreviewStop(bus queueBus, enabled bool) http.HandlerFunc {
 }
 
 // PreviewSeek returns a handler for POST /v1/preview/seek.
-func PreviewSeek(bus queueBus, enabled bool) http.HandlerFunc {
+func PreviewSeek(bus queueBus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
-			return
-		}
 		var req struct {
 			PositionMS int64 `json:"position_ms"`
 		}
@@ -145,12 +124,8 @@ func PreviewSeek(bus queueBus, enabled bool) http.HandlerFunc {
 // PreviewStatus returns a handler for GET /v1/preview/status.
 // getStatus is a closure that returns the current preview state as any
 // (compatible with preview.Status JSON shape).
-func PreviewStatus(getStatus func() any, enabled bool) http.HandlerFunc {
+func PreviewStatus(getStatus func() any) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !enabled {
-			previewUnavailable(w)
-			return
-		}
 		writeJSON(w, http.StatusOK, getStatus())
 	}
 }

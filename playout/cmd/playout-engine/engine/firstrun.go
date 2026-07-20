@@ -108,7 +108,6 @@ audio:
   output:
     driver: %q
     device_id: "default"
-    allow_null_output: false
 
 # -----------------------------------------------------------------------------
 # Comportamento de reprodução
@@ -198,10 +197,11 @@ preview:
   # Use "null" para testar sem um segundo dispositivo de áudio.
   output_driver: "null"
 
-  # Identificador do dispositivo de saída para preview.
+  # Dispositivo de saída dedicado para preview.
   # Vazio = dispositivo padrão do driver selecionado.
   # Exemplos: "BlackHole 2ch" (macOS virtual), "hw:1,0" (ALSA/Linux)
-  output_device: ""
+  output:
+    device_id: ""
 
 # -----------------------------------------------------------------------------
 # Scheduler (programação horária)
@@ -225,14 +225,10 @@ scheduler:
   missed_threshold_ms: 5000
 
 # -----------------------------------------------------------------------------
-# Cart Player (botoneira)
+# Hot Keys (botoneira)
 # -----------------------------------------------------------------------------
-cart:
-  # Habilita o cart player. Quando false, os endpoints /v1/cart/*
-  # retornam 503 Service Unavailable.
-  enabled: false
-
-  # Dispositivo de saída dedicado para o cart player.
+hotkeys:
+  # Dispositivo de saída dedicado para as hot keys.
   # Deve ser diferente do dispositivo principal e do dispositivo de preview.
   # Vazio = dispositivo padrão do driver.
   # Exemplos: "BlackHole 2ch" (macOS), "hw:1,0" (ALSA/Linux)

@@ -44,7 +44,7 @@ var configPageTpl = `<!DOCTYPE html>
       --mono:      "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
       --font:      Inter, "Segoe UI", Roboto, Arial, sans-serif;
       --sidebar-w: 160px;
-      --header-h:  46px;
+      --header-h:  61px;
       --footer-h:  54px;
       --radius:    8px;
     }
@@ -316,6 +316,7 @@ var configPageTpl = `<!DOCTYPE html>
   <nav class="sidebar">
     <div class="nav-item active"  data-s="engine">Engine</div>
     <div class="nav-item"         data-s="api">API</div>
+    <div class="nav-item"         data-s="devices">Dispositivos</div>
     <div class="nav-item"         data-s="audio">Áudio</div>
     <div class="nav-item"         data-s="playback">Reprodução</div>
     <div class="nav-item"         data-s="health">Saúde</div>
@@ -323,9 +324,7 @@ var configPageTpl = `<!DOCTYPE html>
     <div class="nav-item"         data-s="log">Log / Seg / Admin</div>
     <div class="nav-item"         data-s="queue">Fila</div>
     <div class="nav-item"         data-s="horacerta">Hora Certa</div>
-    <div class="nav-item"         data-s="preview">Preview</div>
     <div class="nav-item"         data-s="scheduler">Scheduler</div>
-    <div class="nav-item"         data-s="cart">Cart</div>
     <div class="nav-item"         data-s="transmission">Log Transmissão</div>
   </nav>
 
@@ -379,19 +378,26 @@ var configPageTpl = `<!DOCTYPE html>
     </div>
 
     <!-- ÁUDIO -->
-    <div id="p-audio" class="panel">
-      <div class="section-title">Áudio</div>
+    <!-- DISPOSITIVOS -->
+    <div id="p-devices" class="panel">
+      <div class="section-title">Dispositivos</div>
       <div class="field">
-        <label class="lbl">Dispositivo de saída principal</label>
+        <label class="lbl">Saída principal</label>
         <select id="audio-device"></select>
       </div>
-      <label class="check-row">
-        <input id="audio-allow-null" type="checkbox" />
-        <div>
-          <div class="check-lbl">Usar NullOutput se o dispositivo falhar ao abrir</div>
-          <div class="check-desc">Degrada graciosamente em vez de encerrar com erro.</div>
-        </div>
-      </label>
+      <div class="field" style="margin-top:16px">
+        <label class="lbl">Preview (Cue)</label>
+        <select id="prev-device"></select>
+      </div>
+      <div class="field" style="margin-top:16px">
+        <label class="lbl">Hot Keys</label>
+        <select id="cart-device"></select>
+      </div>
+    </div>
+
+    <!-- ÁUDIO -->
+    <div id="p-audio" class="panel">
+      <div class="section-title">Áudio</div>
       <div class="field-row" style="margin-top:16px">
         <div class="field">
           <label class="lbl">Taxa de amostragem</label>
@@ -660,22 +666,6 @@ var configPageTpl = `<!DOCTYPE html>
     </div>
 
     <!-- PREVIEW -->
-    <div id="p-preview" class="panel">
-      <div class="section-title">Preview (Cue)</div>
-      <label class="check-row">
-        <input id="prev-enabled" type="checkbox" />
-        <div>
-          <div class="check-lbl">Habilitar preview de áudio</div>
-          <div class="check-desc">Permite ouvir um áudio em dispositivo separado antes de colocá-lo na fila, sem interferir no sinal ao ar.</div>
-        </div>
-      </label>
-      <div class="field" style="margin-top:16px">
-        <label class="lbl">Dispositivo de preview (cue)</label>
-        <select id="prev-device"></select>
-        <div class="hint">Deve ser diferente do dispositivo de saída principal. Vazio = padrão do driver.</div>
-      </div>
-    </div>
-
     <!-- SCHEDULER -->
     <div id="p-scheduler" class="panel">
       <div class="section-title">Scheduler</div>
@@ -705,23 +695,6 @@ var configPageTpl = `<!DOCTYPE html>
           <span class="unit-badge">ms</span>
         </div>
         <div class="hint">Entradas atrasadas além desse tempo são marcadas MISSED em vez de disparar com atraso.</div>
-      </div>
-    </div>
-
-    <!-- CART -->
-    <div id="p-cart" class="panel">
-      <div class="section-title">Cart Player (Botoneira)</div>
-      <label class="check-row">
-        <input id="cart-enabled" type="checkbox" onchange="syncCartFields()" />
-        <div>
-          <div class="check-lbl">Habilitar cart player</div>
-          <div class="check-desc">Canal de áudio dedicado para reprodução via hotkeys, isolado do sinal ao ar e do preview/CUE.</div>
-        </div>
-      </label>
-      <div id="cart-device-field" class="field" style="margin-top:16px">
-        <label class="lbl">Dispositivo de saída do cart</label>
-        <select id="cart-device"></select>
-        <div class="hint">Deve ser diferente do dispositivo principal e do dispositivo de preview. Vazio = padrão do driver.</div>
       </div>
     </div>
 
@@ -800,17 +773,6 @@ var configPageTpl = `<!DOCTYPE html>
     var fields = document.getElementById('auto-xfade-fields');
     fields.style.opacity = on ? '1' : '0.35';
     fields.style.pointerEvents = on ? '' : 'none';
-  }
-
-  function syncCartFields() {
-    var on = document.getElementById('cart-enabled').checked;
-    var field = document.getElementById('cart-device-field');
-    if (field) {
-      field.style.opacity = on ? '1' : '0.35';
-      field.style.pointerEvents = on ? '' : 'none';
-    }
-    var sel = document.getElementById('cart-device');
-    if (sel) sel.disabled = !on;
   }
 
   function syncPanicAutoFields() {
@@ -965,7 +927,6 @@ var configPageTpl = `<!DOCTYPE html>
     var au = cfg.audio || {};
     var auo = au.output || {};
     audioDeviceID = auo.device_id || '';
-    setCheck('audio-allow-null', auo.allow_null_output);
     setVal('audio-sample-rate', au.sample_rate);
     setVal('audio-channels', au.channels);
     setVal('audio-buffer-frames', au.buffer_frames);
@@ -1023,8 +984,7 @@ var configPageTpl = `<!DOCTYPE html>
     setVal('hc-gain', hc.gain_db);
 
     var pv = cfg.preview || {};
-    setCheck('prev-enabled', pv.enabled);
-    prevDeviceID = pv.output_device || '';
+    prevDeviceID = (pv.output && pv.output.device_id) || '';
 
     var sc = cfg.scheduler || {};
     setCheck('sched-enabled', sc.enabled);
@@ -1032,10 +992,8 @@ var configPageTpl = `<!DOCTYPE html>
     setVal('sched-path', sc.store_path);
     setVal('sched-missed', sc.missed_threshold_ms);
 
-    var ct = cfg.cart || {};
-    setCheck('cart-enabled', ct.enabled);
+    var ct = cfg.hotkeys || {};
     cartDeviceID = (ct.output && ct.output.device_id) || '';
-    syncCartFields();
 
     var tl = cfg.transmission_log || {};
     setCheck('tl-enabled', tl.enabled);
@@ -1059,7 +1017,7 @@ var configPageTpl = `<!DOCTYPE html>
   function populateDeviceSelect(id, devs, selectedID) {
     var sel = document.getElementById(id);
     if (!sel) return;
-    sel.innerHTML = '<option value="">&#8212; padrão do driver &#8212;</option>';
+    sel.innerHTML = '<option value="">&#8212; selecione um dispositivo &#8212;</option>';
     devs.forEach(function(d) {
       var opt = document.createElement('option');
       opt.value = d.id || d.name || '';
@@ -1089,8 +1047,7 @@ var configPageTpl = `<!DOCTYPE html>
         channels:      safeInt(getVal('audio-channels'), 2),
         buffer_frames: safeInt(getVal('audio-buffer-frames'), 2048),
         output: {
-          device_id:        getVal('audio-device') || 'default',
-          allow_null_output: getCheck('audio-allow-null')
+          device_id: getVal('audio-device') || 'default'
         }
       },
       playback: {
@@ -1146,8 +1103,9 @@ var configPageTpl = `<!DOCTYPE html>
         gain_db:        safeFloat(getVal('hc-gain'), 0)
       },
       preview: {
-        enabled:       getCheck('prev-enabled'),
-        output_device: getVal('prev-device')
+        output: {
+          device_id: getVal('prev-device')
+        }
       },
       scheduler: {
         enabled:            getCheck('sched-enabled'),
@@ -1155,8 +1113,7 @@ var configPageTpl = `<!DOCTYPE html>
         store_path:         getVal('sched-path'),
         missed_threshold_ms: safeInt(getVal('sched-missed'), 5000)
       },
-      cart: {
-        enabled: getCheck('cart-enabled'),
+      hotkeys: {
         output: {
           device_id: getVal('cart-device')
         }
@@ -1240,6 +1197,13 @@ var configPageTpl = `<!DOCTYPE html>
   // ── Save ─────────────────────────────────────────────────────
   function saveCfg() {
     if (!engineOnline) return;
+    var mainDev    = getVal('audio-device') || 'default';
+    var prevDev    = getVal('prev-device')  || '';
+    var hotKeysDev = getVal('cart-device')  || '';
+    if (prevDev && (prevDev === mainDev || prevDev === hotKeysDev)) {
+      showBanner('error', 'Dispositivo de Preview deve ser diferente do dispositivo Principal e do Hot Keys.');
+      return;
+    }
     fetch('/v1/config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
