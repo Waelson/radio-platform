@@ -2594,7 +2594,7 @@ canvas.vu-canvas {
             <button class="pn-btn"               id="btnSkip"        onclick="sendCmd('skip')"         disabled>Próximo ⏭</button>
           </div>
           <div class="pn-controls-right">
-            <button class="pn-btn pn-btn-danger" id="btnPanicToggle" onclick="sendCmd('panic-toggle')" disabled style="min-width:46px;width:46px;padding:0;">⚠ Emergência</button>
+            <button class="pn-btn pn-btn-danger" id="btnPanicToggle" onclick="sendCmd('panic-toggle')" disabled data-tooltip="Panic" style="min-width:46px;width:46px;padding:0;"><img class="btn-icon" src="icons/panic.svg"></button>
           </div>
         </div>
 
@@ -3208,8 +3208,9 @@ function decaySmooth() {
 }
 
 const ACTIVE_STATES = new Set(['PLAYING', 'PAUSED', 'ASSIST', 'PANIC']);
-let engineState = '';
-let engineMode  = '';
+let engineState    = '';
+let engineMode     = '';
+let _panicEnabled  = false;
 function isActive() { return ACTIVE_STATES.has(engineState); }
 
 function applyVU(p) {
@@ -3283,7 +3284,7 @@ function msToDuration(ms) {
 
 /* ─── Controls state ─────────────────────────────────────────── */
 const BTN_ALLOWED = {
-  IDLE:     ['play', 'assist-enter'],
+  IDLE:     ['play', 'assist-enter', 'panic-toggle'],
   PLAYING:  ['pause-toggle', 'stop', 'skip', 'panic-toggle', 'assist-enter'],
   PAUSED:   ['pause-toggle', 'stop', 'panic-toggle', 'assist-enter'],
   ASSIST:   ['play', 'pause-toggle', 'stop', 'skip', 'panic-toggle', 'return-auto'],
@@ -3322,7 +3323,7 @@ function updateButtons(state) {
     if (cmd === 'stop' && _assistWaiting)                                ok = false;
     if (cmd === 'skip' && _assistWaiting)                                ok = false;
     if (cmd === 'pause-toggle' && _assistWaiting)                        ok = false;
-    if (cmd === 'panic-toggle' && (state === 'IDLE' || state === ''))    ok = false;
+    if (cmd === 'panic-toggle' && !_panicEnabled)                        ok = false;
     if (cmd === 'return-auto' && _inAssist)                              ok = true;
     // btnPlay is always enabled when playing (acts as stop)
     if (cmd === 'play' && _enginePlaying)                                ok = true;
@@ -5004,8 +5005,9 @@ function onSnapshot(p) {
     const lbl = document.getElementById('orEngineLabel');
     if (lbl) lbl.textContent = engineId;
   }
-  engineState = p.State || p.state || '';
-  engineMode  = p.Mode || p.mode || engineMode;
+  engineState   = p.State || p.state || '';
+  engineMode    = p.Mode || p.mode || engineMode;
+  _panicEnabled = !!(p.PanicEnabled ?? p.panic_enabled);
   // Restore _enginePlaying from snapshot so setStateBadge shows the correct
   // display state (e.g. 'PLAYING' instead of 'ASSIST') after a page reload.
   const _snapNp = p.NowPlaying || p.now_playing;

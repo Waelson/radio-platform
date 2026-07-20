@@ -105,6 +105,7 @@ type Snapshot struct {
 	PreviewVolume float32 `json:"preview_volume"`
 	CartVolume    float32 `json:"cart_volume"`
 	CartEnabled   bool    `json:"cart_enabled"`
+	PanicEnabled  bool    `json:"panic_enabled"`
 }
 
 // Manager maintains the engine state and exposes it via Snapshot().
@@ -288,6 +289,13 @@ func (m *Manager) CartVolume() float32 {
 func (m *Manager) SetCartEnabled(enabled bool) {
 	m.mu.Lock()
 	m.snap.CartEnabled = enabled
+	m.mu.Unlock()
+}
+
+// SetPanicEnabled records whether panic mode is enabled in config.
+func (m *Manager) SetPanicEnabled(enabled bool) {
+	m.mu.Lock()
+	m.snap.PanicEnabled = enabled
 	m.mu.Unlock()
 }
 

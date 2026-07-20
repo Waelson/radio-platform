@@ -222,16 +222,26 @@ func run(args []string) error {
 	}
 
 	// 9. Audio Health Monitor — computes RMS/peak, detects silence.
-	// AutoPanicSilenceDurationMS: set to 2× SilenceDurationMS so auto-panic
-	// triggers after the silence alert has already fired.
+	// AutoPanicSilenceDurationMS is only set when both panic mode and
+	// auto-panic-on-silence are enabled; 0 disables the feature entirely.
+	autoPanicDurationMS := 0
+	if cfg.Panic.Enabled && cfg.Panic.AutoOnSilence {
+		autoPanicDurationMS = cfg.Panic.SilenceDurationMS
+		if autoPanicDurationMS <= 0 {
+			autoPanicDurationMS = cfg.Health.SilenceDurationMS * 2
+		}
+	}
 	healthCfg := health.Config{
 		IntervalMS:                 cfg.Health.AudioHealthIntervalMS,
 		SilenceThresholdDBFS:       cfg.Health.SilenceThresholdDBFS,
 		SilenceDurationMS:          cfg.Health.SilenceDurationMS,
 		SampleRate:                 cfg.Audio.SampleRate,
 		Channels:                   cfg.Audio.Channels,
-		AutoPanicSilenceDurationMS: cfg.Health.SilenceDurationMS * 2,
+		AutoPanicSilenceDurationMS: autoPanicDurationMS,
 		OnAutoPanic: func(reason string) {
+			if !cfg.Panic.Enabled || !cfg.Panic.AutoOnSilence {
+				return
+			}
 			if stateMgr.Snapshot().State == state.StateAssist {
 				return
 			}
@@ -426,6 +436,7 @@ func run(args []string) error {
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)
+	stateMgr.SetPanicEnabled(cfg.Panic.Enabled)
 
 	evtBus.Publish(events.New(events.EvtEngineStarted, events.EngineStartedPayload{
 		EngineID: cfg.Engine.ID,
