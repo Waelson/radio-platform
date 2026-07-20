@@ -19,6 +19,12 @@ var ErrAlreadyRunning = errors.New("scan already in progress")
 // Scanner is satisfied by *scanner.Indexer.
 type Scanner interface {
 	Scan(ctx context.Context) (scanner.ScanResult, error)
+	SyncCategories(ctx context.Context, lister scanner.TrackCategoryLister) (scanner.SyncCategoryResult, error)
+}
+
+// TrackCategoryLister is satisfied by *store.TrackStore.
+type TrackCategoryLister interface {
+	scanner.TrackCategoryLister
 }
 
 // TrackCounter returns the total number of indexed tracks.
@@ -40,6 +46,7 @@ type Status struct {
 type Service struct {
 	scanner Scanner
 	counter TrackCounter
+	lister  TrackCategoryLister
 	log     *slog.Logger
 
 	mu         sync.RWMutex
@@ -49,8 +56,8 @@ type Service struct {
 }
 
 // New creates a Service.
-func New(sc Scanner, counter TrackCounter, log *slog.Logger) *Service {
-	return &Service{scanner: sc, counter: counter, log: log}
+func New(sc Scanner, counter TrackCounter, lister TrackCategoryLister, log *slog.Logger) *Service {
+	return &Service{scanner: sc, counter: counter, lister: lister, log: log}
 }
 
 // Status returns current indexation state and the live track count.
@@ -91,7 +98,10 @@ func (s *Service) TriggerScan(ctx context.Context) error {
 	s.mu.Unlock()
 
 	go func() {
-		result, err := s.scanner.Scan(ctx)
+		// Use a detached context so the scan is not cancelled when the HTTP
+		// request that triggered it completes.
+		scanCtx := context.WithoutCancel(ctx)
+		result, err := s.scanner.Scan(scanCtx)
 		now := time.Now()
 
 		s.mu.Lock()
@@ -107,6 +117,39 @@ func (s *Service) TriggerScan(ctx context.Context) error {
 				"indexed", result.Indexed,
 				"skipped", result.Skipped,
 				"errors", result.ErrCount,
+			)
+		}
+	}()
+	return nil
+}
+
+// TriggerCategorySync starts a category sync in a background goroutine.
+// Returns ErrAlreadyRunning if a scan is currently in progress.
+func (s *Service) TriggerCategorySync(ctx context.Context) error {
+	s.mu.Lock()
+	if s.running {
+		s.mu.Unlock()
+		return ErrAlreadyRunning
+	}
+	s.running = true
+	s.mu.Unlock()
+
+	go func() {
+		syncCtx := context.WithoutCancel(ctx)
+		defer func() {
+			now := time.Now()
+			s.mu.Lock()
+			s.running = false
+			s.lastRunAt = &now
+			s.mu.Unlock()
+		}()
+		result, err := s.scanner.SyncCategories(syncCtx, s.lister)
+		if err != nil {
+			s.log.Error("category sync failed", "error", err)
+		} else {
+			s.log.Info("category sync complete",
+				"linked", result.Linked,
+				"errors", result.Errors,
 			)
 		}
 	}()

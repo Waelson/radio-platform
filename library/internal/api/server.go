@@ -144,6 +144,7 @@ func (s *Server) routes() http.Handler {
 	// ── Auth routes (require valid JWT) ───────────────────────────────────────
 	requireAuth := middleware.RequireAuth(s.auth.JWTSecret)
 	mux.Handle("POST /v1/auth/change-password",              requireAuth(handlers.ChangePassword(s.us)))
+	mux.Handle("POST /v1/users",                             requireAuth(handlers.CreateUser(s.us)))
 	mux.Handle("POST /v1/users/{id}/reset-password",         requireAuth(handlers.AdminResetPassword(s.us, s.auth.DefaultResetPassword)))
 
 	mux.Handle("GET /v1/tracks/artists",           requireAuth(handlers.ListArtists(s.ts)))
@@ -170,8 +171,9 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("DELETE /v1/breaks/{id}/items/{item_id}",       requireAuth(handlers.RemoveBreakItem(s.bs)))
 	mux.Handle("PUT /v1/breaks/{id}/items/reorder",            requireAuth(handlers.ReorderBreakItems(s.bs)))
 
-	mux.Handle("GET /v1/index/status",  requireAuth(handlers.GetIndexStatus(s.ix)))
-	mux.Handle("POST /v1/index/scan",   requireAuth(handlers.TriggerScan(s.ix)))
+	mux.Handle("GET /v1/index/status",              requireAuth(handlers.GetIndexStatus(s.ix)))
+	mux.Handle("POST /v1/index/scan",                requireAuth(handlers.TriggerScan(s.ix)))
+	mux.Handle("POST /v1/index/sync-categories",     requireAuth(handlers.SyncCategories(s.ix)))
 
 	mux.Handle("GET /v1/hotkeys/profiles",                          requireAuth(handlers.ListHotkeyProfiles(s.hs)))
 	mux.Handle("POST /v1/hotkeys/profiles",                         requireAuth(handlers.CreateHotkeyProfile(s.hs)))

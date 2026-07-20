@@ -46,13 +46,14 @@ type Track struct {
 
 // SearchQuery holds optional filters for track searches.
 type SearchQuery struct {
-	Q        string // full-text search on title and artist
-	Type     string
-	Artist   string
-	Album    string
-	Category string
-	Limit    int // default 50, max 200
-	Offset   int
+	Q          string // full-text search on title and artist
+	Type       string
+	Artist     string
+	Album      string
+	Category   string // simple category string from filename (e.g. "Pop")
+	CategoryID string // filter by category entity via track_categories join
+	Limit      int    // default 50, max 200
+	Offset     int
 
 	// Loudness filters (all optional).
 	LoudnessStatus string   // filter by loudness_status (pending|analyzing|done|error)
@@ -203,6 +204,55 @@ func (s *TrackStore) FindByPath(ctx context.Context, path string) (Track, error)
 	return scanTrack(row)
 }
 
+// buildSearchClauses returns the FROM/JOIN clause, WHERE conditions and args
+// shared by Search and CountFiltered.
+func buildSearchClauses(q SearchQuery) (from string, where []string, args []any) {
+	if q.CategoryID != "" {
+		from = `tracks t
+		INNER JOIN track_categories tc ON t.id = tc.track_id
+		INNER JOIN categories c ON tc.category_id = c.id`
+		where = append(where, "c.id = ?")
+		args = append(args, q.CategoryID)
+	} else {
+		from = "tracks t"
+	}
+
+	if q.Q != "" {
+		where = append(where, "(t.title LIKE ? OR t.artist LIKE ?)")
+		like := "%" + q.Q + "%"
+		args = append(args, like, like)
+	}
+	if q.Type != "" {
+		where = append(where, "t.type = ?")
+		args = append(args, q.Type)
+	}
+	if q.Artist != "" {
+		where = append(where, "t.artist LIKE ?")
+		args = append(args, "%"+q.Artist+"%")
+	}
+	if q.Album != "" {
+		where = append(where, "t.album LIKE ?")
+		args = append(args, "%"+q.Album+"%")
+	}
+	if q.Category != "" {
+		where = append(where, "t.category = ?")
+		args = append(args, q.Category)
+	}
+	if q.LoudnessStatus != "" {
+		where = append(where, "COALESCE(t.loudness_status,'pending') = ?")
+		args = append(args, q.LoudnessStatus)
+	}
+	if q.LoudnessMin != nil {
+		where = append(where, "t.loudness_lufs >= ?")
+		args = append(args, *q.LoudnessMin)
+	}
+	if q.LoudnessMax != nil {
+		where = append(where, "t.loudness_lufs <= ?")
+		args = append(args, *q.LoudnessMax)
+	}
+	return from, where, args
+}
+
 // Search returns tracks matching the query filters, ordered by title.
 func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error) {
 	limit := q.Limit
@@ -213,42 +263,7 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 		limit = 200
 	}
 
-	var where []string
-	var args []any
-
-	if q.Q != "" {
-		where = append(where, "(title LIKE ? OR artist LIKE ?)")
-		like := "%" + q.Q + "%"
-		args = append(args, like, like)
-	}
-	if q.Type != "" {
-		where = append(where, "type = ?")
-		args = append(args, q.Type)
-	}
-	if q.Artist != "" {
-		where = append(where, "artist LIKE ?")
-		args = append(args, "%"+q.Artist+"%")
-	}
-	if q.Album != "" {
-		where = append(where, "album LIKE ?")
-		args = append(args, "%"+q.Album+"%")
-	}
-	if q.Category != "" {
-		where = append(where, "category = ?")
-		args = append(args, q.Category)
-	}
-	if q.LoudnessStatus != "" {
-		where = append(where, "COALESCE(loudness_status,'pending') = ?")
-		args = append(args, q.LoudnessStatus)
-	}
-	if q.LoudnessMin != nil {
-		where = append(where, "loudness_lufs >= ?")
-		args = append(args, *q.LoudnessMin)
-	}
-	if q.LoudnessMax != nil {
-		where = append(where, "loudness_lufs <= ?")
-		args = append(args, *q.LoudnessMax)
-	}
+	from, where, args := buildSearchClauses(q)
 
 	clause := ""
 	if len(where) > 0 {
@@ -256,15 +271,15 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
-		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
-		       loudness_lufs, true_peak_dbtp,
-		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
-		       loudness_analyzed_at,
-		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
-		FROM tracks %s
-		ORDER BY title ASC
-		LIMIT ? OFFSET ?`, clause)
+		SELECT t.id, t.path, t.title, t.artist, COALESCE(t.album,''), t.type, t.duration_ms,
+		       COALESCE(t.category,''), t.isrc, t.composer, t.publisher, t.indexed_at,
+		       t.loudness_lufs, t.true_peak_dbtp,
+		       COALESCE(t.loudness_status,'pending'), COALESCE(t.loudness_error,''),
+		       t.loudness_analyzed_at,
+		       t.cue_in_ms, t.intro_ms, t.outro_ms, t.cue_out_ms
+		FROM %s %s
+		ORDER BY t.title ASC
+		LIMIT ? OFFSET ?`, from, clause)
 
 	args = append(args, limit, q.Offset)
 
@@ -285,6 +300,34 @@ func (s *TrackStore) Search(ctx context.Context, q SearchQuery) ([]Track, error)
 	return tracks, rows.Err()
 }
 
+// ListForCategorySync returns all tracks that have a non-empty category string,
+// used to back-fill track_categories from existing indexed data.
+func (s *TrackStore) ListForCategorySync(ctx context.Context) ([]Track, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, path, title, artist, COALESCE(album,''), type, duration_ms,
+		       COALESCE(category,''), isrc, composer, publisher, indexed_at,
+		       loudness_lufs, true_peak_dbtp,
+		       COALESCE(loudness_status,'pending'), COALESCE(loudness_error,''),
+		       loudness_analyzed_at,
+		       cue_in_ms, intro_ms, outro_ms, cue_out_ms
+		FROM tracks
+		WHERE category IS NOT NULL AND category != ''
+		ORDER BY category ASC, title ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("list for category sync: %w", err)
+	}
+	defer rows.Close()
+	var out []Track
+	for rows.Next() {
+		t, err := scanTrackRow(rows)
+		if err != nil {
+			return nil, fmt.Errorf("list for category sync scan: %w", err)
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // Count returns the total number of indexed tracks.
 func (s *TrackStore) Count(ctx context.Context) (int, error) {
 	var n int
@@ -293,51 +336,16 @@ func (s *TrackStore) Count(ctx context.Context) (int, error) {
 }
 
 // CountFiltered returns the total number of tracks matching the query filters,
-// using the same WHERE clauses as Search but without LIMIT/OFFSET.
+// using the same FROM/WHERE clauses as Search but without LIMIT/OFFSET.
 func (s *TrackStore) CountFiltered(ctx context.Context, q SearchQuery) (int, error) {
-	var where []string
-	var args []any
-
-	if q.Q != "" {
-		where = append(where, "(title LIKE ? OR artist LIKE ?)")
-		like := "%" + q.Q + "%"
-		args = append(args, like, like)
-	}
-	if q.Type != "" {
-		where = append(where, "type = ?")
-		args = append(args, q.Type)
-	}
-	if q.Artist != "" {
-		where = append(where, "artist LIKE ?")
-		args = append(args, "%"+q.Artist+"%")
-	}
-	if q.Album != "" {
-		where = append(where, "album LIKE ?")
-		args = append(args, "%"+q.Album+"%")
-	}
-	if q.Category != "" {
-		where = append(where, "category = ?")
-		args = append(args, q.Category)
-	}
-	if q.LoudnessStatus != "" {
-		where = append(where, "COALESCE(loudness_status,'pending') = ?")
-		args = append(args, q.LoudnessStatus)
-	}
-	if q.LoudnessMin != nil {
-		where = append(where, "loudness_lufs >= ?")
-		args = append(args, *q.LoudnessMin)
-	}
-	if q.LoudnessMax != nil {
-		where = append(where, "loudness_lufs <= ?")
-		args = append(args, *q.LoudnessMax)
-	}
+	from, where, args := buildSearchClauses(q)
 
 	clause := ""
 	if len(where) > 0 {
 		clause = "WHERE " + strings.Join(where, " AND ")
 	}
 
-	query := fmt.Sprintf(`SELECT COUNT(*) FROM tracks %s`, clause)
+	query := fmt.Sprintf(`SELECT COUNT(*) FROM %s %s`, from, clause)
 
 	var n int
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(&n)

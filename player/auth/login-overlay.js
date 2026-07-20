@@ -21,8 +21,8 @@
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: rgba(6, 18, 26, 0.82);
-  backdrop-filter: blur(6px);
+  background: rgba(6, 18, 26, 0.10);
+  backdrop-filter: blur(2px);
   align-items: center;
   justify-content: center;
 }
@@ -274,15 +274,14 @@ body.auth-locked .app {
     <div class="ao-hint">O playout continua no ar. Faça login com outro perfil.</div>
     <div class="ao-field">
       <label>E-mail</label>
-      <input id="aoHOEmail" type="email" placeholder="operador@radio.com"/>
+      <input id="aoHOEmail" type="email" placeholder="operador@radio.com" autocomplete="off"/>
     </div>
     <div class="ao-field">
       <label>Senha</label>
-      <input id="aoHOPassword" type="password" placeholder="••••••••"/>
+      <input id="aoHOPassword" type="password" placeholder="••••••••" autocomplete="new-password"/>
     </div>
     <div class="ao-error" id="aoHOErr"></div>
     <div class="ao-row">
-      <button class="ao-btn ao-secondary" id="aoHOCancel">Cancelar</button>
       <button class="ao-btn" id="aoHOBtn">Entrar</button>
     </div>
   </div>
@@ -334,13 +333,18 @@ body.auth-locked .app {
     document.body.classList.add('auth-locked')
     const ov = document.getElementById('auth-overlay')
     if (ov) ov.classList.add('visible')
-    showScreen(screen || 'aoT1')
+    const s = screen || 'aoT1'
+    // Persist T6 across reloads (sessionStorage clears on app close)
+    if (s === 'aoT6') sessionStorage.setItem('ao-screen', 'aoT6')
+    else sessionStorage.removeItem('ao-screen')
+    showScreen(s)
   }
 
   function hideOverlay() {
     document.body.classList.remove('auth-locked')
     const ov = document.getElementById('auth-overlay')
     if (ov) ov.classList.remove('visible')
+    sessionStorage.removeItem('ao-screen')
   }
 
   function setError(id, msg) {
@@ -376,6 +380,40 @@ body.auth-locked .app {
     const el = document.getElementById('aucAvatar'); if (el) el.textContent = initials
     const nm = document.getElementById('aucName');   if (nm) nm.textContent = name
     const rl = document.getElementById('aucRole');   if (rl) rl.textContent = (claims.role || '').toUpperCase()
+  }
+
+  // ── Logout confirmation modal ─────────────────────────────────────────────────
+
+  function showLogoutConfirm() {
+    return new Promise(resolve => {
+      const el = document.createElement('div')
+      el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;'
+      el.innerHTML = `
+        <div style="background:#0d1a25;border:1px solid rgba(239,68,68,0.35);border-radius:14px;padding:24px 26px;width:390px;box-shadow:0 20px 60px rgba(0,0,0,0.80);">
+          <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#ef4444;margin-bottom:12px;">⚠ Reprodução em andamento</div>
+          <p style="font-size:13px;color:#c8d8e0;line-height:1.55;margin-bottom:6px;">
+            Há uma transmissão em andamento no momento.<br>
+            Como você deseja proceder?
+          </p>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:20px;">
+            <button id="_logoutStopBtn" style="padding:10px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(239,68,68,0.45);background:rgba(239,68,68,0.14);color:#ef4444;font-family:inherit;text-align:left;">
+              🛑 Sair e parar a reprodução
+              <span style="display:block;font-size:10px;font-weight:500;color:rgba(239,68,68,0.65);margin-top:2px;">A transmissão será encerrada imediatamente.</span>
+            </button>
+            <button id="_logoutOnlyBtn" style="padding:10px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,180,0,0.40);background:rgba(255,180,0,0.10);color:#ffb400;font-family:inherit;text-align:left;">
+              🚪 Sair sem parar
+              <span style="display:block;font-size:10px;font-weight:500;color:rgba(255,180,0,0.65);margin-top:2px;">O playout continua tocando sem operador ativo.</span>
+            </button>
+            <button id="_logoutCancelBtn" style="padding:9px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.08);background:none;color:rgba(200,216,224,0.45);font-family:inherit;">
+              Cancelar
+            </button>
+          </div>
+        </div>`
+      document.body.appendChild(el)
+      el.querySelector('#_logoutStopBtn').onclick  = () => { el.remove(); resolve('stop-and-quit') }
+      el.querySelector('#_logoutOnlyBtn').onclick  = () => { el.remove(); resolve('quit') }
+      el.querySelector('#_logoutCancelBtn').onclick = () => { el.remove(); resolve('cancel') }
+    })
   }
 
   // ── Event wiring ──────────────────────────────────────────────────────────────
@@ -474,7 +512,12 @@ body.auth-locked .app {
     })
 
     // T6 — Handover
-    document.getElementById('aoHOCancel').addEventListener('click', () => hideOverlay())
+    document.getElementById('aoHOEmail').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('aoHOPassword').focus()
+    })
+    document.getElementById('aoHOPassword').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('aoHOBtn').click()
+    })
     document.getElementById('aoHOBtn').addEventListener('click', async () => {
       setError('aoHOErr', '')
       const email = document.getElementById('aoHOEmail').value.trim()
@@ -510,17 +553,41 @@ body.auth-locked .app {
     document.getElementById('aumSwitch').addEventListener('click', async () => {
       document.getElementById('authUserMenu').classList.remove('open')
       await window.sessionManager.switchUser()
+      document.getElementById('aoHOEmail').value    = ''
+      document.getElementById('aoHOPassword').value = ''
+      setError('aoHOErr', '')
       showOverlay('aoT6')
     })
 
     document.getElementById('aumLogout').addEventListener('click', async () => {
       document.getElementById('authUserMenu').classList.remove('open')
-      await window.sessionManager.logout()
-      document.getElementById('aoEmail').value    = ''
-      document.getElementById('aoPassword').value = ''
-      setError('aoLoginErr', '')
-      showOverlay('aoT1')
+      await doLogoutAndQuit()
     })
+
+    // Intercept X-button and Command+Q — same logout flow
+    window.electronAPI?.onClosing(async () => {
+      await doLogoutAndQuit({ fromSystemClose: true })
+    })
+  }
+
+  async function doLogoutAndQuit({ fromSystemClose = false } = {}) {
+    const activeStates = ['PLAYING', 'ASSIST', 'PAUSED', 'PANIC']
+    const isPlaying = activeStates.includes(typeof engineState !== 'undefined' ? engineState : '')
+
+    if (isPlaying) {
+      const choice = await showLogoutConfirm()
+      if (choice === 'cancel') {
+        if (fromSystemClose) window.electronAPI?.cancelClose()
+        return
+      }
+      if (choice === 'stop-and-quit') {
+        if (typeof sendCmd === 'function') try { await sendCmd('stop') } catch {}
+      }
+    }
+
+    await window.sessionManager.logout()
+    window.electronAPI?.quitApp()
+    window.close()
   }
 
   // ── Public API ────────────────────────────────────────────────────────────────
@@ -533,13 +600,9 @@ body.auth-locked .app {
       injectUserChip()
       wireEvents()
 
-      // Always require the user to enter their password on startup.
-      // Pre-fill email from saved session if available, but never skip login.
-      const claims = await window.sessionManager.init(libUrl)
-      if (claims && claims.email) {
-        document.getElementById('aoEmail').value = claims.email
-      }
-      showOverlay('aoT1')
+      await window.sessionManager.init(libUrl)
+      const savedScreen = sessionStorage.getItem('ao-screen')
+      showOverlay(savedScreen || 'aoT1')
     },
   }
 

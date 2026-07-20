@@ -13,4 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   authResetVerify:  (libUrl, email, code)           => ipcRenderer.invoke('auth:reset-verify',   { libUrl, email, code }),
   authResetConfirm: (libUrl, resetToken, newPwd)    => ipcRenderer.invoke('auth:reset-confirm',  { libUrl, resetToken, newPwd }),
   authChangePwd:    (libUrl, token, curPwd, newPwd) => ipcRenderer.invoke('auth:change-pwd',     { libUrl, token, curPwd, newPwd }),
+  quitApp:          ()                              => ipcRenderer.send('app:quit'),
+  cancelClose:      ()                              => ipcRenderer.send('app:cancel-close'),
+  onClosing:        (cb)                            => ipcRenderer.on('app:closing', cb),
 })

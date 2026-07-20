@@ -11,8 +11,9 @@ import (
 	"github.com/Waelson/radio-library-service/internal/store"
 )
 
-// AuthUserStore is the subset of UserStore used by auth handlers.
+// AuthUserStore is the subset of UserStore used by auth and admin handlers.
 type AuthUserStore interface {
+	Create(ctx context.Context, in store.UserInput) (store.User, error)
 	Authenticate(ctx context.Context, email, password string) (store.User, error)
 	GetByEmail(ctx context.Context, email string) (store.User, error)
 	GetByID(ctx context.Context, id string) (store.User, error)

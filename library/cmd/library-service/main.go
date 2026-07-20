@@ -106,7 +106,9 @@ func run(args []string) error {
 	tlStore := store.NewTransmissionLogStore(db)
 	ilStore := store.NewTransmissionImportLogStore(db)
 	trackStore := store.NewTrackStore(db)
+	categoryStore := store.NewCategoryStore(db)
 	indexer := scanner.NewIndexer(cfg.Scanner, trackStore, logging.With(log, "scanner"))
+	indexer.SetCategoryLinker(categoryStore)
 
 	// 5a. Build loudness worker and attach to indexer.
 	loudnessWorker := loudness.NewWorker(
@@ -153,7 +155,7 @@ func run(args []string) error {
 		log.Info("cuein: re-enqueued pending tracks", "count", len(pendingCueIn))
 	}
 
-	idxSvc := indexsvc.New(indexer, trackStore, logging.With(log, "indexsvc"))
+	idxSvc := indexsvc.New(indexer, trackStore, trackStore, logging.With(log, "indexsvc"))
 
 	// 6. Initial library scan (non-blocking; state tracked via idxSvc).
 	idxSvc.RunInitialScan(ctx)
@@ -185,7 +187,6 @@ func run(args []string) error {
 	playlistStore := store.NewPlaylistStore(db)
 	breakStore := store.NewBreakStore(db)
 	hotkeyStore := store.NewHotkeyStore(db)
-	categoryStore := store.NewCategoryStore(db)
 	clockStore := store.NewClockStore(db)
 	separationStore := store.NewSeparationRuleStore(db)
 	rotationLogStore := store.NewRotationLogStore(db)

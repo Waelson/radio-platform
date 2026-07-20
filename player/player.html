@@ -5575,6 +5575,22 @@ function advModalOpen() {
   document.getElementById('advBackdrop').classList.add('open');
   document.getElementById('advModal').style.display = 'flex';
   document.getElementById('advQ').focus();
+  advLoadCategories();
+}
+
+async function advLoadCategories() {
+  const sel = document.getElementById('advCategory');
+  if (!sel || sel.options.length > 1) return; // already loaded
+  try {
+    const res  = await libFetch('/v1/categories');
+    const data = await res.json();
+    (data.data || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value       = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  } catch {}
 }
 
 function advModalClose() {
@@ -5595,17 +5611,19 @@ async function advSearch(resetPage = true) {
   if (!_libOnline) { showToast(false, 'Library offline'); return; }
   if (resetPage) _advPage = 1;
 
-  const q      = document.getElementById('advQ').value.trim();
-  const type   = document.getElementById('advType').value;
-  const artist = document.getElementById('advArtist').value.trim();
-  const album  = document.getElementById('advAlbum').value.trim();
+  const q          = document.getElementById('advQ').value.trim();
+  const type       = document.getElementById('advType').value;
+  const artist     = document.getElementById('advArtist').value.trim();
+  const album      = document.getElementById('advAlbum').value.trim();
+  const categoryId = document.getElementById('advCategory').value;
   const offset = (_advPage - 1) * ADV_LIMIT;
 
   const qs = new URLSearchParams({ limit: ADV_LIMIT, offset });
-  if (q)      qs.set('q',      q);
-  if (type)   qs.set('type',   type);
-  if (artist) qs.set('artist', artist);
-  if (album)  qs.set('album',  album);
+  if (q)          qs.set('q',           q);
+  if (type)       qs.set('type',        type);
+  if (artist)     qs.set('artist',      artist);
+  if (album)      qs.set('album',       album);
+  if (categoryId) qs.set('category_id', categoryId);
 
   const resultsEl = document.getElementById('advResults');
   resultsEl.innerHTML = '<div class="adv-empty">Buscando…</div>';
@@ -5688,10 +5706,11 @@ function advRender() {
 
 // 2.5 — Clear all filters and results
 function advClear() {
-  document.getElementById('advQ').value      = '';
-  document.getElementById('advType').value   = '';
-  document.getElementById('advArtist').value = '';
-  document.getElementById('advAlbum').value  = '';
+  document.getElementById('advQ').value        = '';
+  document.getElementById('advType').value     = '';
+  document.getElementById('advArtist').value   = '';
+  document.getElementById('advAlbum').value    = '';
+  document.getElementById('advCategory').value = '';
   _advPage   = 1;
   _advTotal  = 0;
   _advTracks = [];
@@ -7666,6 +7685,12 @@ async function libEnqueueBreak(idx) {
           <label class="adv-filter-label" for="advAlbum">Álbum</label>
           <input class="adv-filter-input" id="advAlbum" type="text" placeholder="ex: Greatest Hits…"
             onkeydown="if(event.key==='Enter')advSearch()">
+        </div>
+        <div class="adv-filter-group">
+          <label class="adv-filter-label" for="advCategory">Categoria</label>
+          <select class="adv-filter-select" id="advCategory">
+            <option value="">Todas as categorias</option>
+          </select>
         </div>
       </div>
       <div class="adv-actions">

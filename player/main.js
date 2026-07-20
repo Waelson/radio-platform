@@ -7,6 +7,12 @@ const https = require('https')
 // Set of all open hotkey windows — allows multiple simultaneous instances.
 const hotkeyWindows = new Set()
 
+// Reference to the main player window (used for close interception).
+let mainWin = null
+
+// When true the quit was approved by the renderer — skip interception.
+let _quitting = false
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -20,13 +26,28 @@ function createWindow() {
     },
   })
 
+  mainWin = win
   win.loadFile(path.join(__dirname, 'player.html'))
   //win.webContents.openDevTools({ mode: 'detach' })
+
+  // Intercept window X-button close — ask renderer to handle logout flow.
+  win.on('close', e => {
+    if (_quitting) return
+    e.preventDefault()
+    win.webContents.send('app:closing')
+  })
 
   // Bloqueia window.open() no player principal — janelas de botoneira
   // são sempre abertas via IPC pelo processo principal, sem parent-child.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 }
+
+// Intercept Command+Q on macOS — ask renderer to handle logout flow.
+app.on('before-quit', e => {
+  if (_quitting) return
+  e.preventDefault()
+  mainWin?.webContents.send('app:closing')
+})
 
 function createHotkeyWindow(opts) {
   const apiUrl = (opts && opts.api) || ''
@@ -58,6 +79,8 @@ function createHotkeyWindow(opts) {
 }
 
 ipcMain.on('open-hotkeys', (_event, opts) => createHotkeyWindow(opts))
+ipcMain.on('app:quit', () => { _quitting = true; app.quit() })
+ipcMain.on('app:cancel-close', () => { _quitting = false })
 
 // ── Session persistence (safeStorage + userData) ────────────────────────────
 

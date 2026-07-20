@@ -31,3 +31,20 @@ scanner:
 logging:
   level: "info"
   format: "json"
+
+auth:
+  jwt_secret: "change-me-in-production"   # mínimo 32 chars em prod — use: openssl rand -hex 32
+  token_ttl_hours: 8                       # TTL do token de sessão (1 turno de trabalho)
+  default_admin_email: "admin@radioflow.local"
+  default_admin_name: "Administrador"
+  default_admin_password: "Admin123"       # troque após o primeiro login
+  default_reset_password: "RadioFlow@2025" # senha atribuída pelo admin ao resetar outro operador
+
+mailer:
+  enabled: false             # true = envia e-mail; false = loga o código no stderr (desenvolvimento)
+  host: "smtp.gmail.com"
+  port: 587
+  username: ""
+  password: ""
+  from: "RadioFlow <noreply@radioflow.local>"
+  use_tls: true              # true = STARTTLS (porta 587); false = plain (porta 25)
