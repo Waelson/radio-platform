@@ -702,13 +702,13 @@ var configPageTpl = `<!DOCTYPE html>
     <div id="p-transmission" class="panel">
       <div class="section-title">Log de Transmissão</div>
       <label class="check-row">
-        <input id="tl-enabled" type="checkbox" />
+        <input id="tl-enabled" type="checkbox" onchange="toggleTLFields()" />
         <div>
           <div class="check-lbl">Habilitar log de transmissão</div>
           <div class="check-desc">Registra cada faixa tocada em arquivos JSONL horários para conformidade ECAD e auditoria de spots. Quando desabilitado, zero overhead — nenhuma goroutine, nenhum arquivo aberto.</div>
         </div>
       </label>
-      <div class="field" style="margin-top:16px">
+      <div id="tl-dir-field" class="field" style="margin-top:16px">
         <label class="lbl">Diretório dos logs</label>
         <div class="picker-row">
           <input id="tl-dir" type="text" placeholder="./transmission-logs" />
@@ -716,7 +716,7 @@ var configPageTpl = `<!DOCTYPE html>
         </div>
         <div class="hint">Deve ser acessível pelo Library Service (volume compartilhado em produção). Padrão: <code style="font-family:var(--mono);font-size:11px">./transmission-logs</code></div>
       </div>
-      <div class="field">
+      <div id="tl-template-field" class="field">
         <label class="lbl">Template do nome do arquivo</label>
         <input id="tl-template" type="text" placeholder="transmission_{date}_{hour}.jsonl" />
         <div class="hint">Placeholders: <code style="font-family:var(--mono);font-size:11px">{date}</code> → yyyyMMdd (UTC) &nbsp;|&nbsp; <code style="font-family:var(--mono);font-size:11px">{hour}</code> → HH (UTC, dois dígitos). O Library Service usa o mesmo template para descobrir os arquivos.</div>
@@ -999,6 +999,21 @@ var configPageTpl = `<!DOCTYPE html>
     setCheck('tl-enabled', tl.enabled);
     setVal('tl-dir', tl.dir);
     setVal('tl-template', tl.file_name_template);
+    toggleTLFields();
+  }
+
+  function toggleTLFields() {
+    var on = document.getElementById('tl-enabled').checked;
+    ['tl-dir', 'tl-template'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = !on;
+    });
+    var browseBtn = document.querySelector('#p-transmission .btn-browse');
+    if (browseBtn) browseBtn.disabled = !on;
+    ['tl-dir-field', 'tl-template-field'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) { el.style.opacity = on ? '1' : '0.35'; el.style.pointerEvents = on ? '' : 'none'; }
+    });
   }
 
   // ── Load devices ─────────────────────────────────────────────
