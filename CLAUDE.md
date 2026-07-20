@@ -20,6 +20,24 @@ Este monorepo contém os serviços da plataforma de rádio:
 
 O player consulta o library-service para montar playlists e envia os paths dos arquivos para o playout engine via API. O playout engine nunca acessa o banco de dados — ele recebe apenas paths e metadados já resolvidos.
 
+## Idioma
+
+Todas as respostas devem ser em **português brasileiro**, sem exceção.
+
+## Fluxo de trabalho obrigatório — análise antes de agir
+
+**Nunca implemente, altere ou corrija nada sem autorização explícita do usuário.**
+
+Ao identificar um problema, necessidade de ajuste ou oportunidade de melhoria, siga este formato antes de qualquer ação:
+
+1. **Finding** — o que foi encontrado/identificado.
+2. **Problema** — descrição clara do que está errado ou faltando.
+3. **Impacto** — o que isso causa no sistema ou no usuário.
+4. **Solução proposta / necessidade de investigação** — o que precisa ser feito e como.
+5. **Pergunta** — "Deseja que eu prossiga com essa correção/implementação?"
+
+Só execute a ação após receber confirmação explícita do usuário.
+
 ## Regras globais
 
 1. Cada serviço é um módulo Go independente — não criar dependências diretas entre `playout/` e `library/`.
