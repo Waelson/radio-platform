@@ -404,10 +404,6 @@ var configPageTpl = `<!DOCTYPE html>
           <div class="unit-row"><input id="audio-sample-rate" type="number" /><span class="unit-badge">Hz</span></div>
         </div>
         <div class="field">
-          <label class="lbl">Canais</label>
-          <input id="audio-channels" type="number" min="1" max="8" />
-        </div>
-        <div class="field">
           <label class="lbl">Buffer</label>
           <div class="unit-row"><input id="audio-buffer-frames" type="number" /><span class="unit-badge">frames</span></div>
         </div>
@@ -928,7 +924,6 @@ var configPageTpl = `<!DOCTYPE html>
     var auo = au.output || {};
     audioDeviceID = auo.device_id || '';
     setVal('audio-sample-rate', au.sample_rate);
-    setVal('audio-channels', au.channels);
     setVal('audio-buffer-frames', au.buffer_frames);
 
     var pb = cfg.playback || {};
@@ -1059,7 +1054,7 @@ var configPageTpl = `<!DOCTYPE html>
       },
       audio: {
         sample_rate:   safeInt(getVal('audio-sample-rate'), 48000),
-        channels:      safeInt(getVal('audio-channels'), 2),
+        channels:      2,
         buffer_frames: safeInt(getVal('audio-buffer-frames'), 2048),
         output: {
           device_id: getVal('audio-device') || 'default'
