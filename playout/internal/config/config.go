@@ -11,8 +11,6 @@ type Config struct {
 	Health          HealthConfig          `yaml:"health"           json:"health"`
 	Panic           PanicConfig           `yaml:"panic"            json:"panic"`
 	Logging         LoggingConfig         `yaml:"logging"          json:"logging"`
-	Security        SecurityConfig        `yaml:"security"         json:"security"`
-	Admin           AdminConfig           `yaml:"admin"            json:"admin"`
 	Queue           QueueConfig           `yaml:"queue"            json:"queue"`
 	HoraCerta       HoraCertaConfig       `yaml:"hora_certa"       json:"hora_certa"`
 	Preview         PreviewConfig         `yaml:"preview"          json:"preview"`
@@ -93,16 +91,7 @@ type PanicConfig struct {
 type LoggingConfig struct {
 	Level  string `yaml:"level"  json:"level"`  // debug | info | warn | error
 	Format string `yaml:"format" json:"format"` // json | text
-}
-
-// SecurityConfig holds path validation and access control settings.
-type SecurityConfig struct {
-	AllowedRoots []string `yaml:"allowed_roots" json:"allowed_roots"`
-}
-
-// AdminConfig controls administrative endpoints.
-type AdminConfig struct {
-	ShutdownEnabled bool `yaml:"shutdown_enabled" json:"shutdown_enabled"`
+	Dir    string `yaml:"dir"    json:"dir"`    // directory for engine.log; empty = ~/RadioFlow/logs
 }
 
 // QueueConfig holds queue behaviour settings.

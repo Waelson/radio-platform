@@ -321,7 +321,7 @@ var configPageTpl = `<!DOCTYPE html>
     <div class="nav-item"         data-s="playback">Reprodução</div>
     <div class="nav-item"         data-s="health">Saúde</div>
     <div class="nav-item"         data-s="panic">Panic</div>
-    <div class="nav-item"         data-s="log">Log / Seg / Admin</div>
+    <div class="nav-item"         data-s="log">Logging</div>
     <div class="nav-item"         data-s="queue">Fila</div>
     <div class="nav-item"         data-s="horacerta">Hora Certa</div>
     <div class="nav-item"         data-s="scheduler">Scheduler</div>
@@ -545,10 +545,9 @@ var configPageTpl = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- LOG / SEG / ADMIN -->
+    <!-- LOG -->
     <div id="p-log" class="panel">
-      <div class="section-title">Logging / Segurança / Admin</div>
-      <div class="subsection" style="margin-top:0">Logging</div>
+      <div class="section-title">Logging</div>
       <div class="field">
         <label class="lbl">Nível</label>
         <div class="radio-group" data-name="log-level">
@@ -565,24 +564,14 @@ var configPageTpl = `<!DOCTYPE html>
           <label class="radio-pill"><input type="radio" name="log-format" value="json" /> json &#8212; estruturado (Loki, Datadog)</label>
         </div>
       </div>
-      <div class="subsection">Segurança</div>
       <div class="field">
-        <label class="lbl">Diretórios de áudio permitidos</label>
-        <div class="list-box" id="roots-box"></div>
-        <div class="list-actions">
-          <button class="btn-list" onclick="addRoot()">+ Adicionar pasta</button>
-          <button class="btn-list danger" onclick="removeRoot()">&#8722; Remover selecionada</button>
+        <label class="lbl">Diretório do log</label>
+        <div class="picker-row">
+          <input id="log-dir" type="text" placeholder="~/RadioFlow/logs" />
+          <button class="btn-browse" onclick="browse('log-dir','dir')">Procurar pasta</button>
         </div>
-        <div class="warn">&#9888; Deixar vazio não é recomendado em produção — qualquer path será aceito.</div>
+        <div class="hint">Arquivo <code style="font-family:var(--mono);font-size:11px">engine.log</code> gerado neste diretório. Vazio = <code style="font-family:var(--mono);font-size:11px">~/RadioFlow/logs</code>.</div>
       </div>
-      <div class="subsection">Admin</div>
-      <label class="check-row">
-        <input id="admin-shutdown" type="checkbox" />
-        <div>
-          <div class="check-lbl">Habilitar shutdown remoto</div>
-          <div class="check-desc">Expõe POST /v1/admin/shutdown. Não habilitar em produção exposta à rede.</div>
-        </div>
-      </label>
     </div>
 
     <!-- FILA -->
@@ -738,8 +727,6 @@ var configPageTpl = `<!DOCTYPE html>
   var errorBannerTimer = null;
   var corsOrigins   = [];
   var corsSelected  = -1;
-  var secRoots      = [];
-  var rootSelected  = -1;
   var audioDeviceID = '';
   var prevDeviceID  = '';
   var cartDeviceID  = '';
@@ -958,12 +945,7 @@ var configPageTpl = `<!DOCTYPE html>
     var l = cfg.logging || {};
     setRadio('log-level', l.level);
     setRadio('log-format', l.format);
-
-    secRoots = (cfg.security && cfg.security.allowed_roots) || [];
-    rootSelected = -1;
-    renderRoots();
-
-    setCheck('admin-shutdown', cfg.admin && cfg.admin.shutdown_enabled);
+    setVal('log-dir', l.dir);
 
     var qp = (cfg.queue && cfg.queue.persistence) || {};
     setCheck('queue-persist', qp.enabled);
@@ -1089,13 +1071,8 @@ var configPageTpl = `<!DOCTYPE html>
       },
       logging: {
         level:  getRadio('log-level')  || 'info',
-        format: getRadio('log-format') || 'json'
-      },
-      security: {
-        allowed_roots: secRoots.slice()
-      },
-      admin: {
-        shutdown_enabled: getCheck('admin-shutdown')
+        format: getRadio('log-format') || 'json',
+        dir:    getVal('log-dir')
       },
       queue: {
         persistence: {
@@ -1155,39 +1132,6 @@ var configPageTpl = `<!DOCTYPE html>
   function removeCors() {
     if (corsSelected < 0) { alert('Selecione uma origem para remover.'); return; }
     corsOrigins.splice(corsSelected, 1); corsSelected = -1; renderCors();
-  }
-
-  // ── Security roots list ──────────────────────────────────────
-  function renderRoots() {
-    var box = document.getElementById('roots-box');
-    if (!secRoots.length) {
-      box.innerHTML = '<div class="list-empty">Sem restrição de paths — qualquer diretório permitido.</div>';
-      return;
-    }
-    box.innerHTML = secRoots.map(function(r, i) {
-      return '<div class="list-item' + (i === rootSelected ? ' selected' : '') + '" onclick="selectRoot(' + i + ')">' + r + '</div>';
-    }).join('');
-  }
-  function selectRoot(i) { rootSelected = rootSelected === i ? -1 : i; renderRoots(); }
-  function addRoot() {
-    fetch('/v1/config/browse', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'dir' })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      if (d.path && d.path.trim()) {
-        secRoots.push(d.path.trim());
-        rootSelected = -1;
-        renderRoots();
-      }
-    })
-    .catch(function() {});
-  }
-  function removeRoot() {
-    if (rootSelected < 0) { alert('Selecione um diretório para remover.'); return; }
-    secRoots.splice(rootSelected, 1); rootSelected = -1; renderRoots();
   }
 
   // ── File picker ──────────────────────────────────────────────

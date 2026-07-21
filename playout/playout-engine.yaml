@@ -159,23 +159,9 @@ logging:
   #   "text" — legível por humanos, ideal para desenvolvimento
   format: "text"
 
-# -----------------------------------------------------------------------------
-# Segurança
-# -----------------------------------------------------------------------------
-security:
-  # Lista de diretórios raiz permitidos para caminhos de arquivos de áudio.
-  # Quando não vazia, o engine rejeita qualquer path fora dessas pastas.
-  # Exemplo: ["/var/library", "/mnt/nas/audio"]
-  # Deixe vazio ([]) para desabilitar a restrição (não recomendado em produção).
-  allowed_roots: []
-
-# -----------------------------------------------------------------------------
-# Administração
-# -----------------------------------------------------------------------------
-admin:
-  # Habilita o endpoint POST /v1/admin/shutdown, que permite encerrar o engine
-  # remotamente via API. Mantenha false em ambientes de produção expostos.
-  shutdown_enabled: true
+  # Diretório onde o arquivo engine.log será gravado.
+  # Vazio = ~/RadioFlow/logs (padrão).
+  dir: ""
 
 # -----------------------------------------------------------------------------
 # Persistência da fila

@@ -21,7 +21,12 @@ type EngineProc struct {
 	port    int
 	started time.Time
 	lastErr string
+	logDir  string
 }
+
+// SetLogDir sets the directory where engine.log will be written.
+// Must be called before Start. Empty string uses the default ~/RadioFlow/logs.
+func (e *EngineProc) SetLogDir(dir string) { e.logDir = dir }
 
 // NewEngineProc creates an EngineProc configured to communicate on the given port.
 func NewEngineProc(port int) *EngineProc {
@@ -43,7 +48,7 @@ func (e *EngineProc) Start(extraArgs []string) error {
 	args := append([]string{"--startup=cli"}, extraArgs...)
 	cmd := exec.Command(self, args...)
 	cmd.Env = ExpandedEnv()
-	if lf, lerr := openEngineLog(); lerr == nil {
+	if lf, lerr := openEngineLog(e.logDir); lerr == nil {
 		cmd.Stdout = lf
 		cmd.Stderr = lf
 	} else {
@@ -145,13 +150,16 @@ func ExpandedEnv() []string {
 	return append(env, "PATH="+strings.Join(extraPaths, ":"))
 }
 
-// openEngineLog opens (or creates) ~/RadioFlow/logs/engine.log for appending.
-func openEngineLog() (*os.File, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
+// openEngineLog opens (or creates) engine.log in dir for appending.
+// If dir is empty, it defaults to ~/RadioFlow/logs.
+func openEngineLog(dir string) (*os.File, error) {
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		dir = filepath.Join(home, "RadioFlow", "logs")
 	}
-	dir := filepath.Join(home, "RadioFlow", "logs")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}

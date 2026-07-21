@@ -13,6 +13,7 @@ import (
 
 	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/engine"
 	"github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
+	appcfg "github.com/Waelson/radio-playout-engine/internal/config"
 )
 
 // eng is package-level so onSystrayExit can access it.
@@ -49,6 +50,9 @@ func onSystrayReady() {
 	var startArgs []string
 	if firstRunErr == nil && configPath != "" {
 		startArgs = []string{"--config=" + configPath}
+		if cfg, err := appcfg.Load(startArgs); err == nil {
+			eng.SetLogDir(cfg.Logging.Dir)
+		}
 	}
 
 	// Stop engine and webviews on SIGTERM or SIGINT (e.g. Activity Monitor "Quit", kill command).
