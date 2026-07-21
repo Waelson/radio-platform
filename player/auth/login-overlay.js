@@ -375,6 +375,15 @@ body.auth-locked .app {
     if (typeof fetchQueue    === 'function') try { fetchQueue()    } catch {}
     if (typeof fetchStatus   === 'function') try { fetchStatus()   } catch {}
     if (typeof stmFetchStatuses === 'function') try { stmFetchStatuses() } catch {}
+    // Restaura data loads da aba ativa do drawer (adiados do window.load para cá)
+    const drawer = document.getElementById('libDrawer')
+    if (drawer?.classList.contains('open')) {
+      const tab = window._libTab || ''
+      if (tab === 'breaks'    && typeof libLoadBreaks === 'function') try { libLoadBreaks() } catch {}
+      if (tab === 'botoneira' && typeof drwHkInit     === 'function') try { drwHkInit()     } catch {}
+      if (tab === 'rotacao'   && typeof rotInit       === 'function') try { rotInit()       } catch {}
+      // 'streaming' já é coberto por stmInit() acima
+    }
   }
 
   function updateChip(claims) {
