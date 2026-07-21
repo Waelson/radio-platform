@@ -365,6 +365,9 @@ body.auth-locked .app {
   function onAuthSuccess(claims) {
     hideOverlay()
     updateChip(claims)
+    // Tell the main process: session is valid again — re-arm watchdog and
+    // unblock all hotkey windows.
+    window.electronAPI?.notifySessionRenewed()
     // Initialise panels that require Library auth
     if (typeof stmInit       === 'function') try { stmInit()       } catch {}
     if (typeof hkpInit       === 'function') try { hkpInit()       } catch {}

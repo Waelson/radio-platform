@@ -16,4 +16,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   quitApp:          ()                              => ipcRenderer.send('app:quit'),
   cancelClose:      ()                              => ipcRenderer.send('app:cancel-close'),
   onClosing:        (cb)                            => ipcRenderer.on('app:closing', cb),
+
+  // ── Session expiry notifications ──────────────────────────────────
+  // Called by login-overlay after a successful login to re-arm the watchdog
+  // and unblock all hotkey windows.
+  notifySessionRenewed: () => ipcRenderer.send('auth:session-renewed'),
+  // Called by libFetch when a 401 is received, so the main process can
+  // immediately broadcast the expiry to all other open windows.
+  notifySessionExpired: () => ipcRenderer.send('auth:notify-expired'),
+  // Fired by the main process when the JWT expires (proactive watchdog).
+  onSessionExpired: (cb) => ipcRenderer.on('auth:session-expired', cb),
 })

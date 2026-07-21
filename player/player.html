@@ -3096,7 +3096,15 @@ function libFetch(path, opts = {}) {
   const token = window.sessionManager?.getToken()
   const headers = Object.assign({}, opts.headers)
   if (token) headers['Authorization'] = 'Bearer ' + token
-  return fetch(LIBRARY_URL + path, Object.assign({}, opts, { headers }))
+  return fetch(LIBRARY_URL + path, Object.assign({}, opts, { headers })).then(r => {
+    if (r.status === 401) {
+      // Token rejected by the server — show login overlay and notify all other
+      // windows (hotkeys) via the main process so they block too.
+      window.electronAPI?.notifySessionExpired()
+      if (typeof showOverlay === 'function') showOverlay('aoT1')
+    }
+    return r
+  })
 }
 
 /* ─── Canvas / VU meter ──────────────────────────────────────── */
@@ -8566,6 +8574,12 @@ function hkpCloseDD() {
 document.addEventListener('DOMContentLoaded', () => {
   setInterval(stmFetchStatuses, 15000);
   loginOverlay.init(LIBRARY_URL);
+
+  // Proactive watchdog: main process fires this when the JWT expires on its
+  // timer, or when any window receives a 401 and broadcasts it.
+  window.electronAPI?.onSessionExpired(() => {
+    if (typeof showOverlay === 'function') showOverlay('aoT1')
+  })
 });
 </script>
 
