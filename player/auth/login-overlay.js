@@ -365,6 +365,9 @@ body.auth-locked .app {
   function onAuthSuccess(claims) {
     hideOverlay()
     updateChip(claims)
+    // Tell the main process: session is valid again — re-arm watchdog and
+    // unblock all hotkey windows.
+    window.electronAPI?.notifySessionRenewed()
     // Initialise panels that require Library auth
     if (typeof stmInit       === 'function') try { stmInit()       } catch {}
     if (typeof hkpInit       === 'function') try { hkpInit()       } catch {}
@@ -618,6 +621,19 @@ body.auth-locked .app {
 
       const savedScreen = sessionStorage.getItem('ao-screen')
       showOverlay(savedScreen || 'aoT1')
+    },
+
+    // Called externally (libFetch 401 interceptor, IPC watchdog) to show the
+    // login screen when the session expires while the app is already running.
+    showLogin() {
+      console.warn('[auth] showLogin() chamado — exibindo overlay de login')
+      const emailEl = document.getElementById('aoEmail')
+      const pwdEl   = document.getElementById('aoPassword')
+      if (emailEl) emailEl.value = ''
+      if (pwdEl)   pwdEl.value   = ''
+      setError('aoLoginErr', '')
+      showOverlay('aoT1')
+      setTimeout(() => emailEl?.focus(), 80)
     },
   }
 

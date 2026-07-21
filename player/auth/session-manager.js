@@ -73,14 +73,27 @@
     const exp  = jwtExpiresAt(_token)
     const now  = Date.now()
     const msToRefresh = (exp - now) - 60 * 60 * 1000   // 1 h before expiry
-    if (msToRefresh <= 0) return
+    if (msToRefresh <= 0) {
+      // Token is already within 1 h of expiry (or already expired).
+      // Attempt an immediate refresh; if it fails the watchdog in the main
+      // process will fire and show the login overlay.
+      ;(async () => {
+        try {
+          const res = await window.electronAPI.authRefresh(_libUrl, _token)
+          if (res.status === 200 && res.body?.data?.token) {
+            _store(res.body.data.token)
+          }
+        } catch {}
+      })()
+      return
+    }
     _refreshTimer = setTimeout(async () => {
       try {
         const res = await window.electronAPI.authRefresh(_libUrl, _token)
         if (res.status === 200 && res.body?.data?.token) {
           _store(res.body.data.token)
         }
-      } catch { /* network failure — user will be asked to re-login on next 401 */ }
+      } catch { /* network failure — main process watchdog will fire on expiry */ }
     }, msToRefresh)
   }
 

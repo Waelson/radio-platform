@@ -30,3 +30,7 @@ scanner:
 logging:
   level: "info"
   format: "json"
+
+auth:
+  jwt_secret: "change-me-in-production"   # mínimo 32 chars em prod — use: openssl rand -hex 32
+  token_ttl_minutes: 480                  # TTL do token de sessão em minutos (padrão: 480 = 8h)

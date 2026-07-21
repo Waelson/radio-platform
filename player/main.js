@@ -13,6 +13,57 @@ let mainWin = null
 // When true the quit was approved by the renderer — skip interception.
 let _quitting = false
 
+// ── Session expiry watchdog ──────────────────────────────────────────────────
+
+let _expiryTimer = null
+
+/** Decode a JWT and return the exp field in milliseconds (0 if invalid). */
+function jwtExpiresAt(token) {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const claims  = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
+    return claims.exp ? claims.exp * 1000 : 0
+  } catch {
+    return 0
+  }
+}
+
+/** Broadcast auth:session-expired to every open window. */
+function broadcastExpired() {
+  mainWin?.webContents.send('auth:session-expired')
+  hotkeyWindows.forEach(w => { try { w.webContents.send('auth:session-expired') } catch {} })
+}
+
+/** Broadcast auth:session-renewed to every open hotkey window. */
+function broadcastRenewed() {
+  hotkeyWindows.forEach(w => { try { w.webContents.send('auth:session-renewed') } catch {} })
+}
+
+/**
+ * Schedule a timer that fires exactly when the token expires and broadcasts
+ * auth:session-expired to all windows. If the token is already expired, fires
+ * immediately. Call this after every login, refresh, or app focus.
+ */
+function scheduleExpiryWatch(token) {
+  if (_expiryTimer) { clearTimeout(_expiryTimer); _expiryTimer = null }
+  if (!token) return
+  const exp = jwtExpiresAt(token)
+  if (!exp) { console.warn('[auth] scheduleExpiryWatch: não foi possível decodificar exp do token'); return }
+  const msUntilExpiry = exp - Date.now()
+  if (msUntilExpiry <= 0) {
+    console.warn('[auth] scheduleExpiryWatch: token já expirado — disparando broadcastExpired imediatamente')
+    broadcastExpired()
+    return
+  }
+  const secsLeft = Math.round(msUntilExpiry / 1000)
+  console.log(`[auth] scheduleExpiryWatch: token expira em ${secsLeft}s — watchdog agendado`)
+  _expiryTimer = setTimeout(() => {
+    console.warn('[auth] watchdog disparado — token expirou, transmitindo auth:session-expired')
+    _expiryTimer = null
+    broadcastExpired()
+  }, msUntilExpiry)
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -28,7 +79,7 @@ function createWindow() {
 
   mainWin = win
   win.loadFile(path.join(__dirname, 'player.html'))
-  //win.webContents.openDevTools({ mode: 'detach' })
+  win.webContents.openDevTools({ mode: 'detach' })
 
   // Intercept window X-button close — ask renderer to handle logout flow.
   win.on('close', e => {
@@ -161,11 +212,13 @@ ipcMain.handle('auth:login', async (_e, { libUrl, email, password }) => {
   const res = await apiPost(libUrl, '/v1/auth/login', { email, password })
   if (res.status === 200 && res.body?.data?.token) {
     saveSession(res.body.data.token)
+    scheduleExpiryWatch(res.body.data.token)
   }
   return res
 })
 
 ipcMain.handle('auth:logout', () => {
+  if (_expiryTimer) { clearTimeout(_expiryTimer); _expiryTimer = null }
   clearSession()
   return { ok: true }
 })
@@ -174,8 +227,22 @@ ipcMain.handle('auth:refresh', async (_e, { libUrl, token }) => {
   const res = await apiPost(libUrl, '/v1/auth/refresh', {}, token)
   if (res.status === 200 && res.body?.data?.token) {
     saveSession(res.body.data.token)
+    scheduleExpiryWatch(res.body.data.token)
   }
   return res
+})
+
+// Renderer notifies that a new session is active (after login/refresh success).
+// Re-arms the watchdog and tells all hotkey windows to unblock.
+ipcMain.on('auth:session-renewed', () => {
+  const token = loadSession()
+  scheduleExpiryWatch(token)
+  broadcastRenewed()
+})
+
+// Renderer detected a 401 — broadcast expired to all other windows immediately.
+ipcMain.on('auth:notify-expired', () => {
+  broadcastExpired()
 })
 
 ipcMain.handle('auth:reset-request', async (_e, { libUrl, email }) => {
@@ -208,6 +275,18 @@ ipcMain.handle('auth:change-pwd', async (_e, { libUrl, token, curPwd, newPwd }) 
 
 app.whenReady().then(() => {
   createWindow()
+
+  // Arm watchdog for any token already persisted from a previous session.
+  const existingToken = loadSession()
+  if (existingToken) scheduleExpiryWatch(existingToken)
+
+  // Re-check on every window focus — catches expiry after system sleep/wake.
+  app.on('browser-window-focus', () => {
+    const token = loadSession()
+    if (!token) return
+    if (jwtExpiresAt(token) <= Date.now()) broadcastExpired()
+  })
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
