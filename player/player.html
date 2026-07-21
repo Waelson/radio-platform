@@ -5372,10 +5372,17 @@ window.addEventListener('load', () => {
   fetchInitialVolumes();
   initSchedule();
   initQueueScrollbar();
-  // Restaura estado do drawer e aba ativa
+  // Restaura estado visual do drawer — sem libFetch (auth ainda não concluída).
+  // Os data loads são disparados por onAuthSuccess, após a sessão ser validada.
   const savedTab = localStorage.getItem('drawerTab');
-  if (savedTab && ['breaks', 'botoneira', 'rotacao', 'streaming'].includes(savedTab)) {
-    libSwitchTab(savedTab);
+  const validTabs = ['breaks', 'botoneira', 'rotacao', 'streaming'];
+  if (savedTab && validTabs.includes(savedTab)) {
+    _libTab = savedTab;
+    const cap = savedTab.charAt(0).toUpperCase() + savedTab.slice(1);
+    document.querySelectorAll('.lib-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.lib-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('libTab'    + cap)?.classList.add('active');
+    document.getElementById('libPanel'  + cap)?.classList.add('active');
   }
   if (localStorage.getItem('drawerOpen') === '1') {
     const drawer = document.getElementById('libDrawer');
