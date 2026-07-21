@@ -76,7 +76,6 @@ func defaults() *Config {
 			Host: "127.0.0.1",
 			Port: 8080,
 			CORS: CORSConfig{
-				Enabled:        true,
 				AllowedOrigins: []string{"http://localhost:3000", "http://localhost:3333", "http://localhost:5173"},
 			},
 		},
@@ -91,7 +90,6 @@ func defaults() *Config {
 		Playback: PlaybackConfig{
 			DefaultCrossfadeMS:         8000,
 			DefaultStopFadeMS:          300,
-			PreloadNextMS:              3000,
 			MaxConsecutiveItemFailures: 3,
 		},
 		Health: HealthConfig{

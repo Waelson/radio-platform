@@ -34,7 +34,6 @@ type APIConfig struct {
 
 // CORSConfig controls cross-origin behaviour.
 type CORSConfig struct {
-	Enabled        bool     `yaml:"enabled"         json:"enabled"`
 	AllowedOrigins []string `yaml:"allowed_origins" json:"allowed_origins"`
 }
 
@@ -56,7 +55,6 @@ type OutputConfig struct {
 type PlaybackConfig struct {
 	DefaultCrossfadeMS         int `yaml:"default_crossfade_ms"          json:"default_crossfade_ms"`
 	DefaultStopFadeMS          int `yaml:"default_stop_fade_ms"          json:"default_stop_fade_ms"`
-	PreloadNextMS              int `yaml:"preload_next_ms"               json:"preload_next_ms"`
 	MaxConsecutiveItemFailures int `yaml:"max_consecutive_item_failures" json:"max_consecutive_item_failures"`
 
 	// Auto crossfade by energy analysis.

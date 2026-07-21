@@ -91,7 +91,6 @@ api:
   host: "127.0.0.1"
   port: 8080
   cors:
-    enabled: true
     allowed_origins:
       - "http://localhost:3000"
       - "http://localhost:3333"
@@ -115,7 +114,6 @@ audio:
 playback:
   default_crossfade_ms: 8000
   default_stop_fade_ms: 300
-  preload_next_ms: 3000
   max_consecutive_item_failures: 3
   auto_crossfade_enabled: true
   auto_crossfade_energy_threshold_dbfs: -18.0

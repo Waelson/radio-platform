@@ -360,13 +360,6 @@ var configPageTpl = `<!DOCTYPE html>
           <input id="api-port" type="number" min="1" max="65535" />
         </div>
       </div>
-      <label class="check-row">
-        <input id="api-cors-enabled" type="checkbox" />
-        <div>
-          <div class="check-lbl">Habilitar CORS</div>
-          <div class="check-desc">Permite requisições cross-origin da UI de controle.</div>
-        </div>
-      </label>
       <div class="field" style="margin-top:14px">
         <label class="lbl">Origens permitidas</label>
         <div class="list-box" id="cors-box"></div>
@@ -424,10 +417,6 @@ var configPageTpl = `<!DOCTYPE html>
           <label class="lbl">Fade ao parar</label>
           <div class="unit-row"><input id="pb-stop-fade" type="number" min="0" /><span class="unit-badge">ms</span></div>
         </div>
-      </div>
-      <div class="field">
-        <label class="lbl">Pré-carregamento do próximo item</label>
-        <div class="unit-row" style="max-width:200px"><input id="pb-preload" type="number" min="0" /><span class="unit-badge">ms</span></div>
       </div>
       <div class="field">
         <label class="lbl">Falhas consecutivas máximas</label>
@@ -902,7 +891,6 @@ var configPageTpl = `<!DOCTYPE html>
     var a = cfg.api || {};
     setVal('api-host', a.host);
     setVal('api-port', a.port);
-    setCheck('api-cors-enabled', a.cors && a.cors.enabled);
     corsOrigins = (a.cors && a.cors.allowed_origins) || [];
     corsSelected = -1;
     renderCors();
@@ -916,7 +904,6 @@ var configPageTpl = `<!DOCTYPE html>
     var pb = cfg.playback || {};
     setVal('pb-crossfade', pb.default_crossfade_ms);
     setVal('pb-stop-fade', pb.default_stop_fade_ms);
-    setVal('pb-preload', pb.preload_next_ms);
     setVal('pb-max-failures', pb.max_consecutive_item_failures);
     setCheck('pb-auto-xfade', pb.auto_crossfade_enabled);
     toggleAutoXfade(!!pb.auto_crossfade_enabled);
@@ -1030,7 +1017,6 @@ var configPageTpl = `<!DOCTYPE html>
         host: getVal('api-host'),
         port: safeInt(getVal('api-port'), 8080),
         cors: {
-          enabled: getCheck('api-cors-enabled'),
           allowed_origins: corsOrigins.slice()
         }
       },
@@ -1045,7 +1031,6 @@ var configPageTpl = `<!DOCTYPE html>
       playback: {
         default_crossfade_ms:                safeInt(getVal('pb-crossfade'), 0),
         default_stop_fade_ms:                safeInt(getVal('pb-stop-fade'), 0),
-        preload_next_ms:                     safeInt(getVal('pb-preload'), 0),
         max_consecutive_item_failures:       safeInt(getVal('pb-max-failures'), 3),
         auto_crossfade_enabled:              getCheck('pb-auto-xfade'),
         auto_crossfade_energy_threshold_dbfs: safeFloat(getVal('pb-energy-thresh'), -18),
