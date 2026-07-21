@@ -110,9 +110,6 @@ func defaults() *Config {
 			Level:  "info",
 			Format: "json",
 		},
-		Admin: AdminConfig{
-			ShutdownEnabled: false,
-		},
 		Preview: PreviewConfig{
 			Output: OutputConfig{DeviceID: ""},
 		},
