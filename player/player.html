@@ -6,6 +6,7 @@
 <title>RadioFlow Automation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
 <style>
 /* ─── Reset & Base ───────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1772,9 +1773,11 @@ input[type=range].vol-slider:disabled {
   color: #d7e3ec;
   transition: background 0.1s, border-color 0.1s;
 }
-.queue-row:hover { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.045); }
+.queue-row:not(.is-current) { border-color: rgba(255,255,255,.07); }
+.queue-row:hover { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.13); }
 .queue-row.is-current {
   min-height: 76px;
+  padding-left: 22px;
   background: linear-gradient(90deg, rgba(255,77,103,.13), rgba(255,77,103,.025));
   border-color: rgba(255,77,103,.28);
   box-shadow: inset 3px 0 0 rgba(255,77,103,.8);
@@ -2134,15 +2137,24 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 .prev-state-badge.playing { color: #20e6ff; background: #001a2a; }
 .prev-state-badge.paused  { color: #ffdd00; background: #1a1600; }
 
-/* ─── Drag-and-drop ──────────────────────────────────────────── */
-.dnd-dragging { opacity: 0.32; }
-
-.dnd-drop-zone { display: none; height: 6px; border-radius: 4px; background: transparent; transition: background 0.12s, box-shadow 0.12s; pointer-events: none; }
-.assist-active .dnd-drop-zone { display: none; }
-.dnd-drop-zone.dnd-over {
-  background: linear-gradient(to right, transparent 0%, var(--orange) 12%, var(--orange) 88%, transparent 100%);
-  box-shadow: 0 0 10px rgba(255,119,0,0.4);
+/* ─── Drag-and-drop (SortableJS) ────────────────────────────── */
+.dnd-handle {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab;
+  opacity: 0.3;
+  color: #8ab0cc;
+  font-size: 14px;
+  transition: opacity 0.15s;
+  user-select: none;
 }
+.is-draggable { padding-left: 22px; }
+.is-draggable:hover .dnd-handle { opacity: 0.85; }
+.is-draggable.sortable-chosen .dnd-handle { opacity: 1; cursor: grabbing; }
+.sortable-ghost { opacity: 0.25; background: rgba(32,230,255,.08) !important; }
+.sortable-chosen { outline: 1px solid rgba(32,230,255,.25); }
 
 /* ─── Queue ASSIST marker ────────────────────────────────────── */
 .queue-row.assist-next { }
@@ -2508,9 +2520,7 @@ canvas.vu-canvas {
         </div>
         <div class="queue-scroll-host">
           <div class="queue-list-wrap" id="queueScrollPane">
-            <div class="queue-list" id="queueBody"
-              ondragover="tableDragOver(event)"
-              ondrop="tableDrop(event)">
+            <div class="queue-list" id="queueBody">
               <div class="queue-empty">Fila vazia</div>
             </div>
           </div>
@@ -3536,30 +3546,24 @@ function renderQueue() {
   // New polymorphic API
   if (queueData && Array.isArray(queueData.pending)) {
     if (queueData.current) rows.push(renderItemRow(queueData.current, _estTimes));
-    rows.push(dropZoneRow(''));  // drop zone before first pending item
     queueData.pending.forEach(entry => {
       if (!entry) return;
       if (entry.kind === 'break') {
         renderBreakRows(entry.break, rows, _estTimes);
-        const spots = entry.break?.items || [];
-        const lastSpotId = spots.length ? (spots[spots.length - 1]?.item?.queue_item_id || '') : '';
-        rows.push(dropZoneRow(lastSpotId));
       } else if (entry.kind === 'item' && entry.item) {
         rows.push(renderItemRow(entry.item, _estTimes));
-        rows.push(dropZoneRow(entry.item.queue_item_id || ''));
       }
     });
   } else {
     // Legacy flat API
-    rows.push(dropZoneRow(''));
     (queueData?.items || queueItems).forEach(item => {
       rows.push(renderItemRow(item, _estTimes));
-      rows.push(dropZoneRow(item?.queue_item_id || ''));
     });
   }
 
   _lastEstTimes = _estTimes;
   tbody.innerHTML = rows.join('');
+  initSortable();
   syncPlayNextBtn();
   updateNextBreakCard(_estTimes);
   updateNextDeckCard();
@@ -3757,14 +3761,11 @@ function renderItemRow(item, estTimes) {
   const isPreload  = status === 'PRELOADING';
   const isPlayed   = status === 'PLAYED' || status === 'SKIPPED';
   const isFailed   = status === 'FAILED' || status === 'MISSED';
-  const canReorder = false;
+  const canReorder = status === 'QUEUED' && !!itemId;
 
   if (isHE) {
     const itemId2 = item.queue_item_id || item.id || '';
-    const dragAttrs2 = canReorder && itemId2
-      ? `draggable="true" ondragstart="dndStart(event,'item','${escHtml(itemId2)}')" ondragend="dndEnd()"`
-      : '';
-    return `<article class="queue-row hora-extra${isPlayed ? ' is-played' : ''}${isFailed ? ' is-failed' : ''}" data-id="${escHtml(itemId2)}" ${dragAttrs2}>
+    return `<article class="queue-row hora-extra${isPlayed ? ' is-played' : ''}${isFailed ? ' is-failed' : ''}" data-id="${escHtml(itemId2)}">
       <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;">
         <span style="font-size:15px;font-weight:900;color:#ff9500;text-transform:uppercase;letter-spacing:0.18em">HORA EXTRA</span>
       </div>
@@ -3777,6 +3778,7 @@ function renderItemRow(item, estTimes) {
     isFailed  ? 'is-failed'  : '',
     isHC      ? 'hora-certa' : isVinheta ? 'vinheta' : isMusic ? 'music' : (item.type||'').toUpperCase() === 'SPOT' ? 'spot' : 'music',
     isAssistNext && !isPlaying ? 'assist-next' : '',
+    canReorder ? 'is-draggable' : '',
   ].filter(Boolean).join(' ');
 
   let statusLabel, statusCls;
@@ -3841,9 +3843,6 @@ function renderItemRow(item, estTimes) {
 
   const progressHTML = '';
 
-  const dragAttrs = canReorder && itemId
-    ? `draggable="true" ondragstart="dndStart(event,'item','${escHtml(itemId)}')" ondragend="dndEnd()"`
-    : '';
 
   // Registrar no map para CUE
   const cuePath = item.path || item.file_path || '';
@@ -3859,12 +3858,6 @@ function renderItemRow(item, estTimes) {
   const actionsHTML = `
     <div class="q-actions-wrap">
       ${cueBtnHTML}
-      ${canReorder && itemId ? `
-      <div class="q-reorder-btns">
-        <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${escHtml(itemId)}','up')">↑</button>
-        <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${escHtml(itemId)}','down')">↓</button>
-        <button class="q-btn q-btn-del"  title="Remover"          onclick="queueRemoveItem('${escHtml(itemId)}')">✕</button>
-      </div>` : ''}
     </div>`;
 
   const hoverActionsHTML = itemId && !isPlaying ? `
@@ -3873,7 +3866,8 @@ function renderItemRow(item, estTimes) {
       <button class="q-ha-btn remove tip-below" data-tooltip="Remover"      onclick="event.stopPropagation();queueRemoveItem('${escHtml(itemId)}')">✕</button>
     </div>` : '';
 
-  return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}" ${dragAttrs}>
+  return `<article class="queue-row ${rowCls}" data-id="${escHtml(itemId)}">
+    ${canReorder ? `<div class="dnd-handle" title="Arrastar">⠿</div>` : ''}
     ${timeColHTML}
     <div class="q-track">
       <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}</div>
@@ -3894,21 +3888,10 @@ function renderBreakRows(brk, rows, estTimes) {
   const brkStatus = brk.status || 'QUEUED';
   const cnt       = subItems.length;
   const breakId   = escHtml(brk.id || brk.break_id || '');
-  const isDraggable = false;
-  const dragAttrs = isDraggable
-    ? `draggable="true" ondragstart="dndStart(event,'break','${breakId}')" ondragend="dndEnd()"`
-    : '';
-  const brkActionsHTML = `
-    <div class="q-actions-wrap">${isDraggable ? `
-      <div class="q-reorder-btns">
-        <button class="q-btn q-btn-up"   title="Mover para cima"  onclick="queueMoveItem('${breakId}','up','break')">↑</button>
-        <button class="q-btn q-btn-down" title="Mover para baixo" onclick="queueMoveItem('${breakId}','down','break')">↓</button>
-        <button class="q-btn q-btn-del"  title="Remover bloco"    onclick="queueRemoveItem('${breakId}','break')">✕</button>
-      </div>` : ''}
-    </div>`;
+  const brkActionsHTML = `<div class="q-actions-wrap"></div>`;
 
   const brkIsPlaying = (brk.items || []).some(sub => (sub?.item?.status || '') === 'PLAYING');
-  let html = `<div class="break-group${brkIsPlaying ? ' is-playing' : ''}" data-break-id="${breakId}" ${dragAttrs}>`;
+  let html = `<div class="break-group${brkIsPlaying ? ' is-playing' : ''}" data-break-id="${breakId}">`;
 
   html += `<article class="queue-row break-header" data-break-id="${breakId}">
     <div class="q-index"><img src="icons/commercial_break.svg" class="q-type-icon" alt="Bloco Comercial"><span></span></div>
@@ -4266,69 +4249,54 @@ function openHotkeys() {
   }
 }
 
-/* ─── Drag-and-drop ─────────────────────────────────────────── */
+/* ─── Drag-and-drop (SortableJS) ────────────────────────────── */
 
-let _dnd = { type: null, itemId: null, breakId: null, track: null };
+let _sortable = null;
 
-function dropZoneRow(afterId) {
-  const a = escHtml(afterId);
-  return `<div class="dnd-drop-zone" data-after-id="${a}"></div>`;
-}
+function initSortable() {
+  if (_sortable) { _sortable.destroy(); _sortable = null; }
+  const el = document.getElementById('queueBody');
+  if (!el || typeof Sortable === 'undefined') return;
 
-function dndStart(ev, type, id) {
-  _dnd = { type, itemId: type === 'item' ? id : null, breakId: type === 'break' ? id : null };
-  ev.dataTransfer.effectAllowed = 'move';
-  const sel = type === 'item'
-    ? `[data-id="${id}"]`
-    : `[data-break-id="${id}"], [data-break-group="${id}"]`;
-  document.querySelectorAll(sel).forEach(r => r.classList.add('dnd-dragging'));
-}
+  _sortable = Sortable.create(el, {
+    handle:      '.dnd-handle',
+    draggable:   '.is-draggable',
+    ghostClass:  'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    animation:   150,
 
-function dndEnd() {
-  _dnd = { type: null, itemId: null, breakId: null };
-  document.querySelectorAll('.dnd-dragging, .dnd-over')
-    .forEach(r => r.classList.remove('dnd-dragging', 'dnd-over'));
-}
+    onEnd(evt) {
+      const movedEl      = evt.item;
+      const queueItemId  = movedEl.dataset.id || '';
+      if (!queueItemId) { fetchQueue(); return; }
 
-// tbody-level drag delegation — large hit area, no gap between item rows and zones
-function tableDragOver(ev) {
-  if (!_dnd.type) return;
-  ev.preventDefault();
-  ev.dataTransfer.dropEffect = 'move';
-  const zones = Array.from(document.querySelectorAll('.dnd-drop-zone'))
-    .filter(z => z.offsetParent !== null); // skip display:none zones
-  if (!zones.length) return;
-  let best = null, bestDist = Infinity;
-  for (const z of zones) {
-    const rect = z.getBoundingClientRect();
-    const mid  = (rect.top + rect.bottom) / 2;
-    const dist = Math.abs(ev.clientY - mid);
-    if (dist < bestDist) { bestDist = dist; best = z; }
-  }
-  document.querySelectorAll('.dnd-drop-zone').forEach(r => r.classList.remove('dnd-over'));
-  if (best) best.classList.add('dnd-over');
-}
+      // Walk back through previous siblings to find a valid after_id.
+      // Only accept siblings that are draggable QUEUED items (is-draggable class).
+      // Skip is-current (playing item — not in m.pending) and non-draggable items
+      // (PLAYING/PAUSED pending items during crossfade — also not in m.pending).
+      let afterId = '';
+      let prev = movedEl.previousElementSibling;
+      while (prev) {
+        if (prev.classList.contains('is-draggable') && prev.dataset.id) {
+          afterId = prev.dataset.id;
+          break;
+        }
+        prev = prev.previousElementSibling;
+      }
 
-async function tableDrop(ev) {
-  ev.preventDefault();
-  if (!_dnd.type) return;
-  const active  = document.querySelector('.dnd-drop-zone.dnd-over');
-  const afterId = active ? (active.dataset.afterId ?? '') : '';
-
-  const body = { after_id: afterId };
-  if (_dnd.type === 'item')  body.queue_item_id = _dnd.itemId;
-  if (_dnd.type === 'break') body.break_id      = _dnd.breakId;
-  dndEnd();
-  try {
-    const r = await fetch(API_URL + '/v1/queue/reorder-item', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const j = await r.json();
-    if (!j.ok) showToast(false, j.reason || 'Erro ao reordenar');
-    else fetchQueue();
-  } catch(e) { showToast(false, 'Erro de rede'); }
+      fetch(API_URL + '/v1/queue/reorder-item', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ queue_item_id: queueItemId, after_id: afterId }),
+      })
+      .then(r => r.json())
+      .then(j => {
+        if (!j.ok) showToast(false, j.reason || 'Erro ao reordenar');
+        fetchQueue();
+      })
+      .catch(() => showToast(false, 'Erro de rede'));
+    },
+  });
 }
 
 /* ─── ASSIST mode UI ─────────────────────────────────────────── */
