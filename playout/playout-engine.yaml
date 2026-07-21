@@ -27,9 +27,6 @@ api:
   port: 8080
 
   cors:
-    # Habilita o cabeçalho CORS (Cross-Origin Resource Sharing).
-    enabled: true
-
     # Lista de origens permitidas para requisições cross-origin.
     # Adicione a URL da sua UI de controle aqui.
     allowed_origins:
@@ -75,10 +72,6 @@ playback:
 
   # Duração do fade-out ao executar o comando STOP, em milissegundos.
   default_stop_fade_ms: 300
-
-  # Antecipação em milissegundos para pré-carregar o próximo item da fila
-  # antes do fim do item atual. (reservado para uso futuro)
-  preload_next_ms: 3000
 
   # Número máximo de falhas consecutivas de itens antes de o engine encerrar
   # a sessão e entrar em estado de erro.
