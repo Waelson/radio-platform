@@ -34,7 +34,7 @@ logging:
 
 auth:
   jwt_secret: "change-me-in-production"   # mínimo 32 chars em prod — use: openssl rand -hex 32
-  token_ttl_hours: 8                       # TTL do token de sessão (1 turno de trabalho)
+  token_ttl_minutes: 2                   # TTL do token de sessão em minutos (padrão: 480 = 8h)
   default_admin_email: "admin@radioflow.local"
   default_admin_name: "Administrador"
   default_admin_password: "Admin123"       # troque após o primeiro login

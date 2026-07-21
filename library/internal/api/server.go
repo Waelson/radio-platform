@@ -134,7 +134,7 @@ func (s *Server) routes() http.Handler {
 	// ── Auth routes (public) ──────────────────────────────────────────────────
 	authCfg := handlers.AuthConfig{
 		JWTSecret: s.auth.JWTSecret,
-		TokenTTL:  time.Duration(s.auth.TokenTTLHours) * time.Hour,
+		TokenTTL:  time.Duration(s.auth.TokenTTLMinutes) * time.Minute,
 	}
 	mux.HandleFunc("POST /v1/auth/login",          handlers.Login(s.us, authCfg))
 	mux.HandleFunc("POST /v1/auth/reset-request",  handlers.ResetRequest(s.us, s.rcs, s.ml))

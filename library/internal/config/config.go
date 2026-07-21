@@ -38,8 +38,8 @@ type MailerConfig struct {
 type AuthConfig struct {
 	// JWTSecret is the HMAC-SHA256 signing key. Must be set to a strong random value in production.
 	JWTSecret string `yaml:"jwt_secret"`
-	// TokenTTLHours is the JWT lifetime in hours (default: 8 — one work shift).
-	TokenTTLHours int `yaml:"token_ttl_hours"`
+	// TokenTTLMinutes is the JWT lifetime in minutes (default: 480 — one work shift of 8h).
+	TokenTTLMinutes int `yaml:"token_ttl_minutes"`
 	// DefaultAdminEmail is the e-mail of the seed admin created on first run.
 	DefaultAdminEmail string `yaml:"default_admin_email"`
 	// DefaultAdminName is the display name of the seed admin.
@@ -148,7 +148,7 @@ func defaults() Config {
 		},
 		Auth: AuthConfig{
 			JWTSecret:            "change-me-in-production",
-			TokenTTLHours:        8,
+			TokenTTLMinutes:      480,
 			DefaultAdminEmail:    "admin@radioflow.local",
 			DefaultAdminName:     "Administrador",
 			DefaultAdminPassword: "Admin123",

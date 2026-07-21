@@ -48,13 +48,17 @@ function scheduleExpiryWatch(token) {
   if (_expiryTimer) { clearTimeout(_expiryTimer); _expiryTimer = null }
   if (!token) return
   const exp = jwtExpiresAt(token)
-  if (!exp) return
+  if (!exp) { console.warn('[auth] scheduleExpiryWatch: não foi possível decodificar exp do token'); return }
   const msUntilExpiry = exp - Date.now()
   if (msUntilExpiry <= 0) {
+    console.warn('[auth] scheduleExpiryWatch: token já expirado — disparando broadcastExpired imediatamente')
     broadcastExpired()
     return
   }
+  const secsLeft = Math.round(msUntilExpiry / 1000)
+  console.log(`[auth] scheduleExpiryWatch: token expira em ${secsLeft}s — watchdog agendado`)
   _expiryTimer = setTimeout(() => {
+    console.warn('[auth] watchdog disparado — token expirou, transmitindo auth:session-expired')
     _expiryTimer = null
     broadcastExpired()
   }, msUntilExpiry)
@@ -75,7 +79,7 @@ function createWindow() {
 
   mainWin = win
   win.loadFile(path.join(__dirname, 'player.html'))
-  //win.webContents.openDevTools({ mode: 'detach' })
+  win.webContents.openDevTools({ mode: 'detach' })
 
   // Intercept window X-button close — ask renderer to handle logout flow.
   win.on('close', e => {

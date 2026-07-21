@@ -622,6 +622,19 @@ body.auth-locked .app {
       const savedScreen = sessionStorage.getItem('ao-screen')
       showOverlay(savedScreen || 'aoT1')
     },
+
+    // Called externally (libFetch 401 interceptor, IPC watchdog) to show the
+    // login screen when the session expires while the app is already running.
+    showLogin() {
+      console.warn('[auth] showLogin() chamado — exibindo overlay de login')
+      const emailEl = document.getElementById('aoEmail')
+      const pwdEl   = document.getElementById('aoPassword')
+      if (emailEl) emailEl.value = ''
+      if (pwdEl)   pwdEl.value   = ''
+      setError('aoLoginErr', '')
+      showOverlay('aoT1')
+      setTimeout(() => emailEl?.focus(), 80)
+    },
   }
 
   window.loginOverlay = loginOverlay

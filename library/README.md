@@ -59,7 +59,7 @@ O serviço usa JWT HMAC-SHA256 para proteger todas as rotas exceto `/v1/health` 
 ```yaml
 auth:
   jwt_secret: "troque-em-producao"   # mínimo 32 chars em prod
-  token_ttl_hours: 8                 # TTL do token de sessão (padrão: 8h = 1 turno)
+  token_ttl_minutes: 480             # TTL do token de sessão em minutos (padrão: 480 = 8h)
 
   # Usuário admin criado automaticamente na primeira execução (sem usuários no banco).
   # Faça login com estas credenciais e troque a senha imediatamente.
