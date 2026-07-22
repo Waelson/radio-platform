@@ -174,6 +174,278 @@ html, body {
 .ft-dot.live { background: var(--green, #36d399); box-shadow: 0 0 0 3px rgba(54,211,153,.1), 0 0 8px rgba(54,211,153,.7); }
 .ft-dot.offline { background: var(--red, #f87272); }
 
+/* ─── Views (troca de tela pelo rail) ───────────────────────── */
+.workspace        { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+.workspace.active { display: flex; }
+
+/* ─── Catálogo View — paleta v2 ──────────────────────────────── */
+/* tokens locais (não conflitam com o resto do player) */
+#view-catalogo {
+  --cv-bg:        #071019;
+  --cv-panel:     #0e1b28;
+  --cv-panel2:    #122334;
+  --cv-line:      #20384c;
+  --cv-line2:     #31536d;
+  --cv-text:      #eef7ff;
+  --cv-muted:     #88a0b5;
+  --cv-muted2:    #5f788e;
+  --cv-cyan:      #00d4ff;
+  --cv-green:     #36d399;
+  --cv-amber:     #ffbf4b;
+  --cv-red:       #ff4d67;
+  --cv-radius:    14px;
+  --cv-shadow:    0 18px 45px rgba(0,0,0,.28);
+}
+
+.cat-view {
+  display: grid;
+  grid-template-rows: minmax(0,1fr) auto;
+  gap: 10px;
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
+  background: #071019;
+}
+
+/* ── Card da biblioteca (header + filtros + tabela) ──────────── */
+.cat-library-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid #20384c;
+  border-radius: 14px;
+  background: #0e1b28;
+  box-shadow: 0 18px 45px rgba(0,0,0,.28);
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.cat-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px;
+  min-height: 44px;
+  border-bottom: 1px solid #20384c;
+  background: rgba(10,22,33,.7);
+  flex-shrink: 0;
+}
+.cat-header-title {
+  font-size: 11px;
+  font-weight: 790;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: #bdd0df;
+}
+.cat-header-spacer { flex: 1; }
+
+.cat-count-chip {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid #20384c;
+  border-radius: 999px;
+  background: rgba(14,27,40,.78);
+  color: #88a0b5;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.cat-count-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #36d399;
+  box-shadow: 0 0 0 4px rgba(54,211,153,.1), 0 0 12px rgba(54,211,153,.8);
+  flex-shrink: 0;
+}
+.cat-new-btn {
+  height: 27px;
+  border: 1px solid #20384c;
+  border-radius: 7px;
+  background: #0e1b28;
+  color: #88a0b5;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: inherit;
+}
+.cat-new-btn:hover { color: #eef7ff; border-color: #31536d; }
+
+/* ── Barra de filtros ────────────────────────────────────────── */
+.cat-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(190px,1fr) 148px 148px auto;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #20384c;
+  flex-shrink: 0;
+}
+.cat-search-wrap { position: relative; min-width: 0; display: flex; align-items: center; }
+.cat-search-input {
+  height: 32px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #20384c;
+  border-radius: 8px;
+  background: #091521;
+  color: #eef7ff;
+  padding: 0 28px 0 10px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.cat-search-input:focus { border-color: #00d4ff; }
+.cat-search-input::placeholder { color: #5f788e; }
+.cat-search-clear { position: absolute; right: 6px; background: none; border: none; color: #5f788e; cursor: pointer; font-size: 13px; line-height: 1; padding: 2px; display: none; }
+.cat-search-clear:hover { color: #eef7ff; }
+.cat-search-clear.visible { display: block; }
+.cat-filter-select {
+  height: 32px;
+  min-width: 0;
+  border: 1px solid #20384c;
+  border-radius: 8px;
+  background: #091521;
+  color: #eef7ff;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+.cat-filter-select:focus { border-color: #00d4ff; }
+.cat-filter-select:disabled { opacity: 0.38; cursor: not-allowed; }
+.cat-adv-btn {
+  height: 32px;
+  border: 1px solid #20384c;
+  border-radius: 8px;
+  background: #0e1b28;
+  color: #88a0b5;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cat-adv-btn:hover { color: #eef7ff; border-color: #31536d; }
+
+/* ── Tabela ──────────────────────────────────────────────────── */
+.cat-table-wrap { flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: #31536d transparent; }
+.cat-table { width: 100%; border-collapse: collapse; }
+.cat-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0b1925;
+  color: #88a0b5;
+  text-align: left;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .55px;
+  font-weight: 700;
+  padding: 9px 10px;
+  border-bottom: 1px solid #20384c;
+}
+.cat-table tbody tr {
+  cursor: pointer;
+  border-bottom: 1px solid rgba(32,56,76,.65);
+  transition: background .1s;
+}
+.cat-table tbody tr:hover { background: rgba(0,212,255,.035); }
+.cat-table tbody tr.cat-row--selected { background: rgba(0,212,255,.09) !important; box-shadow: inset 3px 0 0 #00d4ff; }
+.cat-table td { padding: 8px 10px; vertical-align: middle; font-size: 11px; color: #eef7ff; }
+.cat-td-asset { min-width: 200px; }
+.cat-asset-title  { font-weight: 720; font-size: 12px; color: #eef7ff; }
+.cat-asset-artist { font-size: 9px; color: #88a0b5; margin-top: 3px; }
+.cat-td-qual-ok   { color: #36d399; font-weight: 650; }
+.cat-td-qual-warn { color: #ffbf4b; font-weight: 650; }
+.cat-td-qual-err  { color: #ff4d67; font-weight: 650; }
+.cat-td-qual-dim  { color: #5f788e; }
+.cat-kebab-btn { background: none; border: none; color: #5f788e; cursor: pointer; padding: 4px 7px; border-radius: 4px; font-size: 16px; line-height: 1; font-family: inherit; }
+.cat-kebab-btn:hover { background: rgba(255,255,255,.07); color: #eef7ff; }
+.cat-empty { display: flex; align-items: center; justify-content: center; height: 140px; color: #5f788e; font-size: 13px; }
+
+/* ── Paginação ───────────────────────────────────────────────── */
+.cat-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 14px; border-top: 1px solid #20384c; flex-shrink: 0; }
+.cat-pagination button { height: 27px; background: #0e1b28; border: 1px solid #20384c; color: #88a0b5; padding: 0 12px; border-radius: 7px; font-size: 11px; cursor: pointer; font-family: inherit; }
+.cat-pagination button:disabled { opacity: .35; cursor: default; }
+.cat-pagination button:not(:disabled):hover { color: #eef7ff; border-color: #31536d; }
+.cat-pagination-info { font-size: 11px; color: #5f788e; }
+
+/* ── Preview panel (card separado) ──────────────────────────── */
+.cat-preview-panel {
+  display: grid;
+  grid-template-columns: 145px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 15px;
+  padding: 13px;
+  border: 1px solid #20384c;
+  border-radius: 14px;
+  background: rgba(7,16,25,.95);
+  box-shadow: 0 18px 45px rgba(0,0,0,.28);
+  flex-shrink: 0;
+}
+.cat-prev-art {
+  height: 145px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  font-size: 39px;
+  color: #00d4ff;
+  border: 1px solid #20384c;
+  background: radial-gradient(circle at 35% 30%, rgba(0,212,255,.22), transparent 33%),
+              linear-gradient(150deg, #132b3c, #08131d);
+  flex-shrink: 0;
+}
+.cat-prev-info { min-width: 0; }
+.cat-prev-title  { font-size: 21px; font-weight: 810; color: #eef7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-prev-artist { margin-top: 5px; color: #88a0b5; font-size: 12px; margin-bottom: 10px; }
+.cat-prev-wave {
+  height: 46px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid #20384c;
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+  overflow: hidden;
+  padding: 3px 4px;
+}
+.cat-prev-wave-bar { flex: 1; background: rgba(0,212,255,.55); border-radius: 1px; min-width: 2px; }
+.cat-prev-cues { font-size: 11px; color: #88a0b5; }
+.cat-prev-cues strong { color: #eef7ff; }
+.cat-prev-actions { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; min-width: 168px; }
+.cat-prev-btn-primary {
+  min-height: 46px;
+  border: 1px solid #10cbed;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #00bfe9, #008aad);
+  color: #00141b;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 760;
+  cursor: pointer;
+  transition: .16s ease;
+}
+.cat-prev-btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.cat-prev-btn-secondary {
+  min-height: 46px;
+  border: 1px solid #20384c;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #122334, #0e1b28);
+  color: #eef7ff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+  transition: .16s ease;
+  text-align: center;
+}
+.cat-prev-btn-secondary:hover { border-color: #31536d; filter: brightness(1.08); transform: translateY(-1px); }
+
 /* ─── Rail (left sidebar) ────────────────────────────────────── */
 .rail {
   display: flex;
@@ -1332,8 +1604,8 @@ input[type=range].vol-slider:disabled {
 .adv-type-badge.spot     { background: rgba(255,152,0,0.2); color: #ffcc80; }
 .adv-type-badge.efeitos  { background: rgba(244,67,54,0.15); color: #ef9a9a; }
 .adv-td-actions { white-space: nowrap; }
-.adv-td-actions button:not(.lib-cue-btn):not(.lib-enqueue-btn) { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 3px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; margin-right: 4px; }
-.adv-td-actions button:not(.lib-cue-btn):not(.lib-enqueue-btn):hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
+.adv-td-actions button:not(.lib-cue-btn):not(.lib-enqueue-btn):not(.lib-marker-btn) { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 3px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; margin-right: 4px; }
+.adv-td-actions button:not(.lib-cue-btn):not(.lib-enqueue-btn):not(.lib-marker-btn):hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-row--previewing td { background: rgba(0,188,212,0.07) !important; }
 .adv-row--previewing .adv-td-actions button:first-child:not(.lib-cue-btn) { background: var(--cyan); color: #000; border-color: var(--cyan); }
 .adv-row--selected td { background: rgba(45,216,255,0.05) !important; outline: 1px solid rgba(45,216,255,0.22); outline-offset: -1px; }
@@ -2169,7 +2441,7 @@ td.q-preview-col { vertical-align: middle; width: 40px; text-align: center; }
 /* ─── Toast ──────────────────────────────────────────────────── */
 #toastContainer {
   position: fixed; top: 54px; right: 12px;
-  display: flex; flex-direction: column; gap: 6px; z-index: 100;
+  display: flex; flex-direction: column; gap: 6px; z-index: 9999;
   pointer-events: none;
 }
 .toast {
@@ -2484,13 +2756,15 @@ canvas.vu-canvas {
 
     <!-- ─── Rail: navegação lateral ──────────────────────────── -->
     <nav class="rail" aria-label="Módulos">
-      <button class="rail-btn active" title="No ar"><span class="ico">▶</span><span class="lbl">No ar</span></button>
+      <button class="rail-btn" data-view="onair" title="No ar"><span class="ico">▶</span><span class="lbl">No ar</span></button>
+      <button class="rail-btn" data-view="catalogo" title="Catálogo"><span class="ico">◫</span><span class="lbl">Catálogo</span></button>
       <button class="rail-btn" title="Produção" onclick="advModalOpen()"><span class="ico">▦</span><span class="lbl">Produção</span></button>
       <div class="rail-divider"></div>
-      <button class="rail-btn" title="Keys" onclick="openHotkeys()"><span class="ico">◫</span><span class="lbl">Keys</span></button>
-<button class="rail-btn rail-bottom" title="Configurações"><span class="ico">⚙</span><span class="lbl">Config</span></button>
+      <button class="rail-btn" title="Keys" onclick="openHotkeys()"><span class="ico">◈</span><span class="lbl">Keys</span></button>
+      <button class="rail-btn rail-bottom" title="Configurações"><span class="ico">⚙</span><span class="lbl">Config</span></button>
     </nav>
 
+    <section class="workspace active" id="view-onair">
     <div class="content-wrap">
     <div class="main-cols">
 
@@ -2986,6 +3260,58 @@ canvas.vu-canvas {
     </footer>
 
     </div><!-- /content-wrap -->
+    </section><!-- /view-onair -->
+
+    <section class="workspace" id="view-catalogo">
+      <div class="cat-view">
+
+        <!-- ── Card principal: header + filtros + tabela ─── -->
+        <div class="cat-library-panel">
+
+          <!-- ── Header ───────────────────────────────────── -->
+          <div class="cat-header">
+            <span class="cat-header-title">Consultar Catálogo</span>
+          </div>
+
+          <!-- ── Barra de filtros ──────────────────────────── -->
+          <div class="cat-filter-bar">
+            <div class="cat-search-wrap">
+              <input class="cat-search-input" id="catQ"
+                     placeholder="Título ou artista..."
+                     oninput="catScheduleSearch();catToggleClearBtn()"
+                     onkeydown="if(event.key==='Enter'){clearTimeout(_catSearchTimer);catSearch()}">
+              <button class="cat-search-clear" id="catQClear" title="Limpar" onclick="catClearSearch()">✕</button>
+            </div>
+            <select class="cat-filter-select" id="catType" onchange="catToggleCategory();catSearch()">
+              <option value="">Todos os tipos</option>
+              <option value="MUSIC">Música</option>
+              <option value="VINHETA">Vinheta</option>
+              <option value="JINGLE">Jingle</option>
+              <option value="SPOT">Spot</option>
+              <option value="EFEITOS">Efeitos</option>
+            </select>
+            <select class="cat-filter-select" id="catCategory" onchange="catSearch()" disabled>
+              <option value="">Todas as categorias</option>
+            </select>
+          </div>
+
+          <!-- ── Tabela de resultados ──────────────────────── -->
+          <div class="cat-table-wrap" id="catResults">
+            <div class="cat-empty">Aguardando…</div>
+          </div>
+
+          <!-- ── Paginação ─────────────────────────────────── -->
+          <div class="cat-pagination" id="catPagination" style="display:none">
+            <button id="catBtnPrev" onclick="catPrev()" disabled>← Anterior</button>
+            <span class="cat-pagination-info" id="catPageInfo">Página 1 de 1</span>
+            <button id="catBtnNext" onclick="catNext()" disabled>Próxima →</button>
+          </div>
+
+        </div><!-- /cat-library-panel -->
+
+
+      </div>
+    </section><!-- /view-catalogo -->
 
   </div><!-- /main-layout -->
 
@@ -4248,6 +4574,317 @@ function openHotkeys() {
     window.electronAPI.openHotkeys({ api: API_URL, lib: LIBRARY_URL });
   }
 }
+
+/* ─── View switching (rail) ─────────────────────────────────── */
+
+function setView(view, push) {
+  if (push === undefined) push = true;
+  document.querySelectorAll('.workspace').forEach(function(w) {
+    w.classList.remove('active');
+  });
+  var target = document.querySelector('#view-' + view);
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.rail-btn[data-view]').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  if (push) localStorage.setItem('rfView', view);
+  if (view === 'catalogo') {
+    catLoadCategories();
+    catSearch();
+  }
+}
+
+// Bind dos botões data-view que não têm onclick próprio
+document.querySelectorAll('.rail-btn[data-view]').forEach(function(btn) {
+  if (!btn.onclick) {
+    btn.addEventListener('click', function() { setView(btn.dataset.view); });
+  }
+});
+
+/* ─── Catálogo View — funções ───────────────────────────────── */
+
+const CAT_LIMIT = 20;
+let _catPage         = 1;
+let _catTotal        = 0;
+let _catTracks       = [];
+let _catSelectedIdx  = -1;
+let _catPreviewIdx   = -1;
+let _catSearchTimer  = null;
+
+function catScheduleSearch() {
+  clearTimeout(_catSearchTimer);
+  _catSearchTimer = setTimeout(function() { catSearch(); }, 350);
+}
+
+async function catSearch(resetPage) {
+  if (resetPage === undefined) resetPage = true;
+  if (!_libOnline) {
+    var el = document.getElementById('catResults');
+    if (el) el.innerHTML = '<div class="cat-empty">Library offline — aguardando conexão…</div>';
+    return;
+  }
+  // Aguarda sessão estar estabelecida — evita disparar 401 antes do token ser restaurado
+  if (!window.sessionManager?.isAuthenticated()) return;
+  if (resetPage) _catPage = 1;
+
+  var qEl   = document.getElementById('catQ');
+  var tyEl  = document.getElementById('catType');
+  var catEl = document.getElementById('catCategory');
+  var q     = qEl   ? qEl.value.trim()  : '';
+  var type  = tyEl  ? tyEl.value        : '';
+  var catId = catEl ? catEl.value        : '';
+
+  var offset = (_catPage - 1) * CAT_LIMIT;
+  var qs = new URLSearchParams({ limit: CAT_LIMIT, offset: offset });
+  if (q)     qs.set('q',           q);
+  if (type)  qs.set('type',        type);
+  if (catId) qs.set('category_id', catId);
+
+  var resultsEl = document.getElementById('catResults');
+  var paginEl   = document.getElementById('catPagination');
+  if (resultsEl) resultsEl.innerHTML = '<div class="cat-empty">Buscando…</div>';
+  if (paginEl)   paginEl.style.display = 'none';
+
+  try {
+    var res  = await libFetch('/v1/tracks?' + qs);
+    var data = await res.json();
+    _catTracks = data.tracks || [];
+    _catTotal  = typeof data.total === 'number' ? data.total : _catTracks.length;
+    catRender();
+  } catch(e) {
+    if (resultsEl) resultsEl.innerHTML = '<div class="cat-empty">Erro ao buscar: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+function catRender() {
+  var _prevRow = document.getElementById('cat-preview-row');
+  if (_prevRow) _prevRow.remove();
+  _catPreviewIdx = -1;
+  var resultsEl = document.getElementById('catResults');
+  var paginEl   = document.getElementById('catPagination');
+  var countEl   = document.getElementById('catTotalCount');
+  if (countEl) countEl.textContent = _catTotal.toLocaleString('pt-BR');
+
+  if (!_catTracks.length) {
+    if (resultsEl) resultsEl.innerHTML = '<div class="cat-empty">Nenhuma faixa encontrada</div>';
+    if (paginEl)   paginEl.style.display = 'none';
+    return;
+  }
+
+  var rows = _catTracks.map(function(t, i) {
+    var badgeClass = { MUSIC:'music', VINHETA:'vinheta', JINGLE:'jingle', SPOT:'spot', EFEITOS:'efeitos' }[t.type] || '';
+    var dur        = msToDuration(t.duration_ms || 0);
+    var cueInTxt   = t.cue_in_ms  != null ? _msToMMSS(t.cue_in_ms)  : '—';
+    var cueOutTxt  = t.cue_out_ms != null ? _msToMMSS(t.cue_out_ms) : '—';
+    var cat        = escHtml(t.category || '—');
+    var sel        = i === _catSelectedIdx;
+
+    return '<tr id="cat-row-' + i + '" onclick="catSelectRow(' + i + ')" ondblclick="catEnqueue(' + i + ')" title="Duplo clique para enfileirar"' + (sel ? ' class="cat-row--selected"' : '') + '>' +
+      '<td class="adv-td-title" title="' + escHtml(t.title || '') + '">' + escHtml(t.title || '—') + '</td>' +
+      '<td class="adv-td-artist" title="' + escHtml(t.artist || '') + '">' + escHtml(t.artist || '—') + '</td>' +
+      '<td class="adv-td-album"  title="' + escHtml(t.album  || '') + '">' + escHtml(t.album  || '—') + '</td>' +
+      '<td><span class="adv-type-badge ' + badgeClass + '">' + escHtml(t.type || '—') + '</span></td>' +
+      '<td>' + cat + '</td>' +
+      '<td class="adv-td-dur">' + dur + '</td>' +
+      '<td class="adv-td-intro">' + cueInTxt  + '</td>' +
+      '<td class="adv-td-intro">' + cueOutTxt + '</td>' +
+      '<td class="adv-td-actions">' +
+        '<button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" id="cat-cue-' + i + '" onclick="event.stopPropagation();catTogglePreview(' + i + ')" style="font-size:18px">🎧</button>' +
+        '<button class="lib-marker-btn tip-left" data-tooltip="Editor de cue points (M)" onclick="event.stopPropagation();catOpenCueEditor(' + i + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></button>' +
+        '<button class="lib-enqueue-btn tip-left" data-tooltip="Adicionar à fila" onclick="event.stopPropagation();catEnqueue(' + i + ')" style="font-size:18px;color:rgba(220,239,242,0.65)">⬇&#xFE0E;</button>' +
+      '</td>' +
+      '</tr>';
+  }).join('');
+
+  if (resultsEl) resultsEl.innerHTML =
+    '<table class="cat-table">' +
+    '<colgroup><col style="width:25%"><col style="width:18%"><col style="width:12%"><col style="width:9%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:12%"><col style="width:6%"></colgroup>' +
+    '<thead><tr><th>Título</th><th>Artista</th><th>Álbum</th><th>Tipo</th><th>Categoria</th><th>Duração</th><th style="text-align:center">Cue In</th><th style="text-align:center">Cue Out</th><th>Ações</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>';
+
+  var totalPages = Math.max(1, Math.ceil(_catTotal / CAT_LIMIT));
+  var pageInfoEl = document.getElementById('catPageInfo');
+  var btnPrev    = document.getElementById('catBtnPrev');
+  var btnNext    = document.getElementById('catBtnNext');
+  if (pageInfoEl) pageInfoEl.textContent = 'Página ' + _catPage + ' de ' + totalPages;
+  if (btnPrev)    btnPrev.disabled = _catPage <= 1;
+  if (btnNext)    btnNext.disabled = _catPage >= totalPages;
+  if (paginEl)    paginEl.style.display = 'flex';
+}
+
+function catSelectRow(idx) {
+  _catSelectedIdx = idx;
+  document.querySelectorAll('.cat-table tbody tr:not(#cat-preview-row)').forEach(function(r) { r.classList.remove('cat-row--selected'); });
+  var row = document.getElementById('cat-row-' + idx);
+  if (row) row.classList.add('cat-row--selected');
+}
+
+function catOpenCueEditor(idx) {
+  var t = _catTracks[idx];
+  if (!t) return;
+  catSelectRow(idx);
+  openCueEditor(t);
+}
+
+// ── Catálogo: preview inline (mesmo padrão do advModal) ──────────────────
+function _catUpdatePreviewHighlight(idx) {
+  document.querySelectorAll('.cat-table tbody tr').forEach(function(r) { r.classList.remove('cat-row--previewing'); });
+  document.querySelectorAll('.cat-table .lib-cue-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (idx >= 0) {
+    var row = document.getElementById('cat-row-' + idx);
+    if (row) row.classList.add('cat-row--previewing');
+    var btn = document.getElementById('cat-cue-' + idx);
+    if (btn) btn.classList.add('active');
+  }
+  _catPreviewIdx = idx;
+}
+
+function _catOpenPreviewPanel(idx) {
+  var t = _catTracks[idx];
+  if (!t) return;
+
+  // Fecha drawer preview e adv preview (IDs compartilhados)
+  _libClosePreviewPanel();
+  _advClosePreviewPanel();
+  var existing = document.getElementById('cat-preview-row');
+  if (existing) existing.remove();
+
+  _catUpdatePreviewHighlight(idx);
+  _preview.path       = t.path || '';
+  _preview.positionMS = 0;
+  _preview.durationMS = t.duration_ms || 0;
+  _preview.trackIdx   = null;
+
+  var rows = document.querySelectorAll('.cat-table tbody tr:not(#cat-preview-row)');
+  var anchor = rows[idx];
+  if (!anchor) return;
+
+  var dur = t.duration_ms > 0 ? msToTime(t.duration_ms) : '--:--';
+  var panelRow = document.createElement('tr');
+  panelRow.id = 'cat-preview-row';
+  panelRow.innerHTML =
+    '<td colspan="9" style="padding:0; border-bottom:1px solid var(--border);">' +
+      '<div class="lib-preview-panel">' +
+        '<div class="lib-preview-controls">' +
+          '<button class="lib-prev-btn" id="libPrevPlay"  title="Play"   onclick="previewPlayOrResume()">▶</button>' +
+          '<button class="lib-prev-btn" id="libPrevPause" title="Pausar" onclick="previewPause()" disabled>⏸</button>' +
+          '<button class="lib-prev-btn" id="libPrevStop"  title="Stop"   onclick="previewStop()" disabled>■</button>' +
+        '</div>' +
+        '<div class="lib-prev-divider"></div>' +
+        '<div class="lib-prev-progress">' +
+          '<span class="lib-prev-time-pos" id="libPrevPos">0:00</span>' +
+          '<div class="lib-prev-track" id="libPrevTrack" onclick="previewSeekClick(event)">' +
+            '<div class="lib-prev-fill" id="libPrevFill" style="width:0%"><div class="lib-prev-thumb"></div></div>' +
+          '</div>' +
+          '<span class="lib-prev-time-dur" id="libPrevDur">' + dur + '</span>' +
+        '</div>' +
+        '<div class="lib-prev-divider"></div>' +
+        '<div class="adv-prev-vol">' +
+          '<span class="adv-prev-vol-label">Vol CUE</span>' +
+          '<input type="range" id="advPrevVol" min="0" max="100" step="1"' +
+            ' value="' + Math.round(_volPreviewPrev * 100) + '"' +
+            ' oninput="onVolInput(\'preview\', this)"' +
+            ' onchange="onVolChange(\'preview\', this)"' +
+            ' onmousedown="_draggingPreview=true"' +
+            ' onmouseup="_draggingPreview=false">' +
+          '<span class="adv-prev-vol-pct" id="advPrevVolPct">' + Math.round(_volPreviewPrev * 100) + '%</span>' +
+        '</div>' +
+      '</div>' +
+    '</td>';
+  anchor.after(panelRow);
+}
+
+function _catClosePreviewPanel() {
+  var row = document.getElementById('cat-preview-row');
+  if (row) row.remove();
+  _catUpdatePreviewHighlight(-1);
+}
+
+async function catTogglePreview(idx) {
+  if (_catPreviewIdx === idx) {
+    _catClosePreviewPanel();
+    await previewStop();
+    return;
+  }
+  if (_preview.state !== 'idle') { await previewStop(); }
+  _catOpenPreviewPanel(idx);
+}
+
+function catEnqueue(idx) {
+  var t = _catTracks[idx !== undefined ? idx : _catSelectedIdx];
+  if (!t) return;
+  fetch(API_URL + '/v1/queue/enqueue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: [{ asset_id: t.id || '', path: t.path, type: t.type, title: t.title, artist: t.artist || '', isrc: t.isrc || '', composer: t.composer || '', publisher: t.publisher || '', duration_ms: t.duration_ms || 0, gain_db: t.gain_db || 0, cue_in_ms: t.cue_in_ms || 0, intro_ms: t.intro_ms || 0, outro_ms: t.outro_ms || 0, cue_out_ms: t.cue_out_ms || 0 }] }),
+  }).then(function(r) { return r.json(); }).then(function(j) {
+    var ok = j.ok !== false && j.accepted !== false;
+    if (!ok) showToast(false, j.reason || 'Comando rejeitado');
+    if (ok)  { showToast(true, '"' + (t.title || 'Faixa') + '" adicionada à fila'); fetchQueue(); }
+  }).catch(function() { showToast(false, 'Erro de rede'); });
+}
+
+function catEnqueueSelected() { catEnqueue(_catSelectedIdx); }
+
+function catEditMetadata() {
+  var t = _catTracks[_catSelectedIdx];
+  if (!t) return;
+  openCueEditor(t);
+}
+
+function catToggleCategory() {
+  var type = document.getElementById('catType').value;
+  var cat  = document.getElementById('catCategory');
+  var isMusic = type === 'MUSIC';
+  cat.disabled = !isMusic;
+  if (!isMusic) cat.value = '';
+}
+
+function catToggleClearBtn() {
+  var btn = document.getElementById('catQClear');
+  var inp = document.getElementById('catQ');
+  if (btn) btn.classList.toggle('visible', inp.value.length > 0);
+}
+
+function catClearSearch() {
+  var inp = document.getElementById('catQ');
+  var hadText = inp.value.length > 0;
+  inp.value = '';
+  catToggleClearBtn();
+  if (hadText) catSearch();
+}
+
+function catPrev() {
+  if (_catPage <= 1) return;
+  _catPage--;
+  catSearch(false);
+}
+
+function catNext() {
+  var totalPages = Math.ceil(_catTotal / CAT_LIMIT);
+  if (_catPage >= totalPages) return;
+  _catPage++;
+  catSearch(false);
+}
+
+async function catLoadCategories() {
+  var sel = document.getElementById('catCategory');
+  if (!sel || sel.options.length > 1) return;
+  if (!window.sessionManager?.isAuthenticated()) return;
+  try {
+    var res  = await libFetch('/v1/categories');
+    if (!res.ok) { console.warn('[cat] catLoadCategories: status', res.status); return; }
+    var data = await res.json();
+    (data.data || []).forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error('[cat] catLoadCategories error:', e); }
+}
+
+// Restaura última view ou padrão "onair" (após todas as funções de catálogo estarem definidas)
+setView(localStorage.getItem('rfView') || 'onair', false);
 
 /* ─── Drag-and-drop (SortableJS) ────────────────────────────── */
 
@@ -5604,8 +6241,13 @@ async function checkLibraryHealth() {
     if (ftDotLib) ftDotLib.className = 'ft-dot offline';
   }
   // Quando a library fica online pela primeira vez, recarrega o pane ativo
-  if (!wasOnline && _libOnline && _rotInited) {
-    _rotRefreshPane(_rotPane);
+  if (!wasOnline && _libOnline) {
+    if (_rotInited) _rotRefreshPane(_rotPane);
+    // Se a view de catálogo estiver ativa, dispara a busca inicial
+    if (document.querySelector('#view-catalogo.active')) {
+      catLoadCategories();
+      catSearch();
+    }
   }
 }
 
@@ -6160,15 +6802,25 @@ async function cueEditorSave() {
     outro_ms:   _cueEditor.outroMS  ?? null,
     cue_out_ms: _cueEditor.cueOutMS ?? null,
   };
+  if (body.cue_in_ms != null && body.cue_out_ms != null && body.cue_in_ms >= body.cue_out_ms) {
+    showToast(false, 'Cue In deve ser menor que Cue Out');
+    return;
+  }
   try {
     const r = await libFetch('/v1/tracks/' + t.id + '/cuepoints', {
       method: 'PUT', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body),
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); if (j.message) msg = j.message; } catch {}
+      throw new Error(msg);
+    }
     // Update local cache so re-renders reflect new values
-    const idx = _advTracks.findIndex(x => x.id === t.id);
-    if (idx >= 0) Object.assign(_advTracks[idx], body);
+    const advIdx = _advTracks.findIndex(x => x.id === t.id);
+    if (advIdx >= 0) Object.assign(_advTracks[advIdx], body);
+    const catIdx = _catTracks.findIndex(x => x.id === t.id);
+    if (catIdx >= 0) { Object.assign(_catTracks[catIdx], body); catRender(); }
     closeCueEditor();
   } catch(e) {
     showToast(false, 'Erro ao salvar: ' + e.message);
