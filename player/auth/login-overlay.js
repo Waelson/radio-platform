@@ -384,6 +384,13 @@ body.auth-locked .app {
       if (tab === 'rotacao'   && typeof rotInit       === 'function') try { rotInit()       } catch {}
       // 'streaming' já é coberto por stmInit() acima
     }
+    // Se a view de catálogo estiver ativa, recarrega categorias e resultados
+    // (catLoadCategories falha silenciosamente na init porque sessionManager
+    // ainda não estava disponível quando setView foi chamado no boot)
+    if (document.querySelector('#view-catalogo.active')) {
+      if (typeof catLoadCategories === 'function') try { catLoadCategories() } catch {}
+      if (typeof catSearch         === 'function') try { catSearch()         } catch {}
+    }
   }
 
   function updateChip(claims) {
