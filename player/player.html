@@ -2046,8 +2046,14 @@ input[type=range].vol-slider:disabled {
   color: #d7e3ec;
   transition: background 0.1s, border-color 0.1s;
 }
-.queue-row:not(.is-current) { border-color: rgba(255,255,255,.07); }
-.queue-row:hover { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.13); }
+.queue-row:not(.is-current)                              { border-color: rgba(0,212,255,.22);    background: rgba(0,212,255,.04); }
+.queue-row:not(.is-current):has(.q-type-bar.spot)        { border-color: rgba(255,191,75,.25);   background: rgba(255,191,75,.05); }
+.queue-row:not(.is-current):has(.q-type-bar.vinheta),
+.queue-row:not(.is-current):has(.q-type-bar.jingle)      { border-color: rgba(211,106,255,.25);  background: rgba(211,106,255,.05); }
+.queue-row:not(.is-current):has(.q-type-bar.hora-certa)  { border-color: rgba(255,139,61,.25);   background: rgba(255,139,61,.05); }
+.queue-row:not(.is-current):has(.q-type-bar.voice)       { border-color: rgba(54,211,153,.25);   background: rgba(54,211,153,.05); }
+.queue-row:not(.is-current):has(.q-type-bar.news)        { border-color: rgba(255,77,103,.25);   background: rgba(255,77,103,.05); }
+.queue-row:hover { background: rgba(255,255,255,.035); filter: brightness(1.15); }
 .queue-row.is-current {
   min-height: 76px;
   padding-left: 22px;
