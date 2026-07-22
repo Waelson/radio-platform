@@ -313,6 +313,39 @@ func (m *Manager) HandleReorderItem(_ context.Context, cmd commands.Command) err
 	return nil
 }
 
+// MoveToFront moves the item identified by queueItemID to the front of the
+// pending queue (position 0). Returns an error if the item is not found.
+// If the item is already at position 0 the queue is unchanged and no event
+// is published.
+func (m *Manager) MoveToFront(queueItemID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	idx := -1
+	for i, it := range m.pending {
+		if it.QueueItemID == queueItemID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return fmt.Errorf("play-now: item %q not found in queue", queueItemID)
+	}
+	if idx == 0 {
+		// Already at the front — nothing to reorder.
+		return nil
+	}
+
+	item := m.pending[idx]
+	m.pending = append(m.pending[:idx], m.pending[idx+1:]...)
+	m.pending = append([]*QueueItem{item}, m.pending...)
+
+	m.log.Info("moved item to front", "queue_item_id", queueItemID)
+	m.publishAndUpdateLocked("play-now")
+	m.persist()
+	return nil
+}
+
 // --- Public queue operations -------------------------------------------------
 
 // Enqueue adds items to the end of the pending queue and returns the

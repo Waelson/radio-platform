@@ -303,6 +303,23 @@ func run(args []string) error {
 	disp.Handle(commands.CmdRemoveItem, queueMgr.HandleRemoveItem)
 	disp.Handle(commands.CmdMoveItem, queueMgr.HandleMoveItem)
 	disp.Handle(commands.CmdReorderItem, queueMgr.HandleReorderItem)
+	disp.Handle(commands.CmdPlayNow, func(ctx context.Context, cmd commands.Command) error {
+		p, ok := cmd.Payload.(commands.PlayNowPayload)
+		if !ok {
+			return fmt.Errorf("play-now: unexpected payload type %T", cmd.Payload)
+		}
+		if err := queueMgr.MoveToFront(p.QueueItemID); err != nil {
+			return err
+		}
+		// If the engine is actively playing/paused/assist, skip the current item
+		// so the newly promoted item starts immediately. In IDLE the playback
+		// manager will naturally dequeue and play the front item.
+		snap := stateMgr.Snapshot()
+		if snap.State == state.StatePlaying || snap.State == state.StatePaused || snap.State == state.StateAssist {
+			cmdBus.TrySend(commands.New(commands.CmdSkip, commands.SkipPayload{}))
+		}
+		return nil
+	})
 	disp.Handle(commands.CmdPlay, pbMgr.HandlePlay)
 	disp.Handle(commands.CmdPause, pbMgr.HandlePause)
 	disp.Handle(commands.CmdResume, pbMgr.HandleResume)

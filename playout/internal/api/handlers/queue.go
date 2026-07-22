@@ -594,6 +594,32 @@ func ReorderItem(bus queueBus) http.HandlerFunc {
 	}
 }
 
+func PlayNow(bus queueBus) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			QueueItemID string `json:"queue_item_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "bad_request", "invalid JSON body")
+			return
+		}
+		if req.QueueItemID == "" {
+			writeError(w, http.StatusBadRequest, "bad_request", "queue_item_id is required")
+			return
+		}
+		cmd, replyCh := commands.NewSync(commands.CmdPlayNow, commands.PlayNowPayload{
+			QueueItemID: req.QueueItemID,
+		})
+		result, ok := sendAndWait(w, bus, cmd, replyCh)
+		if !ok {
+			return
+		}
+		writeJSON(w, http.StatusOK, cmdResponse{
+			OK: true, CommandID: cmd.ID, Accepted: result.Accepted, Reason: result.Reason,
+		})
+	}
+}
+
 func ClearQueue(bus queueBus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req clearQueueRequest
