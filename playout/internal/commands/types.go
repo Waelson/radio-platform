@@ -27,6 +27,7 @@ const (
 	CmdRemoveItem       CommandType = "REMOVE_ITEM"
 	CmdMoveItem         CommandType = "MOVE_ITEM"
 	CmdReorderItem      CommandType = "REORDER_ITEM"
+	CmdPlayNow          CommandType = "PLAY_NOW"
 	CmdEnterPanic       CommandType = "ENTER_PANIC"
 	CmdExitPanic        CommandType = "EXIT_PANIC"
 	CmdEnterAssist      CommandType = "ENTER_ASSIST"
@@ -198,6 +199,12 @@ type ReorderItemPayload struct {
 	QueueItemID string
 	BreakID     string
 	AfterID     string
+}
+
+// PlayNowPayload carries the payload for CmdPlayNow.
+// QueueItemID is the queue_item_id of the item to play immediately.
+type PlayNowPayload struct {
+	QueueItemID string
 }
 
 // EnterPanicPayload carries the payload for CmdEnterPanic.

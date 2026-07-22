@@ -3862,7 +3862,7 @@ function renderItemRow(item, estTimes) {
 
   const hoverActionsHTML = itemId && !isPlaying ? `
     <div class="q-hover-actions">
-      <button class="q-ha-btn play tip-below"   data-tooltip="Tocar agora"  onclick="event.stopPropagation()">▶</button>
+      <button class="q-ha-btn play tip-below"   data-tooltip="Tocar agora"  onclick="event.stopPropagation();queuePlayNow('${escHtml(itemId)}')">▶</button>
       <button class="q-ha-btn remove tip-below" data-tooltip="Remover"      onclick="event.stopPropagation();queueRemoveItem('${escHtml(itemId)}')">✕</button>
     </div>` : '';
 
@@ -4413,6 +4413,18 @@ async function queueRemoveItem(id, type) {
     const j = await r.json();
     if (!j.ok) showToast(false, j.reason || 'Erro ao remover');
     else fetchQueue();
+  } catch(e) { showToast(false, 'Erro de rede'); }
+}
+
+async function queuePlayNow(id) {
+  if (!id) return;
+  try {
+    const r = await fetch(API_URL + '/v1/queue/play-now', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ queue_item_id: id }),
+    });
+    const j = await r.json();
+    if (!j.ok) showToast(false, j.reason || j.message || 'Erro ao tocar item');
   } catch(e) { showToast(false, 'Erro de rede'); }
 }
 

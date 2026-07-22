@@ -147,6 +147,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("POST /v1/queue/remove-item", handlers.RemoveItem(s.cmdBus))
 		mux.HandleFunc("POST /v1/queue/move-item", handlers.MoveItem(s.cmdBus))
 		mux.HandleFunc("POST /v1/queue/reorder-item", handlers.ReorderItem(s.cmdBus))
+		mux.HandleFunc("POST /v1/queue/play-now", handlers.PlayNow(s.cmdBus))
 	}
 
 	// Playback control
