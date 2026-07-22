@@ -1754,6 +1754,7 @@ input[type=range].vol-slider:disabled {
 .lib-cue-btn { background: transparent; border: none; padding: 0; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s; }
 .lib-cue-btn img { height: 21px; width: auto; filter: brightness(0) invert(1); }
 .lib-cue-btn:hover  { background: rgba(220,239,242,0.05); }
+.lib-cue-btn.is-cuing { background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
 .lib-cue-btn.active { color: var(--cyan); border-color: var(--cyan); background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
 .lib-cue-btn.active img { opacity: 1; }
 .lib-preview-panel {
@@ -4689,7 +4690,7 @@ function catRender() {
       '<td class="adv-td-intro">' + cueInTxt  + '</td>' +
       '<td class="adv-td-intro">' + cueOutTxt + '</td>' +
       '<td class="adv-td-actions">' +
-        '<button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" id="cat-cue-' + i + '" onclick="event.stopPropagation();catTogglePreview(' + i + ')" style="font-size:18px">🎧</button>' +
+        '<button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" id="cat-cue-' + i + '" data-item-id="cat:' + escHtml(t.id || t.path) + '" onclick="event.stopPropagation();catTogglePreview(' + i + ')" style="font-size:18px">🎧</button>' +
         '<button class="lib-marker-btn tip-left" data-tooltip="Editor de cue points (M)" onclick="event.stopPropagation();catOpenCueEditor(' + i + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></button>' +
         '<button class="lib-enqueue-btn tip-left" data-tooltip="Adicionar à fila" onclick="event.stopPropagation();catEnqueue(' + i + ')" style="font-size:18px;color:rgba(220,239,242,0.65)">⬇&#xFE0E;</button>' +
       '</td>' +
@@ -4800,14 +4801,12 @@ function _catClosePreviewPanel() {
   _catUpdatePreviewHighlight(-1);
 }
 
-async function catTogglePreview(idx) {
-  if (_catPreviewIdx === idx) {
-    _catClosePreviewPanel();
-    await previewStop();
-    return;
-  }
-  if (_preview.state !== 'idle') { await previewStop(); }
-  _catOpenPreviewPanel(idx);
+function catTogglePreview(idx) {
+  var t = _catTracks[idx];
+  if (!t) return;
+  var key = 'cat:' + (t.id || t.path);
+  _queueItemMap[key] = { path: t.path || '', title: t.title || '—', artist: t.artist || '' };
+  cueToggleQueueItem(key);
 }
 
 function catEnqueue(idx) {
@@ -6091,6 +6090,7 @@ async function cueStop() {
   _hkpCueBtnId    = null;
   document.getElementById('cueFloat').classList.remove('open');
   document.querySelectorAll('.q-cue-btn').forEach(b => { b.classList.remove('is-cuing'); });
+  document.querySelectorAll('.lib-cue-btn').forEach(b => { b.classList.remove('is-cuing'); });
   document.querySelectorAll('.drw-hk-cue').forEach(b => { b.classList.remove('is-cuing'); });
   document.querySelectorAll('.hkp-card-cue').forEach(b => { b.classList.remove('is-cuing'); });
   await previewStop();
@@ -6128,6 +6128,11 @@ function _updateCueFloat() {
   document.querySelectorAll('.q-cue-btn').forEach(btn => {
     const mine = isActive && btn.dataset.itemId === _cueQueueItemId;
     btn.classList.toggle('is-cuing', mine);
+  });
+
+  // Sincronizar botões CUE do catálogo
+  document.querySelectorAll('.lib-cue-btn[data-item-id]').forEach(btn => {
+    btn.classList.toggle('is-cuing', isActive && btn.dataset.itemId === _cueQueueItemId);
   });
 
   // Sincronizar botões CUE da botoneira do drawer
