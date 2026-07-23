@@ -1835,6 +1835,27 @@ input[type=range].vol-slider:disabled {
 .drw-hk-cue.is-cuing { background: rgba(45,216,255,0.14); animation: cueBtnPulse 1.0s ease-in-out infinite; }
 .drw-hk-cue.is-cuing img { opacity: 1; filter: brightness(0) saturate(100%) invert(75%) sepia(80%) hue-rotate(155deg) brightness(1.1); }
 
+/* ─── Rotação — workspace ────────────────────────────────────── */
+/* Tokens herdados da paleta do catálogo para consistência visual */
+#view-rotacao .rot-subnav    { border-bottom-color: #20384c; }
+#view-rotacao .rot-action-bar { border-bottom-color: #20384c; }
+#view-rotacao .rot-cat-card  { border-color: #20384c; background: #0a1a27; }
+#view-rotacao .rot-clock-card { border-color: #20384c; background: #0a1a27; }
+#view-rotacao .rot-rule-row  { border-color: #20384c; background: #0a1a27; }
+#view-rotacao .rot-cat-body  { background: rgba(0,0,0,0.18); border-top-color: #20384c; }
+#view-rotacao .rot-clock-body { border-top-color: #20384c; }
+#view-rotacao .rot-gen-form  { border-bottom-color: #20384c; }
+#view-rotacao .rot-gen-enqueue-bar { border-top-color: #20384c; }
+#view-rotacao .rot-cat-search-bar { border-top-color: #20384c; }
+#view-rotacao .rot-input     { background: #071019; border-color: #20384c; }
+#view-rotacao .rot-select    { background: #071019; border-color: #20384c; }
+#view-rotacao .rot-btn-sm    { border-color: #20384c; }
+#view-rotacao .rot-grid-table th { border-color: #20384c; background: #0a1a27; }
+#view-rotacao .rot-grid-table td { border-color: #20384c; }
+#view-rotacao .rot-slot-row  { background: rgba(32,56,76,.18); }
+#view-rotacao .rot-subbtn    { font-size: 11px; padding: 9px 14px; }
+#view-rotacao .rot-subbtn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
 /* ─── Drawer — Aba Rotação ───────────────────────────────────── */
 .rot-panel { flex-direction: column; flex: 1; min-height: 0; }
 .rot-subnav { display: flex; gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
@@ -2765,6 +2786,7 @@ canvas.vu-canvas {
     <nav class="rail" aria-label="Módulos">
       <button class="rail-btn" data-view="onair" title="No ar"><span class="ico">▶</span><span class="lbl">No ar</span></button>
       <button class="rail-btn" data-view="catalogo" title="Catálogo"><span class="ico">◫</span><span class="lbl">Catálogo</span></button>
+      <button class="rail-btn" data-view="rotacao" title="Rotação"><span class="ico">&#x27F3;</span><span class="lbl">Rotação</span></button>
       <button class="rail-btn" title="Produção" onclick="advModalOpen()"><span class="ico">▦</span><span class="lbl">Produção</span></button>
       <div class="rail-divider"></div>
       <button class="rail-btn" title="Keys" onclick="openHotkeys()"><span class="ico">◈</span><span class="lbl">Keys</span></button>
@@ -3060,7 +3082,6 @@ canvas.vu-canvas {
         <div class="lib-tabs">
           <button class="lib-tab active" id="libTabBreaks"     onclick="libSwitchTab('breaks')">Breaks</button>
           <button class="lib-tab"        id="libTabBotoneira"  onclick="libSwitchTab('botoneira')">Botoneira</button>
-          <button class="lib-tab"        id="libTabRotacao"    onclick="libSwitchTab('rotacao')">Rotação</button>
           <button class="lib-tab"        id="libTabStreaming"  onclick="libSwitchTab('streaming')">Streaming</button>
         </div>
 
@@ -3094,153 +3115,6 @@ canvas.vu-canvas {
           </div>
         </div>
 
-        <!-- Rotação -->
-        <div class="lib-panel rot-panel" id="libPanelRotacao">
-          <!-- Sub-navigation -->
-          <div class="rot-subnav">
-            <button class="rot-subbtn active" id="rotTabCategorias"  onclick="rotSwitchPane('categorias')">Categorias</button>
-            <button class="rot-subbtn"        id="rotTabClocks"      onclick="rotSwitchPane('clocks')">Clocks</button>
-            <button class="rot-subbtn"        id="rotTabGrade"       onclick="rotSwitchPane('grade')">Grade</button>
-            <button class="rot-subbtn"        id="rotTabRegras"      onclick="rotSwitchPane('regras')">Regras</button>
-            <button class="rot-subbtn"        id="rotTabGerar"       onclick="rotSwitchPane('gerar')">Gerar</button>
-          </div>
-
-          <!-- Pane: Categorias -->
-          <div class="rot-pane active" id="rotPaneCategorias">
-            <div class="rot-action-bar">
-              <button class="rot-btn-sm" onclick="rotCatLoad()">↺ Atualizar</button>
-              <button class="rot-btn-sm" onclick="rotCatShowNew()">+ Nova categoria</button>
-            </div>
-            <div id="rotCatNewForm" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);display:none;flex-direction:column;gap:6px;">
-              <input class="rot-input rot-input-wide" id="rotCatNewName" placeholder="Nome da categoria" />
-              <input class="rot-input rot-input-wide" id="rotCatNewDesc" placeholder="Descrição (opcional)" />
-              <div style="display:flex;gap:6px;align-items:center;">
-                <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.06em;">Cor:</label>
-                <input type="color" id="rotCatNewColor" value="#20e6ff" style="width:32px;height:24px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;border-radius:4px;">
-                <button class="rot-btn-sm" style="margin-left:auto" onclick="rotCatCreate()">Criar</button>
-                <button class="rot-btn-sm" onclick="rotCatHideNew()">Cancelar</button>
-              </div>
-            </div>
-            <div class="rot-scroll-host">
-              <div class="rot-scroll-wrap">
-                <div class="rot-cat-list" id="rotCatList">
-                  <div class="lib-status">Clique em Atualizar</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pane: Clocks -->
-          <div class="rot-pane" id="rotPaneClocks">
-            <div class="rot-action-bar">
-              <button class="rot-btn-sm" onclick="rotClockLoad()">↺ Atualizar</button>
-              <button class="rot-btn-sm" onclick="rotClockShowNew()">+ Novo clock</button>
-            </div>
-            <div id="rotClockNewForm" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);display:none;flex-direction:column;gap:6px;">
-              <input class="rot-input rot-input-wide" id="rotClockNewName" placeholder="Nome do clock (ex: Manhã Adulto)" />
-              <div style="display:flex;gap:6px;justify-content:flex-end;">
-                <button class="rot-btn-sm" onclick="rotClockCreate()">Criar</button>
-                <button class="rot-btn-sm" onclick="rotClockHideNew()">Cancelar</button>
-              </div>
-            </div>
-            <div class="rot-scroll-host">
-              <div class="rot-scroll-wrap">
-                <div class="rot-clock-list" id="rotClockList">
-                  <div class="lib-status">Clique em Atualizar</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pane: Grade 24x7 -->
-          <div class="rot-pane" id="rotPaneGrade" style="position:relative;">
-            <div class="rot-action-bar">
-              <button class="rot-btn-sm" onclick="rotGridLoad()">↺ Atualizar</button>
-              <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;">Clique em uma célula para atribuir um clock</span>
-            </div>
-            <div class="rot-grid-wrap" id="rotGridWrap">
-              <table class="rot-grid-table" id="rotGridTable">
-                <thead id="rotGridHead"></thead>
-                <tbody id="rotGridBody"></tbody>
-              </table>
-            </div>
-            <!-- floating clock picker -->
-            <div id="rotGridPicker" style="display:none;position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:6px 0;min-width:160px;box-shadow:0 6px 24px rgba(0,0,0,.6);overflow:hidden;">
-              <div id="rotGridPickerList"></div>
-            </div>
-          </div>
-
-          <!-- Pane: Regras de separação -->
-          <div class="rot-pane" id="rotPaneRegras">
-            <div class="rot-action-bar">
-              <button class="rot-btn-sm" onclick="rotRulesLoad()">↺ Atualizar</button>
-              <button class="rot-btn-sm" onclick="rotRuleShowNew()">+ Nova regra</button>
-            </div>
-            <div id="rotRuleNewForm" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);display:none;gap:6px;align-items:center;flex-wrap:wrap;">
-              <select class="rot-select" id="rotRuleNewField">
-                <option value="artist">Artista</option>
-                <option value="title">Título</option>
-                <option value="album">Álbum</option>
-                <option value="category">Categoria</option>
-              </select>
-              <input class="rot-input" id="rotRuleNewMin" type="number" min="1" value="60" style="width:60px;" placeholder="min">
-              <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.06em;">minutos</span>
-              <button class="rot-btn-sm" onclick="rotRuleCreate()">Criar</button>
-              <button class="rot-btn-sm" onclick="rotRuleHideNew()">Cancelar</button>
-            </div>
-            <div class="rot-scroll-host">
-              <div class="rot-scroll-wrap">
-                <div class="rot-rules-list" id="rotRulesList">
-                  <div class="lib-status">Clique em Atualizar</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pane: Gerar playlist -->
-          <div class="rot-pane" id="rotPaneGerar" style="display:none;flex-direction:column;">
-            <div class="rot-gen-form">
-              <div class="rot-gen-row">
-                <span class="rot-gen-label">Dia:</span>
-                <input class="rot-input" id="rotGenDate" type="date" style="flex:1;" oninput="rotGenUpdatePreview()">
-              </div>
-              <div class="rot-gen-row">
-                <span class="rot-gen-label">Hora:</span>
-                <select class="rot-select" id="rotGenHour" style="width:90px;" onchange="rotGenUpdatePreview()">
-                  <option value="0">00:00</option><option value="1">01:00</option>
-                  <option value="2">02:00</option><option value="3">03:00</option>
-                  <option value="4">04:00</option><option value="5">05:00</option>
-                  <option value="6">06:00</option><option value="7">07:00</option>
-                  <option value="8">08:00</option><option value="9">09:00</option>
-                  <option value="10">10:00</option><option value="11">11:00</option>
-                  <option value="12">12:00</option><option value="13">13:00</option>
-                  <option value="14">14:00</option><option value="15">15:00</option>
-                  <option value="16">16:00</option><option value="17">17:00</option>
-                  <option value="18">18:00</option><option value="19">19:00</option>
-                  <option value="20">20:00</option><option value="21">21:00</option>
-                  <option value="22">22:00</option><option value="23">23:00</option>
-                </select>
-              </div>
-              <div class="rot-gen-row">
-                <span class="rot-gen-label">Horas:</span>
-                <input class="rot-input" id="rotGenHours" type="number" min="1" max="24" value="1" style="width:60px;" oninput="rotGenUpdatePreview()">
-              </div>
-              <div id="rotGenPreview" style="font-size:11px;color:var(--accent);padding:2px 0 4px;min-height:14px;text-transform:uppercase;font-weight:700;letter-spacing:.04em;"></div>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <button class="rot-btn-sm" style="text-transform:uppercase;background:#123b40;color:#bdfcff;border:1px solid rgba(43,216,222,0.55);" onclick="rotGenerate()">Gerar Playlist</button>
-                <button class="rot-btn-sm" id="rotGenEnqueueBtn" style="display:none;text-transform:uppercase;margin-left:auto;background:#123b40;color:#bdfcff;border:1px solid rgba(43,216,222,0.55);" onclick="rotEnqueue()">Enfileirar no Player</button>
-              </div>
-            </div>
-            <div class="rot-gen-result" id="rotGenResult">
-              <div class="lib-status">Configure e clique em Gerar</div>
-            </div>
-            <div class="rot-gen-warnings" id="rotGenWarnings" style="display:none;"></div>
-            <div class="rot-gen-enqueue-bar" id="rotGenEnqueueBar" style="display:none;">
-              <span id="rotGenCount" style="font-size:11px;color:var(--accent);text-transform:uppercase;font-weight:700;letter-spacing:.04em;flex:1;"></span>
-            </div>
-          </div>
-
-        </div><!-- /libPanelRotacao -->
         <!-- Streaming (gerenciado pelo card lateral) -->
         <div class="lib-panel streaming-panel" id="libPanelStreaming">
           <div class="streaming-top">
@@ -3318,6 +3192,142 @@ canvas.vu-canvas {
 
       </div>
     </section><!-- /view-catalogo -->
+
+    <section class="workspace" id="view-rotacao">
+      <div class="cat-view">
+        <div class="cat-library-panel">
+
+          <!-- ── Header ──────────────────────────────────────── -->
+          <div class="cat-header">
+            <span class="cat-header-title">Rotação</span>
+          </div>
+
+          <!-- ── Conteúdo da rotação ─────────────────────────── -->
+          <div class="rot-panel" style="display:flex;flex:1;min-height:0;">
+
+        <!-- Sub-navegação -->
+        <div class="rot-subnav">
+          <button class="rot-subbtn active" id="rotTabClocks"  onclick="rotSwitchPane('clocks')">Clocks</button>
+          <button class="rot-subbtn"        id="rotTabGrade"   onclick="rotSwitchPane('grade')">Grade</button>
+          <button class="rot-subbtn"        id="rotTabRegras"  onclick="rotSwitchPane('regras')">Regras</button>
+          <button class="rot-subbtn"        id="rotTabGerar"   onclick="rotSwitchPane('gerar')">Gerar</button>
+        </div>
+
+        <!-- Pane: Clocks -->
+        <div class="rot-pane active" id="rotPaneClocks">
+          <div class="rot-action-bar">
+            <button class="rot-btn-sm" onclick="rotClockLoad()">↺ Atualizar</button>
+            <button class="rot-btn-sm" onclick="rotClockShowNew()">+ Novo clock</button>
+          </div>
+          <div id="rotClockNewForm" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);flex-direction:column;gap:6px;">
+            <input class="rot-input rot-input-wide" id="rotClockNewName" placeholder="Nome do clock (ex: Manhã Adulto)" />
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <button class="rot-btn-sm" onclick="rotClockCreate()">Criar</button>
+              <button class="rot-btn-sm" onclick="rotClockHideNew()">Cancelar</button>
+            </div>
+          </div>
+          <div class="rot-scroll-host">
+            <div class="rot-scroll-wrap">
+              <div class="rot-clock-list" id="rotClockList">
+                <div class="lib-status">Clique em Atualizar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pane: Grade 24x7 -->
+        <div class="rot-pane" id="rotPaneGrade" style="position:relative;">
+          <div class="rot-action-bar">
+            <button class="rot-btn-sm" onclick="rotGridLoad()">↺ Atualizar</button>
+            <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;">Clique em uma célula para atribuir um clock</span>
+          </div>
+          <div class="rot-grid-wrap" id="rotGridWrap">
+            <table class="rot-grid-table" id="rotGridTable">
+              <thead id="rotGridHead"></thead>
+              <tbody id="rotGridBody"></tbody>
+            </table>
+          </div>
+          <!-- floating clock picker -->
+          <div id="rotGridPicker" style="display:none;position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:6px 0;min-width:160px;box-shadow:0 6px 24px rgba(0,0,0,.6);overflow:hidden;">
+            <div id="rotGridPickerList"></div>
+          </div>
+        </div>
+
+        <!-- Pane: Regras de separação -->
+        <div class="rot-pane" id="rotPaneRegras">
+          <div class="rot-action-bar">
+            <button class="rot-btn-sm" onclick="rotRulesLoad()">↺ Atualizar</button>
+            <button class="rot-btn-sm" onclick="rotRuleShowNew()">+ Nova regra</button>
+          </div>
+          <div id="rotRuleNewForm" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);gap:6px;align-items:center;flex-wrap:wrap;">
+            <select class="rot-select" id="rotRuleNewField">
+              <option value="artist">Artista</option>
+              <option value="title">Título</option>
+              <option value="album">Álbum</option>
+              <option value="category">Categoria</option>
+            </select>
+            <input class="rot-input" id="rotRuleNewMin" type="number" min="1" value="60" style="width:60px;" placeholder="min">
+            <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.06em;">minutos</span>
+            <button class="rot-btn-sm" onclick="rotRuleCreate()">Criar</button>
+            <button class="rot-btn-sm" onclick="rotRuleHideNew()">Cancelar</button>
+          </div>
+          <div class="rot-scroll-host">
+            <div class="rot-scroll-wrap">
+              <div class="rot-rules-list" id="rotRulesList">
+                <div class="lib-status">Clique em Atualizar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pane: Gerar playlist -->
+        <div class="rot-pane" id="rotPaneGerar" style="display:none;flex-direction:column;">
+          <div class="rot-gen-form">
+            <div class="rot-gen-row">
+              <span class="rot-gen-label">Dia:</span>
+              <input class="rot-input" id="rotGenDate" type="date" style="flex:1;" oninput="rotGenUpdatePreview()">
+            </div>
+            <div class="rot-gen-row">
+              <span class="rot-gen-label">Hora:</span>
+              <select class="rot-select" id="rotGenHour" style="width:90px;" onchange="rotGenUpdatePreview()">
+                <option value="0">00:00</option><option value="1">01:00</option>
+                <option value="2">02:00</option><option value="3">03:00</option>
+                <option value="4">04:00</option><option value="5">05:00</option>
+                <option value="6">06:00</option><option value="7">07:00</option>
+                <option value="8">08:00</option><option value="9">09:00</option>
+                <option value="10">10:00</option><option value="11">11:00</option>
+                <option value="12">12:00</option><option value="13">13:00</option>
+                <option value="14">14:00</option><option value="15">15:00</option>
+                <option value="16">16:00</option><option value="17">17:00</option>
+                <option value="18">18:00</option><option value="19">19:00</option>
+                <option value="20">20:00</option><option value="21">21:00</option>
+                <option value="22">22:00</option><option value="23">23:00</option>
+              </select>
+            </div>
+            <div class="rot-gen-row">
+              <span class="rot-gen-label">Horas:</span>
+              <input class="rot-input" id="rotGenHours" type="number" min="1" max="24" value="1" style="width:60px;" oninput="rotGenUpdatePreview()">
+            </div>
+            <div id="rotGenPreview" style="font-size:11px;color:var(--accent);padding:2px 0 4px;min-height:14px;text-transform:uppercase;font-weight:700;letter-spacing:.04em;"></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button class="rot-btn-sm" style="text-transform:uppercase;background:#123b40;color:#bdfcff;border:1px solid rgba(43,216,222,0.55);" onclick="rotGenerate()">Gerar Playlist</button>
+              <button class="rot-btn-sm" id="rotGenEnqueueBtn" style="display:none;text-transform:uppercase;margin-left:auto;background:#123b40;color:#bdfcff;border:1px solid rgba(43,216,222,0.55);" onclick="rotEnqueue()">Enfileirar no Player</button>
+            </div>
+          </div>
+          <div class="rot-gen-result" id="rotGenResult">
+            <div class="lib-status">Configure e clique em Gerar</div>
+          </div>
+          <div class="rot-gen-warnings" id="rotGenWarnings" style="display:none;"></div>
+          <div class="rot-gen-enqueue-bar" id="rotGenEnqueueBar" style="display:none;">
+            <span id="rotGenCount" style="font-size:11px;color:var(--accent);text-transform:uppercase;font-weight:700;letter-spacing:.04em;flex:1;"></span>
+          </div>
+        </div>
+
+          </div><!-- /rot-panel -->
+
+        </div><!-- /cat-library-panel -->
+      </div><!-- /cat-view -->
+    </section><!-- /view-rotacao -->
 
   </div><!-- /main-layout -->
 
@@ -4598,6 +4608,9 @@ function setView(view, push) {
     catLoadCategories();
     catSearch();
   }
+  if (view === 'rotacao') {
+    rotInit();
+  }
 }
 
 // Bind dos botões data-view que não têm onclick próprio
@@ -4886,6 +4899,17 @@ async function catLoadCategories() {
     });
   } catch(e) { console.error('[cat] catLoadCategories error:', e); }
 }
+
+// Estado da tela de Rotação — declarado antes de setView para evitar TDZ com let/const
+let _rotInited     = false;
+let _rotCategories = [];
+let _rotClocks     = [];
+let _rotGrid       = [];
+let _rotRules      = [];
+let _rotGenItems   = [];
+let _rotPane       = 'clocks';
+const DAYS    = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const _DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
 // Restaura última view ou padrão "onair" (após todas as funções de catálogo estarem definidas)
 setView(localStorage.getItem('rfView') || 'onair', false);
@@ -6028,7 +6052,7 @@ window.addEventListener('load', () => {
   // Restaura estado visual do drawer — sem libFetch (auth ainda não concluída).
   // Os data loads são disparados por onAuthSuccess, após a sessão ser validada.
   const savedTab = localStorage.getItem('drawerTab');
-  const validTabs = ['breaks', 'botoneira', 'rotacao', 'streaming'];
+  const validTabs = ['breaks', 'botoneira', 'streaming'];
   if (savedTab && validTabs.includes(savedTab)) {
     _libTab = savedTab;
     const cap = savedTab.charAt(0).toUpperCase() + savedTab.slice(1);
@@ -6262,9 +6286,8 @@ async function checkLibraryHealth() {
 }
 
 function _rotRefreshPane(pane) {
-  if (pane === 'categorias') rotCatLoad();
-  if (pane === 'clocks')     rotClockLoad();
-  if (pane === 'grade')      { rotClockLoad(); rotGridLoad(); }
+  if (pane === 'clocks')     { rotCatLoad(); rotClockLoad(); }
+  if (pane === 'grade')      { rotCatLoad(); rotClockLoad(); rotGridLoad(); }
   if (pane === 'regras')     rotRulesLoad();
   if (pane === 'gerar')      rotGenInitForm();
 }
@@ -7289,7 +7312,6 @@ function libSwitchTab(tab) {
   document.getElementById('libPanel' + cap).classList.add('active');
   if (tab === 'breaks')    libLoadBreaks();
   if (tab === 'botoneira') drwHkInit();
-  if (tab === 'rotacao')   rotInit();
   if (tab === 'streaming') stmInit();
 }
 
@@ -7575,24 +7597,15 @@ function drwHkUpdateScrollbar() {
   if (pane) pane.dispatchEvent(new Event('scroll'));
 }
 
-/* ─── Drawer Rotação ─────────────────────────────────────────── */
-let _rotInited      = false;
-let _rotCategories  = [];
-let _rotClocks      = [];
-let _rotGrid        = []; // populated cells {weekday,hour,clock_id,clock_name}
-let _rotRules       = [];
-let _rotGenItems    = []; // last generated playlist
-let _rotPane        = 'categorias';
-
-const DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+/* ─── Rotação ────────────────────────────────────────────────── */
+// (variáveis de estado declaradas antes de setView, no topo do script)
 
 function rotInit() {
   if (_rotInited) return;
   _rotInited = true;
   const savedPane = localStorage.getItem('rotPane');
-  const validPanes = ['categorias','clocks','grade','regras','gerar'];
-  rotSwitchPane(validPanes.includes(savedPane) ? savedPane : 'categorias');
-  rotCatLoad();
+  const validPanes = ['clocks','grade','regras','gerar'];
+  rotSwitchPane(validPanes.includes(savedPane) ? savedPane : 'clocks');
 }
 
 function rotSwitchPane(pane) {
@@ -7612,14 +7625,14 @@ function rotSwitchPane(pane) {
 async function rotCatLoad() {
   if (!_libOnline) return;
   const list = document.getElementById('rotCatList');
-  list.innerHTML = '<div class="lib-status">Carregando…</div>';
+  if (list) list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
     const r = await libFetch('/v1/categories');
     const j = await r.json();
     _rotCategories = j.data || [];
-    rotCatRender();
+    if (list) rotCatRender();
   } catch(e) {
-    list.innerHTML = '<div class="lib-status">Erro ao carregar categorias</div>';
+    if (list) list.innerHTML = '<div class="lib-status">Erro ao carregar categorias</div>';
   }
 }
 
@@ -7776,13 +7789,20 @@ async function rotCatAddTrack(catId, trackId, btn) {
 
 /* ── Clocks ──────────────────────────────────────────────────── */
 async function rotClockLoad() {
-  if (!_libOnline) return;
+  const list = document.getElementById('rotClockList');
+  if (!_libOnline) {
+    if (list) list.innerHTML = '<div class="lib-status">⚠ Library offline — aguardando conexão…</div>';
+    return;
+  }
+  if (list) list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
     const r = await libFetch('/v1/clocks');
     const j = await r.json();
     _rotClocks = j.data || [];
-    if (_rotPane === 'clocks') rotClockRender();
-  } catch(e) {}
+    rotClockRender();
+  } catch(e) {
+    if (list) list.innerHTML = '<div class="lib-status">Erro ao carregar clocks</div>';
+  }
 }
 
 function rotClockRender() {
@@ -7878,16 +7898,14 @@ async function rotClockCreate() {
   if (!r.ok) { const j = await r.json(); alert(j.message || 'Erro'); return; }
   document.getElementById('rotClockNewName').value = '';
   rotClockHideNew();
-  rotClockLoad();
-  setTimeout(rotClockRender, 200);
+  await rotClockLoad();
 }
 
 async function rotClockDelete(id, name) {
   if (!confirm('Remover clock "' + name + '"?\nIsso também removerá os slots.')) return;
   const r = await libFetch('/v1/clocks/' + id, {method: 'DELETE'});
   if (!r.ok) { const j = await r.json(); alert(j.message || 'Não foi possível remover'); return; }
-  rotClockLoad();
-  setTimeout(rotClockRender, 200);
+  await rotClockLoad();
 }
 
 async function rotClockRefreshSlots(clockId) {
@@ -8049,8 +8067,11 @@ async function rotGridPickSelect(clockId) {
 const FIELD_LABEL = {artist:'Artista', title:'Título', album:'Álbum', category:'Categoria'};
 
 async function rotRulesLoad() {
-  if (!_libOnline) return;
   const list = document.getElementById('rotRulesList');
+  if (!_libOnline) {
+    if (list) list.innerHTML = '<div class="lib-status">⚠ Library offline — aguardando conexão…</div>';
+    return;
+  }
   list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
     const r = await libFetch('/v1/schedule/separation-rules');
@@ -8102,7 +8123,7 @@ async function rotRuleDelete(id) {
 }
 
 /* ── Gerar Playlist ──────────────────────────────────────────── */
-const _DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+// _DAYS_PT declarado antes de setView (ver topo do script)
 
 function rotGenInitForm() {
   const dateEl = document.getElementById('rotGenDate');
