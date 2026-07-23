@@ -999,7 +999,7 @@ input[type=range].vol-slider:disabled {
   transition: color .14s, background .14s; flex-shrink: 0;
 }
 .hkp-reload-btn:hover { background: rgba(220,239,242,0.05); color: #dceff2; }
-.hkp-open-btn { margin-left: auto; font-size: 16px; }
+.hkp-open-btn { margin-left: auto; font-size: 19px; }
 .hkp-profile-pill {
   display: flex; align-items: center; gap: 8px;
   background: rgba(255,255,255,.04); border: 1px solid #20384c;
@@ -2787,7 +2787,6 @@ canvas.vu-canvas {
         <!-- Toolbar: busca + ações -->
         <div class="queue-toolbar">
           <input class="queue-search-input" type="text" placeholder="Buscar na fila..." id="queueSearch" oninput="queueFilterInput(this.value)">
-          <button class="q-insert-btn" onclick="advModalOpen()" data-tooltip="Inserir na fila">+ Inserir</button>
           <button class="queue-refresh btn-sq tip-below" onclick="fetchQueue()" data-tooltip="Atualizar"><img class="btn-icon" src="icons/atualizar.svg"></button>
         </div>
         <!-- Info bar -->
@@ -2795,7 +2794,7 @@ canvas.vu-canvas {
           <span class="queue-count" id="queueCount">0 itens</span>
           <span class="queue-duration" id="queueDuration"></span>
           <div style="margin-left:auto;display:flex;gap:6px">
-            <button class="queue-refresh btn-sq tip-below" id="btnClearQueue" onclick="assistClearQueue()" data-tooltip="Limpar Fila"><img class="btn-icon" src="icons/limpar_fila.svg"></button>
+            <button class="queue-refresh btn-sq tip-below" id="btnClearQueue" onclick="assistClearQueue()" data-tooltip="Limpar Fila" style="font-size:28px">∅</button>
             <button class="queue-refresh btn-sq queue-refresh-orange tip-below" onclick="assistInsertHoraCerta()" data-tooltip="Hora Certa"><img class="btn-icon" src="icons/hora_certa.svg"></button>
           </div>
         </div>
@@ -2933,7 +2932,7 @@ canvas.vu-canvas {
             <div class="hkp-profile-dd" id="hkpProfileDD"></div>
           </div>
           <button class="hkp-reload-btn tip-below" onclick="hkpInit()" data-tooltip="Recarregar perfis">↺</button>
-          <button class="hkp-reload-btn hkp-open-btn tip-left" onclick="hkpOpenWindow(event)" data-tooltip="Abrir botoneira">↗</button>
+          <button class="hkp-reload-btn hkp-open-btn tip-left" onclick="hkpOpenWindow(event)" data-tooltip="Abrir botoneira">⧉</button>
         </div>
         <div class="hkp-grid-wrap">
           <div class="hkp-grid" id="hkpGrid">
