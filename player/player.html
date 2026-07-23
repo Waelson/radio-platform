@@ -3207,40 +3207,14 @@ canvas.vu-canvas {
 
         <!-- Sub-navegação -->
         <div class="rot-subnav">
-          <button class="rot-subbtn active" id="rotTabCategorias"  onclick="rotSwitchPane('categorias')">Categorias</button>
-          <button class="rot-subbtn"        id="rotTabClocks"      onclick="rotSwitchPane('clocks')">Clocks</button>
-          <button class="rot-subbtn"        id="rotTabGrade"       onclick="rotSwitchPane('grade')">Grade</button>
-          <button class="rot-subbtn"        id="rotTabRegras"      onclick="rotSwitchPane('regras')">Regras</button>
-          <button class="rot-subbtn"        id="rotTabGerar"       onclick="rotSwitchPane('gerar')">Gerar</button>
-        </div>
-
-        <!-- Pane: Categorias -->
-        <div class="rot-pane active" id="rotPaneCategorias">
-          <div class="rot-action-bar">
-            <button class="rot-btn-sm" onclick="rotCatLoad()">↺ Atualizar</button>
-            <button class="rot-btn-sm" onclick="rotCatShowNew()">+ Nova categoria</button>
-          </div>
-          <div id="rotCatNewForm" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);flex-direction:column;gap:6px;">
-            <input class="rot-input rot-input-wide" id="rotCatNewName" placeholder="Nome da categoria" />
-            <input class="rot-input rot-input-wide" id="rotCatNewDesc" placeholder="Descrição (opcional)" />
-            <div style="display:flex;gap:6px;align-items:center;">
-              <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.06em;">Cor:</label>
-              <input type="color" id="rotCatNewColor" value="#20e6ff" style="width:32px;height:24px;padding:0;border:1px solid var(--border);background:none;cursor:pointer;border-radius:4px;">
-              <button class="rot-btn-sm" style="margin-left:auto" onclick="rotCatCreate()">Criar</button>
-              <button class="rot-btn-sm" onclick="rotCatHideNew()">Cancelar</button>
-            </div>
-          </div>
-          <div class="rot-scroll-host">
-            <div class="rot-scroll-wrap">
-              <div class="rot-cat-list" id="rotCatList">
-                <div class="lib-status">Clique em Atualizar</div>
-              </div>
-            </div>
-          </div>
+          <button class="rot-subbtn active" id="rotTabClocks"  onclick="rotSwitchPane('clocks')">Clocks</button>
+          <button class="rot-subbtn"        id="rotTabGrade"   onclick="rotSwitchPane('grade')">Grade</button>
+          <button class="rot-subbtn"        id="rotTabRegras"  onclick="rotSwitchPane('regras')">Regras</button>
+          <button class="rot-subbtn"        id="rotTabGerar"   onclick="rotSwitchPane('gerar')">Gerar</button>
         </div>
 
         <!-- Pane: Clocks -->
-        <div class="rot-pane" id="rotPaneClocks">
+        <div class="rot-pane active" id="rotPaneClocks">
           <div class="rot-action-bar">
             <button class="rot-btn-sm" onclick="rotClockLoad()">↺ Atualizar</button>
             <button class="rot-btn-sm" onclick="rotClockShowNew()">+ Novo clock</button>
@@ -7620,7 +7594,7 @@ let _rotClocks      = [];
 let _rotGrid        = []; // populated cells {weekday,hour,clock_id,clock_name}
 let _rotRules       = [];
 let _rotGenItems    = []; // last generated playlist
-let _rotPane        = 'categorias';
+let _rotPane        = 'clocks';
 
 const DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
@@ -7628,9 +7602,8 @@ function rotInit() {
   if (_rotInited) return;
   _rotInited = true;
   const savedPane = localStorage.getItem('rotPane');
-  const validPanes = ['categorias','clocks','grade','regras','gerar'];
-  rotSwitchPane(validPanes.includes(savedPane) ? savedPane : 'categorias');
-  rotCatLoad();
+  const validPanes = ['clocks','grade','regras','gerar'];
+  rotSwitchPane(validPanes.includes(savedPane) ? savedPane : 'clocks');
 }
 
 function rotSwitchPane(pane) {
