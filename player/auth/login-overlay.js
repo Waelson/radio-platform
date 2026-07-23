@@ -381,7 +381,6 @@ body.auth-locked .app {
       const tab = window._libTab || ''
       if (tab === 'breaks'    && typeof libLoadBreaks === 'function') try { libLoadBreaks() } catch {}
       if (tab === 'botoneira' && typeof drwHkInit     === 'function') try { drwHkInit()     } catch {}
-      if (tab === 'rotacao'   && typeof rotInit       === 'function') try { rotInit()       } catch {}
       // 'streaming' já é coberto por stmInit() acima
     }
     // Se a view de catálogo estiver ativa, recarrega categorias e resultados
@@ -390,6 +389,11 @@ body.auth-locked .app {
     if (document.querySelector('#view-catalogo.active')) {
       if (typeof catLoadCategories === 'function') try { catLoadCategories() } catch {}
       if (typeof catSearch         === 'function') try { catSearch()         } catch {}
+    }
+    // Se a view de rotação estiver ativa, recarrega o pane ativo
+    if (document.querySelector('#view-rotacao.active')) {
+      if (typeof rotInit          === 'function') try { rotInit()                            } catch {}
+      if (typeof _rotRefreshPane  === 'function') try { _rotRefreshPane(typeof _rotPane !== 'undefined' ? _rotPane : 'categorias') } catch {}
     }
   }
 
