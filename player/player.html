@@ -4900,6 +4900,17 @@ async function catLoadCategories() {
   } catch(e) { console.error('[cat] catLoadCategories error:', e); }
 }
 
+// Estado da tela de Rotação — declarado antes de setView para evitar TDZ com let/const
+let _rotInited     = false;
+let _rotCategories = [];
+let _rotClocks     = [];
+let _rotGrid       = [];
+let _rotRules      = [];
+let _rotGenItems   = [];
+let _rotPane       = 'clocks';
+const DAYS    = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const _DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
 // Restaura última view ou padrão "onair" (após todas as funções de catálogo estarem definidas)
 setView(localStorage.getItem('rfView') || 'onair', false);
 
@@ -6275,9 +6286,8 @@ async function checkLibraryHealth() {
 }
 
 function _rotRefreshPane(pane) {
-  if (pane === 'categorias') rotCatLoad();
-  if (pane === 'clocks')     rotClockLoad();
-  if (pane === 'grade')      { rotClockLoad(); rotGridLoad(); }
+  if (pane === 'clocks')     { rotCatLoad(); rotClockLoad(); }
+  if (pane === 'grade')      { rotCatLoad(); rotClockLoad(); rotGridLoad(); }
   if (pane === 'regras')     rotRulesLoad();
   if (pane === 'gerar')      rotGenInitForm();
 }
@@ -7587,16 +7597,8 @@ function drwHkUpdateScrollbar() {
   if (pane) pane.dispatchEvent(new Event('scroll'));
 }
 
-/* ─── Drawer Rotação ─────────────────────────────────────────── */
-let _rotInited      = false;
-let _rotCategories  = [];
-let _rotClocks      = [];
-let _rotGrid        = []; // populated cells {weekday,hour,clock_id,clock_name}
-let _rotRules       = [];
-let _rotGenItems    = []; // last generated playlist
-let _rotPane        = 'clocks';
-
-const DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+/* ─── Rotação ────────────────────────────────────────────────── */
+// (variáveis de estado declaradas antes de setView, no topo do script)
 
 function rotInit() {
   if (_rotInited) return;
@@ -7623,14 +7625,14 @@ function rotSwitchPane(pane) {
 async function rotCatLoad() {
   if (!_libOnline) return;
   const list = document.getElementById('rotCatList');
-  list.innerHTML = '<div class="lib-status">Carregando…</div>';
+  if (list) list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
     const r = await libFetch('/v1/categories');
     const j = await r.json();
     _rotCategories = j.data || [];
-    rotCatRender();
+    if (list) rotCatRender();
   } catch(e) {
-    list.innerHTML = '<div class="lib-status">Erro ao carregar categorias</div>';
+    if (list) list.innerHTML = '<div class="lib-status">Erro ao carregar categorias</div>';
   }
 }
 
@@ -7787,13 +7789,20 @@ async function rotCatAddTrack(catId, trackId, btn) {
 
 /* ── Clocks ──────────────────────────────────────────────────── */
 async function rotClockLoad() {
-  if (!_libOnline) return;
+  const list = document.getElementById('rotClockList');
+  if (!_libOnline) {
+    if (list) list.innerHTML = '<div class="lib-status">⚠ Library offline — aguardando conexão…</div>';
+    return;
+  }
+  if (list) list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
     const r = await libFetch('/v1/clocks');
     const j = await r.json();
     _rotClocks = j.data || [];
-    if (_rotPane === 'clocks') rotClockRender();
-  } catch(e) {}
+    rotClockRender();
+  } catch(e) {
+    if (list) list.innerHTML = '<div class="lib-status">Erro ao carregar clocks</div>';
+  }
 }
 
 function rotClockRender() {
@@ -7889,16 +7898,14 @@ async function rotClockCreate() {
   if (!r.ok) { const j = await r.json(); alert(j.message || 'Erro'); return; }
   document.getElementById('rotClockNewName').value = '';
   rotClockHideNew();
-  rotClockLoad();
-  setTimeout(rotClockRender, 200);
+  await rotClockLoad();
 }
 
 async function rotClockDelete(id, name) {
   if (!confirm('Remover clock "' + name + '"?\nIsso também removerá os slots.')) return;
   const r = await libFetch('/v1/clocks/' + id, {method: 'DELETE'});
   if (!r.ok) { const j = await r.json(); alert(j.message || 'Não foi possível remover'); return; }
-  rotClockLoad();
-  setTimeout(rotClockRender, 200);
+  await rotClockLoad();
 }
 
 async function rotClockRefreshSlots(clockId) {
@@ -8060,8 +8067,11 @@ async function rotGridPickSelect(clockId) {
 const FIELD_LABEL = {artist:'Artista', title:'Título', album:'Álbum', category:'Categoria'};
 
 async function rotRulesLoad() {
-  if (!_libOnline) return;
   const list = document.getElementById('rotRulesList');
+  if (!_libOnline) {
+    if (list) list.innerHTML = '<div class="lib-status">⚠ Library offline — aguardando conexão…</div>';
+    return;
+  }
   list.innerHTML = '<div class="lib-status">Carregando…</div>';
   try {
     const r = await libFetch('/v1/schedule/separation-rules');
@@ -8113,7 +8123,7 @@ async function rotRuleDelete(id) {
 }
 
 /* ── Gerar Playlist ──────────────────────────────────────────── */
-const _DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+// _DAYS_PT declarado antes de setView (ver topo do script)
 
 function rotGenInitForm() {
   const dateEl = document.getElementById('rotGenDate');
