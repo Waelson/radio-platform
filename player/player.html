@@ -5210,6 +5210,7 @@ async function submitBreak() {
    Preview (CUE) Player — painel inline na Biblioteca
    ═══════════════════════════════════════════════════════════════ */
 const _preview = { state: 'idle', path: '', positionMS: 0, durationMS: 0, trackIdx: null };
+let _prevPath = null;
 
 
 function _libClosePreviewPanel() {
