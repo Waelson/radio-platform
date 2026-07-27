@@ -188,7 +188,7 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 		cursor := t
 
 		for _, slot := range clock.Slots {
-			// Stop before adding more items once the limit is reached.
+			// Hard stop: limite já atingido na iteração anterior.
 			if accumulatedMS >= limitMS {
 				done = true
 				break
@@ -209,6 +209,23 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 				continue
 			}
 
+			// Compute item duration for the cap and the cursor.
+			dur := time.Duration(track.DurationMS) * time.Millisecond
+			if slot.DurationHintMS > 0 {
+				dur = time.Duration(slot.DurationHintMS) * time.Millisecond
+			}
+			if dur == 0 {
+				dur = 3 * time.Minute // safe default
+			}
+
+			// Lookahead cap: rejeita o item se adicioná-lo ultrapassaria o limite.
+			// Exceção: se a playlist ainda está vazia, aceita o primeiro item
+			// independentemente da duração (evita retornar lista vazia).
+			if len(items) > 0 && accumulatedMS+dur.Milliseconds() > limitMS {
+				done = true
+				break
+			}
+
 			items = append(items, GeneratedItem{
 				Hour:         hour,
 				Position:     slot.Position,
@@ -220,15 +237,6 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 				CategoryName: slot.CategoryName,
 				Track:        *track,
 			})
-
-			// Compute item duration for the cap and the cursor.
-			dur := time.Duration(track.DurationMS) * time.Millisecond
-			if slot.DurationHintMS > 0 {
-				dur = time.Duration(slot.DurationHintMS) * time.Millisecond
-			}
-			if dur == 0 {
-				dur = 3 * time.Minute // safe default
-			}
 
 			accumulatedMS += dur.Milliseconds()
 
@@ -273,9 +281,10 @@ func (g *Generator) resolveSlot(
 	}
 
 	// HORA_CERTA é um sinal sintético gerenciado pelo playout engine — não existe
-	// como faixa na biblioteca. Retorna um sentinela diretamente, sem buscar candidatos.
+	// como faixa na biblioteca. Retorna um sentinela com duração realista (3s)
+	// para não inflar o acumulador do cap com o fallback de 3 min.
 	if slot.SlotType == "HORA_CERTA" {
-		return &TrackRef{Type: "HORA_CERTA", Title: "Hora Certa"}, "", nil
+		return &TrackRef{Type: "HORA_CERTA", Title: "Hora Certa", DurationMS: 3000}, "", nil
 	}
 
 	// Load candidates.
