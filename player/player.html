@@ -1923,7 +1923,7 @@ input[type=range].vol-slider:disabled {
 /* duration hint per slot */
 .rot-slot-hint { font-size: 9px; font-weight: 700; color: var(--text-dim); min-width: 22px; text-align: right; flex-shrink: 0; cursor: pointer; padding: 1px 3px; border-radius: 3px; border: 1px solid transparent; transition: border-color .15s, color .15s; }
 .rot-slot-hint:hover { border-color: var(--border); color: var(--cyan); }
-.rot-slot-hint-input { width: 36px; font-size: 9px; background: var(--bg2); border: 1px solid var(--cyan); border-radius: 3px; color: var(--text-hi); font-family: inherit; text-align: right; padding: 1px 3px; }
+.rot-slot-hint-input { width: 44px; font-size: 9px; background: var(--bg2); border: 1px solid var(--cyan); border-radius: 3px; color: var(--text-hi); font-family: inherit; text-align: right; padding: 1px 3px; }
 /* clock header hint total */
 .rot-clock-hint-total { font-size: 9px; font-weight: 700; color: #4a8c6a; background: rgba(32,200,100,0.10); border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
 /* inline insert form */
@@ -7855,7 +7855,7 @@ function rotClockRender() {
         <div class="rot-slots-list" id="rotSlotsList_${c.id}"><div class="lib-status" style="font-size:10px">Carregando…</div></div>
         <div class="rot-slot-add-form" id="rotSlotAddForm_${c.id}">
           <select class="rot-select" id="rotSlotType_${c.id}" onchange="rotSlotTypeChanged('${c.id}')">
-            <option value="CATEGORY">Categoria</option>
+            <option value="CATEGORY">Categoria Musical</option>
             <option value="JINGLE">Jingle</option>
             <option value="SPOT">Spot</option>
             <option value="VINHETA">Vinheta</option>
@@ -7865,23 +7865,33 @@ function rotClockRender() {
           <select class="rot-select" id="rotSlotCat_${c.id}" style="">
             ${_rotCategories.map(cat => `<option value="${cat.id}">${escHtml(cat.name)}</option>`).join('')}
           </select>
-          <input class="rot-input" type="number" min="0" step="1" id="rotSlotHint_${c.id}" placeholder="min" title="Duração estimada (min)" style="width:52px;">
+          <input class="rot-input" type="number" min="0" step="1" id="rotSlotHint_${c.id}" placeholder="seg" title="Duração estimada (seg)" style="width:73px;">
           <button class="rot-btn-sm" onclick="rotSlotAdd('${c.id}')">+ Adicionar slot</button>
         </div>
       </div>
     </div>`).join('');
 }
 
+const _ROT_SLOT_DEFAULT_SEC = {
+  CATEGORY:   180,
+  HORA_CERTA:   3,
+  VINHETA:     12,
+  JINGLE:      30,
+  SPOT:        30,
+};
+
 function rotSlotTypeChanged(clockId) {
-  const type = document.getElementById('rotSlotType_' + clockId).value;
+  const type   = document.getElementById('rotSlotType_' + clockId).value;
   const catSel = document.getElementById('rotSlotCat_' + clockId);
   if (catSel) catSel.style.display = type === 'CATEGORY' ? '' : 'none';
+  const hintEl = document.getElementById('rotSlotHint_' + clockId);
+  if (hintEl) hintEl.value = _ROT_SLOT_DEFAULT_SEC[type] ?? '';
 }
 
 /* ── Shared slot row HTML ──────────────────────────────────────── */
 function rotSlotRowHTML(clockId, s) {
   const hintMs  = s.duration_hint_ms || 0;
-  const hintLbl = hintMs > 0 ? Math.round(hintMs / 60000) + 'm' : '—';
+  const hintLbl = _fmtHintMs(hintMs);
   return `
     <div class="rot-slot-row is-draggable" id="rotSlotRow_${s.id}"
          data-slot-id="${s.id}" data-clock-id="${clockId}"
@@ -7949,8 +7959,7 @@ function _rotUpdateClockHintTotal(clockId, slotsEl) {
   const hintEl = document.getElementById('rotClockHint_' + clockId);
   if (!hintEl) return;
   if (totalMs > 0) {
-    const min = Math.round(totalMs / 60000);
-    hintEl.textContent = '~' + min + 'min';
+    hintEl.textContent = '~' + _fmtHintMs(totalMs);
     hintEl.title = 'Duração total estimada do clock';
   } else {
     hintEl.textContent = '';
@@ -8021,9 +8030,9 @@ async function rotSlotAdd(clockId) {
   const catEl   = document.getElementById('rotSlotCat_' + clockId);
   const catId   = (type === 'CATEGORY' && catEl) ? catEl.value : '';
   const hintEl  = document.getElementById('rotSlotHint_' + clockId);
-  const hintMin = hintEl ? parseInt(hintEl.value) || 0 : 0;
+  const hintSec = hintEl ? parseInt(hintEl.value) || 0 : 0;
   const body    = {slot_type: type, category_id: catId};
-  if (hintMin > 0) body.duration_hint_ms = hintMin * 60000;
+  if (hintSec > 0) body.duration_hint_ms = hintSec * 1000;
   const r = await libFetch('/v1/clocks/' + clockId + '/slots', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body)
@@ -8048,12 +8057,12 @@ async function rotSlotDelete(clockId, slotId) {
 /* ── Hint inline edit ────────────────────────────────────────── */
 function rotSlotHintEdit(spanEl, clockId, slotId) {
   const currentMs  = parseInt(spanEl.dataset.hintMs) || 0;
-  const currentMin = currentMs > 0 ? Math.round(currentMs / 60000) : '';
+  const currentSec = currentMs > 0 ? Math.round(currentMs / 1000) : '';
   const input = document.createElement('input');
   input.type        = 'number';
   input.min         = '0';
-  input.value       = currentMin;
-  input.placeholder = 'min';
+  input.value       = currentSec;
+  input.placeholder = 'seg';
   input.className   = 'rot-slot-hint-input';
   input.style.width = '48px';
   spanEl.replaceWith(input);
@@ -8061,8 +8070,8 @@ function rotSlotHintEdit(spanEl, clockId, slotId) {
   input.select();
 
   const commit = () => {
-    const min   = parseInt(input.value) || 0;
-    const hintMs = min * 60000;
+    const sec    = parseInt(input.value) || 0;
+    const hintMs = sec * 1000;
     const row   = input.closest('.rot-slot-row');
     const type  = row ? row.dataset.slotType : '';
     const catId = row ? row.dataset.catId    : '';
@@ -8085,7 +8094,6 @@ async function rotSlotSaveHint(clockId, slotId, slotType, catId, hintMs, inputEl
     method: 'PUT', headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body),
   });
-  const hintLbl = hintMs > 0 ? Math.round(hintMs / 60000) + 'm' : '—';
   const span = _rotHintSpan(hintMs);
   span.onclick = () => rotSlotHintEdit(span, clockId, slotId);
   if (inputEl) inputEl.replaceWith(span);
@@ -8103,15 +8111,28 @@ function _rotHintSpan(hintMs) {
   span.className       = 'rot-slot-hint';
   span.dataset.hintMs  = hintMs;
   span.title           = 'Duração estimada (clique para editar)';
-  span.textContent     = hintMs > 0 ? Math.round(hintMs / 60000) + 'm' : '—';
+  span.textContent     = _fmtHintMs(hintMs);
   return span;
+}
+
+// Formata duração em ms para exibição: "—" | "30s" | "2m" | "2m30s"
+function _fmtHintMs(ms) {
+  if (!ms || ms <= 0) return '—';
+  const totalSec = Math.round(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m === 0) return s + 's';
+  if (s === 0) return m + 'm';
+  return m + 'm' + s + 's';
 }
 
 /* ── Insert before / after ───────────────────────────────────── */
 function _rotInsertTypeChanged(formEl) {
-  const type = formEl.querySelector('.rot-insert-type-sel').value;
-  const cat  = formEl.querySelector('.rot-insert-cat-sel');
+  const type    = formEl.querySelector('.rot-insert-type-sel').value;
+  const cat     = formEl.querySelector('.rot-insert-cat-sel');
   if (cat) cat.style.display = type === 'CATEGORY' ? '' : 'none';
+  const hintEl  = formEl.querySelector('.rot-insert-hint-input');
+  if (hintEl) hintEl.value = _ROT_SLOT_DEFAULT_SEC[type] ?? '';
 }
 
 function rotSlotShowInsertForm(clockId, refSlotId, direction) {
@@ -8123,7 +8144,7 @@ function rotSlotShowInsertForm(clockId, refSlotId, direction) {
   form.className = 'rot-slot-insert-form';
   form.innerHTML = `
     <select class="rot-select rot-insert-type-sel" onchange="_rotInsertTypeChanged(this.closest('.rot-slot-insert-form'))">
-      <option value="CATEGORY">Categoria</option>
+      <option value="CATEGORY">Categoria Musical</option>
       <option value="JINGLE">Jingle</option>
       <option value="SPOT">Spot</option>
       <option value="VINHETA">Vinheta</option>
@@ -8131,6 +8152,7 @@ function rotSlotShowInsertForm(clockId, refSlotId, direction) {
       <option value="FIXED">Faixa fixa</option>
     </select>
     <select class="rot-select rot-insert-cat-sel">${catOptions}</select>
+    <input class="rot-input rot-insert-hint-input" type="number" min="0" step="1" placeholder="seg" title="Duração estimada (seg)" style="width:73px;">
     <button class="rot-btn-sm" onclick="rotSlotConfirmInsert('${clockId}','${refSlotId}','${direction}',this.closest('.rot-slot-insert-form'))">✔ Inserir</button>
     <button class="rot-slot-insert-cancel" onclick="this.closest('.rot-slot-insert-form').remove()">✕</button>`;
 
@@ -8146,14 +8168,18 @@ function rotSlotShowInsertForm(clockId, refSlotId, direction) {
 }
 
 async function rotSlotConfirmInsert(clockId, refSlotId, direction, formEl) {
-  const type  = formEl.querySelector('.rot-insert-type-sel').value;
-  const catEl = formEl.querySelector('.rot-insert-cat-sel');
-  const catId = type === 'CATEGORY' ? (catEl ? catEl.value : '') : '';
+  const type    = formEl.querySelector('.rot-insert-type-sel').value;
+  const catEl   = formEl.querySelector('.rot-insert-cat-sel');
+  const catId   = type === 'CATEGORY' ? (catEl ? catEl.value : '') : '';
+  const hintEl  = formEl.querySelector('.rot-insert-hint-input');
+  const hintSec = hintEl ? parseInt(hintEl.value) || 0 : 0;
+  const body    = {slot_type: type, category_id: catId};
+  if (hintSec > 0) body.duration_hint_ms = hintSec * 1000;
 
   // 1. Add slot at the end
   const r = await libFetch('/v1/clocks/' + clockId + '/slots', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({slot_type: type, category_id: catId}),
+    body: JSON.stringify(body),
   });
   if (!r.ok) { alert('Erro ao adicionar slot'); return; }
   const j = await r.json();
