@@ -247,9 +247,9 @@ func TestGenerate_MultipleHours(t *testing.T) {
 }
 
 // TestGenerate_DurationCap verifies that the safety cap stops adding slots once
-// the accumulated duration reaches the requested time window.
+// accumulated + next_dur would exceed the limit (lookahead).
 // Clock has 25 slots × 3 min each = 75 min, but only 1 hour is requested.
-// Expected: exactly 20 items (20 × 3 min = 60 min ≥ cap → stops before slot 21).
+// Lookahead rejects slot 21 because 20×3 min = 60 min exactly at the limit.
 func TestGenerate_DurationCap(t *testing.T) {
 	track := makeTrack("t1", "Artist", "Song") // DurationMS = 180_000 (3 min)
 	slots := make([]scheduler.Slot, 25)
@@ -273,10 +273,48 @@ func TestGenerate_DurationCap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
-	// 25 slots × 3 min = 75 min > 60 min limit → cap must fire.
-	// 20 slots × 3 min = 60 min = limit → cap fires before slot 21.
 	if len(items) != 20 {
 		t.Errorf("expected 20 items (duration cap), got %d", len(items))
+	}
+	total := int64(0)
+	for _, it := range items {
+		total += it.Track.DurationMS
+	}
+	if total > 3_600_000 {
+		t.Errorf("total duration %dms exceeds 1-hour cap (3_600_000ms)", total)
+	}
+}
+
+// TestGenerate_DurationCapLookahead verifies that the lookahead cap prevents a
+// long track from pushing the playlist past the requested time window.
+// Clock has 25 slots × 7 min each = 175 min, but only 1 hour is requested.
+// After 8 tracks (56 min), the 9th (7 min) would reach 63 min > 60 min → rejected.
+func TestGenerate_DurationCapLookahead(t *testing.T) {
+	track := scheduler.TrackRef{ID: "t1", Artist: "Artist", Title: "Long Song", DurationMS: 420_000} // 7 min
+	slots := make([]scheduler.Slot, 25)
+	for i := range slots {
+		slots[i] = scheduler.Slot{
+			ID:         fmt.Sprintf("s%d", i+1),
+			Position:   i + 1,
+			SlotType:   "CATEGORY",
+			CategoryID: "cat1",
+		}
+	}
+	gen := scheduler.New(
+		&stubClocks{clock: simpleClock(slots)},
+		&stubTracks{byCategory: map[string][]scheduler.TrackRef{"cat1": {track}}},
+		&stubSepRules{},
+		&stubRotLog{},
+	)
+
+	from := time.Date(2026, 7, 19, 8, 0, 0, 0, time.UTC)
+	items, _, err := gen.Generate(context.Background(), from, 1)
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	// 8 × 7 min = 56 min ≤ 60 min; 9 × 7 min = 63 min > 60 min → stops at 8.
+	if len(items) != 8 {
+		t.Errorf("expected 8 items (lookahead cap), got %d", len(items))
 	}
 	total := int64(0)
 	for _, it := range items {
