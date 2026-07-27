@@ -1920,6 +1920,12 @@ input[type=range].vol-slider:disabled {
 .rot-slot-row:hover .rot-slot-actions { opacity: 1; }
 .rot-slot-ins { background: none; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); cursor: pointer; font-size: 10px; padding: 1px 4px; line-height: 1; }
 .rot-slot-ins:hover { border-color: var(--cyan); color: var(--cyan); }
+/* duration hint per slot */
+.rot-slot-hint { font-size: 9px; font-weight: 700; color: var(--text-dim); min-width: 22px; text-align: right; flex-shrink: 0; cursor: pointer; padding: 1px 3px; border-radius: 3px; border: 1px solid transparent; transition: border-color .15s, color .15s; }
+.rot-slot-hint:hover { border-color: var(--border); color: var(--cyan); }
+.rot-slot-hint-input { width: 36px; font-size: 9px; background: var(--bg2); border: 1px solid var(--cyan); border-radius: 3px; color: var(--text-hi); font-family: inherit; text-align: right; padding: 1px 3px; }
+/* clock header hint total */
+.rot-clock-hint-total { font-size: 9px; font-weight: 700; color: #4a8c6a; background: rgba(32,200,100,0.10); border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
 /* inline insert form */
 .rot-slot-insert-form { display: flex; gap: 5px; padding: 3px 7px; align-items: center; background: rgba(32,230,255,0.05); border-radius: 5px; border: 1px dashed rgba(32,230,255,0.25); flex-wrap: wrap; }
 .rot-slot-insert-form .rot-select { font-size: 11px; padding: 2px 5px; }
@@ -7842,6 +7848,7 @@ function rotClockRender() {
       <div class="rot-clock-header" onclick="rotClockToggle('${c.id}')">
         <span class="rot-clock-hname">${escHtml(c.name)}</span>
         <span class="rot-clock-slot-count">${c.slot_count||0} slots</span>
+        <span class="rot-clock-hint-total" id="rotClockHint_${c.id}"></span>
         <button class="rot-btn-sm danger" onclick="event.stopPropagation();rotClockDelete('${c.id}','${escHtml(c.name)}')">✕</button>
       </div>
       <div class="rot-clock-body">
@@ -7858,6 +7865,7 @@ function rotClockRender() {
           <select class="rot-select" id="rotSlotCat_${c.id}" style="">
             ${_rotCategories.map(cat => `<option value="${cat.id}">${escHtml(cat.name)}</option>`).join('')}
           </select>
+          <input class="rot-input" type="number" min="0" step="1" id="rotSlotHint_${c.id}" placeholder="min" title="Duração estimada (min)" style="width:52px;">
           <button class="rot-btn-sm" onclick="rotSlotAdd('${c.id}')">+ Adicionar slot</button>
         </div>
       </div>
@@ -7872,12 +7880,17 @@ function rotSlotTypeChanged(clockId) {
 
 /* ── Shared slot row HTML ──────────────────────────────────────── */
 function rotSlotRowHTML(clockId, s) {
+  const hintMs  = s.duration_hint_ms || 0;
+  const hintLbl = hintMs > 0 ? Math.round(hintMs / 60000) + 'm' : '—';
   return `
-    <div class="rot-slot-row is-draggable" id="rotSlotRow_${s.id}" data-slot-id="${s.id}" data-clock-id="${clockId}">
+    <div class="rot-slot-row is-draggable" id="rotSlotRow_${s.id}"
+         data-slot-id="${s.id}" data-clock-id="${clockId}"
+         data-slot-type="${s.slot_type}" data-cat-id="${s.category_id || ''}">
       <span class="dnd-handle" title="Arrastar para reordenar">⠿</span>
       <span class="rot-slot-pos">${s.position}</span>
       <span class="rot-slot-badge">${s.slot_type}</span>
       <span class="rot-slot-cat">${escHtml(s.category_name || s.slot_type)}</span>
+      <span class="rot-slot-hint" data-hint-ms="${hintMs}" title="Duração estimada (clique para editar)" onclick="rotSlotHintEdit(this,'${clockId}','${s.id}')">${hintLbl}</span>
       <div class="rot-slot-actions">
         <button class="rot-slot-ins" title="Inserir antes" onclick="rotSlotShowInsertForm('${clockId}','${s.id}','before')">+↑</button>
         <button class="rot-slot-ins" title="Inserir depois" onclick="rotSlotShowInsertForm('${clockId}','${s.id}','after')">+↓</button>
@@ -7925,6 +7938,23 @@ function rotRenderSlots(clockId, slots) {
   if (badge) badge.textContent = slots.length + ' slots';
   const clk = _rotClocks.find(c => c.id === clockId);
   if (clk) clk.slot_count = slots.length;
+  _rotUpdateClockHintTotal(clockId, slotsEl);
+}
+
+function _rotUpdateClockHintTotal(clockId, slotsEl) {
+  let totalMs = 0;
+  slotsEl.querySelectorAll('.rot-slot-hint[data-hint-ms]').forEach(s => {
+    totalMs += parseInt(s.dataset.hintMs) || 0;
+  });
+  const hintEl = document.getElementById('rotClockHint_' + clockId);
+  if (!hintEl) return;
+  if (totalMs > 0) {
+    const min = Math.round(totalMs / 60000);
+    hintEl.textContent = '~' + min + 'min';
+    hintEl.title = 'Duração total estimada do clock';
+  } else {
+    hintEl.textContent = '';
+  }
 }
 
 async function rotClockToggle(id) {
@@ -7987,14 +8017,19 @@ async function rotClockRefreshSlots(clockId) {
 }
 
 async function rotSlotAdd(clockId) {
-  const type  = document.getElementById('rotSlotType_' + clockId).value;
-  const catEl = document.getElementById('rotSlotCat_' + clockId);
-  const catId = (type === 'CATEGORY' && catEl) ? catEl.value : '';
+  const type    = document.getElementById('rotSlotType_' + clockId).value;
+  const catEl   = document.getElementById('rotSlotCat_' + clockId);
+  const catId   = (type === 'CATEGORY' && catEl) ? catEl.value : '';
+  const hintEl  = document.getElementById('rotSlotHint_' + clockId);
+  const hintMin = hintEl ? parseInt(hintEl.value) || 0 : 0;
+  const body    = {slot_type: type, category_id: catId};
+  if (hintMin > 0) body.duration_hint_ms = hintMin * 60000;
   const r = await libFetch('/v1/clocks/' + clockId + '/slots', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({slot_type: type, category_id: catId})
+    body: JSON.stringify(body)
   });
   if (!r.ok) { alert('Erro ao adicionar slot'); return; }
+  if (hintEl) hintEl.value = '';
   rotClockRefreshSlots(clockId);
 }
 
@@ -8008,6 +8043,68 @@ async function rotSlotDelete(clockId, slotId) {
   if (badge) badge.textContent = rows.length + ' slots';
   const clk = _rotClocks.find(c => c.id === clockId);
   if (clk) clk.slot_count = rows.length;
+}
+
+/* ── Hint inline edit ────────────────────────────────────────── */
+function rotSlotHintEdit(spanEl, clockId, slotId) {
+  const currentMs  = parseInt(spanEl.dataset.hintMs) || 0;
+  const currentMin = currentMs > 0 ? Math.round(currentMs / 60000) : '';
+  const input = document.createElement('input');
+  input.type        = 'number';
+  input.min         = '0';
+  input.value       = currentMin;
+  input.placeholder = 'min';
+  input.className   = 'rot-slot-hint-input';
+  input.style.width = '48px';
+  spanEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    const min   = parseInt(input.value) || 0;
+    const hintMs = min * 60000;
+    const row   = input.closest('.rot-slot-row');
+    const type  = row ? row.dataset.slotType : '';
+    const catId = row ? row.dataset.catId    : '';
+    rotSlotSaveHint(clockId, slotId, type, catId, hintMs, input);
+  };
+  input.addEventListener('blur',   commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') {
+      const span = _rotHintSpan(currentMs);
+      span.onclick = () => rotSlotHintEdit(span, clockId, slotId);
+      input.replaceWith(span);
+    }
+  });
+}
+
+async function rotSlotSaveHint(clockId, slotId, slotType, catId, hintMs, inputEl) {
+  const body = {slot_type: slotType, category_id: catId || '', duration_hint_ms: hintMs};
+  const r = await libFetch('/v1/clocks/' + clockId + '/slots/' + slotId, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+  });
+  const hintLbl = hintMs > 0 ? Math.round(hintMs / 60000) + 'm' : '—';
+  const span = _rotHintSpan(hintMs);
+  span.onclick = () => rotSlotHintEdit(span, clockId, slotId);
+  if (inputEl) inputEl.replaceWith(span);
+  if (r.ok) {
+    // Update total hint in clock header
+    const slotsEl = document.getElementById('rotSlotsList_' + clockId);
+    if (slotsEl) _rotUpdateClockHintTotal(clockId, slotsEl);
+  } else {
+    alert('Erro ao salvar duração estimada');
+  }
+}
+
+function _rotHintSpan(hintMs) {
+  const span = document.createElement('span');
+  span.className       = 'rot-slot-hint';
+  span.dataset.hintMs  = hintMs;
+  span.title           = 'Duração estimada (clique para editar)';
+  span.textContent     = hintMs > 0 ? Math.round(hintMs / 60000) + 'm' : '—';
+  return span;
 }
 
 /* ── Insert before / after ───────────────────────────────────── */

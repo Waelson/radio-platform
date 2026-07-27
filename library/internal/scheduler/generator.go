@@ -162,7 +162,14 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 	var items []GeneratedItem
 	var warnings []string
 
-	for h := 0; h < hours; h++ {
+	// Safety cap: stop adding items once accumulated duration exceeds the
+	// requested window. The last item already added is the tolerance margin
+	// (at most one extra track beyond the limit).
+	limitMS := int64(hours) * 3_600_000
+	var accumulatedMS int64
+	done := false
+
+	for h := 0; h < hours && !done; h++ {
 		t := from.Add(time.Duration(h) * time.Hour)
 		weekday := int(t.Weekday())
 		hour := t.Hour()
@@ -181,6 +188,12 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 		cursor := t
 
 		for _, slot := range clock.Slots {
+			// Stop before adding more items once the limit is reached.
+			if accumulatedMS >= limitMS {
+				done = true
+				break
+			}
+
 			track, warn, err := g.resolveSlot(ctx, slot, clock, cursor, rules,
 				persistentHistory, sessionHistory, sessionArtist, sessionCategory, since)
 			if err != nil {
@@ -208,14 +221,7 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 				Track:        *track,
 			})
 
-			// Register in session history so the next slot respects separation.
-			sessionHistory[track.ID] = cursor
-			sessionArtist[track.Artist] = cursor
-			if slot.CategoryID != "" {
-				sessionCategory[slot.CategoryID] = cursor
-			}
-
-			// Advance simulated cursor by the track duration (or hint).
+			// Compute item duration for the cap and the cursor.
 			dur := time.Duration(track.DurationMS) * time.Millisecond
 			if slot.DurationHintMS > 0 {
 				dur = time.Duration(slot.DurationHintMS) * time.Millisecond
@@ -223,6 +229,16 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 			if dur == 0 {
 				dur = 3 * time.Minute // safe default
 			}
+
+			accumulatedMS += dur.Milliseconds()
+
+			// Register in session history so the next slot respects separation.
+			sessionHistory[track.ID] = cursor
+			sessionArtist[track.Artist] = cursor
+			if slot.CategoryID != "" {
+				sessionCategory[slot.CategoryID] = cursor
+			}
+
 			cursor = cursor.Add(dur)
 		}
 	}
