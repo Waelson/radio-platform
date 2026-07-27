@@ -256,6 +256,12 @@ func (g *Generator) resolveSlot(
 		return &t, "", nil
 	}
 
+	// HORA_CERTA é um sinal sintético gerenciado pelo playout engine — não existe
+	// como faixa na biblioteca. Retorna um sentinela diretamente, sem buscar candidatos.
+	if slot.SlotType == "HORA_CERTA" {
+		return &TrackRef{Type: "HORA_CERTA", Title: "Hora Certa"}, "", nil
+	}
+
 	// Load candidates.
 	var candidates []TrackRef
 	var err error
@@ -265,7 +271,7 @@ func (g *Generator) resolveSlot(
 			return nil, "slot CATEGORY sem category_id configurado", nil
 		}
 		candidates, err = g.tracks.TracksByCategory(ctx, slot.CategoryID)
-	case "JINGLE", "SPOT", "VINHETA", "HORA_CERTA":
+	case "JINGLE", "SPOT", "VINHETA":
 		candidates, err = g.tracks.TracksByType(ctx, slot.SlotType)
 	default:
 		return nil, fmt.Sprintf("tipo de slot desconhecido: %q", slot.SlotType), nil
