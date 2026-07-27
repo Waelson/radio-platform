@@ -1910,12 +1910,22 @@ input[type=range].vol-slider:disabled {
 .rot-clock-body { display: none; border-top: 1px solid var(--border); }
 .rot-clock-card.expanded .rot-clock-body { display: block; }
 .rot-slots-list { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; }
-.rot-slot-row { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); border-radius: 5px; padding: 5px 7px; }
+.rot-slot-row { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); border-radius: 5px; padding: 5px 7px; position: relative; }
 .rot-slot-pos { font-size: 10px; font-weight: 700; color: var(--text-dim); width: 16px; text-align: right; flex-shrink: 0; }
 .rot-slot-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; background: rgba(32,230,255,0.12); color: var(--cyan); }
 .rot-slot-cat { font-size: 10px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rot-slot-del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 0 3px; }
 .rot-slot-del:hover { color: #ef4444; }
+.rot-slot-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+.rot-slot-row:hover .rot-slot-actions { opacity: 1; }
+.rot-slot-ins { background: none; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); cursor: pointer; font-size: 10px; padding: 1px 4px; line-height: 1; }
+.rot-slot-ins:hover { border-color: var(--cyan); color: var(--cyan); }
+/* inline insert form */
+.rot-slot-insert-form { display: flex; gap: 5px; padding: 3px 7px; align-items: center; background: rgba(32,230,255,0.05); border-radius: 5px; border: 1px dashed rgba(32,230,255,0.25); flex-wrap: wrap; }
+.rot-slot-insert-form .rot-select { font-size: 11px; padding: 2px 5px; }
+.rot-slot-insert-form .rot-btn-sm { font-size: 10px; padding: 3px 8px; }
+.rot-slot-insert-cancel { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 0 3px; }
+.rot-slot-insert-cancel:hover { color: #ef4444; }
 .rot-slot-add-form { display: flex; gap: 6px; padding: 0 10px 10px; align-items: center; flex-wrap: wrap; }
 .rot-select { background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; color: var(--text-hi); font-size: 12px; font-family: inherit; padding: 4px 7px; outline: none; cursor: pointer; }
 .rot-select:focus { border-color: rgba(32,230,255,0.45); }
@@ -7849,6 +7859,63 @@ function rotSlotTypeChanged(clockId) {
   if (catSel) catSel.style.display = type === 'CATEGORY' ? '' : 'none';
 }
 
+/* ── Shared slot row HTML ──────────────────────────────────────── */
+function rotSlotRowHTML(clockId, s) {
+  return `
+    <div class="rot-slot-row is-draggable" id="rotSlotRow_${s.id}" data-slot-id="${s.id}" data-clock-id="${clockId}">
+      <span class="dnd-handle" title="Arrastar para reordenar">⠿</span>
+      <span class="rot-slot-pos">${s.position}</span>
+      <span class="rot-slot-badge">${s.slot_type}</span>
+      <span class="rot-slot-cat">${escHtml(s.category_name || s.slot_type)}</span>
+      <div class="rot-slot-actions">
+        <button class="rot-slot-ins" title="Inserir antes" onclick="rotSlotShowInsertForm('${clockId}','${s.id}','before')">+↑</button>
+        <button class="rot-slot-ins" title="Inserir depois" onclick="rotSlotShowInsertForm('${clockId}','${s.id}','after')">+↓</button>
+        <button class="rot-slot-del" onclick="rotSlotDelete('${clockId}','${s.id}')">✕</button>
+      </div>
+    </div>`;
+}
+
+/* ── SortableJS instances per clock ───────────────────────────── */
+const _rotSortables = {};
+
+function rotInitSlotSortable(clockId) {
+  if (_rotSortables[clockId]) { _rotSortables[clockId].destroy(); }
+  const el = document.getElementById('rotSlotsList_' + clockId);
+  if (!el || typeof Sortable === 'undefined') return;
+  _rotSortables[clockId] = Sortable.create(el, {
+    handle:     '.dnd-handle',
+    draggable:  '.rot-slot-row',
+    ghostClass: 'sortable-ghost',
+    chosenClass:'sortable-chosen',
+    animation:  150,
+    async onEnd() {
+      const rows = el.querySelectorAll('.rot-slot-row[data-slot-id]');
+      const ids  = Array.from(rows).map(r => r.dataset.slotId);
+      rows.forEach((row, i) => { const p = row.querySelector('.rot-slot-pos'); if (p) p.textContent = i + 1; });
+      await libFetch('/v1/clocks/' + clockId + '/slots/reorder', {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({slot_ids: ids}),
+      });
+    },
+  });
+}
+
+/* ── Render slots list ────────────────────────────────────────── */
+function rotRenderSlots(clockId, slots) {
+  const slotsEl = document.getElementById('rotSlotsList_' + clockId);
+  if (!slotsEl) return;
+  if (slots.length === 0) {
+    slotsEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim)">Nenhum slot. Adicione um abaixo.</div>';
+  } else {
+    slotsEl.innerHTML = slots.map(s => rotSlotRowHTML(clockId, s)).join('');
+  }
+  rotInitSlotSortable(clockId);
+  const badge = document.querySelector('#rotClock_' + clockId + ' .rot-clock-slot-count');
+  if (badge) badge.textContent = slots.length + ' slots';
+  const clk = _rotClocks.find(c => c.id === clockId);
+  if (clk) clk.slot_count = slots.length;
+}
+
 async function rotClockToggle(id) {
   const card = document.getElementById('rotClock_' + id);
   if (!card) return;
@@ -7860,22 +7927,8 @@ async function rotClockToggle(id) {
   try {
     const r = await libFetch('/v1/clocks/' + id);
     const j = await r.json();
-    const clock = j.data;
-    const slots = clock.slots || [];
-    if (slots.length === 0) {
-      slotsEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim)">Nenhum slot. Adicione um abaixo.</div>';
-    } else {
-      slotsEl.innerHTML = slots.map(s => `
-        <div class="rot-slot-row" id="rotSlotRow_${s.id}">
-          <span class="rot-slot-pos">${s.position}</span>
-          <span class="rot-slot-badge">${s.slot_type}</span>
-          <span class="rot-slot-cat">${s.category_name || s.slot_type}</span>
-          <button class="rot-slot-del" onclick="rotSlotDelete('${id}','${s.id}')">✕</button>
-        </div>`).join('');
-    }
-    // Init select visibility
+    rotRenderSlots(id, (j.data && j.data.slots) || []);
     rotSlotTypeChanged(id);
-    // Update category dropdown with current categories
     const catSel = document.getElementById('rotSlotCat_' + id);
     if (catSel) {
       catSel.innerHTML = _rotCategories.map(cat => `<option value="${cat.id}">${escHtml(cat.name)}</option>`).join('');
@@ -7918,24 +7971,7 @@ async function rotClockRefreshSlots(clockId) {
   try {
     const r = await libFetch('/v1/clocks/' + clockId);
     const j = await r.json();
-    const slots = (j.data && j.data.slots) || [];
-    if (slots.length === 0) {
-      slotsEl.innerHTML = '<div style="font-size:10px;color:var(--text-dim)">Nenhum slot. Adicione um abaixo.</div>';
-    } else {
-      slotsEl.innerHTML = slots.map(s => `
-        <div class="rot-slot-row" id="rotSlotRow_${s.id}">
-          <span class="rot-slot-pos">${s.position}</span>
-          <span class="rot-slot-badge">${s.slot_type}</span>
-          <span class="rot-slot-cat">${s.category_name || s.slot_type}</span>
-          <button class="rot-slot-del" onclick="rotSlotDelete('${clockId}','${s.id}')">✕</button>
-        </div>`).join('');
-    }
-    // Update slot count badge in header
-    const badge = document.querySelector('#rotClock_' + clockId + ' .rot-clock-slot-count');
-    if (badge) badge.textContent = slots.length + ' slots';
-    // Update in-memory list
-    const clk = _rotClocks.find(c => c.id === clockId);
-    if (clk) clk.slot_count = slots.length;
+    rotRenderSlots(clockId, (j.data && j.data.slots) || []);
   } catch(e) {}
 }
 
@@ -7955,13 +7991,82 @@ async function rotSlotDelete(clockId, slotId) {
   const r = await libFetch('/v1/clocks/' + clockId + '/slots/' + slotId, {method: 'DELETE'});
   if (!r.ok) { alert('Erro ao remover slot'); return; }
   document.getElementById('rotSlotRow_' + slotId)?.remove();
-  // Renum positions and update badge without re-render
-  const rows = document.querySelectorAll('#rotSlotsList_' + clockId + ' .rot-slot-row');
+  const rows = document.querySelectorAll('#rotSlotsList_' + clockId + ' .rot-slot-row[data-slot-id]');
   rows.forEach((row, i) => { const pos = row.querySelector('.rot-slot-pos'); if (pos) pos.textContent = i + 1; });
   const badge = document.querySelector('#rotClock_' + clockId + ' .rot-clock-slot-count');
   if (badge) badge.textContent = rows.length + ' slots';
   const clk = _rotClocks.find(c => c.id === clockId);
   if (clk) clk.slot_count = rows.length;
+}
+
+/* ── Insert before / after ───────────────────────────────────── */
+function _rotInsertTypeChanged(formEl) {
+  const type = formEl.querySelector('.rot-insert-type-sel').value;
+  const cat  = formEl.querySelector('.rot-insert-cat-sel');
+  if (cat) cat.style.display = type === 'CATEGORY' ? '' : 'none';
+}
+
+function rotSlotShowInsertForm(clockId, refSlotId, direction) {
+  // Remove any existing insert form
+  document.querySelectorAll('.rot-slot-insert-form').forEach(f => f.remove());
+
+  const catOptions = _rotCategories.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  const form = document.createElement('div');
+  form.className = 'rot-slot-insert-form';
+  form.innerHTML = `
+    <select class="rot-select rot-insert-type-sel" onchange="_rotInsertTypeChanged(this.closest('.rot-slot-insert-form'))">
+      <option value="CATEGORY">Categoria</option>
+      <option value="JINGLE">Jingle</option>
+      <option value="SPOT">Spot</option>
+      <option value="VINHETA">Vinheta</option>
+      <option value="HORA_CERTA">Hora Certa</option>
+      <option value="FIXED">Faixa fixa</option>
+    </select>
+    <select class="rot-select rot-insert-cat-sel">${catOptions}</select>
+    <button class="rot-btn-sm" onclick="rotSlotConfirmInsert('${clockId}','${refSlotId}','${direction}',this.closest('.rot-slot-insert-form'))">✔ Inserir</button>
+    <button class="rot-slot-insert-cancel" onclick="this.closest('.rot-slot-insert-form').remove()">✕</button>`;
+
+  const refRow = document.getElementById('rotSlotRow_' + refSlotId);
+  if (!refRow) return;
+  if (direction === 'before') {
+    refRow.parentNode.insertBefore(form, refRow);
+  } else {
+    refRow.parentNode.insertBefore(form, refRow.nextSibling);
+  }
+  // Init: hide cat select if not CATEGORY
+  _rotInsertTypeChanged(form);
+}
+
+async function rotSlotConfirmInsert(clockId, refSlotId, direction, formEl) {
+  const type  = formEl.querySelector('.rot-insert-type-sel').value;
+  const catEl = formEl.querySelector('.rot-insert-cat-sel');
+  const catId = type === 'CATEGORY' ? (catEl ? catEl.value : '') : '';
+
+  // 1. Add slot at the end
+  const r = await libFetch('/v1/clocks/' + clockId + '/slots', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({slot_type: type, category_id: catId}),
+  });
+  if (!r.ok) { alert('Erro ao adicionar slot'); return; }
+  const j = await r.json();
+  const newSlotId = j.data && j.data.id;
+  if (!newSlotId) { rotClockRefreshSlots(clockId); formEl.remove(); return; }
+
+  // 2. Build new order: collect current IDs from DOM, insert new one before/after ref
+  const rows = Array.from(document.querySelectorAll('#rotSlotsList_' + clockId + ' .rot-slot-row[data-slot-id]'));
+  const ids  = rows.map(r => r.dataset.slotId);
+  const refIdx = ids.indexOf(refSlotId);
+  const insertAt = direction === 'before' ? refIdx : refIdx + 1;
+  ids.splice(insertAt, 0, newSlotId);
+
+  // 3. Persist new order
+  await libFetch('/v1/clocks/' + clockId + '/slots/reorder', {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({slot_ids: ids}),
+  });
+
+  formEl.remove();
+  rotClockRefreshSlots(clockId);
 }
 
 /* ── Grade 24x7 ──────────────────────────────────────────────── */
