@@ -1979,7 +1979,10 @@ input[type=range].vol-slider:disabled {
 .rot-gen-result::-webkit-scrollbar-thumb:hover { background: rgba(45,212,200,0.58); background-clip: padding-box; }
 .rot-gen-item { display: flex; flex-direction: row; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.55); margin-bottom: 4px; background: #000; }
 .rot-gen-item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rot-gen-item .q-type-icon { filter: brightness(0) invert(1); opacity: 0.85; }
+.rot-gen-item .q-type-icon { filter: brightness(0) invert(1); opacity: 0.85; width: 21px; height: 21px; }
+.rot-gen-item .q-cue-btn { opacity: 0.75; }
+.rot-gen-item .q-cue-btn:hover { opacity: 1; }
+.rot-gen-item .q-cue-btn.is-cuing { opacity: 1; animation: cueBtnPulse 1.0s ease-in-out infinite; }
 .rot-gen-item-meta { font-size: 9px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; }
 .rot-gen-item-track { font-size: 11px; font-weight: 700; color: #20e6ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
 .rot-gen-item-artist { font-size: 10px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
@@ -3313,7 +3316,7 @@ canvas.vu-canvas {
           <div class="rot-gen-form">
             <div class="rot-gen-row">
               <span class="rot-gen-label">Dia:</span>
-              <input class="rot-input" id="rotGenDate" type="date" style="flex:1;" oninput="rotGenUpdatePreview()">
+              <input class="rot-input" id="rotGenDate" type="date" style="width:140px;" oninput="rotGenUpdatePreview()">
             </div>
             <div class="rot-gen-row">
               <span class="rot-gen-label">Hora:</span>
@@ -3334,7 +3337,7 @@ canvas.vu-canvas {
             </div>
             <div class="rot-gen-row">
               <span class="rot-gen-label">Horas:</span>
-              <input class="rot-input" id="rotGenHours" type="number" min="1" max="24" value="1" style="width:60px;" oninput="rotGenUpdatePreview()">
+              <input class="rot-input" id="rotGenHours" type="number" min="1" max="24" value="1" style="width:90px;" oninput="rotGenUpdatePreview()">
             </div>
             <div id="rotGenPreview" style="font-size:11px;color:var(--accent);padding:2px 0 4px;min-height:14px;text-transform:uppercase;font-weight:700;letter-spacing:.04em;"></div>
             <div style="display:flex;gap:8px;align-items:center;">
@@ -6125,6 +6128,7 @@ window.addEventListener('resize', setupCanvases);
 
 /* ─── CUE Queue Panel ────────────────────────────────────────── */
 let _cueQueueItemId = null;
+let _rotGenCueIdx   = null; // índice do item da playlist gerada sendo ouvido em CUE
 const _queueItemMap  = {}; // cueKey (queue_item_id ou path) → { path, title, artist }
 
 function cueToggleQueueItem(itemId) {
@@ -6146,6 +6150,7 @@ async function cueStop() {
   _cueQueueItemId = null;
   _drwHkCueBtnId  = null;
   _hkpCueBtnId    = null;
+  _rotGenCueIdx   = null;
   document.getElementById('cueFloat').classList.remove('open');
   document.querySelectorAll('.q-cue-btn').forEach(b => { b.classList.remove('is-cuing'); });
   document.querySelectorAll('.lib-cue-btn').forEach(b => { b.classList.remove('is-cuing'); });
@@ -6205,11 +6210,18 @@ function _updateCueFloat() {
     btn.classList.toggle('is-cuing', isHkpActive && btn.dataset.btnId === _hkpCueBtnId);
   });
 
+  // Sincronizar botões CUE da playlist gerada
+  const isRotActive = _rotGenCueIdx !== null && (s.state === 'playing' || s.state === 'paused');
+  document.querySelectorAll('.rot-gen-item .q-cue-btn[data-rot-idx]').forEach(btn => {
+    btn.classList.toggle('is-cuing', isRotActive && parseInt(btn.dataset.rotIdx) === _rotGenCueIdx);
+  });
+
   // Fechar painel se preview parou
-  if (s.state === 'idle' && (_cueQueueItemId !== null || _drwHkCueBtnId !== null || _hkpCueBtnId !== null)) {
+  if (s.state === 'idle' && (_cueQueueItemId !== null || _drwHkCueBtnId !== null || _hkpCueBtnId !== null || _rotGenCueIdx !== null)) {
     _cueQueueItemId = null;
     _drwHkCueBtnId  = null;
     _hkpCueBtnId    = null;
+    _rotGenCueIdx   = null;
     document.getElementById('cueFloat').classList.remove('open');
   }
 }
@@ -7873,7 +7885,7 @@ function rotClockRender() {
 }
 
 const _ROT_SLOT_DEFAULT_SEC = {
-  CATEGORY:   180,
+  CATEGORY:   360,
   HORA_CERTA:   3,
   VINHETA:     12,
   JINGLE:      30,
@@ -8538,7 +8550,7 @@ async function rotGenerate() {
             <div class="rot-gen-item-artist">${escHtml(item.track.artist||'')}</div>
           </div>
           <div style="width:1px;align-self:stretch;background:rgba(255,255,255,0.25);flex-shrink:0;"></div>
-          <button class="lib-cue-btn tip-left" data-tooltip="Preview (CUE)" onclick="rotCueItem(${idx})"><img src="icons/cue_preview.svg"></button>
+          <button class="q-cue-btn tip-left${t === 'HORA_CERTA' ? ' q-cue-btn--disabled' : ''}" data-rot-idx="${idx}" data-tooltip="CUE — Preview" ${t === 'HORA_CERTA' ? 'disabled' : `onclick="rotCueItem(${idx})"`}>🎧</button>
         </div>`;
       }).join('');
       const _totalMs = _rotGenItems.reduce((s, i) => s + (i.track.duration_ms || 0), 0);
@@ -8566,6 +8578,16 @@ async function rotGenerate() {
 function rotCueItem(idx) {
   const item = _rotGenItems[idx];
   if (!item || !item.track || !item.track.path) return;
+
+  // Toggle: clicou no mesmo item que está tocando → para.
+  if (_rotGenCueIdx === idx && _preview.state !== 'idle') { cueStop(); return; }
+
+  // Limpa outros trackers para não conflitar com fila/hotkeys.
+  _cueQueueItemId = null;
+  _drwHkCueBtnId  = null;
+  _hkpCueBtnId    = null;
+  _rotGenCueIdx   = idx;
+
   const path   = item.track.path;
   const title  = item.track.title  || '';
   const artist = item.track.artist || '';
@@ -8574,6 +8596,7 @@ function rotCueItem(idx) {
   document.getElementById('cueFloatArtist').textContent = artist;
   document.getElementById('cueFloat').classList.add('open');
   previewPlayRequest(path, 0, () => {
+    _rotGenCueIdx = null;
     document.getElementById('cueFloat').classList.remove('open');
   });
 }
