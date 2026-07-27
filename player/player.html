@@ -1921,10 +1921,11 @@ input[type=range].vol-slider:disabled {
 .rot-select:focus { border-color: rgba(32,230,255,0.45); }
 /* Grid */
 .rot-grid-wrap { flex: 1; overflow: auto; padding: 10px; }
-.rot-grid-table { border-collapse: collapse; font-size: 9px; width: 100%; }
+.rot-grid-table { border-collapse: collapse; font-size: 11px; width: 100%; table-layout: fixed; }
 .rot-grid-table th { padding: 3px 4px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: .07em; border: 1px solid var(--border); background: var(--bg2); white-space: nowrap; }
+.rot-grid-table th:first-child, .rot-grid-table td:first-child { width: 68px; text-align: center; }
 .rot-grid-table td { border: 1px solid var(--border); padding: 0; }
-.rot-grid-cell { width: 100%; background: none; border: none; padding: 4px 4px; color: var(--text-dim); font-size: 9px; font-family: inherit; cursor: pointer; text-align: left; transition: background .12s, color .12s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; text-transform: uppercase; }
+.rot-grid-cell { width: 100%; background: none; border: none; padding: 4px 4px; color: var(--text-dim); font-size: 9px; font-family: inherit; cursor: pointer; text-align: left; transition: background .12s, color .12s; display: block; text-transform: uppercase; word-break: break-word; }
 .rot-grid-cell.has-clock { color: var(--cyan); background: rgba(32,230,255,0.06); }
 .rot-grid-cell:hover { background: rgba(32,230,255,0.12); color: var(--text-hi); }
 .rot-grid-pick-opt { display: block; width: 100%; background: none; border: none; color: var(--text); font-size: 11px; font-family: inherit; text-align: left; padding: 7px 14px; cursor: pointer; transition: background .1s; }
@@ -7624,6 +7625,7 @@ function rotSwitchPane(pane) {
 
 /* ── Categorias ──────────────────────────────────────────────── */
 async function rotCatLoad() {
+  if (!window.sessionManager?.isAuthenticated()) return;
   if (!_libOnline) return;
   const list = document.getElementById('rotCatList');
   if (list) list.innerHTML = '<div class="lib-status">Carregando…</div>';
@@ -7790,6 +7792,7 @@ async function rotCatAddTrack(catId, trackId, btn) {
 
 /* ── Clocks ──────────────────────────────────────────────────── */
 async function rotClockLoad() {
+  if (!window.sessionManager?.isAuthenticated()) return;
   const list = document.getElementById('rotClockList');
   if (!_libOnline) {
     if (list) list.innerHTML = '<div class="lib-status">⚠ Library offline — aguardando conexão…</div>';
@@ -7963,6 +7966,7 @@ async function rotSlotDelete(clockId, slotId) {
 
 /* ── Grade 24x7 ──────────────────────────────────────────────── */
 async function rotGridLoad() {
+  if (!window.sessionManager?.isAuthenticated()) return;
   try {
     const r = await libFetch('/v1/schedule/clock-grid');
     const j = await r.json();
@@ -7986,12 +7990,12 @@ function rotGridRender() {
 
   let rows = '';
   for (let h = 0; h < 24; h++) {
-    rows += '<tr><td style="text-align:right;padding:2px 5px;color:var(--text-dim);font-weight:700;">' + String(h).padStart(2,'0') + 'h</td>';
+    rows += '<tr><td style="padding:2px 5px;color:var(--text-dim);font-weight:700;">' + String(h).padStart(2,'0') + 'h</td>';
     for (let d = 0; d < 7; d++) {
       const cell = lookup[d + '_' + h];
       const label = cell && cell.clock_id ? cell.clock_name || cell.clock_id : '—';
       const hasClock = cell && cell.clock_id ? 'has-clock' : '';
-      rows += `<td><button class="rot-grid-cell ${hasClock}" onclick="rotGridCellClick(${d},${h},this)" title="${escHtml(label)}">${escHtml(label.length > 10 ? label.slice(0,9)+'…' : label)}</button></td>`;
+      rows += `<td><button class="rot-grid-cell ${hasClock}" onclick="rotGridCellClick(${d},${h},this)" title="${escHtml(label)}">${escHtml(label)}</button></td>`;
     }
     rows += '</tr>';
   }
@@ -8068,6 +8072,7 @@ async function rotGridPickSelect(clockId) {
 const FIELD_LABEL = {artist:'Artista', title:'Título', album:'Álbum', category:'Categoria'};
 
 async function rotRulesLoad() {
+  if (!window.sessionManager?.isAuthenticated()) return;
   const list = document.getElementById('rotRulesList');
   if (!_libOnline) {
     if (list) list.innerHTML = '<div class="lib-status">⚠ Library offline — aguardando conexão…</div>';
