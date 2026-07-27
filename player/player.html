@@ -1941,6 +1941,17 @@ input[type=range].vol-slider:disabled {
 .rot-grid-pick-opt { display: block; width: 100%; background: none; border: none; color: var(--text); font-size: 11px; font-family: inherit; text-align: left; padding: 7px 14px; cursor: pointer; transition: background .1s; }
 .rot-grid-pick-opt:hover { background: rgba(32,230,255,0.12); color: var(--text-hi); }
 .rot-grid-pick-opt.clear-opt { color: var(--text-dim); }
+/* Grade — clear-day button in header */
+.rot-grid-th-inner { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.rot-grid-clear-day { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 0; opacity: 0; transition: opacity .15s; line-height: 1; }
+.rot-grid-table th:hover .rot-grid-clear-day { opacity: 1; }
+.rot-grid-clear-day:hover { color: #ef4444; }
+/* Grade — fill handle (Excel-style) */
+.rot-grid-td { position: relative; }
+.rot-fill-handle { position: absolute; right: 2px; bottom: 2px; width: 7px; height: 7px; background: var(--cyan); cursor: crosshair; opacity: 0; transition: opacity .15s; border-radius: 1px; }
+.rot-grid-td:hover .rot-fill-handle { opacity: 1; }
+.rot-grid-td.fill-source { outline: 1px solid var(--cyan); }
+.rot-grid-td.fill-preview { background: rgba(32,230,255,0.15) !important; outline: 1px solid rgba(32,230,255,0.5); }
 /* Rules */
 .rot-rules-list { display: flex; flex-direction: column; gap: 6px; }
 .rot-rule-row { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
@@ -8085,7 +8096,9 @@ function rotGridRender() {
   const body = document.getElementById('rotGridBody');
   if (!head || !body) return;
 
-  head.innerHTML = '<tr><th>Hora</th>' + DAYS.map(d => `<th>${d}</th>`).join('') + '</tr>';
+  head.innerHTML = '<tr><th>Hora</th>' + DAYS.map((d, i) =>
+    `<th><div class="rot-grid-th-inner">${d}<button class="rot-grid-clear-day" title="Limpar ${d}" onclick="event.stopPropagation();rotGridClearDay(${i})">🗑</button></div></th>`
+  ).join('') + '</tr>';
 
   // Build lookup: weekday×hour → {clock_id, clock_name}
   const lookup = {};
@@ -8098,9 +8111,12 @@ function rotGridRender() {
     rows += '<tr><td style="padding:2px 5px;color:var(--text-dim);font-weight:700;">' + String(h).padStart(2,'0') + 'h</td>';
     for (let d = 0; d < 7; d++) {
       const cell = lookup[d + '_' + h];
-      const label = cell && cell.clock_id ? cell.clock_name || cell.clock_id : '—';
+      const label    = cell && cell.clock_id ? cell.clock_name || cell.clock_id : '—';
       const hasClock = cell && cell.clock_id ? 'has-clock' : '';
-      rows += `<td><button class="rot-grid-cell ${hasClock}" onclick="rotGridCellClick(${d},${h},this)" title="${escHtml(label)}">${escHtml(label)}</button></td>`;
+      const fillHandle = cell && cell.clock_id
+        ? `<div class="rot-fill-handle" data-clock-id="${escHtml(cell.clock_id)}" data-clock-name="${escHtml(cell.clock_name || '')}" onmousedown="rotGridFillStart(${d},${h},event)"></div>`
+        : '';
+      rows += `<td class="rot-grid-td" data-weekday="${d}" data-hour="${h}"><button class="rot-grid-cell ${hasClock}" onclick="rotGridCellClick(${d},${h},this)" title="${escHtml(label)}">${escHtml(label)}</button>${fillHandle}</td>`;
     }
     rows += '</tr>';
   }
@@ -8169,6 +8185,82 @@ async function rotGridPickSelect(clockId) {
   await libFetch('/v1/schedule/clock-grid', {
     method: 'PUT', headers: {'Content-Type':'application/json'},
     body: JSON.stringify([{weekday: ctx.weekday, hour: ctx.hour, clock_id: clockId}])
+  });
+  rotGridLoad();
+}
+
+/* ── Clear day ────────────────────────────────────────────────── */
+async function rotGridClearDay(weekday) {
+  const dayName = DAYS[weekday];
+  if (!confirm('Limpar todos os clocks de ' + dayName + '?')) return;
+  const cells = [];
+  for (let h = 0; h < 24; h++) cells.push({weekday, hour: h, clock_id: ''});
+  await libFetch('/v1/schedule/clock-grid', {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(cells),
+  });
+  rotGridLoad();
+}
+
+/* ── Fill handle (Excel-style drag to replicate) ─────────────── */
+let _rotFillDrag = null;
+
+function rotGridFillStart(weekday, hour, evt) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  const handle = evt.currentTarget;
+  _rotFillDrag = {
+    weekday,
+    hour,
+    clockId:   handle.dataset.clockId,
+    clockName: handle.dataset.clockName,
+    endHour:   hour,
+  };
+  // Highlight source cell
+  const srcTd = handle.closest('.rot-grid-td');
+  if (srcTd) srcTd.classList.add('fill-source');
+  document.addEventListener('mousemove', _rotGridFillMove);
+  document.addEventListener('mouseup',   _rotGridFillEnd);
+}
+
+function _rotGridFillMove(evt) {
+  if (!_rotFillDrag) return;
+  const td = document.elementFromPoint(evt.clientX, evt.clientY)?.closest('.rot-grid-td');
+  if (!td) return;
+  const w = parseInt(td.dataset.weekday);
+  const h = parseInt(td.dataset.hour);
+  if (w !== _rotFillDrag.weekday || h === _rotFillDrag.endHour) return;
+  _rotFillDrag.endHour = h;
+  // Refresh preview highlights
+  document.querySelectorAll('.rot-grid-td.fill-preview').forEach(t => t.classList.remove('fill-preview'));
+  const minH = Math.min(_rotFillDrag.hour, h);
+  const maxH = Math.max(_rotFillDrag.hour, h);
+  document.querySelectorAll(`.rot-grid-td[data-weekday="${w}"]`).forEach(t => {
+    const th = parseInt(t.dataset.hour);
+    if (th >= minH && th <= maxH && th !== _rotFillDrag.hour) t.classList.add('fill-preview');
+  });
+}
+
+async function _rotGridFillEnd() {
+  document.removeEventListener('mousemove', _rotGridFillMove);
+  document.removeEventListener('mouseup',   _rotGridFillEnd);
+  document.querySelectorAll('.rot-grid-td.fill-preview, .rot-grid-td.fill-source')
+    .forEach(t => { t.classList.remove('fill-preview'); t.classList.remove('fill-source'); });
+  if (!_rotFillDrag) return;
+  const { weekday, hour, clockId, endHour } = _rotFillDrag;
+  _rotFillDrag = null;
+  if (endHour === hour || !clockId) return;
+  const minH = Math.min(hour, endHour);
+  const maxH = Math.max(hour, endHour);
+  const cells = [];
+  for (let h = minH; h <= maxH; h++) {
+    if (h === hour) continue; // source already set
+    cells.push({weekday, hour: h, clock_id: clockId});
+  }
+  if (cells.length === 0) return;
+  await libFetch('/v1/schedule/clock-grid', {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(cells),
   });
   rotGridLoad();
 }
