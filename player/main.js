@@ -79,7 +79,7 @@ function createWindow() {
 
   mainWin = win
   win.loadFile(path.join(__dirname, 'player.html'))
-  win.webContents.openDevTools({ mode: 'detach' })
+  //win.webContents.openDevTools({ mode: 'detach' })
 
   // Intercept window X-button close — ask renderer to handle logout flow.
   win.on('close', e => {

@@ -134,7 +134,7 @@ func (s *ClockStore) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("clock delete check schedule: %w", err)
 	}
 	if n > 0 {
-		return fmt.Errorf("clock is used in %d schedule cell(s); clear the grid first", n)
+		return fmt.Errorf("este clock está em uso em %d célula(s) da grade — remova-o da grade antes de excluir", n)
 	}
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM clocks WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("clock delete: %w", err)
