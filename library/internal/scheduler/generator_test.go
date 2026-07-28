@@ -161,6 +161,41 @@ func TestGenerate_EmptyCategory_Warning(t *testing.T) {
 	}
 }
 
+// TestGenerate_ArtistSeparation_Normalized verifica que variações de maiúsculo,
+// acento e espaço no nome do artista são tratadas como o mesmo artista para fins
+// de separação mínima.
+func TestGenerate_ArtistSeparation_Normalized(t *testing.T) {
+	// t1 e t2 são do mesmo artista, mas com grafias diferentes.
+	tracks := []scheduler.TrackRef{
+		makeTrack("t1", "Elis Regina", "Song A"),
+		makeTrack("t2", "ÉLIS REGINA", "Song B"), // maiúsculo + acento diferente
+	}
+	gen := scheduler.New(
+		&stubClocks{clock: simpleClock([]scheduler.Slot{
+			{ID: "s1", Position: 1, SlotType: "CATEGORY", CategoryID: "cat1"},
+			{ID: "s2", Position: 2, SlotType: "CATEGORY", CategoryID: "cat1"},
+		})},
+		&stubTracks{byCategory: map[string][]scheduler.TrackRef{"cat1": tracks}},
+		&stubSepRules{rules: []scheduler.SeparationRule{
+			{ID: "r1", Field: "artist", MinSepMinutes: 60},
+		}},
+		&stubRotLog{},
+	)
+
+	from := time.Date(2026, 7, 19, 8, 0, 0, 0, time.UTC)
+	items, warnings, err := gen.Generate(context.Background(), from, 1)
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	// Ambos os slots devem ser preenchidos (fallback), e deve haver aviso de separação.
+	if len(items) != 2 {
+		t.Errorf("expected 2 items (fallback), got %d", len(items))
+	}
+	if len(warnings) == 0 {
+		t.Error("expected separation warning when same artist (different casing/accent) fills both slots")
+	}
+}
+
 func TestGenerate_ArtistSeparation(t *testing.T) {
 	// Only 2 tracks, same artist. With strict 60min artist separation and
 	// session artist tracking, the second slot in the same hour should
