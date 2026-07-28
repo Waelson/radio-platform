@@ -1985,9 +1985,24 @@ input[type=range].vol-slider:disabled {
 .rot-grid-td.fill-preview { background: rgba(32,230,255,0.15) !important; outline: 1px solid rgba(32,230,255,0.5); }
 /* Rules */
 .rot-rules-list { display: flex; flex-direction: column; gap: 6px; }
-.rot-rule-row { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
-.rot-rule-field { font-size: 11px; font-weight: 700; color: var(--text-hi); flex: 1; text-transform: uppercase; }
-.rot-rule-sep { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+.rot-rule-row { display: flex; align-items: center; gap: 10px; background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--rule-color, var(--border)); border-radius: 6px; padding: 8px 12px; transition: background .12s; }
+.rot-rule-row:hover { background: rgba(255,255,255,0.04); }
+.rot-rule-row.field--artist   { --rule-color: #4a9eff; }
+.rot-rule-row.field--title    { --rule-color: #f59e0b; }
+.rot-rule-row.field--album    { --rule-color: #a78bfa; }
+.rot-rule-row.field--category { --rule-color: #4ac98a; }
+.rot-rule-icon { font-size: 15px; flex-shrink: 0; }
+.rot-rule-field { font-size: 12px; font-weight: 700; color: var(--text-hi); flex: 1; text-transform: uppercase; }
+.rot-rule-sep { font-size: 13px; color: var(--text-dim); margin-right: 20px; }
+.rot-rule-sep strong { color: var(--text-hi); cursor: pointer; border-bottom: 1px dashed var(--border); transition: color .12s; }
+.rot-rule-sep strong:hover { color: var(--cyan); border-bottom-color: var(--cyan); }
+.rot-rule-min-input { width: 60px; }
+.rot-rule-confirm { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
+.rot-rule-confirm-yes { background: none; border: 1px solid #ef4444; border-radius: 4px; color: #ef4444; cursor: pointer; font-size: 11px; padding: 2px 8px; }
+.rot-rule-confirm-yes:hover { background: rgba(239,68,68,0.12); }
+.rot-rule-confirm-no  { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 2px 8px; }
+.rot-rule-confirm-no:hover { border-color: var(--text-dim); color: var(--text-hi); }
+.rot-rule-new-dup { font-size: 11px; color: #f59e0b; font-style: italic; }
 /* Generate */
 .rot-gen-form { padding: 10px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
 .rot-gen-row { display: flex; align-items: center; gap: 8px; }
@@ -3316,16 +3331,17 @@ canvas.vu-canvas {
             <button class="rot-btn-sm" onclick="rotRuleShowNew()">+ Nova regra</button>
           </div>
           <div id="rotRuleNewForm" style="display:none;padding:8px 10px;border-bottom:1px solid var(--border);gap:6px;align-items:center;flex-wrap:wrap;">
-            <select class="rot-select" id="rotRuleNewField">
-              <option value="artist">Artista</option>
-              <option value="title">Título</option>
-              <option value="album">Álbum</option>
-              <option value="category">Categoria</option>
+            <select class="rot-select" id="rotRuleNewField" onchange="rotRuleNewFieldChanged()">
+              <option value="artist">🎤 Artista</option>
+              <option value="title">🎵 Título</option>
+              <option value="album">💿 Álbum</option>
+              <option value="category">🗂 Categoria</option>
             </select>
             <input class="rot-input" id="rotRuleNewMin" type="number" min="1" value="60" style="width:60px;" placeholder="min">
             <span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:.06em;">minutos</span>
-            <button class="rot-btn-sm" onclick="rotRuleCreate()">Criar</button>
+            <button class="rot-btn-sm" id="rotRuleCreateBtn" onclick="rotRuleCreate()">Criar</button>
             <button class="rot-btn-sm" onclick="rotRuleHideNew()">Cancelar</button>
+            <span class="rot-rule-new-dup" id="rotRuleDupWarn" style="display:none;"></span>
           </div>
           <div class="rot-scroll-host">
             <div class="rot-scroll-wrap">
@@ -8475,6 +8491,15 @@ async function _rotGridFillEnd() {
 
 /* ── Regras de separação ─────────────────────────────────────── */
 const FIELD_LABEL = {artist:'Artista', title:'Título', album:'Álbum', category:'Categoria'};
+const FIELD_ICON  = {artist:'🎤', title:'🎵', album:'💿', category:'🗂'};
+
+function _fmtMinutes(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return min + ' min';
+  if (m === 0) return h + 'h';
+  return h + 'h ' + m + 'min';
+}
 
 async function rotRulesLoad() {
   if (!window.sessionManager?.isAuthenticated()) return;
@@ -8500,19 +8525,87 @@ function rotRulesRender() {
     list.innerHTML = '<div class="lib-status">Nenhuma regra. Clique em "+ Nova regra".</div>';
     return;
   }
-  list.innerHTML = _rotRules.map(r => `
-    <div class="rot-rule-row">
-      <span class="rot-rule-field">${FIELD_LABEL[r.field] || r.field}</span>
-      <span class="rot-rule-sep">separação mín.: <strong>${r.min_sep_minutes}</strong> min</span>
-      <button class="rot-btn-sm danger" onclick="rotRuleDelete('${r.id}')">✕</button>
-    </div>`).join('');
+  list.innerHTML = _rotRules.map(r => {
+    const icon  = FIELD_ICON[r.field]  || '•';
+    const label = FIELD_LABEL[r.field] || r.field;
+    const fmt   = _fmtMinutes(r.min_sep_minutes);
+    return `
+    <div class="rot-rule-row field--${r.field}" id="rotRuleRow_${r.id}">
+      <span class="rot-rule-icon">${icon}</span>
+      <span class="rot-rule-field">${label}</span>
+      <span class="rot-rule-sep">separação mín.:
+        <strong title="Clique para editar" onclick="rotRuleEditMin(this,'${r.id}',${r.min_sep_minutes})">${fmt}</strong>
+      </span>
+      <div class="rot-rule-actions-wrap" id="rotRuleActions_${r.id}">
+        <button class="rot-btn-sm danger" onclick="rotRuleAskDelete('${r.id}')">✕ Remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function rotRuleAskDelete(id) {
+  if (!confirm('Remover esta regra de separação?')) return;
+  rotRuleDelete(id);
+}
+
+function rotRuleEditMin(strongEl, ruleId, currentMin) {
+  const input = document.createElement('input');
+  input.type      = 'number';
+  input.min       = '1';
+  input.value     = currentMin;
+  input.className = 'rot-input rot-rule-min-input';
+  strongEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = async () => {
+    const min = parseInt(input.value);
+    if (!min || min < 1) { input.replaceWith(strongEl); return; }
+    const r = await libFetch('/v1/schedule/separation-rules/' + ruleId, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({min_sep_minutes: min}),
+    });
+    if (r.ok) {
+      const rule = _rotRules.find(x => x.id === ruleId);
+      if (rule) rule.min_sep_minutes = min;
+    }
+    const newStrong = document.createElement('strong');
+    newStrong.title     = 'Clique para editar';
+    newStrong.textContent = _fmtMinutes(min);
+    newStrong.onclick   = () => rotRuleEditMin(newStrong, ruleId, min);
+    input.replaceWith(newStrong);
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') {
+      strongEl.onclick = () => rotRuleEditMin(strongEl, ruleId, currentMin);
+      input.replaceWith(strongEl);
+    }
+  });
 }
 
 function rotRuleShowNew() {
   const f = document.getElementById('rotRuleNewForm');
   f.style.display = 'flex';
+  rotRuleNewFieldChanged();
 }
 function rotRuleHideNew() { document.getElementById('rotRuleNewForm').style.display = 'none'; }
+
+function rotRuleNewFieldChanged() {
+  const field  = document.getElementById('rotRuleNewField').value;
+  const btn    = document.getElementById('rotRuleCreateBtn');
+  const warn   = document.getElementById('rotRuleDupWarn');
+  const hasDup = _rotRules.some(r => r.field === field);
+  if (hasDup) {
+    warn.textContent   = '⚠ Já existe uma regra para ' + (FIELD_LABEL[field] || field);
+    warn.style.display = '';
+    btn.disabled       = true;
+  } else {
+    warn.style.display = 'none';
+    btn.disabled       = false;
+  }
+}
 
 async function rotRuleCreate() {
   const field = document.getElementById('rotRuleNewField').value;
@@ -8520,7 +8613,7 @@ async function rotRuleCreate() {
   if (!min || min < 1) { alert('Separação mínima inválida'); return; }
   const r = await libFetch('/v1/schedule/separation-rules', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({field, min_sep_minutes: min})
+    body: JSON.stringify({field, min_sep_minutes: min}),
   });
   if (!r.ok) { const j = await r.json(); alert(j.message || 'Erro'); return; }
   rotRuleHideNew();
@@ -8528,7 +8621,6 @@ async function rotRuleCreate() {
 }
 
 async function rotRuleDelete(id) {
-  if (!confirm('Remover esta regra?')) return;
   await libFetch('/v1/schedule/separation-rules/' + id, {method: 'DELETE'});
   rotRulesLoad();
 }
