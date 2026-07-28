@@ -5,7 +5,11 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
+	"unicode"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 // ── Dependency interfaces ─────────────────────────────────────────────────────
@@ -242,7 +246,7 @@ func (g *Generator) Generate(ctx context.Context, from time.Time, hours int) ([]
 
 			// Register in session history so the next slot respects separation.
 			sessionHistory[track.ID] = cursor
-			sessionArtist[track.Artist] = cursor
+			sessionArtist[normalizeField(track.Artist)] = cursor
 			if slot.CategoryID != "" {
 				sessionCategory[slot.CategoryID] = cursor
 			}
@@ -398,7 +402,7 @@ func violatesRules(
 			if t.Artist == "" {
 				continue
 			}
-			if lastPlayed, ok := sessionArtist[t.Artist]; ok && lastPlayed.After(cutoff) {
+			if lastPlayed, ok := sessionArtist[normalizeField(t.Artist)]; ok && lastPlayed.After(cutoff) {
 				return true
 			}
 		case "album":
@@ -454,4 +458,22 @@ func maxLookbackDuration(rules []SeparationRule) time.Duration {
 		}
 	}
 	return max
+}
+
+// normalizeField returns s lowercased, with diacritics removed and whitespace
+// collapsed. Used to compare artist, title and album fields in a
+// locale-insensitive way (e.g. "Elis Regina" == "elis regina" == "Élis Regina").
+func normalizeField(s string) string {
+	// NFD decomposition separates base characters from combining diacritics.
+	decomposed := norm.NFD.String(s)
+	var b strings.Builder
+	b.Grow(len(decomposed))
+	for _, r := range decomposed {
+		// Drop combining diacritical marks (category Mn).
+		if unicode.Is(unicode.Mn, r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return strings.ToLower(strings.TrimSpace(b.String()))
 }
