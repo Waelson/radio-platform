@@ -1853,6 +1853,7 @@ input[type=range].vol-slider:disabled {
 #view-rotacao .rot-grid-table th { border-color: #20384c; background: #0a1a27; }
 #view-rotacao .rot-grid-table td { border-color: #20384c; }
 #view-rotacao .rot-slot-row  { background: rgba(32,56,76,.18); }
+#view-rotacao .rot-slot-row:hover { background: rgba(32,56,76,.38); }
 #view-rotacao .rot-subbtn    { font-size: 11px; padding: 9px 14px; }
 #view-rotacao .rot-subbtn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
 
@@ -1906,33 +1907,47 @@ input[type=range].vol-slider:disabled {
 .rot-clock-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; }
 .rot-clock-header:hover { background: rgba(255,255,255,0.03); }
 .rot-clock-hname { font-size: 12px; font-weight: 700; color: var(--text-hi); flex: 1; text-transform: uppercase; }
-.rot-clock-slot-count { font-size: 10px; color: var(--text-dim); margin-right: 4px; }
-.rot-clock-body { display: none; border-top: 1px solid var(--border); }
-.rot-clock-card.expanded .rot-clock-body { display: block; }
-.rot-slots-list { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; }
-.rot-slot-row { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); border-radius: 5px; padding: 5px 7px; position: relative; }
-.rot-slot-pos { font-size: 10px; font-weight: 700; color: var(--text-dim); width: 16px; text-align: right; flex-shrink: 0; }
-.rot-slot-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; background: rgba(32,230,255,0.12); color: var(--cyan); }
-.rot-slot-cat { font-size: 10px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rot-slot-del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 0 3px; }
+.rot-clock-slot-count { font-size: 12px; color: var(--text-dim); margin-right: 4px; }
+.rot-clock-body { display: none; border-top: 1px solid var(--border); flex-direction: column; max-height: 480px; }
+.rot-clock-card.expanded .rot-clock-body { display: flex; }
+.rot-slots-list { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; flex: 1; overflow-y: auto; min-height: 0; }
+.rot-slot-add-form { flex-shrink: 0; border-top: 1px solid var(--border); }
+.rot-slot-row { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.03); border-radius: 5px; padding: 7px 7px; position: relative; border-left: 3px solid transparent; transition: background .12s; }
+.rot-slot-row:hover { background: rgba(255,255,255,0.07); }
+.rot-slot-row.slot-type--HORA_CERTA { border-left-color: #4a9eff; }
+.rot-slot-row.slot-type--VINHETA    { border-left-color: #4ac98a; }
+.rot-slot-row.slot-type--CATEGORY   { border-left-color: #20e6ff; }
+.rot-slot-row.slot-type--JINGLE     { border-left-color: #f59e0b; }
+.rot-slot-row.slot-type--SPOT       { border-left-color: #f97316; }
+.rot-slot-row.slot-type--FIXED      { border-left-color: #94a3b8; }
+.rot-slot-pos { font-size: 12px; font-weight: 700; color: var(--text-dim); width: 16px; text-align: right; flex-shrink: 0; }
+.rot-slot-type-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; width: 26px; text-align: center; flex-shrink: 0; }
+.slot-type--HORA_CERTA .rot-slot-type-label { color: #4a9eff; }
+.slot-type--VINHETA    .rot-slot-type-label { color: #4ac98a; }
+.slot-type--CATEGORY   .rot-slot-type-label { color: #20e6ff; }
+.slot-type--JINGLE     .rot-slot-type-label { color: #f59e0b; }
+.slot-type--SPOT       .rot-slot-type-label { color: #f97316; }
+.slot-type--FIXED      .rot-slot-type-label { color: #94a3b8; }
+.rot-slot-cat { font-size: 12px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rot-slot-del { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 15px; padding: 0 3px; }
 .rot-slot-del:hover { color: #ef4444; }
 .rot-slot-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
 .rot-slot-row:hover .rot-slot-actions { opacity: 1; }
-.rot-slot-ins { background: none; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); cursor: pointer; font-size: 10px; padding: 1px 4px; line-height: 1; }
+.rot-slot-ins { background: none; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); cursor: pointer; font-size: 15px; padding: 1px 4px; line-height: 1; }
 .rot-slot-ins:hover { border-color: var(--cyan); color: var(--cyan); }
 /* duration hint per slot */
-.rot-slot-hint { font-size: 9px; font-weight: 700; color: var(--text-dim); min-width: 22px; text-align: right; flex-shrink: 0; cursor: pointer; padding: 1px 3px; border-radius: 3px; border: 1px solid transparent; transition: border-color .15s, color .15s; }
+.rot-slot-hint { font-size: 11px; font-weight: 700; color: var(--text-dim); min-width: 22px; text-align: right; flex-shrink: 0; cursor: pointer; padding: 1px 3px; border-radius: 3px; border: 1px solid transparent; transition: border-color .15s, color .15s; }
 .rot-slot-hint:hover { border-color: var(--border); color: var(--cyan); }
 .rot-slot-hint-input { width: 44px; font-size: 9px; background: var(--bg2); border: 1px solid var(--cyan); border-radius: 3px; color: var(--text-hi); font-family: inherit; text-align: right; padding: 1px 3px; }
 /* clock header hint total */
-.rot-clock-hint-total { font-size: 9px; font-weight: 700; color: #4a8c6a; background: rgba(32,200,100,0.10); border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
+.rot-clock-hint-total { font-size: 11px; font-weight: 700; color: #4a8c6a; background: rgba(32,200,100,0.10); border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
 /* inline insert form */
 .rot-slot-insert-form { display: flex; gap: 5px; padding: 3px 7px; align-items: center; background: rgba(32,230,255,0.05); border-radius: 5px; border: 1px dashed rgba(32,230,255,0.25); flex-wrap: wrap; }
 .rot-slot-insert-form .rot-select { font-size: 11px; padding: 2px 5px; }
 .rot-slot-insert-form .rot-btn-sm { font-size: 10px; padding: 3px 8px; }
 .rot-slot-insert-cancel { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 11px; padding: 0 3px; }
 .rot-slot-insert-cancel:hover { color: #ef4444; }
-.rot-slot-add-form { display: flex; gap: 6px; padding: 0 10px 10px; align-items: center; flex-wrap: wrap; }
+.rot-slot-add-form { display: flex; gap: 6px; padding: 8px 10px; align-items: center; flex-wrap: wrap; }
 .rot-select { background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; color: var(--text-hi); font-size: 12px; font-family: inherit; padding: 4px 7px; outline: none; cursor: pointer; }
 .rot-select:focus { border-color: rgba(32,230,255,0.45); }
 /* Grid */
@@ -1941,7 +1956,7 @@ input[type=range].vol-slider:disabled {
 .rot-grid-table th { padding: 3px 4px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: .07em; border: 1px solid var(--border); background: var(--bg2); white-space: nowrap; }
 .rot-grid-table th:first-child, .rot-grid-table td:first-child { width: 68px; text-align: center; }
 .rot-grid-table td { border: 1px solid var(--border); padding: 0; }
-.rot-grid-cell { width: 100%; background: none; border: none; padding: 4px 4px; color: var(--text-dim); font-size: 9px; font-family: inherit; cursor: pointer; text-align: left; transition: background .12s, color .12s; display: block; text-transform: uppercase; word-break: break-word; }
+.rot-grid-cell { width: 100%; background: none; border: none; padding: 4px 4px; color: var(--text-dim); font-size: 11px; font-family: inherit; cursor: pointer; text-align: left; transition: background .12s, color .12s; display: block; text-transform: uppercase; word-break: break-word; }
 .rot-grid-cell.has-clock { color: var(--cyan); background: rgba(32,230,255,0.06); }
 .rot-grid-cell:hover { background: rgba(32,230,255,0.12); color: var(--text-hi); }
 .rot-grid-pick-opt { display: block; width: 100%; background: none; border: none; color: var(--text); font-size: 11px; font-family: inherit; text-align: left; padding: 7px 14px; cursor: pointer; transition: background .1s; }
@@ -7877,7 +7892,7 @@ function rotClockRender() {
           <select class="rot-select" id="rotSlotCat_${c.id}" style="">
             ${_rotCategories.map(cat => `<option value="${cat.id}">${escHtml(cat.name)}</option>`).join('')}
           </select>
-          <input class="rot-input" type="number" min="0" step="1" id="rotSlotHint_${c.id}" placeholder="seg" title="Duração estimada (seg)" style="width:73px;">
+          <input class="rot-input" type="number" min="0" step="1" id="rotSlotHint_${c.id}" placeholder="seg" title="Duração estimada (seg)" style="width:110px;">
           <button class="rot-btn-sm" onclick="rotSlotAdd('${c.id}')">+ Adicionar slot</button>
         </div>
       </div>
@@ -7901,17 +7916,24 @@ function rotSlotTypeChanged(clockId) {
 }
 
 /* ── Shared slot row HTML ──────────────────────────────────────── */
+const _SLOT_TYPE_SHORT = {
+  HORA_CERTA: 'HC', VINHETA: 'VH', CATEGORY: 'CAT',
+  JINGLE: 'JGL', SPOT: 'SPT', FIXED: 'FIX',
+};
+
 function rotSlotRowHTML(clockId, s) {
   const hintMs  = s.duration_hint_ms || 0;
   const hintLbl = _fmtHintMs(hintMs);
+  const typeShort = _SLOT_TYPE_SHORT[s.slot_type] || s.slot_type.slice(0, 3);
   return `
-    <div class="rot-slot-row is-draggable" id="rotSlotRow_${s.id}"
+    <div class="rot-slot-row is-draggable slot-type--${s.slot_type}" id="rotSlotRow_${s.id}"
          data-slot-id="${s.id}" data-clock-id="${clockId}"
          data-slot-type="${s.slot_type}" data-cat-id="${s.category_id || ''}">
       <span class="dnd-handle" title="Arrastar para reordenar">⠿</span>
       <span class="rot-slot-pos">${s.position}</span>
-      <span class="rot-slot-badge">${s.slot_type}</span>
+      <span class="rot-slot-type-label">${typeShort}</span>
       <span class="rot-slot-cat">${escHtml(s.category_name || s.slot_type)}</span>
+
       <span class="rot-slot-hint" data-hint-ms="${hintMs}" title="Duração estimada (clique para editar)" onclick="rotSlotHintEdit(this,'${clockId}','${s.id}')">${hintLbl}</span>
       <div class="rot-slot-actions">
         <button class="rot-slot-ins" title="Inserir antes" onclick="rotSlotShowInsertForm('${clockId}','${s.id}','before')">+↑</button>
@@ -7971,7 +7993,7 @@ function _rotUpdateClockHintTotal(clockId, slotsEl) {
   const hintEl = document.getElementById('rotClockHint_' + clockId);
   if (!hintEl) return;
   if (totalMs > 0) {
-    hintEl.textContent = '~' + _fmtHintMs(totalMs);
+    hintEl.textContent = 'Total ~' + _fmtHintMs(totalMs);
     hintEl.title = 'Duração total estimada do clock';
   } else {
     hintEl.textContent = '';
@@ -8050,8 +8072,10 @@ async function rotSlotAdd(clockId) {
     body: JSON.stringify(body)
   });
   if (!r.ok) { alert('Erro ao adicionar slot'); return; }
-  if (hintEl) hintEl.value = '';
-  rotClockRefreshSlots(clockId);
+  if (hintEl) hintEl.value = _ROT_SLOT_DEFAULT_SEC[type] ?? '';
+  await rotClockRefreshSlots(clockId);
+  const slotsEl = document.getElementById('rotSlotsList_' + clockId);
+  if (slotsEl) slotsEl.scrollTop = slotsEl.scrollHeight;
 }
 
 async function rotSlotDelete(clockId, slotId) {
@@ -8075,8 +8099,8 @@ function rotSlotHintEdit(spanEl, clockId, slotId) {
   input.min         = '0';
   input.value       = currentSec;
   input.placeholder = 'seg';
-  input.className   = 'rot-slot-hint-input';
-  input.style.width = '48px';
+  input.className   = 'rot-input';
+  input.style.width = '110px';
   spanEl.replaceWith(input);
   input.focus();
   input.select();
@@ -8091,7 +8115,7 @@ function rotSlotHintEdit(spanEl, clockId, slotId) {
   };
   input.addEventListener('blur',   commit);
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
     if (e.key === 'Escape') {
       const span = _rotHintSpan(currentMs);
       span.onclick = () => rotSlotHintEdit(span, clockId, slotId);
