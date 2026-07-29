@@ -2173,7 +2173,7 @@ input[type=range].vol-slider:disabled {
   border-color: rgba(255,77,103,.28);
   box-shadow: inset 3px 0 0 rgba(255,77,103,.8);
 }
-.queue-row.is-next    { background: rgba(57,120,255,.065); }
+.queue-row.is-next    { background: rgba(57,120,255,.10); border-color: rgba(57,120,255,.45) !important; box-shadow: inset 3px 0 0 rgba(57,120,255,.7); }
 .queue-row.is-played  { opacity: 0.35; }
 .queue-row.is-failed  { opacity: 0.5; }
 
@@ -2205,7 +2205,7 @@ input[type=range].vol-slider:disabled {
 .q-track { min-width: 0; }
 .q-track-name {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-size: 12px; font-weight: 720; color: #d7e3ec;
+  font-size: 13px; font-weight: 720; color: #d7e3ec;
   display: flex; align-items: center; gap: 6px;
 }
 .q-meta {
@@ -2274,11 +2274,12 @@ input[type=range].vol-slider:disabled {
 /* Progress bar */
 .q-progress {
   position: absolute; bottom: 2px; left: 8px; right: 8px;
-  height: 2px; border-radius: 999px; background: rgba(0,212,255,.12);
+  height: 3px; border-radius: 999px; background: rgba(0,212,255,.12);
 }
 .q-progress span {
   display: block; height: 100%; background: #00d4ff; border-radius: inherit;
   width: 0%; transition: width 0.5s linear;
+  box-shadow: 0 0 6px rgba(0,212,255,.7), 0 0 12px rgba(0,212,255,.35);
 }
 
 /* Equalizer */
@@ -2325,6 +2326,28 @@ input[type=range].vol-slider:disabled {
   padding: 40px; text-align: center; color: var(--text-dim);
   font-style: italic; font-size: 15px;
 }
+
+/* Section separator "A SEGUIR" */
+.q-section-sep {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 2px; margin: 2px 0;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.14em;
+  color: #3d5a6a; text-transform: uppercase; flex-shrink: 0;
+}
+.q-section-sep::before, .q-section-sep::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.07);
+}
+
+/* Badge "PRÓXIMO" on preloading row */
+.q-next-badge {
+  display: inline-flex; align-items: center; padding: 1px 5px;
+  border-radius: 4px; background: rgba(57,120,255,.2); border: 1px solid rgba(57,120,255,.5);
+  color: #7098ff; font-size: 8px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; flex-shrink: 0;
+}
+
+/* Queue header stat (count + remaining time) */
+.queue-header-stat { font-size: 10px; color: #3d5a6a; font-weight: 700; margin-left: auto; }
 
 
 /* ─── Next Break card ───────────────────────────────────────── */
@@ -2893,6 +2916,7 @@ canvas.vu-canvas {
         <!-- Header -->
         <div class="queue-header">
           <span class="queue-title-label">FILA DE REPRODUÇÃO</span>
+          <span class="queue-header-stat" id="queueHeaderStat"></span>
         </div>
         <!-- Toolbar: busca + ações -->
         <div class="queue-toolbar">
@@ -3903,6 +3927,8 @@ function renderQueue() {
   const tbody = document.getElementById('queueBody');
   const count = document.getElementById('queueCount');
   count.textContent = queueItems.length + (queueItems.length === 1 ? ' item' : ' itens');
+  const _hdrStat = document.getElementById('queueHeaderStat');
+  // Update header stat after totalMs is computed (computed below)
 
   const hasPendingItems = queueItems.some(i => i && i.status !== 'PLAYED' && i.status !== 'SKIPPED' && i.status !== 'FAILED' && i.status !== 'MISSED');
   const btnClear = document.getElementById('btnClearQueue');
@@ -3917,6 +3943,12 @@ function renderQueue() {
   }, 0);
   const durEl = document.getElementById('queueDuration');
   durEl.innerHTML = totalMs > 0 ? '<span style="font-size:17px;vertical-align:middle">⏱</span> ' + msToDuration(totalMs) : '';
+  // Header stat: pending item count + remaining time
+  const _hdrStat2 = document.getElementById('queueHeaderStat');
+  if (_hdrStat2) {
+    const pendingCnt = queueItems.filter(i => i && (i.status||'').toUpperCase() !== 'PLAYED' && (i.status||'').toUpperCase() !== 'SKIPPED' && (i.status||'').toUpperCase() !== 'FAILED' && (i.status||'').toUpperCase() !== 'MISSED').length;
+    _hdrStat2.textContent = pendingCnt + ' item' + (pendingCnt !== 1 ? 's' : '') + (totalMs > 0 ? ' · ' + msToDuration(totalMs) : '');
+  }
 
   // "A Seguir" — first pending QUEUED or PRELOADING item (PRELOADING = crossfade in progress)
   const nextItem = queueItems.find(i => i && ((i.status || '').toUpperCase() === 'QUEUED' || (i.status || '').toUpperCase() === 'PRELOADING'));
@@ -3963,7 +3995,12 @@ function renderQueue() {
 
   // New polymorphic API
   if (queueData && Array.isArray(queueData.pending)) {
-    if (queueData.current) rows.push(renderItemRow(queueData.current, _estTimes));
+    if (queueData.current) {
+      rows.push(renderItemRow(queueData.current, _estTimes));
+      if (queueData.pending && queueData.pending.length > 0) {
+        rows.push('<div class="q-section-sep">A Seguir</div>');
+      }
+    }
     queueData.pending.forEach(entry => {
       if (!entry) return;
       if (entry.kind === 'break') {
@@ -4250,7 +4287,10 @@ function renderItemRow(item, estTimes) {
 
   const badgeHTML = '';
   const nextTag   = isAssistNext && !isPlaying ? `<span class="q-next-tag">← PRÓXIMA</span>` : '';
+  const nextBadge = isPreload ? '<span class="q-next-badge">PRÓXIMO</span>' : '';
 
+  const inlineTypeIcon = (!isHC && !isPlaying && !isPlayed && !isFailed)
+    ? `<img src="${typeIcon}" style="width:14px;height:14px;opacity:0.55;flex-shrink:0;" alt="">` : '';
   const titleHTML = isHC
     ? `<span style="font-size:12px;font-weight:900;color:#20e6ff;letter-spacing:0.12em">HORA CERTA</span>`
     : escHtml(truncTitle(item.title || '—'));
@@ -4259,7 +4299,12 @@ function renderItemRow(item, estTimes) {
   const typeHTML   = `<div class="q-meta"><span class="row-badge">${typeLabel2}</span></div>`;
   const metaHTML   = artistHTML + typeHTML;
 
-  const progressHTML = '';
+  const _progPct = (isPlaying && item.duration_ms > 0 && _lastRemainingMs >= 0)
+    ? Math.min(100, Math.max(0, 100 - (_lastRemainingMs / item.duration_ms) * 100))
+    : 0;
+  const progressHTML = isPlaying
+    ? `<div class="q-progress"><span style="width:${_progPct.toFixed(1)}%"></span></div>`
+    : '';
 
 
   // Registrar no map para CUE
@@ -4288,7 +4333,7 @@ function renderItemRow(item, estTimes) {
     ${canReorder ? `<div class="dnd-handle" title="Arrastar">⠿</div>` : ''}
     ${timeColHTML}
     <div class="q-track">
-      <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}</div>
+      <div class="q-track-name" title="${escHtml(item.title || '')}">${inlineTypeIcon}${titleHTML}${badgeHTML}${nextTag}${nextBadge}</div>
       ${metaHTML}
     </div>
     ${hoverActionsHTML}
