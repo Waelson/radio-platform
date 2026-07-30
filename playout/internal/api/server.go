@@ -71,9 +71,11 @@ type ConfigDeps struct {
 // LineInDeps carries line-in dependencies for the /v1/linein/* endpoints.
 // ListDevices may be nil — GET /v1/linein/devices will return an empty list.
 // ConfigStore may be nil — PATCH /v1/linein/config will return 501.
+// ListRecordings may be nil — GET /v1/linein/recordings will return an empty list.
 type LineInDeps struct {
-	ListDevices func() ([]handlers.LineInDevice, error)
-	ConfigStore handlers.LineInConfigStore
+	ListDevices    func() ([]handlers.LineInDevice, error)
+	ConfigStore    handlers.LineInConfigStore
+	ListRecordings func() []handlers.LineInRecordingData
 }
 
 // Server wraps an http.Server and owns the routing for the Engine's REST API.
@@ -91,9 +93,10 @@ type Server struct {
 	streamingMgr      handlers.StreamingManager
 	configSnapshot    *appcfg.Config
 	configPath        string
-	lineInListDevices func() ([]handlers.LineInDevice, error)
-	lineInConfigStore handlers.LineInConfigStore
-	log               *slog.Logger
+	lineInListDevices    func() ([]handlers.LineInDevice, error)
+	lineInConfigStore    handlers.LineInConfigStore
+	lineInListRecordings func() []handlers.LineInRecordingData
+	log                  *slog.Logger
 	httpSrv           *http.Server
 }
 
@@ -120,9 +123,10 @@ func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *qu
 		streamingMgr:      streamingDeps.Mgr,
 		configSnapshot:    configDeps.Snapshot,
 		configPath:        configDeps.Path,
-		lineInListDevices: lineInDeps.ListDevices,
-		lineInConfigStore: lineInDeps.ConfigStore,
-		log:               log,
+		lineInListDevices:    lineInDeps.ListDevices,
+		lineInConfigStore:    lineInDeps.ConfigStore,
+		lineInListRecordings: lineInDeps.ListRecordings,
+		log:                  log,
 	}
 
 	mux := http.NewServeMux()
@@ -233,8 +237,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/linein/start",   handlers.LineInStart(s.cmdBus, s.stateMgr))
 	mux.HandleFunc("POST /v1/linein/stop",    handlers.LineInStop(s.cmdBus, s.stateMgr))
 	mux.HandleFunc("GET /v1/linein/status",   handlers.LineInStatus(s.stateMgr))
-	mux.HandleFunc("GET /v1/linein/devices",  handlers.LineInDevices(s.lineInListDevices))
-	mux.HandleFunc("PATCH /v1/linein/config", handlers.LineInPatchConfig(s.lineInConfigStore))
+	mux.HandleFunc("GET /v1/linein/devices",     handlers.LineInDevices(s.lineInListDevices))
+	mux.HandleFunc("PATCH /v1/linein/config",    handlers.LineInPatchConfig(s.lineInConfigStore))
+	mux.HandleFunc("GET /v1/linein/recordings",  handlers.LineInRecordings(s.lineInListRecordings))
 
 	// Admin
 	mux.HandleFunc("POST /v1/admin/shutdown", handlers.Shutdown())

@@ -9,6 +9,18 @@ import (
 	"github.com/Waelson/radio-playout-engine/internal/state"
 )
 
+// LineInRecordingData is the API DTO for a single completed line-in recording.
+type LineInRecordingData struct {
+	Label       string    `json:"label"`
+	StartedAt   time.Time `json:"started_at"`
+	StoppedAt   time.Time `json:"stopped_at"`
+	DurationMS  int64     `json:"duration_ms"`
+	Path        string    `json:"path"`
+	Format      string    `json:"format"`
+	SizeBytes   int64     `json:"size_bytes"`
+	TriggeredBy string    `json:"triggered_by"`
+}
+
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
 // lineInStateReader is the subset of state.Manager used by line-in handlers.
@@ -40,6 +52,9 @@ type lineInStartRequest struct {
 	SilenceThresholdDBFS float64 `json:"silence_threshold_dbfs"`
 	SilenceThresholdMS   int64   `json:"silence_threshold_ms"`
 	TriggerMode          string  `json:"trigger_mode"`
+	Record               bool    `json:"record"`
+	RecordPath           string  `json:"record_path"`
+	RecordFormat         string  `json:"record_format"`
 }
 
 // lineInStopRequest is the JSON body for POST /v1/linein/stop.
@@ -124,6 +139,9 @@ func LineInStart(bus queueBus, stateMgr lineInStateReader) http.HandlerFunc {
 			SilenceThresholdMS:   req.SilenceThresholdMS,
 			TriggerMode:          req.TriggerMode,
 			TriggeredBy:          "manual",
+			Record:               req.Record,
+			RecordPath:           req.RecordPath,
+			RecordFormat:         req.RecordFormat,
 		}
 
 		cmd, replyCh := commands.NewSync(commands.CmdLineInStart, payload)
@@ -240,6 +258,25 @@ func LineInDevices(listDevices func() ([]LineInDevice, error)) http.HandlerFunc 
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":   true,
 			"data": lineInDevicesData{Devices: devs, Count: len(devs)},
+		})
+	}
+}
+
+// LineInRecordings returns a handler for GET /v1/linein/recordings.
+// list is called on every request and must return a snapshot of completed recordings.
+// If nil, returns an empty list.
+func LineInRecordings(list func() []LineInRecordingData) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var recs []LineInRecordingData
+		if list != nil {
+			recs = list()
+		}
+		if recs == nil {
+			recs = []LineInRecordingData{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":   true,
+			"data": recs,
 		})
 	}
 }

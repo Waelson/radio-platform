@@ -32,12 +32,13 @@ const (
 //	manager.Stop()                       // signals goroutine to stop
 //	// channel is closed when goroutine exits
 type LineInManager struct {
-	input  InputDevice
-	out    output.OutputDevice
-	log    *slog.Logger
-	cancel context.CancelFunc
-	mu     sync.Mutex
-	active bool
+	input    InputDevice
+	out      output.OutputDevice
+	recorder output.OutputDevice // optional; simultaneous recording (caller owns lifecycle)
+	log      *slog.Logger
+	cancel   context.CancelFunc
+	mu       sync.Mutex
+	active   bool
 }
 
 // NewLineInManager creates a manager with the given devices.
@@ -67,6 +68,15 @@ func (m *LineInManager) Start(ctx context.Context, cfg LineInConfig) (<-chan Eve
 	go m.run(capCtx, cfg, events)
 
 	return events, nil
+}
+
+// SetRecorder attaches an optional secondary output that receives the same
+// PCM frames as the main output (simultaneous recording).
+// Must be called before Start. The caller is responsible for closing the
+// recorder after the session ends — the manager writes to it but does not
+// close it, allowing the caller to do post-processing (e.g. WAV→MP3 conversion).
+func (m *LineInManager) SetRecorder(r output.OutputDevice) {
+	m.recorder = r
 }
 
 // Stop signals the active session to stop.
@@ -149,10 +159,18 @@ func (m *LineInManager) run(ctx context.Context, cfg LineInConfig, events chan<-
 
 		frames := buf[:n*2]
 
-		// Write to output device.
+		// Write to main output device.
 		if _, werr := m.out.Write(ctx, frames); werr != nil {
 			m.emit(events, Event{Type: EventError, Err: fmt.Errorf("linein: write output: %w", werr)})
 			return
+		}
+
+		// Write to recorder (simultaneous recording). Errors are non-fatal —
+		// a recording failure must never interrupt the live transmission.
+		if m.recorder != nil {
+			if _, werr := m.recorder.Write(ctx, frames); werr != nil {
+				m.logf("linein: recorder write error (recording may be incomplete)", "err", werr)
+			}
 		}
 
 		// ── Silence watchdog ──────────────────────────────────────────────

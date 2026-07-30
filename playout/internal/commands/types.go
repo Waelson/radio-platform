@@ -363,6 +363,19 @@ type LineInStartPayload struct {
 
 	// TriggeredBy records the origin of the command: "manual" or "scheduler".
 	TriggeredBy string
+
+	// Record enables simultaneous recording of the captured audio to a file.
+	// When true, the engine opens a FileOutput in parallel with the main output.
+	Record bool `json:"record,omitempty"`
+
+	// RecordPath is the absolute path for the recording file.
+	// If empty, a name is generated automatically from Label and start time.
+	RecordPath string `json:"record_path,omitempty"`
+
+	// RecordFormat is the file format for the recording.
+	// "wav" (default) — IEEE float32 WAV, no post-processing.
+	// "mp3"           — recorded as WAV, converted to MP3 via FFmpeg on stop.
+	RecordFormat string `json:"record_format,omitempty"` // "wav" | "mp3"
 }
 
 // LineInStopPayload carries the payload for CmdLineInStop.

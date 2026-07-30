@@ -463,6 +463,23 @@ func run(args []string) error {
 			}
 			return out, nil
 		},
+		ListRecordings: func() []handlers.LineInRecordingData {
+			recs := lineInHandler.ListRecordings()
+			out := make([]handlers.LineInRecordingData, len(recs))
+			for i, r := range recs {
+				out[i] = handlers.LineInRecordingData{
+					Label:       r.Label,
+					StartedAt:   r.StartedAt,
+					StoppedAt:   r.StoppedAt,
+					DurationMS:  r.DurationMS,
+					Path:        r.Path,
+					Format:      r.Format,
+					SizeBytes:   r.SizeBytes,
+					TriggeredBy: r.TriggeredBy,
+				}
+			}
+			return out
+		},
 	}, log)
 
 	// Transition from STARTING → IDLE now that core is wired.

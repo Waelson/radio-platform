@@ -35,6 +35,20 @@ type LineInConfig struct {
 	// SilenceThresholdMS is the continuous silence duration (ms) that triggers
 	// the watchdog. Default: 30 000 (30 s).
 	SilenceThresholdMS int64
+
+	// Record enables simultaneous recording of captured audio to a file.
+	Record bool
+
+	// RecordPath is the destination file path for the recording.
+	// Empty means the Handler will generate one automatically.
+	RecordPath string
+
+	// RecordFormat is the file format: "wav" (default) or "mp3" (post-stop conversion).
+	RecordFormat string
+
+	// TriggeredBy records the origin of the session: "manual" or "scheduler".
+	// Used to populate the RecordingEntry for audit purposes.
+	TriggeredBy string
 }
 
 // onSilenceOrDefault returns the effective OnSilence value.

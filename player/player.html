@@ -5659,7 +5659,7 @@ function clearBreakBanner() {}
 
 /* ─── Line-In ────────────────────────────────────────────────── */
 
-const _lineIn = { active: false, label: '', deviceID: '', startedAt: null, elapsedTimer: null };
+const _lineIn = { active: false, label: '', deviceID: '', startedAt: null, elapsedTimer: null, recording: false };
 
 async function openLineInModal() {
   const modal = document.getElementById('lineInModal');
@@ -5673,6 +5673,8 @@ async function openLineInModal() {
     activePanel.style.display = '';
     document.getElementById('lineInActiveLabel').textContent  = _lineIn.label || '—';
     document.getElementById('lineInActiveDevice').textContent = _lineIn.deviceID || '—';
+    const recNote = document.getElementById('lineInActiveRecording');
+    if (recNote) recNote.style.display = _lineIn.recording ? '' : 'none';
   } else {
     startPanel.style.display  = '';
     activePanel.style.display = 'none';
@@ -5700,10 +5702,12 @@ function closeLineInModal() {
 }
 
 async function startLineIn() {
-  const deviceID  = document.getElementById('lineInDeviceSelect')?.value  || '';
-  const label     = document.getElementById('lineInLabel')?.value.trim()   || 'Line-In';
-  const durRaw    = document.getElementById('lineInDuration')?.value.trim() || '';
-  const onSilence = document.getElementById('lineInOnSilence')?.value      || 'alert';
+  const deviceID   = document.getElementById('lineInDeviceSelect')?.value  || '';
+  const label      = document.getElementById('lineInLabel')?.value.trim()   || 'Line-In';
+  const durRaw     = document.getElementById('lineInDuration')?.value.trim() || '';
+  const onSilence  = document.getElementById('lineInOnSilence')?.value      || 'alert';
+  const record     = document.getElementById('lineInRecord')?.checked        || false;
+  const recordPath = document.getElementById('lineInRecordPath')?.value.trim() || '';
 
   // Parse HH:MM to ms
   let durationMS = 0;
@@ -5713,11 +5717,17 @@ async function startLineIn() {
     else if (parts.length === 1 && !isNaN(parts[0])) durationMS = parts[0] * 60_000;
   }
 
+  const body = { device_id: deviceID, label, duration_ms: durationMS, on_silence: onSilence, triggered_by: 'manual' };
+  if (record) {
+    body.record = true;
+    if (recordPath) body.record_path = recordPath;
+  }
+
   try {
     const r = await fetch(API_URL + '/v1/linein/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device_id: deviceID, label, duration_ms: durationMS, on_silence: onSilence, triggered_by: 'manual' }),
+      body: JSON.stringify(body),
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
@@ -5781,8 +5791,12 @@ function onLineInStarted(p) {
   _lineIn.label     = p.label     || 'Line-In';
   _lineIn.deviceID  = p.device_id || '';
   _lineIn.startedAt = new Date();
+  _lineIn.recording = !!(p.record);
   _lineInShowUI(true);
   _lineInStartElapsedTimer();
+  // Update active panel if modal is open
+  const recNote = document.getElementById('lineInActiveRecording');
+  if (recNote) recNote.style.display = _lineIn.recording ? '' : 'none';
   renderQueue();
 }
 
@@ -10176,6 +10190,14 @@ document.addEventListener('DOMContentLoaded', () => {
           <option value="stop">Parar e retomar programação</option>
         </select>
       </div>
+      <div class="linein-modal-field" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+        <input type="checkbox" id="lineInRecord" style="accent-color:#00bcd4;width:16px;height:16px;cursor:pointer;" onchange="document.getElementById('lineInRecordPathField').style.display=this.checked?'':'none'">
+        <label for="lineInRecord" class="linein-modal-label" style="margin:0;cursor:pointer;">Gravar sessão em arquivo</label>
+      </div>
+      <div class="linein-modal-field" id="lineInRecordPathField" style="display:none;">
+        <label class="linein-modal-label">Caminho do arquivo (opcional)</label>
+        <input class="linein-modal-input" id="lineInRecordPath" type="text" placeholder="Ex.: /recordings/voz-do-brasil.wav  (vazio = automático)">
+      </div>
       <div class="linein-modal-footer">
         <button class="linein-modal-btn cancel" onclick="closeLineInModal()">Cancelar</button>
         <button class="linein-modal-btn start" onclick="startLineIn()">▶ Iniciar captura</button>
@@ -10187,7 +10209,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="color:#88a0b5;font-size:12px;margin-bottom:6px;">Sessão em andamento</div>
       <div id="lineInActiveLabel"  style="color:#00bcd4;font-size:16px;font-weight:800;margin-bottom:4px;"></div>
       <div id="lineInActiveDevice" style="color:#88a0b5;font-size:11px;margin-bottom:12px;"></div>
-      <div id="lineInActiveElapsed" style="color:#c8c8c8;font-size:12px;margin-bottom:16px;"></div>
+      <div id="lineInActiveElapsed" style="color:#c8c8c8;font-size:12px;margin-bottom:8px;"></div>
+      <div id="lineInActiveRecording" style="display:none;color:#00bcd4;font-size:11px;font-weight:700;letter-spacing:0.05em;margin-bottom:16px;">⏺ GRAVANDO</div>
       <div class="linein-modal-footer">
         <button class="linein-modal-btn cancel" onclick="closeLineInModal()">Fechar</button>
         <button class="linein-modal-btn stop"   onclick="stopLineIn()">⏹ Encerrar captura</button>

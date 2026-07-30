@@ -317,6 +317,34 @@ func TestManager_LevelUpdatesEmitted(t *testing.T) {
 	// Level updates are optional for short sessions; don't fail.
 }
 
+func TestManager_RecordingWritesToRecorder(t *testing.T) {
+	const batchCount = 5
+	in := &stubInput{batches: batchCount, sample: 0.5}
+	out := &stubOutput{}
+	rec := &stubOutput{} // acts as the recorder
+
+	mgr := linein.NewLineInManager(in, out, nil)
+	mgr.SetRecorder(rec)
+
+	events, err := mgr.Start(context.Background(), linein.LineInConfig{Label: "test-rec"})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	collectEvents(t, events)
+
+	if len(out.written) == 0 {
+		t.Fatal("expected frames written to main output")
+	}
+	if len(rec.written) == 0 {
+		t.Fatal("expected frames written to recorder")
+	}
+	if len(out.written) != len(rec.written) {
+		t.Errorf("recorder received %d samples, main output received %d; want equal",
+			len(rec.written), len(out.written))
+	}
+}
+
 // ── Helper ────────────────────────────────────────────────────────────────────
 
 func collectEvents(t *testing.T, ch <-chan linein.Event) []linein.Event {
