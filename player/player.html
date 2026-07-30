@@ -151,6 +151,88 @@ html, body {
 .badge.AUTO     { background: rgba(0,42,17,0.8); color: var(--cyan); border-color: rgba(45,216,255,0.40); box-shadow: 0 0 10px rgba(45,216,255,0.12); }
 .badge.ASSIST_MODE { background: rgba(42,24,0,0.8); color: var(--orange); border-color: rgba(255,138,0,0.35); }
 .badge.PANIC_MODE  { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.45); }
+.badge.LINE_IN     { background: rgba(0,40,48,0.9); color: #00bcd4; border-color: rgba(0,188,212,0.45); box-shadow: 0 0 10px rgba(0,188,212,0.15); animation: blink 1.2s step-start infinite; }
+
+/* ─── Line-In badge (topbar) ─────────────────────────────────── */
+.linein-topbadge {
+  display: none; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 6px;
+  background: rgba(0,40,48,0.9); color: #00bcd4;
+  border: 1px solid rgba(0,188,212,0.45);
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(0,188,212,0.15);
+  cursor: pointer;
+}
+.linein-topbadge.active { display: inline-flex; }
+.linein-topbadge .li-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #00bcd4; box-shadow: 0 0 6px rgba(0,188,212,.8);
+  animation: blink 0.9s step-start infinite;
+}
+
+/* ─── Line-In VU meter ───────────────────────────────────────── */
+.linein-vu-wrap {
+  display: none; flex-direction: column; gap: 3px;
+  padding: 6px 10px; background: rgba(0,30,40,0.7);
+  border: 1px solid rgba(0,188,212,0.2); border-radius: 6px;
+  margin-top: 6px;
+}
+.linein-vu-wrap.active { display: flex; }
+.linein-vu-label { font-size: 9px; color: #00bcd4; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.linein-vu-track { height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+.linein-vu-fill  { height: 100%; width: 0%; background: linear-gradient(to right, #00bcd4, #00e5ff); border-radius: 3px; transition: width 0.15s ease; }
+.linein-silence-warn {
+  display: none; padding: 4px 8px; background: rgba(255,150,0,0.15);
+  border: 1px solid rgba(255,150,0,0.4); border-radius: 4px;
+  color: #ffaa00; font-size: 10px; font-weight: 700;
+}
+.linein-silence-warn.active { display: block; }
+
+/* ─── Line-In modal ──────────────────────────────────────────── */
+.linein-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+}
+.linein-modal-overlay.open { display: flex; }
+.linein-modal {
+  background: #111b24; border: 1px solid rgba(0,188,212,0.3); border-radius: 10px;
+  padding: 20px 24px; width: 380px; box-shadow: 0 0 40px rgba(0,0,0,0.7);
+}
+.linein-modal-title { font-size: 14px; font-weight: 800; color: #00bcd4; margin-bottom: 16px; }
+.linein-modal-field { margin-bottom: 12px; }
+.linein-modal-label { display: block; font-size: 10px; font-weight: 700; color: #88a0b5; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.linein-modal-input, .linein-modal-select {
+  width: 100%; background: #0a1520; border: 1px solid #20384c; border-radius: 6px;
+  color: #c8c8c8; padding: 8px 10px; font-size: 13px; outline: none;
+}
+.linein-modal-input:focus, .linein-modal-select:focus { border-color: rgba(0,188,212,0.5); }
+.linein-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.linein-modal-btn { padding: 8px 18px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid transparent; }
+.linein-modal-btn.cancel { background: transparent; border-color: #20384c; color: #88a0b5; }
+.linein-modal-btn.cancel:hover { border-color: #fff3; color: #fff; }
+.linein-modal-btn.start { background: #00bcd4; color: #001820; border-color: #00bcd4; }
+.linein-modal-btn.start:hover { background: #00e5ff; border-color: #00e5ff; }
+.linein-modal-btn.stop  { background: rgba(255,50,50,0.15); color: #ff6060; border-color: rgba(255,50,50,0.4); }
+.linein-modal-btn.stop:hover  { background: rgba(255,50,50,0.25); }
+
+/* ─── Queue row: line-in ativo ───────────────────────────────── */
+.queue-row.is-linein {
+  border-color: #00bcd4 !important;
+  background: linear-gradient(to bottom, #004d5a 0%, #003d48 22%, #002d38 47%, #001520 49%, #000f18 72%, #000810 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -1px 0 rgba(0,0,0,.45);
+}
+.q-type-bar.linein { background: #00bcd4; }
+.linein-live-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 800;
+  background: rgba(0,188,212,0.15); color: #00bcd4; border: 1px solid rgba(0,188,212,0.4);
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.linein-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #00bcd4; box-shadow: 0 0 5px rgba(0,188,212,.9); animation: blink 0.8s step-start infinite; }
+
+/* ─── Schedule: line-in entries ──────────────────────────────── */
+.or-ctx-icon.linein { color: #00bcd4; }
+.or-ctx-item.linein-warn .or-ctx-time::after { content: ' ⚠'; color: #f59e0b; }
 
 /* ─── Footer ─────────────────────────────────────────────────── */
 .app-footer {
@@ -2891,6 +2973,10 @@ canvas.vu-canvas {
         <span class="streaming-dot"></span>
         <span id="streamingBadgeLabel">STREAMING</span>
       </div>
+      <div id="lineInTopBadge" class="linein-topbadge" onclick="openLineInModal()" title="Line-In ativo — clique para gerenciar">
+        <span class="li-dot"></span>
+        <span>LINE-IN ATIVO</span>
+      </div>
     </div>
 
     <div class="top-spacer"></div>
@@ -3023,10 +3109,18 @@ canvas.vu-canvas {
             <button class="pn-btn"               id="btnPauseToggle" onclick="sendCmd('pause-toggle')" disabled>⏸ Pausar</button>
             <button class="pn-btn pn-btn-primary" id="btnPlay"        onclick="playStopToggle()"        disabled>▶ NO AR</button>
             <button class="pn-btn"               id="btnSkip"        onclick="sendCmd('skip')"         disabled>Próximo ⏭</button>
+            <button class="pn-btn" id="btnLineIn" onclick="openLineInModal()" style="color:#00bcd4;border-color:rgba(0,188,212,0.35);background:rgba(0,40,48,0.5);" title="Entrada de Linha (Line-In)">📻 Linha</button>
           </div>
           <div class="pn-controls-right">
             <button class="pn-btn pn-btn-danger" id="btnPanicToggle" onclick="sendCmd('panic-toggle')" disabled data-tooltip="Panic" style="min-width:46px;width:46px;padding:0;"><img class="btn-icon" src="icons/panic.svg"></button>
           </div>
+        </div>
+
+        <!-- VU meter de line-in (visível apenas quando LINE_IN ativo) -->
+        <div class="linein-vu-wrap" id="lineInVuWrap">
+          <div class="linein-vu-label">📻 Nível de entrada</div>
+          <div class="linein-vu-track"><div class="linein-vu-fill" id="lineInVuFill"></div></div>
+          <div class="linein-silence-warn" id="lineInSilenceWarn">⚠ Silêncio detectado na entrada</div>
         </div>
 
       </div>
@@ -3998,7 +4092,8 @@ function renderQueue() {
     if (queueData.current) {
       rows.push(renderItemRow(queueData.current, _estTimes));
       if (queueData.pending && queueData.pending.length > 0) {
-        rows.push('<div class="q-section-sep">A Seguir</div>');
+        const sepLabel = (engineState === 'LINE_IN') ? 'FILA SUSPENSA' : 'A Seguir';
+        rows.push(`<div class="q-section-sep${engineState === 'LINE_IN' ? '" style="color:#00bcd4' : ''}">${sepLabel}</div>`);
       }
     }
     queueData.pending.forEach(entry => {
@@ -4122,6 +4217,25 @@ function updateNextBreakCard(estTimes) {
   const brk = pending.find(e => e && e.kind === 'break');
 
   if (!brk || !brk.break) {
+    // Fallback: next scheduled line-in event
+    if (_nextEvent?.line_in || _nextEvent?.line_in_stop) {
+      card.classList.remove('empty');
+      const fireAt = _nextEvent.next_fire_at ? new Date(_nextEvent.next_fire_at).getTime() : 0;
+      _nextBreakEstMs = fireAt;
+      let timeLabel = '';
+      if (fireAt) {
+        const d = new Date(fireAt);
+        timeLabel = ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      }
+      const isStop  = !!_nextEvent.line_in_stop;
+      const li      = _nextEvent.line_in || _nextEvent.line_in_stop || {};
+      titleEl.textContent = (_nextEvent.name || (isStop ? 'Encerramento Line-In' : 'Entrada de Linha')) + timeLabel;
+      titleEl.style.color = '#00bcd4';
+      subEl.textContent   = li.label || (isStop ? 'Encerra sessão de linha' : 'Entrada de linha externa');
+      subEl.style.color   = '#00bcd4';
+      _tickNextBreak();
+      return;
+    }
     // Fallback: use next scheduled break event if available
     if (_nextEvent?.break) {
       card.classList.remove('empty');
@@ -4135,6 +4249,8 @@ function updateNextBreakCard(estTimes) {
         timeLabel = ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
       }
       titleEl.textContent = (_nextEvent.name || 'Próximo break') + timeLabel;
+      titleEl.style.color = '';
+      subEl.style.color   = '';
 
       const spotCount  = (b.items || []).length;
       const totalBrkMs = (b.items || []).reduce((s, sp) => s + (sp?.duration_ms || 0), 0);
@@ -4151,7 +4267,9 @@ function updateNextBreakCard(estTimes) {
     }
     card.classList.add('empty');
     titleEl.textContent = 'Próximo break';
+    titleEl.style.color = '';
     subEl.textContent   = 'Nenhum break agendado';
+    subEl.style.color   = '';
     cdEl.textContent    = '—';
     _nextBreakEstMs = 0;
     return;
@@ -5528,11 +5646,178 @@ function handleEvent({ type, payload }) {
     case 'StreamingMetadataUpdated':
       stmOnMetadata(payload);
       break;
+    // Line-In
+    case 'LineInStarted':  onLineInStarted(payload);  break;
+    case 'LineInStopped':  onLineInStopped(payload);  break;
+    case 'LineInError':    onLineInError(payload);     break;
+    case 'LineInLevel':    onLineInLevel(payload);     break;
   }
 }
 
 function updateBreakBanner() {}
 function clearBreakBanner() {}
+
+/* ─── Line-In ────────────────────────────────────────────────── */
+
+const _lineIn = { active: false, label: '', deviceID: '', startedAt: null, elapsedTimer: null };
+
+async function openLineInModal() {
+  const modal = document.getElementById('lineInModal');
+  if (!modal) return;
+
+  const startPanel  = document.getElementById('lineInModalStart');
+  const activePanel = document.getElementById('lineInModalActive');
+
+  if (_lineIn.active) {
+    startPanel.style.display  = 'none';
+    activePanel.style.display = '';
+    document.getElementById('lineInActiveLabel').textContent  = _lineIn.label || '—';
+    document.getElementById('lineInActiveDevice').textContent = _lineIn.deviceID || '—';
+  } else {
+    startPanel.style.display  = '';
+    activePanel.style.display = 'none';
+
+    const sel = document.getElementById('lineInDeviceSelect');
+    sel.innerHTML = '<option value="">— carregando —</option>';
+    try {
+      const r = await fetch(API_URL + '/v1/linein/devices');
+      const d = await r.json();
+      const devs = d.devices || d || [];
+      sel.innerHTML = devs.length
+        ? devs.map(dv => `<option value="${escHtml(dv.id)}">${escHtml(dv.name)}</option>`).join('')
+        : '<option value="">Nenhum dispositivo encontrado</option>';
+    } catch (_) {
+      sel.innerHTML = '<option value="">Erro ao carregar dispositivos</option>';
+    }
+  }
+
+  modal.classList.add('open');
+}
+
+function closeLineInModal() {
+  const modal = document.getElementById('lineInModal');
+  if (modal) modal.classList.remove('open');
+}
+
+async function startLineIn() {
+  const deviceID  = document.getElementById('lineInDeviceSelect')?.value  || '';
+  const label     = document.getElementById('lineInLabel')?.value.trim()   || 'Line-In';
+  const durRaw    = document.getElementById('lineInDuration')?.value.trim() || '';
+  const onSilence = document.getElementById('lineInOnSilence')?.value      || 'alert';
+
+  // Parse HH:MM to ms
+  let durationMS = 0;
+  if (durRaw) {
+    const parts = durRaw.split(':').map(Number);
+    if (parts.length === 2) durationMS = (parts[0] * 60 + parts[1]) * 60_000;
+    else if (parts.length === 1 && !isNaN(parts[0])) durationMS = parts[0] * 60_000;
+  }
+
+  try {
+    const r = await fetch(API_URL + '/v1/linein/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: deviceID, label, duration_ms: durationMS, on_silence: onSilence, triggered_by: 'manual' }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      showToast(false, d.message || d.reason || 'Falha ao iniciar Line-In');
+      return;
+    }
+    closeLineInModal();
+  } catch (e) {
+    showToast(false, 'Erro de rede: ' + e.message);
+  }
+}
+
+async function stopLineIn() {
+  try {
+    const r = await fetch(API_URL + '/v1/linein/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: 'manual' }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      showToast(false, d.message || d.reason || 'Falha ao encerrar Line-In');
+      return;
+    }
+    closeLineInModal();
+  } catch (e) {
+    showToast(false, 'Erro de rede: ' + e.message);
+  }
+}
+
+function _lineInShowUI(show) {
+  const badge  = document.getElementById('lineInTopBadge');
+  const vuWrap = document.getElementById('lineInVuWrap');
+  if (badge)  badge.classList.toggle('active', show);
+  if (vuWrap) vuWrap.classList.toggle('active', show);
+  if (!show) {
+    const fill = document.getElementById('lineInVuFill');
+    const warn = document.getElementById('lineInSilenceWarn');
+    if (fill) fill.style.width = '0%';
+    if (warn) warn.classList.remove('active');
+  }
+}
+
+function _lineInStartElapsedTimer() {
+  if (_lineIn.elapsedTimer) clearInterval(_lineIn.elapsedTimer);
+  _lineIn.elapsedTimer = setInterval(() => {
+    const el = document.getElementById('lineInActiveElapsed');
+    if (!el || !_lineIn.startedAt) return;
+    const ms = Date.now() - _lineIn.startedAt.getTime();
+    const s = Math.floor(ms / 1000) % 60;
+    const m = Math.floor(ms / 60_000) % 60;
+    const h = Math.floor(ms / 3_600_000);
+    el.textContent = h > 0
+      ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} em andamento`
+      : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} em andamento`;
+  }, 1000);
+}
+
+function onLineInStarted(p) {
+  _lineIn.active    = true;
+  _lineIn.label     = p.label     || 'Line-In';
+  _lineIn.deviceID  = p.device_id || '';
+  _lineIn.startedAt = new Date();
+  _lineInShowUI(true);
+  _lineInStartElapsedTimer();
+  renderQueue();
+}
+
+function onLineInStopped(p) {
+  _lineIn.active    = false;
+  _lineIn.label     = '';
+  _lineIn.deviceID  = '';
+  _lineIn.startedAt = null;
+  if (_lineIn.elapsedTimer) { clearInterval(_lineIn.elapsedTimer); _lineIn.elapsedTimer = null; }
+  _lineInShowUI(false);
+  closeLineInModal();
+  const elapsed = p?.elapsed_ms ? msToTime2(p.elapsed_ms) : '';
+  showToast(true, 'Line-In encerrado' + (elapsed ? ' — ' + elapsed : ''));
+  renderQueue();
+}
+
+function onLineInError(p) {
+  if (p?.error === 'silence_detected') {
+    const warn = document.getElementById('lineInSilenceWarn');
+    if (warn) warn.classList.add('active');
+    showToast(false, 'Silêncio detectado na entrada Line-In');
+  } else {
+    showToast(false, 'Erro Line-In: ' + (p?.error || 'desconhecido'));
+  }
+}
+
+function onLineInLevel(p) {
+  const fill = document.getElementById('lineInVuFill');
+  if (!fill) return;
+  // RMSDBFS typically ranges -60 to 0 dB. Map to 0–100%.
+  const db  = p?.rms_dbfs ?? -60;
+  const pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 80 ? '#f44' : pct > 50 ? '#fa0' : '#00bcd4';
+}
 
 function onHealth(p) {
   const pct = p.buffer_pct ?? 0;
@@ -5875,6 +6160,8 @@ let _nextEvtTimer = null;
 
 function _nextEvtTipo(entry) {
   if (!entry) return '—';
+  if (entry.line_in_stop)                    return 'LINE_IN_STOP';
+  if (entry.line_in)                         return 'LINE_IN';
   if (entry.break)                           return 'BREAK';
   if (entry.item?.type === 'HORA_CERTA')     return 'HORA_CERTA';
   return 'ITEM';
@@ -5924,12 +6211,21 @@ async function fetchTodaySchedule() {
 }
 
 function _ctxIcon(entry) {
+  if (entry.line_in_stop)                  return '⏹';
+  if (entry.line_in)                       return '📻';
   if (entry.break)                         return '⊞';
   if (entry.item?.type === 'HORA_CERTA')   return '◔';
   return '▶';
 }
 
+function _ctxIconClass(entry) {
+  if (entry.line_in || entry.line_in_stop) return 'linein';
+  return '';
+}
+
 function _ctxSub(entry) {
+  if (entry.line_in_stop)  return 'Encerramento de linha-in';
+  if (entry.line_in)       return 'Entrada de linha';
   if (entry.break) {
     const n = (entry.break.items || []).length;
     return n ? n + (n === 1 ? ' peça' : ' peças') : 'Break comercial';
@@ -5952,8 +6248,10 @@ function renderTodaySchedule(entries) {
     const isNext = !isPast && entries.find(x => new Date(x.next_fire_at).getTime() > now) === e;
     const hhmm   = new Date(e.next_fire_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const cls    = isPast ? 'or-ctx-past' : isNext ? 'or-ctx-next' : '';
-    return `<div class="or-ctx-item ${cls}">
-      <div class="or-ctx-icon">${_ctxIcon(e)}</div>
+    const iconCls = _ctxIconClass(e);
+    const isLineInWarn = e.line_in && !e.line_in.device_id;
+    return `<div class="or-ctx-item ${cls}${isLineInWarn ? ' linein-warn' : ''}">
+      <div class="or-ctx-icon ${iconCls}">${_ctxIcon(e)}</div>
       <div class="or-ctx-body">
         <div class="or-ctx-name">${escHtml(e.name || '—')}</div>
         <div class="or-ctx-sub">${escHtml(_ctxSub(e))}</div>
@@ -6032,6 +6330,13 @@ function setStateBadge(state, mode) {
   if (stEl) { stEl.textContent = displayState || '—'; stEl.className = 'badge ' + (displayState || ''); }
   const mEl = document.getElementById('tMode');
   if (mEl) { mEl.textContent = mode || '—'; mEl.className = 'badge ' + (mode === 'ASSIST' ? 'ASSIST_MODE' : mode === 'PANIC' ? 'PANIC_MODE' : (mode || '')); }
+
+  // LINE_IN badge in topbar
+  const lineInTopBadge = document.getElementById('lineInTopBadge');
+  if (lineInTopBadge) {
+    if (displayState === 'LINE_IN') lineInTopBadge.classList.add('active');
+    else lineInTopBadge.classList.remove('active');
+  }
 
   // pn-live-badge
   const liveBadge = document.getElementById('pnLiveBadge');
@@ -9842,6 +10147,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script src="auth/session-manager.js"></script>
 <script src="auth/login-overlay.js"></script>
+
+<!-- ─── Modal Line-In ────────────────────────────────────────── -->
+<div class="linein-modal-overlay" id="lineInModal" onclick="if(event.target===this)closeLineInModal()">
+  <div class="linein-modal">
+    <div class="linein-modal-title">📻 Entrada de Linha</div>
+
+    <!-- Painel de início (visível quando inativo) -->
+    <div id="lineInModalStart">
+      <div class="linein-modal-field">
+        <label class="linein-modal-label">Dispositivo de entrada</label>
+        <select class="linein-modal-select" id="lineInDeviceSelect">
+          <option value="">— carregando dispositivos —</option>
+        </select>
+      </div>
+      <div class="linein-modal-field">
+        <label class="linein-modal-label">Rótulo (exibido na fila)</label>
+        <input class="linein-modal-input" id="lineInLabel" type="text" placeholder="Ex.: A Voz do Brasil">
+      </div>
+      <div class="linein-modal-field">
+        <label class="linein-modal-label">Duração máxima</label>
+        <input class="linein-modal-input" id="lineInDuration" type="text" placeholder="HH:MM  (vazio = indefinida)">
+      </div>
+      <div class="linein-modal-field">
+        <label class="linein-modal-label">Comportamento em caso de silêncio</label>
+        <select class="linein-modal-select" id="lineInOnSilence">
+          <option value="alert">Apenas alertar e continuar</option>
+          <option value="stop">Parar e retomar programação</option>
+        </select>
+      </div>
+      <div class="linein-modal-footer">
+        <button class="linein-modal-btn cancel" onclick="closeLineInModal()">Cancelar</button>
+        <button class="linein-modal-btn start" onclick="startLineIn()">▶ Iniciar captura</button>
+      </div>
+    </div>
+
+    <!-- Painel de sessão ativa (visível quando LINE_IN ativo) -->
+    <div id="lineInModalActive" style="display:none">
+      <div style="color:#88a0b5;font-size:12px;margin-bottom:6px;">Sessão em andamento</div>
+      <div id="lineInActiveLabel"  style="color:#00bcd4;font-size:16px;font-weight:800;margin-bottom:4px;"></div>
+      <div id="lineInActiveDevice" style="color:#88a0b5;font-size:11px;margin-bottom:12px;"></div>
+      <div id="lineInActiveElapsed" style="color:#c8c8c8;font-size:12px;margin-bottom:16px;"></div>
+      <div class="linein-modal-footer">
+        <button class="linein-modal-btn cancel" onclick="closeLineInModal()">Fechar</button>
+        <button class="linein-modal-btn stop"   onclick="stopLineIn()">⏹ Encerrar captura</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
