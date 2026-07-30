@@ -1,7 +1,7 @@
 # Plano: Captura de Entrada de Linha (Line-In / Fonte de Áudio Externa)
 
 **Status:** proposta
-**Módulos impactados:** `playout/`, `player/`
+**Módulos impactados:** `playout/` (principal), `player/` (UI), `library/` (log de transmissão — mínimo)
 **Branch sugerida:** `feature/linein-external-source`
 
 ---
@@ -807,11 +807,42 @@ entrada de hard-stop é um no-op silencioso.
 **Não há mudanças no pipeline de áudio existente** — o `LineInManager` escreve
 diretamente no `OutputDevice` injetado, sem alterar o `PlaybackManager` atual.
 
-### 11.2 `library/` — impacto: nenhum
+### 11.2 `library/` — impacto: mínimo (log de transmissão)
 
-O Library Service gerencia metadados de arquivos. Captura de linha-in é
-inteiramente responsabilidade do playout engine. Nenhum arquivo do
-`library/` precisa ser alterado.
+O Library Service **não gerencia** captura de linha-in — essa responsabilidade
+é inteiramente do playout engine. Entretanto, há um impacto indireto no
+pipeline de **log de transmissão**.
+
+#### Como o pipeline funciona hoje
+
+```
+playout engine
+   └─ gera arquivo JSONL com entradas de transmissão (type: MUSIC|JINGLE|VINHETA|SPOT|CART)
+         ↓
+library service
+   └─ importa via BulkInsert → tabela `transmission_log` no SQLite
+```
+
+#### O que muda com line-in
+
+O playout engine passará a gravar entradas de line-in no mesmo arquivo JSONL
+com `"type": "LINE_IN"`. O Library Service importará essas entradas pelo
+**mesmo pipeline existente** — `BulkInsert` não valida o campo `type` por enum
+no SQLite (é `TEXT` livre), portanto **não é necessária nenhuma alteração de
+código** no pipeline de importação.
+
+#### Impactos concretos no `library/`
+
+| Área | Mudança necessária |
+|---|---|
+| `transmission_log` (SQLite) | Migration documentando `LINE_IN` como valor válido do campo `type` (comentário ou `CHECK` constraint opcional) |
+| `ExportECAD` | Nenhuma — o filtro `WHERE type IN ('MUSIC','JINGLE','VINHETA')` já exclui `LINE_IN` corretamente (line-in não é ativo musical a declarar ao ECAD) |
+| BulkInsert / handlers | Nenhuma — aceita o novo tipo sem alteração |
+| UI do Library | Nenhuma — os filtros de listagem já usam campo `type` livremente; `LINE_IN` aparecerá naturalmente na listagem de logs |
+
+> **Resumo:** o playout escreve `LINE_IN` no JSONL → o library importa sem
+> modificação → o ECAD ignora linha-in automaticamente. A única entrega formal
+> no `library/` é uma migration de documentação.
 
 ### 11.3 `player/` — impacto na UI
 
@@ -823,6 +854,24 @@ inteiramente responsabilidade do playout engine. Nenhum arquivo do
 | Monitor de nível | VU meter simples para o sinal de entrada (opcional, Fase 6) |
 | WebSocket | Reagir a `linein.started`, `linein.stopped`, `linein.error` |
 | Fila de reprodução | Exibir item especial "LINE-IN" na posição "tocando agora" durante captura |
+
+### 11.4 Log de Transmissão — impacto
+
+O Log de Transmissão deve contemplar todos os eventos de line-in para garantir
+rastreabilidade completa e conformidade com as obrigações legais de registro de
+transmissão (Resolução ANATEL nº 344/2004).
+
+| Evento | Campos registrados |
+|---|---|
+| Line-in iniciado | `timestamp`, `label`, `device_id`, `device_name`, `triggered_by` (`scheduler` ou `manual`), nome do agendamento (se aplicável) |
+| Line-in encerrado | `timestamp`, `elapsed_ms`, motivo do encerramento (`duration_expired`, `manual`, `panic`, `silence_stop`) |
+| Silêncio detectado | `timestamp`, duração do silêncio (`silence_duration_ms`), comportamento aplicado (`alert` ou `stop`) |
+| Agendamento disparado | `timestamp`, nome da entry, `trigger_mode`, `device_id` resolvido |
+| Agendamento ignorado (MISSED) | `timestamp`, nome da entry, motivo (`no_device_configured`, `engine_in_panic`, `ffmpeg_error`) |
+
+Esses registros permitem ao operador provar exatamente quando a Voz do Brasil
+entrou no ar, por quanto tempo ficou e se houve alguma intercorrência — sem
+necessidade de software externo de auditoria.
 
 ---
 
@@ -1341,22 +1390,84 @@ distinguir gravações automáticas de capturas ad hoc na listagem.
 
 ## 14. Testes Planejados
 
-| Pacote | Cenário | Abordagem |
+### 14.1 `internal/linein` — captura e manager
+
+| Arquivo | Cenário | Abordagem |
 |---|---|---|
-| `linein` | Frames chegam ao output | Stub InputDevice → Stub OutputDevice; verificar bytes escritos |
-| `linein` | Silêncio detectado após threshold | Stub retorna frames zero; verificar evento emitido |
-| `linein` | Stop durante captura | Cancelar ctx; verificar goroutine termina sem vazamento |
-| `linein` | FFmpeg não disponível | Mock exec.LookPath; verificar erro descritivo |
-| `state` | Transição PLAYING→LINE_IN→PLAYING | Tabela de estados; verificar campo `LineIn` no Snapshot |
-| `state` | PANIC rejeita LINE_IN | Dispatcher verifica estado antes de despachar |
-| `commands` | Serialize/deserialize payload | Round-trip JSON dos novos payloads |
-| `events` | Publish/subscribe novos eventos | Bus in-memory; subscriber recebe evento correto |
-| `handlers` | POST /v1/linein/start — sucesso | httptest; body válido; status 200 |
-| `handlers` | POST /v1/linein/start — já ativo | httptest; espera 409 |
-| `handlers` | POST /v1/linein/start — PANIC | httptest; espera 503 |
-| `handlers` | GET /v1/linein/devices | httptest; resposta com lista não vazia |
-| `scheduler` | Entry com LineIn dispara CmdLineInStart | Stub CommandBus; verifica tipo de cmd |
-| `scheduler` | Entry com LineInStop dispara CmdLineInStop | Idem |
+| `manager_test.go` | Frames chegam ao output | Stub `InputDevice` emite N frames; stub `OutputDevice` acumula; verificar bytes escritos == N × frameSize |
+| `manager_test.go` | Stop durante captura | Cancelar `ctx`; verificar goroutine encerra sem leak (goleak ou channel closed) |
+| `manager_test.go` | Silêncio detectado → `on_silence: "alert"` | Stub retorna frames zero por threshold; verificar `EvtLineInError{error:"silence_detected"}` emitido; manager permanece ativo |
+| `manager_test.go` | Silêncio detectado → `on_silence: "stop"` | Idem; verificar manager se auto-encerra e emite `EvtLineInStopped` |
+| `manager_test.go` | `duration_ms` expirado | Stub emite frames continuamente; after `duration_ms` verificar encerramento automático e `EvtLineInStopped` |
+| `manager_test.go` | Dispositivo inválido / erro na abertura | Stub `InputDevice.Open()` retorna erro; `LineInManager.Start()` deve retornar erro descritivo imediatamente |
+| `ffmpeg_capture_test.go` | FFmpeg não encontrado no PATH | Mock `exec.LookPath` retorna erro; `NewFFmpegCapture` retorna `ErrFFmpegNotFound` |
+| `ffmpeg_capture_test.go` | FFmpeg encerra inesperadamente | Processo stub fecha stdout; verificar `EvtLineInError` emitido e goroutine encerra sem panic |
+
+### 14.2 `internal/state` — máquina de estados
+
+| Arquivo | Cenário | Abordagem |
+|---|---|---|
+| `manager_test.go` | Transição `PLAYING → LINE_IN` | `SetState(StateLineIn, ...)` com `Snapshot.LineIn` preenchido; verificar estado e campo |
+| `manager_test.go` | Transição `LINE_IN → PLAYING` | Após `LINE_IN`, `SetState(StatePlaying, nil)`; verificar `Snapshot.LineIn == nil` |
+| `manager_test.go` | `PANIC` não pode ir para `LINE_IN` | Tentar transição `PANIC → LINE_IN`; verificar retorno de erro `ErrInvalidTransition` |
+| `manager_test.go` | `LINE_IN` → `PANIC` é permitido | PANIC tem prioridade absoluta; verificar transição aceita e `Snapshot.LineIn` zerado |
+| `manager_test.go` | `Snapshot` serializa `LineIn` corretamente | `json.Marshal(snapshot)` com `LineIn` preenchido; verificar campos no JSON |
+
+### 14.3 `internal/commands` e `internal/events`
+
+| Arquivo | Cenário | Abordagem |
+|---|---|---|
+| `commands_test.go` | Round-trip JSON `CmdLineInStart` | `json.Marshal` → `json.Unmarshal`; todos os campos preservados |
+| `commands_test.go` | Round-trip JSON `CmdLineInStop` | Idem |
+| `events_test.go` | Pub/sub `EvtLineInStarted` | Bus in-memory; subscriber recebe evento com campos corretos |
+| `events_test.go` | Pub/sub `EvtLineInStopped` | Idem; verificar campo `elapsed_ms` |
+| `events_test.go` | Pub/sub `EvtLineInError` | Idem; verificar campo `error` |
+| `events_test.go` | Pub/sub `EvtLineInLevel` | Idem; verificar campo `rms_dbfs` dentro de faixa válida |
+
+### 14.4 `internal/api/handlers` — endpoints HTTP
+
+| Arquivo | Cenário | Status esperado | Abordagem |
+|---|---|---|---|
+| `linein_test.go` | `POST /v1/linein/start` — sucesso | 200 | `httptest`; body válido; stub CommandBus recebe `CmdLineInStart` |
+| `linein_test.go` | `POST /v1/linein/start` — body inválido | 400 | JSON malformado; verificar `{"ok":false,"error":"invalid_body"}` |
+| `linein_test.go` | `POST /v1/linein/start` — já ativo | 409 | State stub retorna `StateLineIn`; verificar `{"ok":false,"error":"already_active"}` |
+| `linein_test.go` | `POST /v1/linein/start` — engine em PANIC | 503 | State stub retorna `StatePanic`; verificar `{"ok":false,"error":"engine_in_panic"}` |
+| `linein_test.go` | `POST /v1/linein/start` — device não configurado | 422 | Prefs stub retorna `LineInDefaultDeviceID == ""`; verificar `{"ok":false,"error":"no_device_configured"}` |
+| `linein_test.go` | `POST /v1/linein/stop` — sucesso | 200 | State stub retorna `StateLineIn`; stub recebe `CmdLineInStop` |
+| `linein_test.go` | `POST /v1/linein/stop` — não estava ativo | 409 | State não é `StateLineIn`; verificar `{"ok":false,"error":"not_active"}` |
+| `linein_test.go` | `GET /v1/linein/status` — ativo | 200 | State stub retorna `StateLineIn` com `Snapshot.LineIn` preenchido |
+| `linein_test.go` | `GET /v1/linein/status` — inativo | 200 | `{"ok":true,"data":{"active":false}}` |
+| `linein_test.go` | `GET /v1/linein/devices` — lista não vazia | 200 | Stub `DeviceLister` retorna 2 dispositivos; verificar array no response |
+| `linein_test.go` | `GET /v1/linein/devices` — lista vazia | 200 | `{"ok":true,"data":[]}` — não é erro |
+
+### 14.5 `internal/scheduler` — despacho de entradas line-in
+
+| Arquivo | Cenário | Abordagem |
+|---|---|---|
+| `fire_test.go` | Entry com `LineIn` no horário → `CmdLineInStart` | Stub CommandBus; `fire(entry)` com `entry.LineIn` preenchido; verificar cmd recebido e campos corretos |
+| `fire_test.go` | Entry com `LineInStop: true` → `CmdLineInStop` | Idem; verificar `CmdLineInStop` enviado |
+| `fire_test.go` | `MISSED`: device não configurado | Prefs stub vazio; verificar log de aviso e `CmdLineInStart` **não** enviado |
+| `fire_test.go` | `MISSED`: engine em PANIC no momento do disparo | State stub retorna `StatePanic`; verificar comando não enviado e evento `MISSED` emitido |
+| `fire_test.go` | `trigger_mode: INTERRUPT` — para faixa atual antes | Stub PlaybackManager em `PLAYING`; verificar `CmdStop` enviado antes de `CmdLineInStart` |
+| `fire_test.go` | `trigger_mode: SKIP_IF_BUSY` — engine ocupado | State stub retorna `StatePlaying`; verificar que `CmdLineInStart` **não** é enviado |
+
+### 14.6 `library/` — log de transmissão com tipo `LINE_IN`
+
+| Arquivo | Cenário | Abordagem |
+|---|---|---|
+| `transmission_log_store_test.go` | `BulkInsert` aceita `type = "LINE_IN"` | DB `:memory:`; inserir entry com `Type: "LINE_IN"`; verificar sem erro e registro persistido |
+| `transmission_log_store_test.go` | `ExportECAD` exclui `LINE_IN` | Inserir mix de `MUSIC` e `LINE_IN`; verificar que o export retorna apenas `MUSIC` |
+| `transmission_log_store_test.go` | Listagem inclui `LINE_IN` | `LIST` sem filtro de tipo retorna entries `LINE_IN` |
+
+### 14.7 Integração (opcional, marcada com build tag `//go:build integration`)
+
+Testes que requerem FFmpeg real instalado e hardware disponível. Não executados
+no CI padrão — ativados com `go test -tags integration ./...`.
+
+| Cenário | Abordagem |
+|---|---|
+| Captura real do dispositivo `default` por 2 segundos | `FFmpegCapture` com dispositivo real; verificar N > 0 frames recebidos |
+| Pipeline completo: start → captura → stop via API | Subir engine em test mode; `POST /v1/linein/start`; aguardar 1s; `POST /v1/linein/stop`; verificar eventos WebSocket |
 
 ---
 
@@ -1380,33 +1491,47 @@ distinguir gravações automáticas de capturas ad hoc na listagem.
 playout/
   internal/
     linein/
-      device.go                  ← interfaces e tipos
-      ffmpeg_capture.go          ← FFmpegCapture (lógica comum)
-      ffmpeg_args_darwin.go      ← build tag: avfoundation
-      ffmpeg_args_linux.go       ← build tag: alsa
-      ffmpeg_args_windows.go     ← build tag: dshow
-      device_list_darwin.go      ← listar dispositivos macOS
-      device_list_linux.go       ← listar dispositivos Linux
-      device_list_windows.go     ← listar dispositivos Windows
-      manager.go                 ← LineInManager
-      manager_test.go
+      device.go                    ← interfaces InputDevice, OutputDevice e tipos LineInConfig
+      ffmpeg_capture.go            ← FFmpegCapture (lógica comum de captura via subprocess)
+      ffmpeg_capture_test.go       ← testes: FFmpeg não encontrado, processo encerra inesperadamente
+      ffmpeg_args_darwin.go        ← build tag darwin: args avfoundation
+      ffmpeg_args_linux.go         ← build tag linux: args alsa
+      ffmpeg_args_windows.go       ← build tag windows: args dshow
+      device_list_darwin.go        ← listar dispositivos macOS via avfoundation
+      device_list_linux.go         ← listar dispositivos Linux via arecord/alsa
+      device_list_windows.go       ← listar dispositivos Windows via dshow -list_devices
+      manager.go                   ← LineInManager: goroutine Input→Output, watchdog de silêncio, duration cap
+      manager_test.go              ← testes: frames, stop, silêncio (alert/stop), duration_ms, dispositivo inválido
     commands/
-      commands.go                ← + CmdLineInStart, CmdLineInStop
+      commands.go                  ← + CmdLineInStart, CmdLineInStop
+      commands_test.go             ← testes: round-trip JSON dos novos payloads
     events/
-      events.go                  ← + EvtLineInStarted/Stopped/Error/Level
+      events.go                    ← + EvtLineInStarted, EvtLineInStopped, EvtLineInError, EvtLineInLevel
+      events_test.go               ← testes: pub/sub de cada evento; verificar campos
     state/
-      manager.go                 ← + StateLineIn, LineInStatus no Snapshot
+      manager.go                   ← + StateLineIn; LineInStatus no Snapshot
+      manager_test.go              ← testes: transições LINE_IN↔PLAYING, PANIC prioridade, serialização JSON
     api/
       handlers/
-        linein.go                ← novo: 5 endpoints
+        linein.go                  ← novo: POST start/stop, GET status/devices/recordings
+        linein_test.go             ← testes: todos os endpoints (11 cenários — seção 14.4)
     scheduler/
-      entry.go                   ← + campos LineIn, LineInStop
-      fire.go                    ← + despacho dos novos casos
+      entry.go                     ← + campos LineIn *LineInStartPayload, LineInStop bool
+      fire.go                      ← + despacho CmdLineInStart / CmdLineInStop
+      fire_test.go                 ← testes: disparo correto, MISSED (device/panic), trigger_mode
     prefs/
-      prefs.go                   ← + LineInDefaultDeviceID
+      prefs.go                     ← + LineInDefaultDeviceID string
+
+library/
+  internal/
+    store/
+      transmission_log_store.go    ← sem alteração de código (aceita LINE_IN por ser TEXT livre)
+      transmission_log_store_test.go ← + 3 cenários LINE_IN (seção 14.6)
+    migrations/
+      XXXX_add_linein_type_comment.sql ← migration de documentação: comentário ou CHECK constraint
 
 player/
-  player.html                    ← + badge, botão, modal, VU meter
+  player.html                      ← + badge LINE-IN ATIVO, botão Entrada de Linha, modal de config, VU meter
 ```
 
 ---
