@@ -68,23 +68,33 @@ type ConfigDeps struct {
 	Path     string // absolute path to the YAML file; empty = read-only mode
 }
 
+// LineInDeps carries line-in dependencies for the /v1/linein/* endpoints.
+// ListDevices may be nil — GET /v1/linein/devices will return an empty list.
+// ConfigStore may be nil — PATCH /v1/linein/config will return 501.
+type LineInDeps struct {
+	ListDevices func() ([]handlers.LineInDevice, error)
+	ConfigStore handlers.LineInConfigStore
+}
+
 // Server wraps an http.Server and owns the routing for the Engine's REST API.
 type Server struct {
-	cfg            Config
-	stateMgr       *state.Manager
-	cmdBus         *commands.Bus
-	queueMgr       *queue.Manager
-	wsHub          *ws.Hub
-	metrics        *metrics.Collector
-	previewStatus func() any
-	cartStatus     func() any
-	listDevices    func() ([]handlers.AudioDevice, error)
-	scheduleMgr    handlers.ScheduleManager
-	streamingMgr   handlers.StreamingManager
-	configSnapshot *appcfg.Config
-	configPath     string
-	log            *slog.Logger
-	httpSrv        *http.Server
+	cfg               Config
+	stateMgr          *state.Manager
+	cmdBus            *commands.Bus
+	queueMgr          *queue.Manager
+	wsHub             *ws.Hub
+	metrics           *metrics.Collector
+	previewStatus    func() any
+	cartStatus        func() any
+	listDevices       func() ([]handlers.AudioDevice, error)
+	scheduleMgr       handlers.ScheduleManager
+	streamingMgr      handlers.StreamingManager
+	configSnapshot    *appcfg.Config
+	configPath        string
+	lineInListDevices func() ([]handlers.LineInDevice, error)
+	lineInConfigStore handlers.LineInConfigStore
+	log               *slog.Logger
+	httpSrv           *http.Server
 }
 
 // New creates a Server wired to stateMgr for reads and cmdBus for writes.
@@ -93,22 +103,26 @@ type Server struct {
 // col may be nil; the /v1/metrics endpoint will not be registered.
 // devicesDeps.List may be nil; GET /v1/devices will return an empty list.
 // streamingDeps.Mgr may be nil; streaming endpoints will return 404.
-func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, cartDeps CartDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, configDeps ConfigDeps, streamingDeps StreamingDeps, log *slog.Logger) *Server {
+// lineInDeps.ListDevices may be nil; GET /v1/linein/devices returns an empty list.
+// lineInDeps.ConfigStore may be nil; PATCH /v1/linein/config returns 501.
+func New(cfg Config, stateMgr *state.Manager, cmdBus *commands.Bus, queueMgr *queue.Manager, wsHub *ws.Hub, col *metrics.Collector, previewDeps PreviewDeps, cartDeps CartDeps, devicesDeps DevicesDeps, scheduleDeps ScheduleDeps, configDeps ConfigDeps, streamingDeps StreamingDeps, lineInDeps LineInDeps, log *slog.Logger) *Server {
 	s := &Server{
-		cfg:            cfg,
-		stateMgr:       stateMgr,
-		cmdBus:         cmdBus,
-		queueMgr:       queueMgr,
-		wsHub:          wsHub,
-		metrics:        col,
-		previewStatus: previewDeps.GetStatus,
-		cartStatus:     cartDeps.GetStatus,
-		listDevices:    devicesDeps.List,
-		scheduleMgr:    scheduleDeps.Mgr,
-		streamingMgr:   streamingDeps.Mgr,
-		configSnapshot: configDeps.Snapshot,
-		configPath:     configDeps.Path,
-		log:            log,
+		cfg:               cfg,
+		stateMgr:          stateMgr,
+		cmdBus:            cmdBus,
+		queueMgr:          queueMgr,
+		wsHub:             wsHub,
+		metrics:           col,
+		previewStatus:    previewDeps.GetStatus,
+		cartStatus:        cartDeps.GetStatus,
+		listDevices:       devicesDeps.List,
+		scheduleMgr:       scheduleDeps.Mgr,
+		streamingMgr:      streamingDeps.Mgr,
+		configSnapshot:    configDeps.Snapshot,
+		configPath:        configDeps.Path,
+		lineInListDevices: lineInDeps.ListDevices,
+		lineInConfigStore: lineInDeps.ConfigStore,
+		log:               log,
 	}
 
 	mux := http.NewServeMux()
@@ -214,6 +228,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("POST /v1/streaming/{id}/disconnect", handlers.StreamingDisconnect(s.streamingMgr))
 		mux.HandleFunc("POST /v1/streaming/{id}/test", handlers.StreamingTest())
 	}
+
+	// Line-in capture
+	mux.HandleFunc("POST /v1/linein/start",   handlers.LineInStart(s.cmdBus, s.stateMgr))
+	mux.HandleFunc("POST /v1/linein/stop",    handlers.LineInStop(s.cmdBus, s.stateMgr))
+	mux.HandleFunc("GET /v1/linein/status",   handlers.LineInStatus(s.stateMgr))
+	mux.HandleFunc("GET /v1/linein/devices",  handlers.LineInDevices(s.lineInListDevices))
+	mux.HandleFunc("PATCH /v1/linein/config", handlers.LineInPatchConfig(s.lineInConfigStore))
 
 	// Admin
 	mux.HandleFunc("POST /v1/admin/shutdown", handlers.Shutdown())
