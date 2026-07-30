@@ -392,6 +392,11 @@ func run(args []string) error {
 	stateMgr.SetCartEnabled(true)
 	log.Info("cart player initialized", "device", cfg.HotKeys.Output.DeviceID)
 
+	// 12b. Line-in handler — CmdLineInStart / CmdLineInStop.
+	lineInHandler := linein.NewHandler(out, stateMgr, evtBus, log)
+	disp.Handle(commands.CmdLineInStart, lineInHandler.HandleStart)
+	disp.Handle(commands.CmdLineInStop, lineInHandler.HandleStop)
+
 	// 12. WebSocket Hub — fans out events to connected clients.
 	wsHub := apiws.NewHub(evtBus, stateMgr, log)
 

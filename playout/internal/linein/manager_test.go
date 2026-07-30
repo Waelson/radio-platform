@@ -17,11 +17,12 @@ import (
 // stubInput emits a fixed number of frame batches, then returns io.EOF.
 // Each batch fills dst with the given sample value.
 type stubInput struct {
-	batches   int
-	sample    float32 // value for each sample (0 = silence, 0.5 = signal)
-	openErr   error
-	emitted   int
-	cfg       linein.LineInConfig
+	batches    int
+	sample     float32 // value for each sample (0 = silence, 0.5 = signal)
+	openErr    error
+	emitted    int
+	cfg        linein.LineInConfig
+	batchDelay time.Duration // optional real-time delay per batch (for silence timing tests)
 }
 
 func (s *stubInput) Open(_ context.Context, cfg linein.LineInConfig) error {
@@ -32,6 +33,9 @@ func (s *stubInput) Open(_ context.Context, cfg linein.LineInConfig) error {
 func (s *stubInput) ReadFrames(_ context.Context, dst []float32) (int, error) {
 	if s.emitted >= s.batches {
 		return 0, io.EOF
+	}
+	if s.batchDelay > 0 {
+		time.Sleep(s.batchDelay)
 	}
 	for i := range dst {
 		dst[i] = s.sample
@@ -148,8 +152,9 @@ func TestManager_StopViaManagerStop(t *testing.T) {
 }
 
 func TestManager_SilenceAlert(t *testing.T) {
-	// Emit silence (sample = 0) for 100 batches.
-	in := &stubInput{batches: 100, sample: 0}
+	// Emit silence (sample = 0) with a delay per batch so real time advances
+	// past SilenceThresholdMS before all batches are consumed.
+	in := &stubInput{batches: 100, sample: 0, batchDelay: 2 * time.Millisecond}
 	out := &stubOutput{}
 
 	mgr := linein.NewLineInManager(in, out, nil)
@@ -157,7 +162,7 @@ func TestManager_SilenceAlert(t *testing.T) {
 		Label:                "test",
 		OnSilence:            "alert",
 		SilenceThresholdDBFS: -60,
-		SilenceThresholdMS:   1, // 1 ms → triggers immediately
+		SilenceThresholdMS:   10, // 10 ms — reliably exceeded with 2 ms/batch
 	})
 	if err != nil {
 		t.Fatalf("Start: %v", err)
@@ -184,7 +189,7 @@ func TestManager_SilenceAlert(t *testing.T) {
 }
 
 func TestManager_SilenceStop(t *testing.T) {
-	in := &stubInput{batches: 100, sample: 0}
+	in := &stubInput{batches: 100, sample: 0, batchDelay: 2 * time.Millisecond}
 	out := &stubOutput{}
 
 	mgr := linein.NewLineInManager(in, out, nil)
@@ -192,7 +197,7 @@ func TestManager_SilenceStop(t *testing.T) {
 		Label:                "test",
 		OnSilence:            "stop",
 		SilenceThresholdDBFS: -60,
-		SilenceThresholdMS:   1,
+		SilenceThresholdMS:   10,
 	})
 	if err != nil {
 		t.Fatalf("Start: %v", err)
