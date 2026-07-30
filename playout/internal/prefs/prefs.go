@@ -12,8 +12,9 @@ import (
 
 // Preferences holds runtime preferences persisted across restarts.
 type Preferences struct {
-	MainVolume    float32 `json:"main_volume"`
-	PreviewVolume float32 `json:"preview_volume"`
+	MainVolume             float32 `json:"main_volume"`
+	PreviewVolume          float32 `json:"preview_volume"`
+	LineInDefaultDeviceID  string  `json:"line_in_default_device_id,omitempty"`
 }
 
 // DefaultPath returns the default preferences file path: ~/.radiocore/preferences.json.

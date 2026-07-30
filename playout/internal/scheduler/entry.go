@@ -53,13 +53,20 @@ type Entry struct {
 	FireAt *time.Time `json:"fire_at,omitempty"`
 
 	// Item is the queue item to insert when the entry fires.
-	// Mutually exclusive with Break.
+	// Mutually exclusive with Break, LineIn and LineInStop.
 	Item commands.QueueItemInput `json:"item,omitempty"`
 	// Break is the commercial break to insert when the entry fires.
-	// Mutually exclusive with Item. When set, CmdInsertBreakNext is used
-	// instead of CmdInsertNext so the full block is placed at the front.
+	// Mutually exclusive with Item, LineIn and LineInStop. When set,
+	// CmdInsertBreakNext is used instead of CmdInsertNext.
 	Break *commands.BreakItemInput `json:"break,omitempty"`
+	// LineIn, when non-nil, starts a line-in capture session when the entry fires.
+	// Mutually exclusive with Item, Break and LineInStop.
+	LineIn *commands.LineInStartPayload `json:"line_in,omitempty"`
+	// LineInStop, when true, stops an active line-in session when the entry fires.
+	// Mutually exclusive with Item, Break and LineIn.
+	LineInStop bool `json:"line_in_stop,omitempty"`
 	// TriggerMode controls how the item/break is inserted relative to current playback.
+	// For line-in entries, it controls how the engine transitions into capture mode.
 	TriggerMode TriggerMode `json:"trigger_mode"`
 
 	// CreatedAt is the time the entry was first registered.

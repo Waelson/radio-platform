@@ -15,13 +15,24 @@ func (m *Manager) fireEntry(e *Entry) bool {
 	snap := m.stateMgr.Snapshot()
 	st := snap.State
 
-	// Entries never fire in PANIC mode — the scheduler would interfere with the
-	// safety bed. Mark as missed and bail out.
+	// Line-in stop: fire regardless of PANIC (operator wants to stop capture).
+	if e.LineInStop {
+		return m.fireLineInStop(e, st)
+	}
+
+	// All other entries never fire in PANIC mode — the scheduler would
+	// interfere with the safety bed. Mark as missed and bail out.
 	if st == state.StatePanic {
 		m.publishMissed(e, "engine is in PANIC mode")
 		return false
 	}
 
+	// Line-in start entry.
+	if e.LineIn != nil {
+		return m.fireLineIn(e, st)
+	}
+
+	// Normal playback entry.
 	switch e.TriggerMode {
 	case TriggerInterrupt:
 		return m.fireInterrupt(e, st)
@@ -36,6 +47,45 @@ func (m *Manager) fireEntry(e *Entry) bool {
 			"entry_id", e.ID, "mode", e.TriggerMode)
 		return m.fireAfterCurrent(e, st)
 	}
+}
+
+// fireLineIn dispatches CmdLineInStart for a line-in entry.
+// TriggerMode is forwarded in the payload so the dispatcher can handle
+// the transition (INTERRUPT cuts current playback, SKIP_IF_BUSY aborts, etc.).
+func (m *Manager) fireLineIn(e *Entry, st state.PlayerState) bool {
+	// SKIP_IF_BUSY: only start when the engine is idle.
+	if e.TriggerMode == TriggerSkipIfBusy &&
+		(st == state.StatePlaying || st == state.StatePaused || st == state.StateLineIn) {
+		m.publishMissed(e, "engine is busy — SKIP_IF_BUSY line-in not started (state="+string(st)+")")
+		return false
+	}
+
+	// Already in LINE_IN and not INTERRUPT: mark as missed to avoid duplicate sessions.
+	if st == state.StateLineIn && e.TriggerMode != TriggerInterrupt {
+		m.publishMissed(e, "line-in already active")
+		return false
+	}
+
+	payload := *e.LineIn // copy so we can set scheduler-specific fields
+	payload.TriggerMode = string(e.TriggerMode)
+	payload.TriggeredBy = "scheduler"
+
+	m.cmdBus.TrySend(commands.New(commands.CmdLineInStart, payload))
+	m.publishLineInFired(e)
+	return true
+}
+
+// fireLineInStop dispatches CmdLineInStop for a line-in stop entry.
+func (m *Manager) fireLineInStop(e *Entry, st state.PlayerState) bool {
+	if st != state.StateLineIn {
+		m.publishMissed(e, "line-in is not active — stop entry has no effect (state="+string(st)+")")
+		return false
+	}
+	m.cmdBus.TrySend(commands.New(commands.CmdLineInStop, commands.LineInStopPayload{
+		Reason: "scheduler: hard-stop entry " + e.ID,
+	}))
+	m.publishLineInStopFired(e)
+	return true
 }
 
 // fireInterrupt: insert next + hard-cut skip immediately.
@@ -153,5 +203,40 @@ func (m *Manager) publishMissed(e *Entry, reason string) {
 		"name", e.Name,
 		"mode", e.TriggerMode,
 		"reason", reason,
+	)
+}
+
+// publishLineInFired emits EvtScheduleEntryFired for a line-in start entry.
+func (m *Manager) publishLineInFired(e *Entry) {
+	label := ""
+	if e.LineIn != nil {
+		label = e.LineIn.Label
+	}
+	m.evtBus.Publish(events.New(events.EvtScheduleEntryFired, events.ScheduleEntryFiredPayload{
+		EntryID:     e.ID,
+		EntryName:   e.Name,
+		TriggerMode: string(e.TriggerMode),
+		Title:       label,
+		OneShot:     e.FireAt != nil,
+	}))
+	m.log.Info("scheduler: line-in entry fired",
+		"entry_id", e.ID,
+		"name", e.Name,
+		"mode", string(e.TriggerMode),
+		slog.String("label", label),
+	)
+}
+
+// publishLineInStopFired emits EvtScheduleEntryFired for a line-in stop entry.
+func (m *Manager) publishLineInStopFired(e *Entry) {
+	m.evtBus.Publish(events.New(events.EvtScheduleEntryFired, events.ScheduleEntryFiredPayload{
+		EntryID:     e.ID,
+		EntryName:   e.Name,
+		TriggerMode: string(e.TriggerMode),
+		OneShot:     e.FireAt != nil,
+	}))
+	m.log.Info("scheduler: line-in stop entry fired",
+		"entry_id", e.ID,
+		"name", e.Name,
 	)
 }

@@ -829,3 +829,166 @@ func TestRun_CancelStops(t *testing.T) {
 		t.Fatal("Run did not exit within 2s after context cancellation")
 	}
 }
+
+// --- Line-in fire tests ------------------------------------------------------
+
+func makeLineInPayload() *commands.LineInStartPayload {
+	return &commands.LineInStartPayload{
+		DeviceID:  ":0",
+		Label:     "Estúdio 1",
+		DurationMS: 3_600_000,
+	}
+}
+
+// TestFireLineIn_WhenIdle confirms that a line-in entry fires CmdLineInStart
+// when the engine is idle.
+func TestFireLineIn_WhenIdle(t *testing.T) {
+	fs := &fakeState{st: state.StateIdle}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "li1",
+		Name:        "line-in-idle",
+		Enabled:     true,
+		TriggerMode: TriggerAfterCurrent,
+		LineIn:      makeLineInPayload(),
+	})
+
+	if !fired {
+		t.Fatal("expected fired=true")
+	}
+	cmds := col.drainAll()
+	if len(cmds) != 1 {
+		t.Fatalf("expected 1 command (CmdLineInStart), got %d", len(cmds))
+	}
+	if cmds[0].Type != commands.CmdLineInStart {
+		t.Errorf("cmds[0].Type = %s, want CmdLineInStart", cmds[0].Type)
+	}
+	p, ok := cmds[0].Payload.(commands.LineInStartPayload)
+	if !ok {
+		t.Fatalf("payload type = %T, want LineInStartPayload", cmds[0].Payload)
+	}
+	if p.TriggeredBy != "scheduler" {
+		t.Errorf("TriggeredBy = %q, want %q", p.TriggeredBy, "scheduler")
+	}
+	if p.TriggerMode != string(TriggerAfterCurrent) {
+		t.Errorf("TriggerMode = %q, want %q", p.TriggerMode, TriggerAfterCurrent)
+	}
+}
+
+// TestFireLineInStop_WhenActive confirms that a LineInStop entry fires
+// CmdLineInStop when the engine is in LINE_IN state.
+func TestFireLineInStop_WhenActive(t *testing.T) {
+	fs := &fakeState{st: state.StateLineIn}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "lis1",
+		Name:        "line-in-stop",
+		Enabled:     true,
+		TriggerMode: TriggerInterrupt,
+		LineInStop:  true,
+	})
+
+	if !fired {
+		t.Fatal("expected fired=true")
+	}
+	cmds := col.drainAll()
+	if len(cmds) != 1 {
+		t.Fatalf("expected 1 command (CmdLineInStop), got %d", len(cmds))
+	}
+	if cmds[0].Type != commands.CmdLineInStop {
+		t.Errorf("cmds[0].Type = %s, want CmdLineInStop", cmds[0].Type)
+	}
+}
+
+// TestFireLineIn_PanicState_Missed confirms that a line-in entry is marked
+// MISSED when the engine is in PANIC mode.
+func TestFireLineIn_PanicState_Missed(t *testing.T) {
+	fs := &fakeState{st: state.StatePanic}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "li-panic",
+		Name:        "line-in-panic",
+		Enabled:     true,
+		TriggerMode: TriggerInterrupt,
+		LineIn:      makeLineInPayload(),
+	})
+
+	if fired {
+		t.Fatal("expected fired=false in PANIC")
+	}
+	if cmds := col.drainAll(); len(cmds) != 0 {
+		t.Fatalf("expected 0 commands in PANIC, got %d", len(cmds))
+	}
+}
+
+// TestFireLineIn_SkipIfBusy_WhenPlaying_Missed confirms that a line-in entry
+// with SKIP_IF_BUSY is missed when the engine is playing.
+func TestFireLineIn_SkipIfBusy_WhenPlaying_Missed(t *testing.T) {
+	fs := &fakeState{st: state.StatePlaying}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "li-skip",
+		Name:        "line-in-skip",
+		Enabled:     true,
+		TriggerMode: TriggerSkipIfBusy,
+		LineIn:      makeLineInPayload(),
+	})
+
+	if fired {
+		t.Fatal("expected fired=false (SKIP_IF_BUSY when playing)")
+	}
+	if cmds := col.drainAll(); len(cmds) != 0 {
+		t.Fatalf("expected 0 commands when skipped, got %d", len(cmds))
+	}
+}
+
+// TestFireLineIn_Interrupt_WhenLineInActive confirms that INTERRUPT mode
+// overrides the duplicate-session guard and fires even when already in LINE_IN.
+func TestFireLineIn_Interrupt_WhenLineInActive(t *testing.T) {
+	fs := &fakeState{st: state.StateLineIn}
+	m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+	fired := m.fireEntry(&Entry{
+		ID:          "li-interrupt",
+		Name:        "line-in-interrupt",
+		Enabled:     true,
+		TriggerMode: TriggerInterrupt,
+		LineIn:      makeLineInPayload(),
+	})
+
+	if !fired {
+		t.Fatal("expected fired=true (INTERRUPT overrides duplicate guard)")
+	}
+	cmds := col.drainAll()
+	if len(cmds) != 1 || cmds[0].Type != commands.CmdLineInStart {
+		t.Fatalf("expected 1 CmdLineInStart, got %v", cmds)
+	}
+}
+
+// TestFireLineInStop_WhenNotActive_Missed confirms that a LineInStop entry is
+// missed when the engine is not in LINE_IN state.
+func TestFireLineInStop_WhenNotActive_Missed(t *testing.T) {
+	for _, st := range []state.PlayerState{state.StateIdle, state.StatePlaying, state.StatePanic} {
+		fs := &fakeState{st: st}
+		m, col := newTestManager(fs, newFakeClock(time.Now()))
+
+		fired := m.fireEntry(&Entry{
+			ID:          "lis-notactive",
+			Name:        "line-in-stop-notactive",
+			Enabled:     true,
+			TriggerMode: TriggerInterrupt,
+			LineInStop:  true,
+		})
+
+		if fired {
+			t.Errorf("state=%s: expected fired=false (line-in not active)", st)
+		}
+		if cmds := col.drainAll(); len(cmds) != 0 {
+			t.Errorf("state=%s: expected 0 commands, got %d", st, len(cmds))
+		}
+	}
+}

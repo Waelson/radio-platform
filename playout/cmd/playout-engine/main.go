@@ -15,6 +15,7 @@ import (
 	appwebview "github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 	"github.com/Waelson/radio-playout-engine/internal/api"
 	"github.com/Waelson/radio-playout-engine/internal/cart"
+	"github.com/Waelson/radio-playout-engine/internal/linein"
 	"github.com/Waelson/radio-playout-engine/internal/cue"
 	"github.com/Waelson/radio-playout-engine/internal/preview"
 	apiws "github.com/Waelson/radio-playout-engine/internal/api/ws"
@@ -444,7 +445,20 @@ func run(args []string) error {
 		return fmt.Errorf("scheduler: %w", err)
 	}
 
-	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, cartDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, api.StreamingDeps{Mgr: streamMgr}, api.LineInDeps{}, log)
+	apiSrv := api.New(apiCfg, stateMgr, cmdBus, queueMgr, wsHub, metricsColl, previewDeps, cartDeps, devicesDeps, api.ScheduleDeps{Mgr: schedMgr}, api.ConfigDeps{Snapshot: cfg, Path: configPath}, api.StreamingDeps{Mgr: streamMgr}, api.LineInDeps{
+		ConfigStore: prefs.NewLineInStore(prefsPath),
+		ListDevices: func() ([]handlers.LineInDevice, error) {
+			devs, err := linein.ListDevices("")
+			if err != nil {
+				return nil, err
+			}
+			out := make([]handlers.LineInDevice, len(devs))
+			for i, d := range devs {
+				out[i] = handlers.LineInDevice{ID: d.ID, Name: d.Name}
+			}
+			return out, nil
+		},
+	}, log)
 
 	// Transition from STARTING → IDLE now that core is wired.
 	stateMgr.SetState(state.StateIdle)
