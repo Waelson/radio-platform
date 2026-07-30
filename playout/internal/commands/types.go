@@ -51,6 +51,10 @@ const (
 	// Cart player commands — dedicated hotkey audio channel.
 	CmdCartPlay CommandType = "CART_PLAY"
 	CmdCartStop CommandType = "CART_STOP"
+
+	// Line-in commands — external audio source capture.
+	CmdLineInStart CommandType = "LINE_IN_START"
+	CmdLineInStop  CommandType = "LINE_IN_STOP"
 )
 
 // Command is the internal envelope carried through the Command Bus.
@@ -324,3 +328,45 @@ type CartSetVolumePayload struct {
 }
 
 // CmdCartStop carries no payload.
+
+// --- Line-in payloads --------------------------------------------------------
+
+// LineInStartPayload carries the payload for CmdLineInStart.
+type LineInStartPayload struct {
+	// DeviceID is the platform-specific capture device identifier.
+	// Use "default" to use the device configured in prefs.
+	DeviceID string
+
+	// Label is shown in the UI and logs (e.g. "Voz do Brasil").
+	Label string
+
+	// DurationMS is the maximum capture duration in milliseconds.
+	// 0 means unlimited — the session runs until CmdLineInStop is received.
+	DurationMS int64
+
+	// OnSilence controls behaviour when silence is detected on the input.
+	// "alert" (default) — emit EvtLineInError but keep capturing.
+	// "stop"            — emit EvtLineInError then auto-stop the session.
+	OnSilence string
+
+	// SilenceThresholdDBFS is the RMS level below which audio is silence.
+	// Zero means use the default (-60 dBFS).
+	SilenceThresholdDBFS float64
+
+	// SilenceThresholdMS is the continuous silence duration before triggering.
+	// Zero means use the default (30 000 ms).
+	SilenceThresholdMS int64
+
+	// TriggerMode controls how the engine behaves when already playing.
+	// INTERRUPT (default), AFTER_CURRENT, CROSSFADE, SKIP_IF_BUSY.
+	TriggerMode string
+
+	// TriggeredBy records the origin of the command: "manual" or "scheduler".
+	TriggeredBy string
+}
+
+// LineInStopPayload carries the payload for CmdLineInStop.
+type LineInStopPayload struct {
+	// Reason is a human-readable explanation for the stop request.
+	Reason string
+}

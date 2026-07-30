@@ -22,6 +22,7 @@ const (
 	StatePanic    PlayerState = "PANIC"
 	StateStopping PlayerState = "STOPPING"
 	StateError    PlayerState = "ERROR"
+	StateLineIn   PlayerState = "LINE_IN"
 )
 
 // OperationalMode represents how the engine interprets automation decisions.
@@ -88,6 +89,16 @@ type LastCommand struct {
 	At       time.Time
 }
 
+// LineInStatus carries information about an active line-in capture session.
+// It is nil in the Snapshot when no session is active.
+type LineInStatus struct {
+	DeviceID    string    `json:"device_id"`
+	Label       string    `json:"label"`
+	StartedAt   time.Time `json:"started_at"`
+	DurationMS  int64     `json:"duration_ms,omitempty"` // 0 = unlimited
+	TriggeredBy string    `json:"triggered_by"`          // "manual" | "scheduler"
+}
+
 // Snapshot is a consistent, copyable view of the full engine state.
 // It is safe to read after Snapshot() returns without any lock.
 type Snapshot struct {
@@ -96,6 +107,7 @@ type Snapshot struct {
 	Mode          OperationalMode
 	Panic         bool
 	NowPlaying    *NowPlaying
+	LineIn        *LineInStatus
 	Queue         QueueInfo
 	AudioHealth   AudioHealth
 	LastCommand   *LastCommand
@@ -155,6 +167,10 @@ func (m *Manager) Snapshot() Snapshot {
 		lc := *m.snap.LastCommand
 		s.LastCommand = &lc
 	}
+	if m.snap.LineIn != nil {
+		li := *m.snap.LineIn
+		s.LineIn = &li
+	}
 	return s
 }
 
@@ -164,6 +180,24 @@ func (m *Manager) SetState(s PlayerState) {
 	m.mu.Lock()
 	m.snap.State = s
 	m.snap.Panic = s == StatePanic
+	m.mu.Unlock()
+}
+
+// SetLineIn transitions to StateLineIn and records the session metadata.
+// Callers should call ClearLineIn when the session ends.
+func (m *Manager) SetLineIn(li LineInStatus) {
+	m.mu.Lock()
+	m.snap.State = StateLineIn
+	m.snap.Panic = false
+	m.snap.LineIn = &li
+	m.mu.Unlock()
+}
+
+// ClearLineIn removes the active line-in session and returns the engine to
+// the previous state. Callers must call SetState explicitly after ClearLineIn.
+func (m *Manager) ClearLineIn() {
+	m.mu.Lock()
+	m.snap.LineIn = nil
 	m.mu.Unlock()
 }
 

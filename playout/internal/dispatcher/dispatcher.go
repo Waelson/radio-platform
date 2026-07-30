@@ -222,6 +222,7 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdCartPlay:           true,
 		commands.CmdCartStop:           true,
 		commands.CmdCartSetVolume:      true,
+		commands.CmdLineInStart:        true,
 	},
 	state.StatePlaying: {
 		commands.CmdPause:              true,
@@ -244,6 +245,7 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdCartPlay:           true,
 		commands.CmdCartStop:           true,
 		commands.CmdCartSetVolume:      true,
+		commands.CmdLineInStart:        true,
 	},
 	state.StatePaused: {
 		commands.CmdResume:             true,
@@ -298,6 +300,25 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		commands.CmdCartStop:           true,
 		commands.CmdCartSetVolume:      true,
 		// CmdInsertBreakNext not allowed in PANIC — scheduler never fires breaks during PANIC
+	},
+	state.StateLineIn: {
+		// While line-in is active, the operator can stop it or trigger panic.
+		// Queue management is allowed so the operator can prepare the next item.
+		commands.CmdLineInStop:         true,
+		commands.CmdEnqueue:            true,
+		commands.CmdEnqueueBreak:       true,
+		commands.CmdInsertNext:         true,
+		commands.CmdInsertBreakNext:    true,
+		commands.CmdInsertAfter:        true,
+		commands.CmdClearQueue:         true,
+		commands.CmdRemoveItem:         true,
+		commands.CmdMoveItem:           true,
+		commands.CmdReorderItem:        true,
+		commands.CmdSetVolume:          true,
+		commands.CmdPreviewSetVolume:   true,
+		commands.CmdCartPlay:           true,
+		commands.CmdCartStop:           true,
+		commands.CmdCartSetVolume:      true,
 	},
 	state.StateError: {
 		commands.CmdReset:              true,

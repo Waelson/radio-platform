@@ -74,6 +74,12 @@ const (
 	EvtCartProgress EventType = "CartProgress"
 	EvtCartStopped  EventType = "CartStopped"
 
+	// Line-in events — external audio source capture.
+	EvtLineInStarted EventType = "LineInStarted"
+	EvtLineInStopped EventType = "LineInStopped"
+	EvtLineInError   EventType = "LineInError"
+	EvtLineInLevel   EventType = "LineInLevel"
+
 	// Preview (cue) events — isolated from the main playback pipeline.
 	EvtPreviewStarted  EventType = "PreviewStarted"
 	EvtPreviewPaused   EventType = "PreviewPaused"
@@ -100,7 +106,8 @@ func IsCritical(t EventType) bool {
 		EvtCommandRejected, EvtAlertRaised,
 		EvtEngineStarted, EvtEngineStopping,
 		EvtPlaybackError, EvtDecoderError,
-		EvtOutputOpenFailed, EvtOutputWriteFailed:
+		EvtOutputOpenFailed, EvtOutputWriteFailed,
+		EvtLineInStarted, EvtLineInStopped, EvtLineInError:
 		return true
 	default:
 		return false
@@ -549,4 +556,35 @@ type ScheduleEntryRemovedPayload struct {
 type ScheduleEntryUpdatedPayload struct {
 	EntryID string `json:"entry_id"`
 	Enabled bool   `json:"enabled"`
+}
+
+// --- Line-in event payloads --------------------------------------------------
+
+// LineInStartedPayload is published when a line-in session begins.
+type LineInStartedPayload struct {
+	DeviceID    string `json:"device_id"`
+	DeviceName  string `json:"device_name,omitempty"`
+	Label       string `json:"label"`
+	DurationMS  int64  `json:"duration_ms,omitempty"` // 0 = unlimited
+	TriggeredBy string `json:"triggered_by"`          // "manual" | "scheduler"
+}
+
+// LineInStoppedPayload is published when a line-in session ends.
+type LineInStoppedPayload struct {
+	Label     string `json:"label"`
+	ElapsedMS int64  `json:"elapsed_ms"`
+	Reason    string `json:"reason"` // "manual" | "duration_expired" | "panic" | "silence_stop" | "error"
+}
+
+// LineInErrorPayload is published when an error or silence event occurs during capture.
+type LineInErrorPayload struct {
+	Label             string `json:"label"`
+	Error             string `json:"error"`              // "silence_detected" | "ffmpeg_error" | "output_error"
+	SilenceDurationMS int64  `json:"silence_duration_ms,omitempty"`
+}
+
+// LineInLevelPayload is published periodically during active capture (~500 ms).
+// Used to drive the VU meter in the UI.
+type LineInLevelPayload struct {
+	RMSDBFS float64 `json:"rms_dbfs"`
 }

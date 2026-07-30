@@ -209,3 +209,90 @@ func TestManager_ConcurrentAccess(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// ── Line-in state tests ───────────────────────────────────────────────────────
+
+func TestSetLineIn_TransitionAndSnapshot(t *testing.T) {
+	m := state.NewManager("eng-1")
+	m.SetState(state.StatePlaying)
+
+	li := state.LineInStatus{
+		DeviceID:    "0",
+		Label:       "Voz do Brasil",
+		StartedAt:   time.Now().UTC(),
+		DurationMS:  3_600_000,
+		TriggeredBy: "scheduler",
+	}
+	m.SetLineIn(li)
+
+	s := m.Snapshot()
+	if s.State != state.StateLineIn {
+		t.Errorf("State = %s, want LINE_IN", s.State)
+	}
+	if s.Panic {
+		t.Error("Panic should be false in LINE_IN state")
+	}
+	if s.LineIn == nil {
+		t.Fatal("LineIn should not be nil after SetLineIn")
+	}
+	if s.LineIn.Label != "Voz do Brasil" {
+		t.Errorf("LineIn.Label = %q, want %q", s.LineIn.Label, "Voz do Brasil")
+	}
+	if s.LineIn.DurationMS != 3_600_000 {
+		t.Errorf("LineIn.DurationMS = %d, want 3600000", s.LineIn.DurationMS)
+	}
+}
+
+func TestClearLineIn_ResetsField(t *testing.T) {
+	m := state.NewManager("eng-1")
+	m.SetLineIn(state.LineInStatus{Label: "test", TriggeredBy: "manual"})
+
+	m.ClearLineIn()
+	m.SetState(state.StatePlaying)
+
+	s := m.Snapshot()
+	if s.LineIn != nil {
+		t.Errorf("LineIn should be nil after ClearLineIn, got %+v", s.LineIn)
+	}
+	if s.State != state.StatePlaying {
+		t.Errorf("State = %s, want PLAYING", s.State)
+	}
+}
+
+func TestSetLineIn_PanicOverrides(t *testing.T) {
+	m := state.NewManager("eng-1")
+	m.SetLineIn(state.LineInStatus{Label: "test", TriggeredBy: "manual"})
+
+	// PANIC has priority — transitions away from LINE_IN.
+	m.SetState(state.StatePanic)
+
+	s := m.Snapshot()
+	if s.State != state.StatePanic {
+		t.Errorf("State = %s, want PANIC", s.State)
+	}
+	if !s.Panic {
+		t.Error("Panic flag should be true in PANIC state")
+	}
+}
+
+func TestLineIn_SnapshotIsolation(t *testing.T) {
+	// Mutating the returned LineInStatus must not affect internal state.
+	m := state.NewManager("eng-1")
+	m.SetLineIn(state.LineInStatus{Label: "original", TriggeredBy: "manual"})
+
+	s := m.Snapshot()
+	s.LineIn.Label = "mutated"
+
+	s2 := m.Snapshot()
+	if s2.LineIn.Label != "original" {
+		t.Errorf("internal state was mutated: Label = %q", s2.LineIn.Label)
+	}
+}
+
+func TestLineIn_NilWhenInactive(t *testing.T) {
+	m := state.NewManager("eng-1")
+	s := m.Snapshot()
+	if s.LineIn != nil {
+		t.Errorf("LineIn should be nil when no session is active")
+	}
+}
