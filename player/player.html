@@ -3109,19 +3109,12 @@ canvas.vu-canvas {
             <button class="pn-btn"               id="btnPauseToggle" onclick="sendCmd('pause-toggle')" disabled>⏸ Pausar</button>
             <button class="pn-btn pn-btn-primary" id="btnPlay"        onclick="playStopToggle()"        disabled>▶ NO AR</button>
             <button class="pn-btn"               id="btnSkip"        onclick="sendCmd('skip')"         disabled>Próximo ⏭</button>
-            <button class="pn-btn" id="btnLineIn" onclick="openLineInModal()" style="color:#00bcd4;border-color:rgba(0,188,212,0.35);background:rgba(0,40,48,0.5);" title="Entrada de Linha (Line-In)">📻 Linha</button>
           </div>
           <div class="pn-controls-right">
             <button class="pn-btn pn-btn-danger" id="btnPanicToggle" onclick="sendCmd('panic-toggle')" disabled data-tooltip="Panic" style="min-width:46px;width:46px;padding:0;"><img class="btn-icon" src="icons/panic.svg"></button>
           </div>
         </div>
 
-        <!-- VU meter de line-in (visível apenas quando LINE_IN ativo) -->
-        <div class="linein-vu-wrap" id="lineInVuWrap">
-          <div class="linein-vu-label">📻 Nível de entrada</div>
-          <div class="linein-vu-track"><div class="linein-vu-fill" id="lineInVuFill"></div></div>
-          <div class="linein-silence-warn" id="lineInSilenceWarn">⚠ Silêncio detectado na entrada</div>
-        </div>
 
       </div>
 
@@ -3220,6 +3213,11 @@ canvas.vu-canvas {
             <span class="or-meter-ch">M</span>
             <div class="or-meter-bar-wrap"><div class="or-meter-bar-fill" id="orMeterM"></div></div>
             <span class="or-meter-val" id="orValM">—</span>
+          </div>
+          <div class="or-meter-row" id="lineInLiRow" style="display:none;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);">
+            <span class="or-meter-ch" style="color:#00bcd4;">LI</span>
+            <div class="or-meter-bar-wrap"><div class="or-meter-bar-fill" id="orMeterLI"></div></div>
+            <span class="or-meter-val" id="orValLI">—</span>
           </div>
         </div>
         <div class="or-meter-scale">
@@ -3769,7 +3767,7 @@ function decaySmooth() {
   smooth.clip      = false;
 }
 
-const ACTIVE_STATES = new Set(['PLAYING', 'PAUSED', 'ASSIST', 'PANIC']);
+const ACTIVE_STATES = new Set(['PLAYING', 'PAUSED', 'ASSIST', 'PANIC', 'LINE_IN']);
 let engineState    = '';
 let engineMode     = '';
 let _panicEnabled  = false;
@@ -5759,15 +5757,15 @@ async function stopLineIn() {
 }
 
 function _lineInShowUI(show) {
-  const badge  = document.getElementById('lineInTopBadge');
-  const vuWrap = document.getElementById('lineInVuWrap');
-  if (badge)  badge.classList.toggle('active', show);
-  if (vuWrap) vuWrap.classList.toggle('active', show);
+  const badge = document.getElementById('lineInTopBadge');
+  const liRow = document.getElementById('lineInLiRow');
+  if (badge) badge.classList.toggle('active', show);
+  if (liRow) liRow.style.display = show ? '' : 'none';
   if (!show) {
-    const fill = document.getElementById('lineInVuFill');
-    const warn = document.getElementById('lineInSilenceWarn');
-    if (fill) fill.style.width = '0%';
-    if (warn) warn.classList.remove('active');
+    const bar = document.getElementById('orMeterLI');
+    const val = document.getElementById('orValLI');
+    if (bar) bar.style.clipPath = 'inset(0 100% 0 0)';
+    if (val) val.textContent = '—';
   }
 }
 
@@ -5824,13 +5822,12 @@ function onLineInError(p) {
 }
 
 function onLineInLevel(p) {
-  const fill = document.getElementById('lineInVuFill');
-  if (!fill) return;
-  // RMSDBFS typically ranges -60 to 0 dB. Map to 0–100%.
+  const bar = document.getElementById('orMeterLI');
+  const val = document.getElementById('orValLI');
   const db  = p?.rms_dbfs ?? -60;
   const pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
-  fill.style.width = pct + '%';
-  fill.style.background = pct > 80 ? '#f44' : pct > 50 ? '#fa0' : '#00bcd4';
+  if (bar) bar.style.clipPath = 'inset(0 ' + (100 - pct).toFixed(1) + '% 0 0)';
+  if (val) val.textContent = isFinite(db) ? db.toFixed(1) : '—';
 }
 
 function onHealth(p) {
@@ -6120,6 +6117,24 @@ function onSnapshot(p) {
   if (engineState === 'ASSIST' && !_inAssist) enterAssistUI();
   if (engineState !== 'ASSIST' && _inAssist && (p.Mode || p.mode) !== 'ASSIST') exitAssistUI();
   if (!isActive()) lastVuTime = 1;
+  // Restore LINE_IN UI on reconnect / page reload
+  if (engineState === 'LINE_IN') {
+    const li = p.LineIn || p.line_in;
+    _lineIn.active    = true;
+    _lineIn.label     = (li && (li.Label || li.label)) || 'Line-In';
+    _lineIn.deviceID  = (li && (li.DeviceID || li.device_id)) || '';
+    _lineIn.startedAt = li && (li.StartedAt || li.started_at)
+      ? new Date(li.StartedAt || li.started_at) : new Date();
+    _lineIn.recording = false;
+    _lineInShowUI(true);
+    _lineInStartElapsedTimer();
+  } else if (_lineIn.active) {
+    // Snapshot says we're not in LINE_IN — clear any stale UI.
+    _lineIn.active = false;
+    _lineIn.startedAt = null;
+    if (_lineIn.elapsedTimer) { clearInterval(_lineIn.elapsedTimer); _lineIn.elapsedTimer = null; }
+    _lineInShowUI(false);
+  }
 
   const np = p.NowPlaying || p.now_playing;
   if (np) {
