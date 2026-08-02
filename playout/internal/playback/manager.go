@@ -289,6 +289,37 @@ type outputResumer interface{ ResumeAudio() error }
 // first to avoid the "hungry" auto-stopped queue problem.
 type outputRestarter interface{ RestartAudio() error }
 
+// outputFlusher is implemented by output devices that support draining the
+// hardware ring buffer immediately without stopping the AudioQueue.
+// Calling FlushAudio() after a session ends eliminates the tail of
+// pre-buffered audio (~2.7 s on CoreAudio) that would otherwise keep playing.
+type outputFlusher interface{ FlushAudio() error }
+
+// outputOccupancyReader is implemented by output devices that can report how
+// many float32 samples are currently buffered in the hardware ring — i.e.,
+// written by Go but not yet played by the hardware callback. The difference
+// between framesTotal (Go write position) and hardware play position equals
+// this occupancy divided by the number of channels.
+type outputOccupancyReader interface{ RingOccupancy() int64 }
+
+// ringOccupancy returns the current hardware ring buffer occupancy in PCM
+// frames (not samples). Returns 0 when the output device does not support the
+// query (e.g. NullOutput). The result is used to correct progress tracking and
+// crossfade timing so that the UI reflects the hardware play position rather
+// than the Go write position.
+func (m *Manager) ringOccupancy() int64 {
+	r, ok := m.out.(outputOccupancyReader)
+	if !ok {
+		return 0
+	}
+	samples := r.RingOccupancy()
+	channels := int64(audio.DefaultFormat.Channels)
+	if channels <= 0 {
+		return 0
+	}
+	return samples / channels
+}
+
 // HandlePause pauses an active session.
 func (m *Manager) HandlePause(_ context.Context, _ commands.Command) error {
 	m.pauseMu.Lock()
@@ -499,6 +530,15 @@ func (m *Manager) HandleStop(_ context.Context, cmd commands.Command) error {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		m.log.Warn("playback session did not stop in time")
+	}
+
+	// Drain the hardware ring buffer so pre-buffered audio stops immediately.
+	// Without this, CoreAudio keeps playing accumulated audio for up to ~2.7 s
+	// after the session goroutine exits.
+	if f, ok := m.out.(outputFlusher); ok {
+		if err := f.FlushAudio(); err != nil {
+			m.log.Warn("output flush failed", "error", err)
+		}
 	}
 
 	// Restore gain and stopping flag so the next play session starts cleanly.
@@ -1183,7 +1223,12 @@ func (m *Manager) sessionLoop(ctx context.Context, cancel context.CancelFunc, do
 			// GET /v1/queue never shows a gap between old and new current.
 			m.queueMgr.PopPreloadingAsCurrent(nextItem)
 			// Back-date the start frame so progress is continuous for the listener.
-			m.startItem(nextItem, m.framesTotal.Load()-xFramesDone)
+			// Add the current ring buffer occupancy so that the startFrame reflects
+			// the hardware play position rather than the Go write position. Without
+			// this correction, startItem fires as soon as Go finishes writing the
+			// crossfade frames, but the hardware may still be up to ~2.7 s behind.
+			ringAtXfadeEnd := m.ringOccupancy()
+			m.startItem(nextItem, m.framesTotal.Load()-xFramesDone+ringAtXfadeEnd)
 			carryStream = nextStream
 			carryItem = nextItem
 		}
@@ -1531,6 +1576,12 @@ func (m *Manager) runPlayLoop(
 		// Skip signal.
 		select {
 		case <-m.skipCh:
+			// Drain the ring buffer so the skipped item's audio stops immediately.
+			// Without this, the next item's audio would be written behind ~2.7 s of
+			// pre-buffered audio from the skipped item, causing an audible delay.
+			if f, ok := m.out.(outputFlusher); ok {
+				_ = f.FlushAudio()
+			}
 			result = queue.ItemResultSkipped
 			return
 		default:
@@ -1760,7 +1811,10 @@ func (m *Manager) progressLoop(ctx context.Context, done chan struct{}) {
 				continue
 			}
 
-			playedFrames := m.framesTotal.Load() - startFrame
+			playedFrames := m.framesTotal.Load() - startFrame - m.ringOccupancy()
+			if playedFrames < 0 {
+				playedFrames = 0
+			}
 			posMS := audio.DefaultFormat.MsFromFrames(playedFrames)
 			durMS := cur.DurationMS
 

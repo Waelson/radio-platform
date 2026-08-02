@@ -77,6 +77,8 @@ const (
 	// Line-in events — external audio source capture.
 	EvtLineInStarted EventType = "LineInStarted"
 	EvtLineInStopped EventType = "LineInStopped"
+	EvtLineInPaused  EventType = "LineInPaused"
+	EvtLineInResumed EventType = "LineInResumed"
 	EvtLineInError   EventType = "LineInError"
 	EvtLineInLevel   EventType = "LineInLevel"
 
@@ -528,6 +530,7 @@ type ScheduleEntryFiredPayload struct {
 	BreakTitle  string `json:"break_title,omitempty"` // commercial break entry
 	SpotCount   int    `json:"spot_count,omitempty"`  // commercial break entry
 	OneShot     bool   `json:"one_shot"`              // true if the entry is auto-disabled after firing
+	IsLineIn    bool   `json:"is_line_in,omitempty"`  // true for line-in start entries
 }
 
 // ScheduleEntryMissedPayload is published when a scheduler entry fires but

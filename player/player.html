@@ -3849,6 +3849,7 @@ const BTN_ALLOWED = {
   PAUSED:   ['pause-toggle', 'stop', 'panic-toggle', 'assist-enter'],
   ASSIST:   ['play', 'pause-toggle', 'stop', 'skip', 'panic-toggle', 'return-auto'],
   PANIC:    ['panic-toggle', 'stop'],
+  LINE_IN:  ['pause-toggle', 'stop', 'skip', 'panic-toggle'],
   ERROR:    [],
   STARTING: [],
   STOPPING: [],
@@ -3877,7 +3878,7 @@ function updateButtons(state) {
     const btn = document.getElementById(id);
     if (!btn) continue;
     let ok = allowed.has(cmd);
-    if (cmd === 'skip' && !hasPending)                                   ok = false;
+    if (cmd === 'skip' && !hasPending && state !== 'LINE_IN')            ok = false;
     if (cmd === 'play' && !hasItems && !_enginePlaying)                  ok = false;
     if (cmd === 'play' && _inAssist && !_assistWaiting && !_enginePlaying) ok = false;
     if (cmd === 'stop' && _assistWaiting)                                ok = false;
@@ -3917,9 +3918,12 @@ async function sendCmd(cmd) {
     'assist-enter': '/v1/playback/enter-assist',
     'return-auto':  '/v1/playback/return-auto',
   };
-  // pause-toggle selects pause or resume based on current engine state
+  // pause-toggle selects pause or resume based on current engine state.
+  // In LINE_IN state, toggle uses the _lineIn.paused flag since the engine
+  // stays in LINE_IN (not PAUSED) while the live feed is silenced.
   if (cmd === 'pause-toggle') {
-    cmd = (engineState === 'PAUSED') ? 'resume' : 'pause';
+    const isPaused = engineState === 'PAUSED' || (engineState === 'LINE_IN' && _lineIn.paused);
+    cmd = isPaused ? 'resume' : 'pause';
     endpoints['pause']  = '/v1/playback/pause';
     endpoints['resume'] = '/v1/playback/resume';
   }
@@ -4021,6 +4025,23 @@ async function fetchQueue() {
   }
 }
 
+function renderPendingLineInRow(info) {
+  const label = info.title || info.entry_name || 'Line-In';
+  return `<article class="queue-row is-linein" data-id="" style="padding-left:22px">
+    <div class="q-index">
+      <img src="icons/linein.svg" class="q-type-icon" alt="LINE_IN" style="filter:invert(70%) sepia(100%) saturate(500%) hue-rotate(155deg)">
+    </div>
+    <div class="q-type-bar linein"></div>
+    <div class="q-track">
+      <div class="q-track-name">
+        <span style="font-size:12px;font-weight:900;color:#00bcd4;letter-spacing:0.08em">${escHtml(label)}</span>
+        <span class="q-next-badge" style="margin-left:6px">PRÓXIMO</span>
+      </div>
+      <div class="q-meta"><span class="row-badge" style="color:#00bcd4;border-color:rgba(0,188,212,.4)">Line-In</span></div>
+    </div>
+  </article>`;
+}
+
 function renderQueue() {
   updateButtons(engineState);
   const tbody = document.getElementById('queueBody');
@@ -4089,9 +4110,14 @@ function renderQueue() {
   if (queueData && Array.isArray(queueData.pending)) {
     if (queueData.current) {
       rows.push(renderItemRow(queueData.current, _estTimes));
-      if (queueData.pending && queueData.pending.length > 0) {
+      const hasPending = (queueData.pending && queueData.pending.length > 0) || (_pendingAfterCurrentLineIn && engineState !== 'LINE_IN');
+      if (hasPending) {
         const sepLabel = (engineState === 'LINE_IN') ? 'FILA SUSPENSA' : 'A Seguir';
         rows.push(`<div class="q-section-sep${engineState === 'LINE_IN' ? '" style="color:#00bcd4' : ''}">${sepLabel}</div>`);
+      }
+      // Show pending AFTER_CURRENT line-in as first item in "A Seguir" section
+      if (_pendingAfterCurrentLineIn && engineState !== 'LINE_IN') {
+        rows.push(renderPendingLineInRow(_pendingAfterCurrentLineIn));
       }
     }
     queueData.pending.forEach(entry => {
@@ -4176,6 +4202,17 @@ function updateNextDeckCard() {
   const xfadeBadge = document.getElementById('nextXfadeBadge');
 
   card.classList.remove('hidden');
+
+  // Pending AFTER_CURRENT line-in takes priority as "next on air"
+  if (_pendingAfterCurrentLineIn && engineState !== 'LINE_IN') {
+    const label = _pendingAfterCurrentLineIn.title || _pendingAfterCurrentLineIn.entry_name || 'Line-In';
+    titleEl.textContent = label;
+    artEl.textContent   = 'Line-In';
+    durEl.textContent   = '—';
+    metaEl.innerHTML    = '';
+    if (xfadeBadge) xfadeBadge.classList.remove('visible');
+    return;
+  }
 
   if (!nextItem) {
     titleEl.textContent = '—';
@@ -4325,6 +4362,7 @@ function renderItemRow(item, estTimes) {
   const isHE      = false; // reservado
   const isVinheta = (item.type || '').toUpperCase() === 'VINHETA';
   const isMusic   = (item.type || '').toUpperCase() === 'MUSIC';
+  const isLineIn  = (item.type || '').toUpperCase() === 'LINE_IN';
   const itemId   = item.queue_item_id || item.id || '';
   const isAssistNext = false;
   const isPlaying  = status === 'PLAYING';
@@ -4347,7 +4385,7 @@ function renderItemRow(item, estTimes) {
     isPlaying ? 'is-current' : isPreload ? 'is-next' : '',
     isPlayed  ? 'is-played'  : '',
     isFailed  ? 'is-failed'  : '',
-    isHC      ? 'hora-certa' : isVinheta ? 'vinheta' : isMusic ? 'music' : (item.type||'').toUpperCase() === 'SPOT' ? 'spot' : 'music',
+    isHC      ? 'hora-certa' : isVinheta ? 'vinheta' : isMusic ? 'music' : (item.type||'').toUpperCase() === 'SPOT' ? 'spot' : (isLineIn && !isPlaying) ? 'is-linein' : 'music',
     isAssistNext && !isPlaying ? 'assist-next' : '',
     canReorder ? 'is-draggable' : '',
   ].filter(Boolean).join(' ');
@@ -4368,15 +4406,18 @@ function renderItemRow(item, estTimes) {
   const typeLabel2 = {
     'MUSIC':'Música','JINGLE':'Jingle','VINHETA':'Vinheta','SPOT':'Spot',
     'HORA_CERTA':'Hora Certa','COMERCIAL':'Comercial','EFEITO':'Efeito','NOTICIA':'Notícia',
+    'LINE_IN':'Line-In',
   }[typeStr] || typeStr;
   const typePillCls = typeStr === 'SPOT' || typeStr === 'COMERCIAL' ? 'spot'
     : typeStr === 'VINHETA' || typeStr === 'JINGLE' ? 'vinheta'
     : typeStr === 'HORA_CERTA' ? 'hora-certa'
+    : typeStr === 'LINE_IN' ? 'linein'
     : '';
 
   const typeIcon = isHC      ? 'icons/hora_certa.svg'
                 : isVinheta ? 'icons/vinheta.svg'
                 : isMusic   ? 'icons/musica.svg'
+                : isLineIn  ? 'icons/linein.svg'
                 : (item.type||'').toUpperCase() === 'SPOT' ? 'icons/spot.svg'
                 : 'icons/musica.svg';
   // Estimated start time for this item
@@ -4391,7 +4432,7 @@ function renderItemRow(item, estTimes) {
     timeStr = `${hh}:${mm}:${ss}`;
   }
 
-  const typeBarCls = typePillCls || (isMusic ? '' : '');
+  const typeBarCls = (isLineIn && isPlaying) ? '' : (typePillCls || '');
   const durStr = item.duration_ms ? msToTime(item.duration_ms) : '';
   const timeColHTML = `<div class="q-index">${
     isPlaying ? `<span class="q-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>` :
@@ -4403,14 +4444,20 @@ function renderItemRow(item, estTimes) {
 
   const badgeHTML = '';
   const nextTag   = isAssistNext && !isPlaying ? `<span class="q-next-tag">← PRÓXIMA</span>` : '';
-  const isNext = isPreload || (!isPlaying && !isPlayed && !isFailed && !!itemId && itemId === window._assistNextId);
+  // Suppress PRÓXIMO badge on queue items when a pending line-in is "next"
+  const _lineInIsNext = !!_pendingAfterCurrentLineIn && engineState !== 'LINE_IN';
+  const isNext = !_lineInIsNext && (isPreload || (!isPlaying && !isPlayed && !isFailed && !!itemId && itemId === window._assistNextId));
   const nextBadge = isNext ? '<span class="q-next-badge">PRÓXIMO</span>' : '';
 
   const titleHTML = isHC
     ? `<span style="font-size:12px;font-weight:900;color:#ffffff;letter-spacing:0.12em">HORA CERTA</span>`
+    : isLineIn
+    ? `<span style="font-size:12px;font-weight:900;color:${isPlaying ? '#ffffff' : '#00bcd4'};letter-spacing:0.08em">${escHtml(item.title || 'Line-In')}</span>`
     : escHtml(truncTitle(item.title || '—'));
 
-  const artistHTML = (item.artist && !isHC) ? `<div class="q-meta"><span class="q-artist">${escHtml(truncTitle(item.artist))}</span></div>` : '';
+  const lineInBadge = '';
+
+  const artistHTML = (item.artist && !isHC && !isLineIn) ? `<div class="q-meta"><span class="q-artist">${escHtml(truncTitle(item.artist))}</span></div>` : '';
   const typeHTML   = isHC ? '' : `<div class="q-meta"><span class="row-badge">${typeLabel2}</span></div>`;
   const metaHTML   = artistHTML + typeHTML;
 
@@ -4443,7 +4490,7 @@ function renderItemRow(item, estTimes) {
     ${canReorder ? `<div class="dnd-handle" title="Arrastar">⠿</div>` : ''}
     ${timeColHTML}
     <div class="q-track">
-      <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${badgeHTML}${nextTag}${nextBadge}</div>
+      <div class="q-track-name" title="${escHtml(item.title || '')}">${titleHTML}${lineInBadge}${badgeHTML}${nextTag}${nextBadge}</div>
       ${metaHTML}
     </div>
     ${hoverActionsHTML}
@@ -5614,6 +5661,11 @@ function handleEvent({ type, payload }) {
     case 'ScheduleEntryFired':
       fetchNextScheduledEvent();
       fetchTodaySchedule();
+      if (payload.is_line_in && (payload.trigger_mode || '').toUpperCase() === 'AFTER_CURRENT') {
+        _pendingAfterCurrentLineIn = payload;
+        localStorage.setItem('_pendingLineIn', JSON.stringify(payload));
+        renderQueue();
+      }
       break;
     case 'ScheduleEntryMissed':
       showToast(false, 'Evento pulado: ' + (payload.entry_name || ''));
@@ -5647,6 +5699,8 @@ function handleEvent({ type, payload }) {
     // Line-In
     case 'LineInStarted':  onLineInStarted(payload);  break;
     case 'LineInStopped':  onLineInStopped(payload);  break;
+    case 'LineInPaused':   onLineInPaused();           break;
+    case 'LineInResumed':  onLineInResumed();          break;
     case 'LineInError':    onLineInError(payload);     break;
     case 'LineInLevel':    onLineInLevel(payload);     break;
   }
@@ -5657,7 +5711,8 @@ function clearBreakBanner() {}
 
 /* ─── Line-In ────────────────────────────────────────────────── */
 
-const _lineIn = { active: false, label: '', deviceID: '', startedAt: null, elapsedTimer: null, recording: false };
+const _lineIn = { active: false, paused: false, label: '', deviceID: '', durationMS: 0, startedAt: null, elapsedTimer: null, recording: false };
+let _pendingAfterCurrentLineIn = null; // set when ScheduleEntryFired is_line_in + AFTER_CURRENT
 
 async function openLineInModal() {
   const modal = document.getElementById('lineInModal');
@@ -5784,14 +5839,32 @@ function _lineInStartElapsedTimer() {
   }, 1000);
 }
 
+function onLineInPaused() {
+  _lineIn.paused = true;
+  const btn = document.getElementById('btnPauseToggle');
+  if (btn) { btn.textContent = '▶ Retomar'; btn.className = 'pn-btn pn-btn-active'; }
+}
+
+function onLineInResumed() {
+  _lineIn.paused = false;
+  const btn = document.getElementById('btnPauseToggle');
+  if (btn) { btn.textContent = '⏸ Pausar'; btn.className = 'pn-btn'; }
+}
+
 function onLineInStarted(p) {
-  _lineIn.active    = true;
-  _lineIn.label     = p.label     || 'Line-In';
-  _lineIn.deviceID  = p.device_id || '';
-  _lineIn.startedAt = new Date();
-  _lineIn.recording = !!(p.record);
+  _lineIn.active     = true;
+  _lineIn.label      = p.label      || 'Line-In';
+  _lineIn.deviceID   = p.device_id  || '';
+  _lineIn.durationMS = p.duration_ms || 0;
+  _lineIn.startedAt  = new Date();
+  _lineIn.recording  = !!(p.record);
+  _enginePlaying    = true;
+  _pendingAfterCurrentLineIn = null; localStorage.removeItem('_pendingLineIn'); // line-in started — clear any pending indicator
   _lineInShowUI(true);
   _lineInStartElapsedTimer();
+  updateButtons(engineState);
+  // Populate the Now Playing section with line-in session info.
+  onNowPlaying({ title: _lineIn.label, artist: '', type: 'LINE_IN', duration_ms: _lineIn.durationMS || 0 });
   // Update active panel if modal is open
   const recNote = document.getElementById('lineInActiveRecording');
   if (recNote) recNote.style.display = _lineIn.recording ? '' : 'none';
@@ -5800,12 +5873,15 @@ function onLineInStarted(p) {
 
 function onLineInStopped(p) {
   _lineIn.active    = false;
+  _lineIn.paused    = false;
   _lineIn.label     = '';
   _lineIn.deviceID  = '';
   _lineIn.startedAt = null;
+  _enginePlaying    = false;
   if (_lineIn.elapsedTimer) { clearInterval(_lineIn.elapsedTimer); _lineIn.elapsedTimer = null; }
   _lineInShowUI(false);
   closeLineInModal();
+  setIdle();
   const elapsed = p?.elapsed_ms ? msToTime2(p.elapsed_ms) : '';
   showToast(true, 'Line-In encerrado' + (elapsed ? ' — ' + elapsed : ''));
   renderQueue();
@@ -5884,6 +5960,7 @@ const _TYPE_PT = {
   'COMERCIAL':  'Comercial',
   'EFEITO':     'Efeito',
   'NOTICIA':    'Notícia',
+  'LINE_IN':    'Line-In',
 };
 function typeLabel(t) { return (_TYPE_PT[(t || '').toUpperCase()] || t || '—').toUpperCase(); }
 
@@ -6063,7 +6140,7 @@ function onStateChange(p) {
   engineState = st;
   if (mo) engineMode = mo;
   if (st === 'IDLE' || st === 'STOPPING') _lastRemainingMs = 0;
-  if (st === 'IDLE') { _enginePlaying = false; _enginePlayingItemId = null; _assistWaiting = false; }
+  if (st === 'IDLE') { _enginePlaying = false; _enginePlayingItemId = null; _assistWaiting = false; _pendingAfterCurrentLineIn = null; localStorage.removeItem('_pendingLineIn'); }
   if (st === 'IDLE' && _inAssist) _assistWaiting = true; // IDLE+ASSIST: operador ainda precisa pressionar PLAY
   setStateBadge(st, engineMode);
   updateButtons(st);
@@ -6108,7 +6185,7 @@ function onSnapshot(p) {
   // Restore _enginePlaying from snapshot so setStateBadge shows the correct
   // display state (e.g. 'PLAYING' instead of 'ASSIST') after a page reload.
   const _snapNp = p.NowPlaying || p.now_playing;
-  _enginePlaying = !!(_snapNp && (engineState === 'PLAYING' || engineState === 'ASSIST'));
+  _enginePlaying = !!(_snapNp && (engineState === 'PLAYING' || engineState === 'ASSIST')) || engineState === 'LINE_IN';
   setStateBadge(engineState, engineMode);
   updateButtons(engineState);
   syncPauseToggle(engineState);
@@ -6120,14 +6197,16 @@ function onSnapshot(p) {
   // Restore LINE_IN UI on reconnect / page reload
   if (engineState === 'LINE_IN') {
     const li = p.LineIn || p.line_in;
-    _lineIn.active    = true;
-    _lineIn.label     = (li && (li.Label || li.label)) || 'Line-In';
-    _lineIn.deviceID  = (li && (li.DeviceID || li.device_id)) || '';
-    _lineIn.startedAt = li && (li.StartedAt || li.started_at)
+    _lineIn.active     = true;
+    _lineIn.label      = (li && (li.Label || li.label)) || 'Line-In';
+    _lineIn.deviceID   = (li && (li.DeviceID || li.device_id)) || '';
+    _lineIn.durationMS = (li && (li.DurationMS || li.duration_ms)) || 0;
+    _lineIn.startedAt  = li && (li.StartedAt || li.started_at)
       ? new Date(li.StartedAt || li.started_at) : new Date();
-    _lineIn.recording = false;
+    _lineIn.recording  = false;
     _lineInShowUI(true);
     _lineInStartElapsedTimer();
+    onNowPlaying({ title: _lineIn.label, artist: '', type: 'LINE_IN', duration_ms: _lineIn.durationMS || 0 });
   } else if (_lineIn.active) {
     // Snapshot says we're not in LINE_IN — clear any stale UI.
     _lineIn.active = false;
@@ -6135,7 +6214,18 @@ function onSnapshot(p) {
     if (_lineIn.elapsedTimer) { clearInterval(_lineIn.elapsedTimer); _lineIn.elapsedTimer = null; }
     _lineInShowUI(false);
   }
-
+  // Restore pending AFTER_CURRENT line-in from localStorage after page reload.
+  // Only valid while engine is still playing (PLAYING/PAUSED/ASSIST) — not LINE_IN or IDLE.
+  if (engineState === 'PLAYING' || engineState === 'PAUSED' || engineState === 'ASSIST') {
+    const _saved = localStorage.getItem('_pendingLineIn');
+    if (_saved) {
+      try { _pendingAfterCurrentLineIn = JSON.parse(_saved); } catch(e) { localStorage.removeItem('_pendingLineIn'); }
+    }
+  } else {
+    // Engine is IDLE or LINE_IN — discard any stale pending entry.
+    _pendingAfterCurrentLineIn = null;
+    localStorage.removeItem('_pendingLineIn');
+  }
   const np = p.NowPlaying || p.now_playing;
   if (np) {
     const durMS = np.DurationMS ?? np.duration_ms ?? 0;
@@ -6371,7 +6461,7 @@ function setStateBadge(state, mode) {
   const liveBadge = document.getElementById('pnLiveBadge');
   if (liveBadge) {
     const label = document.getElementById('pnLiveLabel');
-    if (displayState === 'PLAYING' || displayState === 'ASSIST') {
+    if (displayState === 'PLAYING' || displayState === 'ASSIST' || displayState === 'LINE_IN') {
       liveBadge.classList.remove('idle', 'paused');
       if (label) label.textContent = 'Tocando Agora';
     } else if (displayState === 'PAUSED') {

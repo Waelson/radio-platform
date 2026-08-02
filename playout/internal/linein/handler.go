@@ -9,12 +9,16 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
+
+	"github.com/oklog/ulid/v2"
 
 	"github.com/Waelson/radio-playout-engine/internal/audio/output"
 	"github.com/Waelson/radio-playout-engine/internal/commands"
 	"github.com/Waelson/radio-playout-engine/internal/events"
+	"github.com/Waelson/radio-playout-engine/internal/queue"
 	"github.com/Waelson/radio-playout-engine/internal/state"
 )
 
@@ -27,11 +31,18 @@ import (
 // (patching the WAV header) and optionally converts it to MP3 via FFmpeg.
 // Completed recordings are kept in memory and exposed via ListRecordings.
 type Handler struct {
-	out        output.OutputDevice
-	stateMgr   *state.Manager
-	evtBus     *events.Bus
-	log        *slog.Logger
-	recordsDir string // directory for auto-generated recording filenames; "" → "."
+	out             output.OutputDevice
+	stateMgr        *state.Manager
+	evtBus          *events.Bus
+	log             *slog.Logger
+	recordsDir      string // directory for auto-generated recording filenames; "" → "."
+	defaultDeviceID string // fallback capture device when payload DeviceID is empty
+	queueMgr        *queue.Manager
+	cmdBus          interface{ TrySend(commands.Command) bool }
+
+	// playOnStop: when true, forward() sends CmdPlay after the session ends
+	// and state transitions to IDLE. Set by SetPlayOnStop() before HandleStop.
+	playOnStop atomic.Bool
 
 	mu  sync.Mutex
 	mgr *LineInManager
@@ -49,6 +60,31 @@ func NewHandler(out output.OutputDevice, stateMgr *state.Manager, evtBus *events
 		evtBus:   evtBus,
 		log:      log,
 	}
+}
+
+// SetQueueManager wires the queue manager so that a virtual LINE_IN item
+// appears as the current item in the playlist during an active session.
+func (h *Handler) SetQueueManager(qm *queue.Manager) {
+	h.queueMgr = qm
+}
+
+// SetCmdBus wires the command bus so that forward() can dispatch CmdPlay
+// after a skip-triggered stop once the state has transitioned to IDLE.
+func (h *Handler) SetCmdBus(bus interface{ TrySend(commands.Command) bool }) {
+	h.cmdBus = bus
+}
+
+// SetPlayOnStop schedules a CmdPlay to be sent by forward() after the
+// current session ends and state reaches IDLE. Call this before HandleStop
+// when the operator presses Skip during a LINE_IN session.
+func (h *Handler) SetPlayOnStop() {
+	h.playOnStop.Store(true)
+}
+
+// SetDefaultDeviceID configures the fallback capture device used when a
+// LineInStart command arrives without an explicit device_id.
+func (h *Handler) SetDefaultDeviceID(id string) {
+	h.defaultDeviceID = id
 }
 
 // SetRecordingsDir configures the directory where auto-generated recording
@@ -82,11 +118,17 @@ func (h *Handler) HandleStart(ctx context.Context, cmd commands.Command) error {
 		return &commands.RejectedError{Reason: "line-in session already active"}
 	}
 
-	capture := NewFFmpegCapture(h.log)
+	capture := NewCapture(h.log)
 	mgr := NewLineInManager(capture, h.out, h.log)
+	mgr.SetStateManager(h.stateMgr)
+
+	deviceID := p.DeviceID
+	if deviceID == "" {
+		deviceID = h.defaultDeviceID
+	}
 
 	cfg := LineInConfig{
-		DeviceID:             p.DeviceID,
+		DeviceID:             deviceID,
 		Label:                p.Label,
 		DurationMS:           p.DurationMS,
 		OnSilence:            p.OnSilence,
@@ -117,6 +159,10 @@ func (h *Handler) HandleStart(ctx context.Context, cmd commands.Command) error {
 		}
 	}
 
+	// The Mixer owns the OutputDevice and keeps it open across sessions — no
+	// Open/Start/Close needed here. The Mixer's idempotent Open/Start ensure
+	// the hardware is ready before the first Write, and the no-op Close/Stop
+	// prevent a session end from silencing the device for other sessions.
 	ch, err := mgr.Start(ctx, cfg)
 	if err != nil {
 		if recorder != nil {
@@ -127,6 +173,23 @@ func (h *Handler) HandleStart(ctx context.Context, cmd commands.Command) error {
 
 	h.mgr = mgr
 
+	// Register a virtual LINE_IN queue item as the current item so the session
+	// appears in the playlist with the correct label and type.
+	if h.queueMgr != nil {
+		label := cfg.Label
+		if label == "" {
+			label = "Line-In"
+		}
+		virtualItem := &queue.QueueItem{
+			QueueItemID: "qi_linein_" + ulid.Make().String(),
+			Type:        queue.AssetTypeLiveInput,
+			Title:       label,
+			Status:      queue.ItemStatusPlaying,
+		}
+		h.queueMgr.SetCurrent(virtualItem)
+	}
+
+	prevState := h.stateMgr.Snapshot().State
 	startedAt := time.Now().UTC()
 	h.stateMgr.SetLineIn(state.LineInStatus{
 		DeviceID:    p.DeviceID,
@@ -135,8 +198,47 @@ func (h *Handler) HandleStart(ctx context.Context, cmd commands.Command) error {
 		DurationMS:  p.DurationMS,
 		TriggeredBy: p.TriggeredBy,
 	})
+	h.evtBus.Publish(events.New(events.EvtPlayerStateChanged, events.PlayerStateChangedPayload{
+		From: string(prevState),
+		To:   string(state.StateLineIn),
+		Mode: string(h.stateMgr.Snapshot().Mode),
+	}))
 
-	go h.forward(cfg, ch, recorder, startedAt)
+	// When the scheduler triggered line-in via INTERRUPT or CROSSFADE it
+	// first sent CmdStop, which returned the interrupted item (Music A) to the
+	// front of the queue. When the session ends naturally (duration_ms), we
+	// must discard that item so the queue advances past it instead of replaying it.
+	skipFrontOnResume := p.TriggeredBy == "scheduler" &&
+		(p.TriggerMode == "INTERRUPT" || p.TriggerMode == "CROSSFADE")
+
+	go h.forward(cfg, ch, recorder, startedAt, skipFrontOnResume)
+	return nil
+}
+
+// HandlePauseSession pauses an active line-in session without stopping it.
+// The capture device keeps running; output is silenced until ResumeSession.
+func (h *Handler) HandlePauseSession(_ context.Context, _ commands.Command) error {
+	h.mu.Lock()
+	mgr := h.mgr
+	h.mu.Unlock()
+	if mgr == nil {
+		return &commands.RejectedError{Reason: "no active line-in session"}
+	}
+	mgr.Pause()
+	h.evtBus.Publish(events.New(events.EvtLineInPaused, nil))
+	return nil
+}
+
+// HandleResumeSession resumes a paused line-in session.
+func (h *Handler) HandleResumeSession(_ context.Context, _ commands.Command) error {
+	h.mu.Lock()
+	mgr := h.mgr
+	h.mu.Unlock()
+	if mgr == nil {
+		return &commands.RejectedError{Reason: "no active line-in session"}
+	}
+	mgr.Resume()
+	h.evtBus.Publish(events.New(events.EvtLineInResumed, nil))
 	return nil
 }
 
@@ -159,9 +261,10 @@ func (h *Handler) HandleStop(_ context.Context, _ commands.Command) error {
 // channel closes, regardless of whether the session ended cleanly or with an error.
 // If recorder is non-nil, it closes it after the channel drains and (if needed)
 // converts the WAV to MP3, then records the entry in the in-memory history.
-func (h *Handler) forward(cfg LineInConfig, ch <-chan Event, recorder *output.FileOutput, startedAt time.Time) {
+func (h *Handler) forward(cfg LineInConfig, ch <-chan Event, recorder *output.FileOutput, startedAt time.Time, skipFrontOnResume bool) {
 	cleanStop := false
 	stateCleared := false
+	autoPlay := false // set when the session ends naturally (duration_ms) so queue resumes
 	var elapsedMS int64
 
 	// clearState resets the engine state back to IDLE and releases the mgr
@@ -171,11 +274,58 @@ func (h *Handler) forward(cfg LineInConfig, ch <-chan Event, recorder *output.Fi
 			return
 		}
 		stateCleared = true
+		// Remove the virtual LINE_IN item from the queue's current slot.
+		if h.queueMgr != nil {
+			h.queueMgr.ClearCurrent()
+		}
+		// Drain the hardware ring buffer so buffered line-in audio stops immediately.
+		type flusher interface{ FlushAudio() error }
+		if f, ok := h.out.(flusher); ok {
+			_ = f.FlushAudio()
+		}
 		h.stateMgr.ClearLineIn()
 		h.stateMgr.SetState(state.StateIdle)
+		h.evtBus.Publish(events.New(events.EvtPlayerStateChanged, events.PlayerStateChangedPayload{
+			From: string(state.StateLineIn),
+			To:   string(state.StateIdle),
+			Mode: string(state.ModeAuto),
+		}))
 		h.mu.Lock()
 		h.mgr = nil
 		h.mu.Unlock()
+	}
+
+	// Progress loop: publish EvtProgressChanged every 250 ms when a duration
+	// cap is configured so the frontend progress bar advances during line-in.
+	var progressDone chan struct{}
+	if cfg.DurationMS > 0 {
+		progressDone = make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(250 * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-progressDone:
+					return
+				case t := <-ticker.C:
+					posMS := t.Sub(startedAt).Milliseconds()
+					if posMS < 0 {
+						posMS = 0
+					}
+					if posMS > cfg.DurationMS {
+						posMS = cfg.DurationMS
+					}
+					remMS := cfg.DurationMS - posMS
+					pct := float64(posMS) / float64(cfg.DurationMS) * 100
+					h.evtBus.Publish(events.New(events.EvtProgressChanged, events.ProgressChangedPayload{
+						PositionMS:  posMS,
+						DurationMS:  cfg.DurationMS,
+						Percent:     pct,
+						RemainingMS: remMS,
+					}))
+				}
+			}
+		}()
 	}
 
 	for e := range ch {
@@ -194,6 +344,7 @@ func (h *Handler) forward(cfg LineInConfig, ch <-chan Event, recorder *output.Fi
 			reason := "manual"
 			if cfg.DurationMS > 0 && e.ElapsedMS >= cfg.DurationMS {
 				reason = "duration_expired"
+				autoPlay = true // resume queue automatically after duration cap
 			}
 			// Clear state BEFORE publishing so that observers querying the
 			// snapshot upon receiving EvtLineInStopped see StateIdle.
@@ -233,6 +384,11 @@ func (h *Handler) forward(cfg LineInConfig, ch <-chan Event, recorder *output.Fi
 				RMSDBFS: e.RMSDBFS,
 			}))
 		}
+	}
+
+	// Stop the progress ticker goroutine (if running).
+	if progressDone != nil {
+		close(progressDone)
 	}
 
 	// Channel closed — ensure state is reset for sessions that ended via error.
@@ -305,6 +461,28 @@ func (h *Handler) forward(cfg LineInConfig, ch <-chan Event, recorder *output.Fi
 	}
 
 	h.log.Info("line-in session ended", "label", cfg.Label)
+
+	// Resume queue playback when the session ended via Skip or duration_ms expiry.
+	// This is done after clearState() so the dispatcher sees StateIdle and
+	// accepts CmdPlay — sending it earlier would race the state transition.
+	// Manual Stop leaves the queue paused (operator explicitly stopped).
+	if (h.playOnStop.Swap(false) || autoPlay) && h.cmdBus != nil && h.queueMgr != nil && h.queueMgr.Size() > 0 {
+		// When the scheduler stopped active playback to start line-in
+		// (INTERRUPT/CROSSFADE), the interrupted item was returned to the
+		// front of the queue by CmdStop. Discard it so we advance past it
+		// rather than replaying it after line-in ends.
+		if autoPlay && skipFrontOnResume {
+			h.queueMgr.Pop()
+		}
+		if h.queueMgr.Size() > 0 {
+			reason := "duration_expired_linein"
+			if !autoPlay {
+				reason = "skip_linein"
+			}
+			h.cmdBus.TrySend(commands.New(commands.CmdPlay, commands.PlayPayload{Reason: reason}))
+		}
+	}
+	// The Mixer owns the OutputDevice — no Stop/Close here.
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
