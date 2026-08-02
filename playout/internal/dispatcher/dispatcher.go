@@ -302,8 +302,14 @@ var allowedCommands = map[state.PlayerState]map[commands.CommandType]bool{
 		// CmdInsertBreakNext not allowed in PANIC — scheduler never fires breaks during PANIC
 	},
 	state.StateLineIn: {
-		// While line-in is active, the operator can stop it or trigger panic.
-		// Queue management is allowed so the operator can prepare the next item.
+		// While line-in is active, the operator can stop, pause or skip it —
+		// all three delegate to lineInHandler.HandleStop (and Skip also advances
+		// the queue). Queue management is allowed to prepare the next item.
+		commands.CmdStop:               true,
+		commands.CmdPause:              true, // silences output; session stays alive
+		commands.CmdResume:             true, // restores live audio after pause
+		commands.CmdSkip:               true, // stops line-in + plays next queue item
+		commands.CmdPlayNow:            true, // stops line-in + plays specific queue item
 		commands.CmdLineInStop:         true,
 		commands.CmdEnqueue:            true,
 		commands.CmdEnqueueBreak:       true,

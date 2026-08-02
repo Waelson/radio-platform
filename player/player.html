@@ -153,22 +153,6 @@ html, body {
 .badge.PANIC_MODE  { background: rgba(42,0,0,0.8); color: var(--red); border-color: rgba(255,50,50,0.45); }
 .badge.LINE_IN     { background: rgba(0,40,48,0.9); color: #00bcd4; border-color: rgba(0,188,212,0.45); box-shadow: 0 0 10px rgba(0,188,212,0.15); animation: blink 1.2s step-start infinite; }
 
-/* ─── Line-In badge (topbar) ─────────────────────────────────── */
-.linein-topbadge {
-  display: none; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: 6px;
-  background: rgba(0,40,48,0.9); color: #00bcd4;
-  border: 1px solid rgba(0,188,212,0.45);
-  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
-  box-shadow: 0 0 10px rgba(0,188,212,0.15);
-  cursor: pointer;
-}
-.linein-topbadge.active { display: inline-flex; }
-.linein-topbadge .li-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #00bcd4; box-shadow: 0 0 6px rgba(0,188,212,.8);
-  animation: blink 0.9s step-start infinite;
-}
 
 /* ─── Line-In VU meter ───────────────────────────────────────── */
 .linein-vu-wrap {
@@ -2250,6 +2234,7 @@ input[type=range].vol-slider:disabled {
 .queue-row.hora-extra { background: linear-gradient(180deg, #ffcc66 0%, #7a3d00 100%); border-color: rgba(255,149,0,.4); }
 .queue-row:hover { background: rgba(255,255,255,.035); filter: brightness(1.15); }
 .queue-row.music:hover { background: linear-gradient(to bottom, #1a6875 0%, #155e69 22%, #0d4f5a 47%, #022830 49%, #011e24 72%, #011318 100%); filter: none; }
+.queue-row.is-current:hover { background: linear-gradient(to bottom, #7a1520 0%, #6e111c 22%, #5e0e18 47%, #2e0408 49%, #1e0205 72%, #140103 100%); filter: none; }
 .queue-row.is-current {
   min-height: 76px;
   padding-left: 22px;
@@ -2972,10 +2957,6 @@ canvas.vu-canvas {
       <div id="streamingBadge" onclick="libSwitchTab('streaming');if(!document.getElementById('libDrawer').classList.contains('open'))toggleLibrary();" title="Streaming ao vivo">
         <span class="streaming-dot"></span>
         <span id="streamingBadgeLabel">STREAMING</span>
-      </div>
-      <div id="lineInTopBadge" class="linein-topbadge" onclick="openLineInModal()" title="Line-In ativo — clique para gerenciar">
-        <span class="li-dot"></span>
-        <span>LINE-IN ATIVO</span>
       </div>
     </div>
 
@@ -6449,13 +6430,6 @@ function setStateBadge(state, mode) {
   if (stEl) { stEl.textContent = displayState || '—'; stEl.className = 'badge ' + (displayState || ''); }
   const mEl = document.getElementById('tMode');
   if (mEl) { mEl.textContent = mode || '—'; mEl.className = 'badge ' + (mode === 'ASSIST' ? 'ASSIST_MODE' : mode === 'PANIC' ? 'PANIC_MODE' : (mode || '')); }
-
-  // LINE_IN badge in topbar
-  const lineInTopBadge = document.getElementById('lineInTopBadge');
-  if (lineInTopBadge) {
-    if (displayState === 'LINE_IN') lineInTopBadge.classList.add('active');
-    else lineInTopBadge.classList.remove('active');
-  }
 
   // pn-live-badge
   const liveBadge = document.getElementById('pnLiveBadge');

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	outfactory "github.com/Waelson/radio-playout-engine/cmd/playout-engine/output"
+	audioMixer "github.com/Waelson/radio-playout-engine/internal/audio/mixer"
 	apptray "github.com/Waelson/radio-playout-engine/cmd/playout-engine/systray"
 	appwebview "github.com/Waelson/radio-playout-engine/cmd/playout-engine/webview"
 	"github.com/Waelson/radio-playout-engine/internal/api"
@@ -210,17 +211,19 @@ func run(args []string) error {
 
 	// 8. Decoder and output device (driver selected by cfg.Audio.Output.Driver).
 	dec := decoder.NewFFmpegDecoder(log)
-	out, err := outfactory.NewOutputDevice(cfg)
+	rawOut, err := outfactory.NewOutputDevice(cfg)
 	if err != nil {
 		return fmt.Errorf("output device: %w", err)
 	}
-	if sh, ok := out.(interface{ Shutdown() error }); ok {
-		defer func() {
-			if err := sh.Shutdown(); err != nil {
-				log.Error("output shutdown", "error", err)
-			}
-		}()
-	}
+
+	// Wrap the raw device in the Mixer so all audio sources (playback, line-in)
+	// share a single pipeline for health monitoring and streaming.
+	mixerOut := audioMixer.New(rawOut)
+	defer func() {
+		if err := mixerOut.Shutdown(); err != nil {
+			log.Error("mixer shutdown", "error", err)
+		}
+	}()
 
 	// 9. Audio Health Monitor — computes RMS/peak, detects silence.
 	// AutoPanicSilenceDurationMS is only set when both panic mode and
@@ -255,6 +258,7 @@ func run(args []string) error {
 		PeakHoldMS:        cfg.Health.PeakHoldMS,
 	}
 	healthMon := health.NewMonitor(healthCfg, evtBus, stateMgr, log)
+	mixerOut.SetHealthMonitor(healthMon)
 
 	// 10. Playback Manager — drives the audio session loop.
 	pbCfg := playback.Config{
@@ -271,7 +275,8 @@ func run(args []string) error {
 		AutoCrossfadeMaxBeforeEndMS:   cfg.Playback.AutoCrossfadeMaxBeforeEndMS,
 		AutoCrossfadeHoldFrames:       cfg.Playback.AutoCrossfadeHoldFrames,
 	}
-	pbMgr := playback.NewManager(evtBus, stateMgr, queueMgr, dec, out, pbCfg, healthMon, log)
+	// Pass mixerOut as the OutputDevice; healthMon is handled by the Mixer.
+	pbMgr := playback.NewManager(evtBus, stateMgr, queueMgr, dec, mixerOut, pbCfg, nil, log)
 
 	// Hora Certa — optional feature; enabled when hours_dir is configured.
 	hc := cfg.HoraCerta
@@ -324,7 +329,7 @@ func run(args []string) error {
 	disp.Handle(commands.CmdPlay, pbMgr.HandlePlay)
 	disp.Handle(commands.CmdPause, pbMgr.HandlePause)
 	disp.Handle(commands.CmdResume, pbMgr.HandleResume)
-	disp.Handle(commands.CmdStop, pbMgr.HandleStop)
+	disp.Handle(commands.CmdStop, pbMgr.HandleStop) // see override below after lineInHandler is created
 	disp.Handle(commands.CmdSkip, pbMgr.HandleSkip)
 	disp.Handle(commands.CmdEnterAssist, pbMgr.HandleEnterAssist)
 	disp.Handle(commands.CmdReturnAuto, pbMgr.HandleReturnAuto)
@@ -334,11 +339,10 @@ func run(args []string) error {
 	disp.Handle(commands.CmdSetVolume,        pbMgr.HandleSetVolume)
 
 	// 11b. Streaming Manager — fans PCM audio out to Icecast/SHOUTcast targets.
-	// Must be wired before the first play session so the tap is ready.
-	// Mix Bus: aggregates main playback + cart into a single fixed-rate
-	// PCM stream for the streaming manager, eliminating clock jitter.
+	// The Mixer fans out to mb.MainIn() (playback + line-in combined).
+	// The cart player still sends directly to mb.CartIn().
 	mb := mixbus.New()
-	pbMgr.SetStreamingTap(mb.MainIn())
+	mixerOut.SetStreamingTap(mb.MainIn())
 	streamMgr := streaming.NewManager(evtBus, log)
 	streamMgr.SetAudioIn(mb.OutCh())
 	go mb.Run(ctx)
@@ -393,9 +397,63 @@ func run(args []string) error {
 	log.Info("cart player initialized", "device", cfg.HotKeys.Output.DeviceID)
 
 	// 12b. Line-in handler — CmdLineInStart / CmdLineInStop.
-	lineInHandler := linein.NewHandler(out, stateMgr, evtBus, log)
+	// Line-in uses mixerOut so all audio (playback + line-in) shares the
+	// same health monitor, streaming tap and output device.
+	lineInHandler := linein.NewHandler(mixerOut, stateMgr, evtBus, log)
+	if cfg.LineIn.DefaultDeviceID != "" {
+		lineInHandler.SetDefaultDeviceID(cfg.LineIn.DefaultDeviceID)
+	}
+	lineInHandler.SetQueueManager(queueMgr)
+	lineInHandler.SetCmdBus(cmdBus)
 	disp.Handle(commands.CmdLineInStart, lineInHandler.HandleStart)
 	disp.Handle(commands.CmdLineInStop, lineInHandler.HandleStop)
+	// Override CmdStop/CmdPause/CmdSkip to delegate to line-in when in LINE_IN state.
+	disp.Handle(commands.CmdStop, func(ctx context.Context, cmd commands.Command) error {
+		if stateMgr.Snapshot().State == state.StateLineIn {
+			return lineInHandler.HandleStop(ctx, cmd)
+		}
+		return pbMgr.HandleStop(ctx, cmd)
+	})
+	disp.Handle(commands.CmdPause, func(ctx context.Context, cmd commands.Command) error {
+		if stateMgr.Snapshot().State == state.StateLineIn {
+			return lineInHandler.HandlePauseSession(ctx, cmd)
+		}
+		return pbMgr.HandlePause(ctx, cmd)
+	})
+	disp.Handle(commands.CmdResume, func(ctx context.Context, cmd commands.Command) error {
+		if stateMgr.Snapshot().State == state.StateLineIn {
+			return lineInHandler.HandleResumeSession(ctx, cmd)
+		}
+		return pbMgr.HandleResume(ctx, cmd)
+	})
+	disp.Handle(commands.CmdSkip, func(ctx context.Context, cmd commands.Command) error {
+		if stateMgr.Snapshot().State == state.StateLineIn {
+			// SetPlayOnStop tells forward() to dispatch CmdPlay once the
+			// state has transitioned to IDLE — avoiding the timing race.
+			lineInHandler.SetPlayOnStop()
+			return lineInHandler.HandleStop(ctx, cmd)
+		}
+		return pbMgr.HandleSkip(ctx, cmd)
+	})
+	// Override CmdPlayNow: when in LINE_IN, move the item to front and stop
+	// line-in with SetPlayOnStop so the queue resumes with that item after stop.
+	disp.Handle(commands.CmdPlayNow, func(ctx context.Context, cmd commands.Command) error {
+		p, ok := cmd.Payload.(commands.PlayNowPayload)
+		if !ok {
+			return fmt.Errorf("play-now: unexpected payload type %T", cmd.Payload)
+		}
+		if err := queueMgr.MoveToFront(p.QueueItemID); err != nil {
+			return err
+		}
+		if stateMgr.Snapshot().State == state.StateLineIn {
+			lineInHandler.SetPlayOnStop()
+			return lineInHandler.HandleStop(ctx, cmd)
+		}
+		if snap := stateMgr.Snapshot(); snap.State == state.StatePlaying || snap.State == state.StatePaused || snap.State == state.StateAssist {
+			cmdBus.TrySend(commands.New(commands.CmdSkip, commands.SkipPayload{}))
+		}
+		return nil
+	})
 
 	// 12. WebSocket Hub — fans out events to connected clients.
 	wsHub := apiws.NewHub(evtBus, stateMgr, log)
@@ -414,7 +472,7 @@ func run(args []string) error {
 		AudioDriver:    outfactory.BuiltinDriverName(),
 	}
 	devicesDeps := api.DevicesDeps{}
-	if lister, ok := out.(output.DeviceLister); ok {
+	if lister, ok := rawOut.(output.DeviceLister); ok {
 		devicesDeps.List = func() ([]handlers.AudioDevice, error) {
 			infos, err := lister.ListDevices()
 			if err != nil {
