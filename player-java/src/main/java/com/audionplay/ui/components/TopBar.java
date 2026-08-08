@@ -4,10 +4,8 @@ import com.audionplay.ui.Theme;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
@@ -23,7 +21,8 @@ import java.util.Locale;
 import static com.audionplay.ui.Theme.*;
 
 /**
- * Barra superior: logo, abas de navegação, relógio e dados do usuário.
+ * Barra superior: logo, espaçador, card do usuário e relógio.
+ * Estilo fiel ao design do player.html.
  */
 public class TopBar extends HBox {
 
@@ -33,21 +32,42 @@ public class TopBar extends HBox {
     public TopBar() {
         super(0);
         setAlignment(Pos.CENTER_LEFT);
-        setStyle("-fx-background-color:#1C2030;-fx-border-color:" + BORDER + ";-fx-border-width:0 0 1 0;");
-        setPadding(new Insets(10, 20, 10, 20));
+        setMinHeight(66);
+        setStyle(
+            "-fx-background-color:rgba(7,16,25,0.95);" +
+            "-fx-border-color:#20384c;-fx-border-width:0 0 1 0;"
+        );
+        setPadding(new Insets(0, 20, 0, 20));
 
         clockLabel = new Label("--:--:--");
-        clockLabel.setStyle("-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_PRI + ";-fx-font-family:'Courier New';");
+        clockLabel.setStyle(
+            "-fx-font-family:'Courier New',monospace;" +
+            "-fx-font-size:23px;" +
+            "-fx-font-weight:bold;" +
+            "-fx-text-fill:#eef7ff;" +
+            "-fx-font-variant-numeric:tabular-nums;"
+        );
+
         dateLabel = new Label("...");
-        dateLabel.setStyle("-fx-font-size:10px;-fx-text-fill:" + TEXT_SEC + ";");
+        dateLabel.setStyle(
+            "-fx-font-size:10px;" +
+            "-fx-text-fill:#88a0b5;"
+        );
 
-        HBox nav = buildNavTabs();
-        HBox.setHgrow(nav, Priority.ALWAYS);
-        nav.setAlignment(Pos.CENTER);
+        HBox.setHgrow(buildNavTabs(), Priority.ALWAYS);
 
-        getChildren().addAll(buildLogo(), nav, buildTopRight());
+        getChildren().addAll(
+            buildLogo(),
+            buildNavTabs(),
+            buildSpacer(),
+            buildUserCard(),
+            buildClockBlock()
+        );
+
         startClock();
     }
+
+    // ── Logo ──────────────────────────────────────────────────────────────────
 
     private HBox buildLogo() {
         StackPane circle = new StackPane(
@@ -55,66 +75,106 @@ public class TopBar extends HBox {
             Theme.lbl("A", "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:white;")
         );
         VBox text = new VBox(1,
-            Theme.lbl("Audion Play",    "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_PRI + ";"),
-            Theme.lbl("BROADCAST SUITE","-fx-font-size:8px;-fx-text-fill:" + TEXT_SEC + ";")
+            Theme.lbl("Audion Play",     "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:#eef7ff;"),
+            Theme.lbl("BROADCAST SUITE", "-fx-font-size:8px;-fx-text-fill:#88a0b5;-fx-letter-spacing:.75px;")
         );
         HBox logo = new HBox(12, circle, text);
         logo.setAlignment(Pos.CENTER_LEFT);
-        logo.setPadding(new Insets(0, 50, 0, 0));
+        logo.setPadding(new Insets(0, 20, 0, 0));
         return logo;
     }
+
+    // ── Nav tabs (placeholder) ────────────────────────────────────────────────
 
     private HBox buildNavTabs() {
         HBox nav = new HBox(4);
         nav.setAlignment(Pos.CENTER);
-        nav.getChildren().addAll(
-            navTab("Playout",   BLUE,     true),
-            navTab("Library",   GREEN,    false),
-            navTab("STREAMING", TEXT_SEC, false)
-        );
+        HBox.setHgrow(nav, Priority.ALWAYS);
         return nav;
     }
 
-    private HBox navTab(String text, String color, boolean active) {
-        HBox tab = new HBox(8,
-            new Circle(4, Color.web(color)),
-            Theme.lbl(text, "-fx-font-size:13px;-fx-font-weight:" + (active ? "bold" : "normal") +
-                            ";-fx-text-fill:" + (active ? TEXT_PRI : TEXT_SEC) + ";")
-        );
-        tab.setAlignment(Pos.CENTER);
-        tab.setPadding(new Insets(7, 18, 7, 18));
-        if (active) tab.setStyle("-fx-background-color:#252A40;-fx-background-radius:7;");
-        return tab;
+    // ── Spacer ────────────────────────────────────────────────────────────────
+
+    private javafx.scene.layout.Region buildSpacer() {
+        javafx.scene.layout.Region sp = new javafx.scene.layout.Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+        return sp;
     }
 
-    private HBox buildTopRight() {
+    // ── User card ─────────────────────────────────────────────────────────────
+
+    private HBox buildUserCard() {
+        // Avatar circular com iniciais
         StackPane avatar = new StackPane(
-            new Circle(18, Color.web("#243060")),
-            Theme.lbl("WN", "-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:white;")
+            new Circle(15, Color.web("#1a3050")),
+            Theme.lbl("WN", "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:white;")
         );
-        VBox user = new VBox(2,
-            Theme.lbl("Waelson Nunes", "-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_PRI + ";"),
-            Theme.lbl("ADMIN",         "-fx-font-size:9px;-fx-text-fill:" + TEXT_SEC + ";")
-        );
-        VBox clk = new VBox(2, clockLabel, dateLabel);
-        clk.setAlignment(Pos.CENTER_RIGHT);
 
-        HBox right = new HBox(16, avatar, user, new Separator(Orientation.VERTICAL), clk);
-        right.setAlignment(Pos.CENTER_RIGHT);
-        return right;
+        // Nome e cargo
+        Label nameLbl = Theme.lbl("Waelson Nunes",
+            "-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:#eef7ff;");
+        Label roleLbl = Theme.lbl("ADMIN",
+            "-fx-font-size:10px;-fx-text-fill:#88a0b5;");
+        VBox info = new VBox(1, nameLbl, roleLbl);
+        info.setAlignment(Pos.CENTER_LEFT);
+
+        // Chevron
+        Label chevron = Theme.lbl("▾",
+            "-fx-font-size:10px;-fx-text-fill:#88a0b5;");
+
+        // Pill container
+        HBox pill = new HBox(8, avatar, info, chevron);
+        pill.setAlignment(Pos.CENTER_LEFT);
+        pill.setPadding(new Insets(5, 12, 5, 8));
+        pill.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
+        pill.setStyle(
+            "-fx-background-color:#0e1b28;" +
+            "-fx-border-color:#20384c;-fx-border-width:1;" +
+            "-fx-border-radius:999;-fx-background-radius:999;" +
+            "-fx-cursor:hand;"
+        );
+
+        HBox wrap = new HBox(pill);
+        wrap.setAlignment(Pos.CENTER);
+        wrap.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
+        wrap.setPadding(new Insets(0, 24, 0, 0));
+        return wrap;
     }
+
+    // ── Clock block ───────────────────────────────────────────────────────────
+
+    private VBox buildClockBlock() {
+        VBox block = new VBox(3, clockLabel, dateLabel);
+        block.setAlignment(Pos.CENTER_RIGHT);
+        block.setPadding(new Insets(0, 0, 0, 0));
+        return block;
+    }
+
+    // ── Clock tick ────────────────────────────────────────────────────────────
 
     private void startClock() {
         Locale ptBR = new Locale("pt", "BR");
         DateTimeFormatter tf = DateTimeFormatter.ofPattern("HH:mm:ss");
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' yyyy", ptBR);
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("EEEE, d 'De' MMMM 'De' yyyy", ptBR);
+
         Timeline tl = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             LocalDateTime now = LocalDateTime.now();
             clockLabel.setText(now.format(tf));
-            String d = now.format(df);
-            dateLabel.setText(Character.toUpperCase(d.charAt(0)) + d.substring(1));
+            dateLabel.setText(capitalizeWords(now.format(df)));
         }));
         tl.setCycleCount(Timeline.INDEFINITE);
         tl.play();
+        // dispara imediatamente para não começar com "--:--:--"
+        tl.getKeyFrames().get(0).getOnFinished().handle(null);
+    }
+
+    private static String capitalizeWords(String s) {
+        String[] parts = s.split(" ");
+        StringBuilder sb = new StringBuilder();
+        for (String p : parts) {
+            if (sb.length() > 0) sb.append(" ");
+            if (!p.isEmpty()) sb.append(Character.toUpperCase(p.charAt(0))).append(p.substring(1));
+        }
+        return sb.toString();
     }
 }
