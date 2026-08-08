@@ -66,6 +66,7 @@ public class VuMeterPanel extends VBox {
             fills[i] = new Region();
             fills[i].setPrefHeight(10);
             fills[i].setPrefWidth(0);
+            fills[i].setMaxWidth(0);   // impede StackPane de esticar
             fills[i].setStyle(
                 "-fx-background-color:linear-gradient(to right," +
                     "#36d399 0%,#36d399 68%," +
@@ -141,7 +142,7 @@ public class VuMeterPanel extends VBox {
             if (levelL < 0.001f && levelR < 0.001f) {
                 decayTimeline.stop();
                 for (Label l : valLabels) l.setText("—");
-                for (Region f : fills) f.setPrefWidth(0);
+                for (Region f : fills) { f.setPrefWidth(0); f.setMaxWidth(0); }
             }
         }));
         decayTimeline.setCycleCount(Timeline.INDEFINITE);
@@ -152,7 +153,13 @@ public class VuMeterPanel extends VBox {
 
     private void setFill(int idx, float level) {
         double w = barWraps[idx].getWidth();
-        if (w > 0) fills[idx].setPrefWidth(level * w);
+        if (w > 0) {
+            double db       = level > 0.0001f ? 20.0 * Math.log10(level) : -60.0;
+            double fraction = Math.max(0.0, Math.min(1.0, (db + 60.0) / 60.0));
+            double fillW    = fraction * w;
+            fills[idx].setPrefWidth(fillW);
+            fills[idx].setMaxWidth(fillW);
+        }
         valLabels[idx].setText(toDb(level));
     }
 

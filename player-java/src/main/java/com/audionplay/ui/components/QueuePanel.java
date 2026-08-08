@@ -5,10 +5,16 @@ import com.audionplay.db.entity.TrackEntity.TrackType;
 import com.audionplay.ui.Theme;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.image.WritableImage;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,10 +38,12 @@ public class QueuePanel extends VBox {
 
     private int  totalItems = 0;
     private long totalMs    = 0;
+    private boolean isPlaying = false;
 
     private final List<TrackEntity>   entities       = new ArrayList<>();
     private Consumer<TrackEntity> onPlay;
     private Runnable              onQueueChanged;
+    private TrackEntity           draggedEntity  = null;
 
     public QueuePanel() {
         super(10); // gap entre queue card e break card
@@ -76,6 +84,41 @@ public class QueuePanel extends VBox {
     public void setOnPlay(Consumer<TrackEntity> h) { this.onPlay = h; }
     public void setOnQueueChanged(Runnable h)      { this.onQueueChanged = h; }
 
+    public void setIsPlaying(boolean playing) {
+        this.isPlaying = playing;
+        rebuildList();
+    }
+
+    public void removeEntity(TrackEntity entity) {
+        int idx = entities.indexOf(entity);
+        if (idx < 0) return;
+        entities.remove(idx);
+        totalItems = Math.max(0, totalItems - 1);
+        totalMs    = entities.stream().mapToLong(TrackEntity::durationMs).sum();
+        updateStats();
+        rebuildList();
+        fireQueueChanged();
+    }
+
+    /**
+     * Move {@code entity} para a posição 0, descartando o item atualmente
+     * em reprodução (se houver). Não reconstrói a lista — quem chama deve
+     * invocar setIsPlaying(true) logo após para disparar o rebuild.
+     */
+    public void jumpToItem(TrackEntity entity) {
+        int idx = entities.indexOf(entity);
+        if (idx < 0) return;
+        entities.remove(idx);
+        if (isPlaying && !entities.isEmpty()) {
+            entities.remove(0);   // descarta o item que estava reproduzindo
+        }
+        entities.add(0, entity);
+        totalItems = entities.size();
+        totalMs    = entities.stream().mapToLong(TrackEntity::durationMs).sum();
+        updateStats();
+        fireQueueChanged();
+    }
+
     public int size() { return entities.size(); }
 
     public Optional<TrackEntity> peekFirst() {
@@ -89,31 +132,20 @@ public class QueuePanel extends VBox {
     public Optional<TrackEntity> pollFirst() {
         if (entities.isEmpty()) return Optional.empty();
         entities.remove(0);
-        if (!list.getChildren().isEmpty()) list.getChildren().remove(0);
         totalItems = Math.max(0, totalItems - 1);
         totalMs    = entities.stream().mapToLong(TrackEntity::durationMs).sum();
         updateStats();
+        rebuildList();
         fireQueueChanged();
         return entities.isEmpty() ? Optional.empty() : Optional.of(entities.get(0));
     }
 
     public void addTrack(TrackEntity entity) {
-        String dur = Theme.formatTime(entity.durationMs() / 1000.0);
-        QueueCard card;
-        if (entity.type() == TrackType.MUSIC) {
-            card = QueueCard.music(entity.title(), entity.artist(), "--:--", dur, false);
-        } else if (entity.type() == TrackType.VINHETA || entity.type() == TrackType.JINGLE) {
-            card = QueueCard.vinheta(entity.title(), "--:--", dur);
-        } else {
-            card = QueueCard.vinheta(entity.title(), "--:--", dur);
-        }
-        card.setOnPlay(() -> { if (onPlay != null) onPlay.accept(entity); });
-        list.getChildren().add(card);
         entities.add(entity);
-
         totalItems++;
         totalMs += entity.durationMs();
         updateStats();
+        rebuildList();
         fireQueueChanged();
     }
 
@@ -266,6 +298,127 @@ public class QueuePanel extends VBox {
             "-fx-cursor:hand;"
         );
         return lbl;
+    }
+
+    private void rebuildList() {
+        list.getChildren().clear();
+        for (int i = 0; i < entities.size(); i++) {
+            TrackEntity entity = entities.get(i);
+            if (i == 0 && isPlaying) {
+                String dur   = Theme.formatTime(entity.durationMs() / 1000.0);
+                String title = entity.title().isBlank() ? entity.path() : entity.title();
+                QueueCard card = QueueCard.playing(title, entity.artist(), "--:--", dur);
+                list.getChildren().add(card);
+            } else {
+                if (i == 1 && isPlaying) {
+                    list.getChildren().add(buildSeparator());
+                }
+                boolean nextBadge = (i == 1 && isPlaying);
+                QueueCard card = makeCard(entity, nextBadge);
+                attachDragHandlers(card, entity);
+                list.getChildren().add(card);
+            }
+        }
+    }
+
+    private void attachDragHandlers(QueueCard card, TrackEntity entity) {
+        // ── Início do drag ────────────────────────────────────────────────────
+        card.setOnDragDetected(e -> {
+            draggedEntity = entity;
+            Dragboard db = card.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(entity.path()); // identificador único
+            db.setContent(content);
+            // Snapshot do card como ícone de drag
+            SnapshotParameters sp = new SnapshotParameters();
+            sp.setFill(Color.TRANSPARENT);
+            WritableImage img = card.snapshot(sp, null);
+            db.setDragView(img, e.getX(), e.getY());
+            e.consume();
+        });
+
+        // ── Aceita o drop sobre este card ─────────────────────────────────────
+        card.setOnDragOver(e -> {
+            if (draggedEntity != null && draggedEntity != entity) {
+                e.acceptTransferModes(TransferMode.MOVE);
+            }
+            e.consume();
+        });
+
+        // ── Feedback visual ao entrar/sair ────────────────────────────────────
+        card.setOnDragEntered(e -> {
+            if (draggedEntity != null && draggedEntity != entity) {
+                card.setOpacity(0.55);
+            }
+            e.consume();
+        });
+        card.setOnDragExited(e -> {
+            card.setOpacity(1.0);
+            e.consume();
+        });
+
+        // ── Concretiza o drop ─────────────────────────────────────────────────
+        card.setOnDragDropped(e -> {
+            card.setOpacity(1.0);
+            if (draggedEntity != null && draggedEntity != entity) {
+                int fromIdx = entities.indexOf(draggedEntity);
+                int toIdx   = entities.indexOf(entity);
+                if (fromIdx >= 0 && toIdx >= 0) {
+                    entities.remove(fromIdx);
+                    int adjusted = fromIdx < toIdx ? toIdx - 1 : toIdx;
+                    entities.add(adjusted, draggedEntity);
+                    rebuildList();
+                    fireQueueChanged();
+                }
+            }
+            draggedEntity = null;
+            e.setDropCompleted(true);
+            e.consume();
+        });
+
+        card.setOnDragDone(e -> {
+            draggedEntity = null;
+            e.consume();
+        });
+    }
+
+    private QueueCard makeCard(TrackEntity entity, boolean nextBadge) {
+        String dur   = Theme.formatTime(entity.durationMs() / 1000.0);
+        String title = entity.title().isBlank() ? entity.path() : entity.title();
+        QueueCard card;
+        if (entity.type() == TrackType.MUSIC) {
+            card = QueueCard.music(title, entity.artist(), "--:--", dur, nextBadge);
+        } else if (entity.type() == TrackType.VINHETA || entity.type() == TrackType.JINGLE) {
+            card = QueueCard.vinheta(title, "--:--", dur);
+        } else {
+            card = QueueCard.vinheta(title, "--:--", dur);
+        }
+        card.setOnPlay(() -> { if (onPlay != null) onPlay.accept(entity); });
+        card.setOnRemove(() -> removeEntity(entity));
+        return card;
+    }
+
+    private HBox buildSeparator() {
+        Region lineLeft = new Region();
+        lineLeft.setPrefHeight(1);
+        lineLeft.setStyle("-fx-background-color:rgba(255,255,255,0.07);");
+        HBox.setHgrow(lineLeft, Priority.ALWAYS);
+
+        Label lbl = new Label("A SEGUIR");
+        lbl.setStyle(
+            "-fx-font-size:9px;-fx-font-weight:800;-fx-text-fill:#3d5a6a;" +
+            "-fx-padding:0 8 0 8;"
+        );
+
+        Region lineRight = new Region();
+        lineRight.setPrefHeight(1);
+        lineRight.setStyle("-fx-background-color:rgba(255,255,255,0.07);");
+        HBox.setHgrow(lineRight, Priority.ALWAYS);
+
+        HBox sep = new HBox(lineLeft, lbl, lineRight);
+        sep.setAlignment(Pos.CENTER);
+        sep.setPadding(new Insets(4, 0, 4, 0));
+        return sep;
     }
 
     private void updateStats() {

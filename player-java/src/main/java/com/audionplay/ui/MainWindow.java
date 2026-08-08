@@ -1,5 +1,7 @@
 package com.audionplay.ui;
 
+import com.audionplay.audio.MixerChannel;
+import com.audionplay.audio.SoftwareMixer;
 import com.audionplay.audio.ffmpeg.FfmpegAudioPlayer;
 import com.audionplay.audio.ffmpeg.FfmpegLocator;
 import com.audionplay.audio.ffmpeg.FfmpegWaveformAnalyzer;
@@ -46,7 +48,8 @@ public class MainWindow {
     private TabsPanel       tabsPanel;
     private StackPane       rootStack;
 
-    // ── Cart player (Hot Keys) ─────────────────────────────────────────────
+    // ── Mixer de software e cart player (Hot Keys) ────────────────────────
+    private SoftwareMixer     mixer;
     private FfmpegAudioPlayer cartPlayer;
 
     // ── Ponto de entrada ──────────────────────────────────────────────────────
@@ -60,6 +63,8 @@ public class MainWindow {
         catalogPanel = new CatalogPanel();
         tabsPanel    = new TabsPanel();
 
+        mixer = new SoftwareMixer(3); // ch0=program, ch1=secondary, ch2=cart
+        mixer.start();
         buildController();
         wireActions();
 
@@ -121,10 +126,11 @@ public class MainWindow {
     // ── Wiring do controller ──────────────────────────────────────────────────
 
     private void buildController() {
-        cartPlayer = new FfmpegAudioPlayer();
-        controller = new PlayerController(
-            new FfmpegAudioPlayer(),
-            new FfmpegAudioPlayer(),
+        // Cada player recebe um canal exclusivo no mixer
+        cartPlayer = new FfmpegAudioPlayer(mixer.getChannel(2));
+        controller  = new PlayerController(
+            new FfmpegAudioPlayer(mixer.getChannel(0)),  // primary
+            new FfmpegAudioPlayer(mixer.getChannel(1)),  // secondary (crossfade)
             new FfmpegWaveformAnalyzer(),
             new LinearCrossfadeEngine()
         );
@@ -139,10 +145,12 @@ public class MainWindow {
         controller.setOnStateChange(state -> {
             nowPlaying.applyState(state);
             if (state != PlaybackState.PLAYING) vuMeter.startDecay();
+            if (state == PlaybackState.STOPPED) queuePanel.setIsPlaying(false);
             updateControls();
         });
         controller.setOnTrackEnd(() -> Platform.runLater(this::playNext));
-        controller.setOnLevelUpdate(vuMeter::applyLevels);
+        // VU meter alimentado pelo mixer — reflete o mix de todos os canais
+        mixer.setOnLevelUpdate(vuMeter::applyLevels);
     }
 
     // ── Wiring das ações da UI ────────────────────────────────────────────────
@@ -169,7 +177,10 @@ public class MainWindow {
         });
 
         // Da fila: tocar item ao clicar ▶ no hover do card
-        queuePanel.setOnPlay(this::playTrack);
+        queuePanel.setOnPlay(entity -> {
+            queuePanel.jumpToItem(entity);
+            playTrack(entity);
+        });
         queuePanel.setOnQueueChanged(this::updateControls);
 
         // Hot Keys: toca via cart player dedicado
@@ -229,6 +240,7 @@ public class MainWindow {
         nowPlaying.setTrack(track.title(), track.artist(), Theme.formatTime(duration));
         nowPlaying.setTrackMeta(entity);
         controller.loadAndPlay(track);
+        queuePanel.setIsPlaying(true);
         updateNextTrackBar();
     }
 
@@ -236,7 +248,7 @@ public class MainWindow {
     private void playNext() {
         queuePanel.pollFirst().ifPresentOrElse(
             next -> { playTrack(next); updateControls(); },
-            () -> { nowPlaying.clearTrack(); updateControls(); }
+            () -> { queuePanel.setIsPlaying(false); nowPlaying.clearTrack(); updateControls(); }
         );
     }
 
