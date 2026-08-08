@@ -7,102 +7,192 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 
 import java.util.function.Consumer;
 
-import static com.audionplay.ui.Theme.*;
-
 /**
- * Painel central "Tocando Agora".
+ * Painel central "Tocando Agora" — visual fiel ao player.html.
  *
- * Expõe setters de estado (chamados pelos callbacks do PlayerController)
- * e setters de ação (chamados uma vez durante o setup pelo MainWindow).
+ * Seções (top→bottom):
+ *   pn-topbar  : live-badge + spacer + mode-badge
+ *   pn-content : categoria + título + artista + meta-row
+ *   waveform   : WaveformView
+ *   progress   : barra gradiente cyan→azul
+ *   pn-times   : elapsed | countdown | total
+ *   pn-controls: ⏸ Pausar | ▶ NO AR / ■ Stop | Próximo ⏭
  */
 public class NowPlayingPanel extends VBox {
 
-    private final Label trackTitleLabel;
-    private final Label trackArtistLabel;
-    private final Label currentTimeLabel;
-    private final Label remainingTimeLabel;
-    private final Label totalTimeLabel;
-    private final Label statusLabel;
-    private final ProgressBar progressBar;
-    private final WaveformView waveformView;
+    // ── Campos de estado ──────────────────────────────────────────────────────
+    private final Label  trackTitleLabel;
+    private final Label  trackArtistLabel;
+    private final Label  currentTimeLabel;
+    private final Label  remainingTimeLabel;
+    private final Label  totalTimeLabel;
+    private final Label  statusLabel;          // mantido para compatibilidade
     private final Button pauseBtn;
     private final Button stopBtn;
     private final Button nextBtn;
+    private final WaveformView waveformView;
 
+    // ── Campos de progresso personalizados ────────────────────────────────────
+    private final Region progressTrack;
+    private final Region progressFill;
+    private double currentFraction = 0.0;
+
+    // ── Campos do topbar ──────────────────────────────────────────────────────
+    private final Circle liveDot;
+    private final Label  liveBadgeLabel;
+    private final HBox   liveBadge;
+
+    // ── Callbacks ─────────────────────────────────────────────────────────────
     private Runnable onPlayQueue;
     private Runnable onStopAction;
     private boolean  isPlaying = false;
 
+    // ── Estilos fixos dos botões ──────────────────────────────────────────────
+    private static final String BTN_BASE =
+        "-fx-min-height:46px;-fx-padding:0 14 0 14;" +
+        "-fx-border-radius:10;-fx-background-radius:10;" +
+        "-fx-font-size:15px;-fx-font-weight:bold;-fx-cursor:hand;";
+    private static final String BTN_SECONDARY =
+        BTN_BASE +
+        "-fx-border-color:#20384c;-fx-border-width:1;" +
+        "-fx-background-color:linear-gradient(to bottom,#122334,#0e1b28);" +
+        "-fx-text-fill:#d7e3ec;";
+    private static final String BTN_PRIMARY_PLAY =
+        BTN_BASE +
+        "-fx-background-color:linear-gradient(to bottom,#00bfe9,#008aad);" +
+        "-fx-border-color:#10cbed;-fx-border-width:1;" +
+        "-fx-text-fill:#00141b;";
+    private static final String BTN_PRIMARY_STOP =
+        BTN_BASE +
+        "-fx-background-color:linear-gradient(to bottom,#c0392b,#8e1a10);" +
+        "-fx-border-color:rgba(255,77,103,0.70);-fx-border-width:1;" +
+        "-fx-text-fill:#ffffff;";
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     public NowPlayingPanel() {
-        super(10);
+        super(0);
         setStyle(
-            "-fx-background-color:" + BG_PANEL + ";" +
-            "-fx-background-radius:10;" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-radius:10;-fx-border-width:1;"
+            "-fx-background-color:#0a1520;" +
+            "-fx-background-radius:12;" +
+            "-fx-border-color:#20384c;" +
+            "-fx-border-radius:12;-fx-border-width:1;"
         );
-        setPadding(new Insets(16));
 
-        // ── Inicialização dos campos ──────────────────────────────────────────
-        trackTitleLabel = Theme.lbl("Nenhuma faixa carregada",
-            "-fx-font-size:22px;-fx-font-weight:bold;-fx-text-fill:white;");
-        trackArtistLabel = Theme.lbl("—",
-            "-fx-font-size:13px;-fx-text-fill:" + TEXT_SEC + ";");
-        currentTimeLabel = Theme.lbl("00:00",
-            "-fx-font-size:11px;-fx-text-fill:" + TEXT_SEC + ";");
-        remainingTimeLabel = Theme.lbl("00:00",
-            "-fx-font-size:28px;-fx-font-weight:bold;-fx-text-fill:white;-fx-font-family:'Courier New';");
-        totalTimeLabel = Theme.lbl("00:00",
-            "-fx-font-size:11px;-fx-text-fill:" + TEXT_SEC + ";");
-        statusLabel = Theme.lbl("",
-            "-fx-font-size:10px;-fx-text-fill:" + TEXT_SEC + ";");
+        // ── Inicializa campos ─────────────────────────────────────────────────
+        trackTitleLabel = new Label("—");
+        trackTitleLabel.setStyle(
+            "-fx-font-size:24px;-fx-font-weight:bold;-fx-text-fill:#eef7ff;"
+        );
+        trackTitleLabel.setMaxWidth(Double.MAX_VALUE);
+        trackTitleLabel.setMinHeight(30);
 
-        progressBar = new ProgressBar(0.0);
-        progressBar.setPrefHeight(5);
-        progressBar.setMaxWidth(Double.MAX_VALUE);
-        progressBar.setStyle("-fx-accent:" + BLUE + ";-fx-control-inner-background:#2A2E42;");
+        trackArtistLabel = new Label("");
+        trackArtistLabel.setStyle("-fx-font-size:15px;-fx-text-fill:#b8cad8;");
+        trackArtistLabel.setMinHeight(22);
+        trackArtistLabel.setMaxWidth(Double.MAX_VALUE);
+
+        currentTimeLabel = new Label("00:00");
+        currentTimeLabel.setStyle(
+            "-fx-font-size:13px;-fx-text-fill:#88a0b5;"
+        );
+
+        remainingTimeLabel = new Label("00:00");
+        remainingTimeLabel.setStyle(
+            "-fx-font-size:21px;-fx-font-weight:900;-fx-text-fill:#f4fbff;" +
+            "-fx-font-family:'Courier New',monospace;"
+        );
+
+        totalTimeLabel = new Label("00:00");
+        totalTimeLabel.setStyle(
+            "-fx-font-size:13px;-fx-text-fill:#88a0b5;"
+        );
+
+        statusLabel = new Label("");
+        statusLabel.setStyle("-fx-font-size:10px;-fx-text-fill:#88a0b5;");
+        statusLabel.setVisible(false);
+        statusLabel.setManaged(false);
 
         waveformView = new WaveformView();
-        waveformView.setPrefHeight(64);
+        waveformView.setPrefHeight(67);
         waveformView.setMaxWidth(Double.MAX_VALUE);
-        waveformView.setStyle("-fx-background-color:#0E1117;-fx-background-radius:6;");
 
-        pauseBtn = primaryBtn("⏸  Pausar", "#252A40", true);
-        stopBtn  = new Button("▶  Play");
-        applyPlayStyle();
-        stopBtn.setDisable(true);   // habilitado quando houver item na fila
+        // Barra de progresso personalizada
+        progressTrack = new Region();
+        progressTrack.setPrefHeight(8);
+        progressTrack.setMaxWidth(Double.MAX_VALUE);
+        progressTrack.setStyle(
+            "-fx-background-color:#07131d;" +
+            "-fx-background-radius:99;" +
+            "-fx-border-color:rgba(49,83,109,0.5);" +
+            "-fx-border-radius:99;-fx-border-width:1;"
+        );
+        progressFill = new Region();
+        progressFill.setPrefHeight(8);
+        progressFill.setPrefWidth(0);
+        progressFill.setMaxWidth(Region.USE_PREF_SIZE);  // impede o StackPane de esticá-lo
+        progressFill.setStyle(
+            "-fx-background-color:linear-gradient(to right,#20e6ff,#3978ff);" +
+            "-fx-background-radius:99;" +
+            "-fx-effect:dropshadow(gaussian,rgba(0,212,255,0.45),13,0,0,0);"
+        );
+        progressTrack.widthProperty().addListener((obs, o, n) ->
+            progressFill.setPrefWidth(n.doubleValue() * currentFraction));
+
+        // Live badge
+        liveDot = new Circle(3.5, Color.web("#4a6478"));
+        liveBadgeLabel = new Label("NADA TOCANDO");
+        liveBadgeLabel.setStyle(
+            "-fx-font-size:10px;-fx-font-weight:800;-fx-text-fill:#88a0b5;"
+        );
+        liveBadge = new HBox(7);
+        liveBadge.setAlignment(Pos.CENTER_LEFT);
+        liveBadge.setMinHeight(26);
+        liveBadge.setMaxHeight(26);
+        liveBadge.getChildren().addAll(liveDot, liveBadgeLabel);
+        applyBadgeIdle();
+
+        // Botões
+        pauseBtn = new Button("⏸  Pausar");
+        pauseBtn.setStyle(BTN_SECONDARY);
+        pauseBtn.setMinWidth(160);
+
+        stopBtn = new Button("▶  NO AR");
+        stopBtn.setStyle(BTN_PRIMARY_PLAY);
+        stopBtn.setDisable(true);
+        stopBtn.setMinWidth(220);
         HBox.setHgrow(stopBtn, Priority.ALWAYS);
         stopBtn.setMaxWidth(Double.MAX_VALUE);
         stopBtn.setOnAction(e -> {
-            if (isPlaying) { if (onStopAction  != null) onStopAction.run(); }
-            else           { if (onPlayQueue   != null) onPlayQueue.run();  }
+            if (isPlaying) { if (onStopAction != null) onStopAction.run(); }
+            else           { if (onPlayQueue  != null) onPlayQueue.run();  }
         });
-        nextBtn = primaryBtn("Próximo  ⏭", "#252A40", true);
-        nextBtn.setDisable(true);   // habilitado quando houver próximo item
 
-        HBox controls = new HBox(10, pauseBtn, stopBtn, nextBtn);
-        controls.setAlignment(Pos.CENTER);
+        nextBtn = new Button("Próximo  ⏭");
+        nextBtn.setStyle(BTN_SECONDARY);
+        nextBtn.setDisable(true);
+        nextBtn.setMinWidth(160);
 
-        // ── Montagem do layout ────────────────────────────────────────────────
+        // ── Monta layout ──────────────────────────────────────────────────────
+        VBox.setMargin(waveformView, new Insets(9, 16, 0, 16));
+
         getChildren().addAll(
-            buildHeader(),
-            trackTitleLabel,
-            trackArtistLabel,
-            statusLabel,
-            buildMeta(),
+            buildTopBar(),
+            buildContent(),
             waveformView,
-            progressBar,
-            buildTimes(),
-            controls
+            buildProgressWrap(),
+            buildTimesRow(),
+            buildControls()
         );
     }
 
-    // ── API de estado — chamada pelos callbacks do controller ─────────────────
+    // ── API de estado ─────────────────────────────────────────────────────────
 
     public void setTrack(String title, String artist, String totalTime) {
         trackTitleLabel.setText(title);
@@ -111,38 +201,52 @@ public class NowPlayingPanel extends VBox {
     }
 
     public void setProgress(double frac) {
-        progressBar.setProgress(frac);
+        currentFraction = frac;
+        double w = progressTrack.getWidth();
+        if (w > 0) progressFill.setPrefWidth(w * frac);
         waveformView.setProgress(frac);
     }
 
-    public void setCurrentTime(String t)         { currentTimeLabel.setText(t); }
-    public void setRemainingTime(String t)        { remainingTimeLabel.setText(t); }
-    public void setWaveformPeaks(double[] peaks)  { waveformView.setPeaks(peaks); }
-    public void clearWaveform()                   { waveformView.clear(); }
-    public void setStatus(String msg)             { statusLabel.setText(msg); }
+    public void setCurrentTime(String t)        { currentTimeLabel.setText(t); }
+    public void setRemainingTime(String t)      { remainingTimeLabel.setText(t); }
+    public void setWaveformPeaks(double[] peaks){ waveformView.setPeaks(peaks); }
+    public void clearWaveform()                 { waveformView.clear(); }
+
+    public void setStatus(String msg) {
+        statusLabel.setText(msg);
+        boolean show = msg != null && !msg.isEmpty();
+        statusLabel.setVisible(show);
+        statusLabel.setManaged(show);
+    }
 
     public void resetProgress() {
-        progressBar.setProgress(0);
+        currentFraction = 0;
+        progressFill.setPrefWidth(0);
         waveformView.setProgress(0);
     }
 
     public void applyState(PlaybackState state) {
         switch (state) {
             case PLAYING -> {
-                pauseBtn.setText("⏸  Pausar");
                 isPlaying = true;
                 applyStopStyle();
-            }
-            case PAUSED -> pauseBtn.setText("▶  Retomar");
-            case STOPPED -> {
+                applyBadgePlaying();
                 pauseBtn.setText("⏸  Pausar");
+            }
+            case PAUSED -> {
+                applyBadgePaused();
+                pauseBtn.setText("▶  Retomar");
+            }
+            case STOPPED -> {
                 isPlaying = false;
                 applyPlayStyle();
-                stopBtn.setDisable(false); // re-habilita (updateControls ajusta depois)
+                stopBtn.setDisable(false);
+                applyBadgeIdle();
+                pauseBtn.setText("⏸  Pausar");
                 resetProgress();
             }
         }
-        statusLabel.setText("");
+        setStatus("");
     }
 
     public void setCrossfadeInProgress(boolean inProgress) {
@@ -150,90 +254,170 @@ public class NowPlayingPanel extends VBox {
         nextBtn.setText(inProgress ? "⏭  Crossfade..." : "Próximo  ⏭");
     }
 
-    // ── API de eventos — chamada uma vez no setup ─────────────────────────────
+    // ── API de eventos ────────────────────────────────────────────────────────
 
-    public void setOnOpenFile(Runnable h)               { /* botão removido */ }
-    public void setOnPause(Runnable h)                  { pauseBtn.setOnAction(e -> h.run()); }
-    public void setOnStop(Runnable h)                   { this.onStopAction = h; }
-    public void setOnPlayQueue(Runnable h)              { this.onPlayQueue = h; }
-    public void setOnNext(Runnable h)                   { nextBtn.setOnAction(e -> h.run()); }
-    public void setOnCrossfade(Consumer<Button> h)      { /* substituído por setOnNext */ }
-    public void setOnSeek(Consumer<Double> h)           { waveformView.setOnSeek(h); }
+    public void setOnOpenFile(Runnable h)           { /* botão removido */ }
+    public void setOnPause(Runnable h)              { pauseBtn.setOnAction(e -> h.run()); }
+    public void setOnStop(Runnable h)               { this.onStopAction = h; }
+    public void setOnPlayQueue(Runnable h)          { this.onPlayQueue = h; }
+    public void setOnNext(Runnable h)               { nextBtn.setOnAction(e -> h.run()); }
+    public void setOnCrossfade(Consumer<Button> h)  { /* substituído por setOnNext */ }
+    public void setOnSeek(Consumer<Double> h)       { waveformView.setOnSeek(h); }
 
-    public void setPlayEnabled(boolean enabled)         { stopBtn.setDisable(isPlaying ? false : !enabled); }
-    public void setNextEnabled(boolean enabled)         { nextBtn.setDisable(!enabled); }
+    public void setPlayEnabled(boolean enabled)     { stopBtn.setDisable(isPlaying ? false : !enabled); }
+    public void setNextEnabled(boolean enabled)     { nextBtn.setDisable(!enabled); }
 
-    // ── Layout interno ────────────────────────────────────────────────────────
+    // ── Seções de layout ──────────────────────────────────────────────────────
 
-    private HBox buildHeader() {
-        Label badge = Theme.lbl("● TOCANDO AGORA",
-            "-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:#FF4A4A;" +
-            "-fx-background-color:#280A0A;-fx-background-radius:4;" +
-            "-fx-border-color:#4A1010;-fx-border-radius:4;-fx-border-width:1;" +
-            "-fx-padding:4 10 4 10;");
-        Label auto = Theme.lbl("AUTOMÁTICO",
-            "-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:" + GREEN + ";" +
-            "-fx-border-color:" + GREEN + ";-fx-border-radius:4;-fx-border-width:1;" +
-            "-fx-padding:4 10 4 10;");
-        HBox hdr = new HBox();
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.getChildren().addAll(badge, Theme.hSpacer(), auto);
-        return hdr;
+    /** pn-topbar: live-badge | spacer | mode-badge */
+    private HBox buildTopBar() {
+
+        Label modeBadge = new Label("AUTOMÁTICO");
+        modeBadge.setStyle(
+            "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:#36d399;" +
+            "-fx-background-color:rgba(54,211,153,0.10);" +
+            "-fx-border-color:rgba(54,211,153,0.24);-fx-border-width:1;" +
+            "-fx-background-radius:7;-fx-border-radius:7;" +
+            "-fx-padding:5 9 5 9;"
+        );
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox topbar = new HBox(9, liveBadge, spacer, modeBadge);
+        topbar.setAlignment(Pos.CENTER_LEFT);
+        topbar.setPadding(new Insets(0, 14, 0, 14));
+        topbar.setMinHeight(48);
+        topbar.setStyle("-fx-border-color:#20384c;-fx-border-width:0 0 1 0;");
+        return topbar;
     }
 
-    private HBox buildMeta() {
-        HBox row = new HBox(20);
-        row.setPadding(new Insets(8, 12, 8, 12));
-        row.setStyle("-fx-background-color:#14172280;-fx-background-radius:6;");
+    /** pn-content: categoria + título + artista + meta-row */
+    private VBox buildContent() {
+        Label categoryLabel = new Label("—");
+        categoryLabel.setStyle(
+            "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:#2dd8ff;"
+        );
+
+        VBox.setMargin(trackTitleLabel,  new Insets(6, 0, 0, 0));
+        VBox.setMargin(trackArtistLabel, new Insets(6, 0, 0, 0));
+        VBox.setMargin(statusLabel,      new Insets(4, 0, 0, 0));
+
+        HBox metaRow = buildMetaRow();
+        VBox.setMargin(metaRow, new Insets(13, 0, 0, 0));
+
+        VBox content = new VBox(0,
+            categoryLabel,
+            trackTitleLabel,
+            trackArtistLabel,
+            statusLabel,
+            metaRow
+        );
+        content.setPadding(new Insets(16, 16, 2, 16));
+        content.setMinHeight(116);
+        return content;
+    }
+
+    /** pn-meta-row: INÍCIO CUE INTRO OUTRO CUE OUT GAIN ID */
+    private HBox buildMetaRow() {
         String[] labels = {"INÍCIO", "CUE", "INTRO", "OUTRO", "CUE OUT", "GAIN", "ID"};
-        String[] values = {"—", "—", "—", "—", "—", "—", "—"};
-        for (int i = 0; i < labels.length; i++) {
-            row.getChildren().add(new VBox(2,
-                Theme.lbl(labels[i], "-fx-font-size:9px;-fx-text-fill:" + TEXT_MUT + ";"),
-                Theme.lbl(values[i], "-fx-font-size:11px;-fx-text-fill:" + TEXT_PRI + ";")
-            ));
+        HBox row = new HBox(20);
+        row.setAlignment(Pos.CENTER_LEFT);
+        for (String lbl : labels) {
+            Label name = new Label(lbl);
+            name.setStyle(
+                "-fx-font-size:9px;-fx-font-weight:700;-fx-text-fill:#4a6478;"
+            );
+            Label val = new Label("—");
+            val.setStyle(
+                "-fx-font-size:12px;-fx-font-weight:700;-fx-text-fill:#d8e6ef;" +
+                "-fx-font-family:'Courier New',monospace;"
+            );
+            row.getChildren().add(new VBox(3, name, val));
         }
         return row;
     }
 
-    private HBox buildTimes() {
-        Region t1 = new Region(); HBox.setHgrow(t1, Priority.ALWAYS);
-        Region t2 = new Region(); HBox.setHgrow(t2, Priority.ALWAYS);
+    /** pn-progress-wrap: track + fill sobrepostos */
+    private VBox buildProgressWrap() {
+        StackPane bar = new StackPane(progressTrack, progressFill);
+        StackPane.setAlignment(progressFill, Pos.CENTER_LEFT);
+        VBox wrap = new VBox(bar);
+        wrap.setPadding(new Insets(11, 16, 0, 16));
+        return wrap;
+    }
+
+    /** pn-times: elapsed | countdown | total */
+    private HBox buildTimesRow() {
+        Region l = new Region(); HBox.setHgrow(l, Priority.ALWAYS);
+        Region r = new Region(); HBox.setHgrow(r, Priority.ALWAYS);
         HBox times = new HBox();
-        times.setAlignment(Pos.CENTER);
-        times.getChildren().addAll(currentTimeLabel, t1, remainingTimeLabel, t2, totalTimeLabel);
+        times.setAlignment(Pos.BOTTOM_CENTER);
+        times.getChildren().addAll(currentTimeLabel, l, remainingTimeLabel, r, totalTimeLabel);
+        times.setPadding(new Insets(8, 16, 13, 16));
         return times;
     }
 
-    private void applyPlayStyle() {
-        stopBtn.setText("▶  Play");
-        stopBtn.setStyle(
-            "-fx-background-color:" + GREEN + ";-fx-text-fill:white;-fx-font-size:13px;" +
-            "-fx-font-weight:bold;-fx-padding:12 0 12 0;-fx-background-radius:8;-fx-cursor:hand;"
+    /** pn-controls: botões centralizados, border-top */
+    private HBox buildControls() {
+        HBox center = new HBox(8, pauseBtn, stopBtn, nextBtn);
+        center.setAlignment(Pos.CENTER);
+        HBox.setHgrow(center, Priority.ALWAYS);
+
+        HBox controls = new HBox(center);
+        controls.setAlignment(Pos.CENTER);
+        controls.setPadding(new Insets(11));
+        controls.setStyle(
+            "-fx-border-color:#20384c;-fx-border-width:1 0 0 0;" +
+            "-fx-background-color:rgba(5,14,22,0.60);"
         );
+        return controls;
+    }
+
+    // ── Estilos do botão principal ────────────────────────────────────────────
+
+    // ── Helpers do live badge ─────────────────────────────────────────────────
+
+    private static final String BADGE_STYLE_BASE =
+        "-fx-background-radius:7;-fx-border-radius:7;-fx-border-width:1;-fx-padding:0 9 0 9;";
+
+    private void applyBadgeIdle() {
+        liveBadge.setStyle(BADGE_STYLE_BASE +
+            "-fx-background-color:rgba(255,255,255,0.04);" +
+            "-fx-border-color:#20384c;");
+        liveDot.setFill(Color.web("#4a6478"));
+        liveDot.setEffect(null);
+        liveBadgeLabel.setText("NADA TOCANDO");
+        liveBadgeLabel.setStyle("-fx-font-size:10px;-fx-font-weight:800;-fx-text-fill:#88a0b5;");
+    }
+
+    private void applyBadgePlaying() {
+        liveBadge.setStyle(BADGE_STYLE_BASE +
+            "-fx-background-color:rgba(255,77,103,0.13);" +
+            "-fx-border-color:rgba(255,77,103,0.28);");
+        liveDot.setFill(Color.web("#f87272"));
+        liveDot.setEffect(new javafx.scene.effect.DropShadow(10, Color.web("#ff4d67")));
+        liveBadgeLabel.setText("TOCANDO AGORA");
+        liveBadgeLabel.setStyle("-fx-font-size:10px;-fx-font-weight:800;-fx-text-fill:#ff8fa1;");
+    }
+
+    private void applyBadgePaused() {
+        liveBadge.setStyle(BADGE_STYLE_BASE +
+            "-fx-background-color:rgba(251,191,36,0.08);" +
+            "-fx-border-color:rgba(251,191,36,0.30);");
+        liveDot.setFill(Color.web("#fbbf24"));
+        liveDot.setEffect(new javafx.scene.effect.DropShadow(6, Color.web("#fbbf24")));
+        liveBadgeLabel.setText("PAUSADO");
+        liveBadgeLabel.setStyle("-fx-font-size:10px;-fx-font-weight:800;-fx-text-fill:#fbbf24;");
+    }
+
+    private void applyPlayStyle() {
+        stopBtn.setText("▶  NO AR");
+        stopBtn.setStyle(BTN_PRIMARY_PLAY);
     }
 
     private void applyStopStyle() {
         stopBtn.setText("■  Stop");
-        stopBtn.setStyle(
-            "-fx-background-color:#B22020;-fx-text-fill:white;-fx-font-size:13px;" +
-            "-fx-font-weight:bold;-fx-padding:12 0 12 0;-fx-background-radius:8;-fx-cursor:hand;"
-        );
-    }
-
-    private Button primaryBtn(String text, String bgColor, boolean grows) {
-        Button b = new Button(text);
-        b.setStyle(
-            "-fx-background-color:" + bgColor + ";-fx-text-fill:white;" +
-            "-fx-font-size:13px;-fx-font-weight:bold;" +
-            "-fx-padding:12 0 12 0;-fx-background-radius:8;" +
-            "-fx-border-color:" + BORDER + ";-fx-border-radius:8;-fx-border-width:1;" +
-            "-fx-cursor:hand;"
-        );
-        if (grows) {
-            HBox.setHgrow(b, Priority.ALWAYS);
-            b.setMaxWidth(Double.MAX_VALUE);
-        }
-        return b;
+        stopBtn.setStyle(BTN_PRIMARY_STOP);
     }
 }

@@ -29,13 +29,19 @@ public final class Theme {
     public static final String GREEN = "#2ECC71";
     public static final String RED   = "#E74C3C";
 
-    // ── Gradientes e acentos dos cards da fila ────────────────────────────────
-    public static final String GRAD_MUS  = "linear-gradient(to bottom, #1A5060, #0B2530)";
-    public static final String GRAD_JIN  = "linear-gradient(to bottom, #7B1FA2, #450B6A)";
-    public static final String GRAD_HORA = "linear-gradient(to bottom, #283593, #161C7A)";
-    public static final String ACC_MUS   = "#4ECDC4";
-    public static final String ACC_JIN   = "#CE93D8";
-    public static final String ACC_HORA  = "#90CAF9";
+    // ── Gradientes e acentos dos cards da fila (fiéis ao player.html) ─────────
+    public static final String GRAD_MUS  =
+        "linear-gradient(to bottom,#1a6875 0%,#155e69 22%,#0d4f5a 47%,#022830 49%,#011e24 72%,#011318 100%)";
+    public static final String GRAD_JIN  =
+        "linear-gradient(to bottom,#6a2080 0%,#5e1c72 22%,#521863 47%,#220830 49%,#170522 72%,#0f0316 100%)";
+    public static final String GRAD_HORA =
+        "linear-gradient(to bottom,#5752aa 0%,#4a469d 22%,#403c94 47%,#171473 49%,#0e0c68 72%,#07065a 100%)";
+    public static final String ACC_MUS   = "#00d4ff";   // barra lateral música (ciano)
+    public static final String ACC_JIN   = "#d36aff";   // barra lateral vinheta/jingle (roxo)
+    public static final String ACC_HORA  = "#ffffff";   // barra lateral hora certa (branco)
+    public static final String BDR_MUS   = "#7ad4e0";   // borda música
+    public static final String BDR_JIN   = "#b87ad4";   // borda vinheta/jingle
+    public static final String BDR_HORA  = "#9d9ab8";   // borda hora certa
 
     private Theme() {}
 

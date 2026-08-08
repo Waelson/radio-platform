@@ -1,87 +1,129 @@
 package com.audionplay.ui.components;
 
-import com.audionplay.ui.Theme;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.control.Label;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Consumer;
 
-import static com.audionplay.ui.Theme.*;
-
 /**
- * Barra lateral de navegação com ícones.
+ * Rail de navegação lateral — visual idêntico ao player.html.
  *
- * Aceita um callback {@code onNavigate} chamado com a chave da seção
- * quando o usuário clica em um item ("NO AR", "CATÁLOGO", etc.).
+ * Largura: 74px
+ * Cada botão: 58px × 54px, borda-radius 12, ícone 18px, label 9px uppercase.
+ * Ativo: cor cyan (#20e6ff), borda left 3px cyan, gradient bg.
+ * Hover: clareamento e fundo sutil.
  */
 public class Sidebar extends VBox {
 
-    private final List<VBox> navItems = new ArrayList<>();
-    private VBox activeItem;
+    private static final String CYAN      = "#20e6ff";
+    private static final String COLOR_OFF = "#4a6478";
+    private static final String BG_RAIL   = "rgba(7,16,25,0.97)";
+    private static final String BORDER    = "#20384c";
+
+    private VBox activeBtn;
+    private final Consumer<String> onNavigate;
 
     public Sidebar(Consumer<String> onNavigate) {
         super(4);
-        setPrefWidth(64); setMinWidth(64); setMaxWidth(64);
-        setStyle("-fx-background-color:" + BG_DEEP + ";-fx-border-color:" + BORDER + ";-fx-border-width:0 1 0 0;");
-        setPadding(new Insets(12, 0, 12, 0));
+        this.onNavigate = onNavigate;
+
+        setPrefWidth(74); setMinWidth(74); setMaxWidth(74);
+        setStyle(
+            "-fx-background-color:" + BG_RAIL + ";" +
+            "-fx-border-color:" + BORDER + ";-fx-border-width:0 1 0 0;"
+        );
+        setPadding(new Insets(10, 6, 10, 6));
         setAlignment(Pos.TOP_CENTER);
 
-        VBox noAr    = sideItem("▶", "NO AR",    true,  onNavigate);
-        VBox catalog = sideItem("⊞", "CATÁLOGO", false, onNavigate);
-        VBox rotacao = sideItem("↻", "ROTAÇÃO",  false, onNavigate);
+        VBox noAr    = railBtn("▶",    "NO AR",    "NO AR");
+        VBox catalog = railBtn("⊞",    "CATÁLOGO", "CATÁLOGO");
+        VBox rotacao = railBtn("↻",    "ROTAÇÃO",  "ROTAÇÃO");
+        VBox config  = railBtn("⚙",    "CONFIG",   "CONFIG");
 
-        activeItem = noAr;
-        navItems.addAll(List.of(noAr, catalog, rotacao));
+        activeBtn = noAr;
+        applyActive(noAr);
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        getChildren().addAll(noAr, catalog, rotacao, spacer,
-            sideItem("⚙", "CONFIG", false, onNavigate));
+        getChildren().addAll(noAr, catalog, rotacao, spacer, config);
     }
 
-    public Sidebar() {
-        this(s -> {});
-    }
+    public Sidebar() { this(s -> {}); }
 
-    private VBox sideItem(String icon, String label, boolean active, Consumer<String> onNavigate) {
-        String color = active ? BLUE : TEXT_SEC;
-        VBox v = new VBox(4,
-            Theme.lbl(icon,  "-fx-font-size:17px;-fx-text-fill:" + color + ";"),
-            Theme.lbl(label, "-fx-font-size:7px;-fx-text-fill:" + color + ";-fx-text-alignment:center;")
+    // ── Fábrica de botão ──────────────────────────────────────────────────────
+
+    private VBox railBtn(String icon, String label, String key) {
+        Label icoLbl = new Label(icon);
+        icoLbl.setStyle(
+            "-fx-font-size:18px;-fx-text-fill:" + COLOR_OFF + ";-fx-line-height:1;"
         );
-        v.setAlignment(Pos.CENTER);
-        v.setPadding(new Insets(10, 4, 10, 4));
-        v.setPrefWidth(64);
-        v.setCursor(Cursor.HAND);
 
-        if (active) applyActiveStyle(v);
+        Label lblLbl = new Label(label);
+        lblLbl.setStyle(
+            "-fx-font-size:9px;-fx-font-weight:bold;-fx-text-fill:" + COLOR_OFF + ";" +
+            "-fx-letter-spacing:.3px;"
+        );
 
-        v.setOnMouseClicked(e -> {
-            if (activeItem != null) applyInactiveStyle(activeItem);
-            applyActiveStyle(v);
-            activeItem = v;
-            onNavigate.accept(label);
+        VBox btn = new VBox(3, icoLbl, lblLbl);
+        btn.setAlignment(Pos.CENTER);
+        btn.setPrefWidth(58);
+        btn.setMinHeight(54);
+        btn.setPadding(new Insets(6, 3, 6, 3));
+        btn.setCursor(Cursor.HAND);
+        applyInactive(btn);
+
+        btn.setOnMouseEntered(e -> { if (btn != activeBtn) applyHover(btn); });
+        btn.setOnMouseExited(e  -> { if (btn != activeBtn) applyInactive(btn); });
+        btn.setOnMouseClicked(e -> {
+            if (activeBtn != null) applyInactive(activeBtn);
+            applyActive(btn);
+            activeBtn = btn;
+            onNavigate.accept(key);
         });
 
-        return v;
+        return btn;
     }
 
-    private static void applyActiveStyle(VBox v) {
-        v.setStyle("-fx-background-color:#1A2240;-fx-border-color:" + BLUE + ";-fx-border-width:0 0 0 3;");
-        v.getChildren().forEach(c -> c.setStyle(c.getStyle()
-            .replaceAll("-fx-text-fill:[^;]+;", "-fx-text-fill:" + BLUE + ";")));
+    // ── Estilos de estado ─────────────────────────────────────────────────────
+
+    private static void applyInactive(VBox btn) {
+        btn.setStyle(
+            "-fx-background-color:transparent;" +
+            "-fx-border-color:transparent;-fx-border-radius:12;-fx-background-radius:12;"
+        );
+        setChildrenColor(btn, COLOR_OFF);
     }
 
-    private static void applyInactiveStyle(VBox v) {
-        v.setStyle("");
-        v.getChildren().forEach(c -> c.setStyle(c.getStyle()
-            .replaceAll("-fx-text-fill:[^;]+;", "-fx-text-fill:" + TEXT_SEC + ";")));
+    private static void applyHover(VBox btn) {
+        btn.setStyle(
+            "-fx-background-color:rgba(255,255,255,0.04);" +
+            "-fx-border-color:transparent;-fx-border-radius:12;-fx-background-radius:12;"
+        );
+        setChildrenColor(btn, "#c8c8c8");
+    }
+
+    private static void applyActive(VBox btn) {
+        btn.setStyle(
+            "-fx-background-color:linear-gradient(from 0% 0% to 100% 100%, rgba(32,230,255,0.12), rgba(57,120,255,0.05));" +
+            "-fx-border-color:" + CYAN + " transparent transparent transparent;" +
+            "-fx-border-width:0 0 0 3;" +
+            "-fx-border-radius:12;-fx-background-radius:12;"
+        );
+        setChildrenColor(btn, CYAN);
+    }
+
+    private static void setChildrenColor(VBox btn, String color) {
+        btn.getChildren().forEach(c -> {
+            if (c instanceof Label lbl) {
+                String s = lbl.getStyle().replaceAll("-fx-text-fill:[^;]+;", "");
+                lbl.setStyle(s + "-fx-text-fill:" + color + ";");
+            }
+        });
     }
 }

@@ -6,12 +6,17 @@ import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.effect.DropShadow;
+import javafx.stage.Popup;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
@@ -28,6 +33,7 @@ public class TopBar extends HBox {
 
     private final Label clockLabel;
     private final Label dateLabel;
+    private Popup userMenu;
 
     public TopBar() {
         super(0);
@@ -70,15 +76,30 @@ public class TopBar extends HBox {
     // ── Logo ──────────────────────────────────────────────────────────────────
 
     private HBox buildLogo() {
-        StackPane circle = new StackPane(
-            new Circle(20, Color.web(BLUE)),
-            Theme.lbl("A", "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:white;")
-        );
+        javafx.scene.Node icon;
+        var resource = getClass().getResourceAsStream("/audion-logo.png");
+        if (resource != null) {
+            ImageView iv = new ImageView(new Image(resource));
+            iv.setFitHeight(46);
+            iv.setPreserveRatio(true);
+            iv.setSmooth(true);
+            icon = iv;
+        } else {
+            // fallback se o arquivo não for encontrado
+            StackPane circle = new StackPane(
+                new Circle(20, Color.web(BLUE)),
+                Theme.lbl("A", "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:white;")
+            );
+            icon = circle;
+        }
+
         VBox text = new VBox(1,
-            Theme.lbl("Audion Play",     "-fx-font-size:14px;-fx-font-weight:bold;-fx-text-fill:#eef7ff;"),
-            Theme.lbl("BROADCAST SUITE", "-fx-font-size:8px;-fx-text-fill:#88a0b5;-fx-letter-spacing:.75px;")
+            Theme.lbl("Audion Play",     "-fx-font-size:16px;-fx-font-weight:bold;-fx-text-fill:#eef7ff;"),
+            Theme.lbl("BROADCAST SUITE", "-fx-font-size:10px;-fx-text-fill:#88a0b5;")
         );
-        HBox logo = new HBox(12, circle, text);
+        text.setAlignment(Pos.CENTER_LEFT);
+
+        HBox logo = new HBox(12, icon, text);
         logo.setAlignment(Pos.CENTER_LEFT);
         logo.setPadding(new Insets(0, 20, 0, 0));
         return logo;
@@ -134,11 +155,91 @@ public class TopBar extends HBox {
             "-fx-cursor:hand;"
         );
 
+        userMenu = buildUserMenu();
+
+        pill.setOnMouseClicked(e -> {
+            if (userMenu.isShowing()) {
+                userMenu.hide();
+            } else {
+                javafx.geometry.Bounds b = pill.localToScreen(pill.getBoundsInLocal());
+                userMenu.show(pill, b.getMinX(), b.getMaxY() + 6);
+            }
+        });
+
         HBox wrap = new HBox(pill);
         wrap.setAlignment(Pos.CENTER);
         wrap.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
         wrap.setPadding(new Insets(0, 24, 0, 0));
         return wrap;
+    }
+
+    // ── User dropdown menu ────────────────────────────────────────────────────
+
+    private Popup buildUserMenu() {
+        VBox box = new VBox(0);
+        box.setStyle(
+            "-fx-background-color:#0d1a1f;" +
+            "-fx-border-color:rgba(45,216,255,0.22);-fx-border-width:1;" +
+            "-fx-border-radius:8;-fx-background-radius:8;" +
+            "-fx-padding:4 0 4 0;"
+        );
+        box.setMinWidth(180);
+
+        DropShadow shadow = new DropShadow();
+        shadow.setColor(Color.color(0, 0, 0, 0.55));
+        shadow.setRadius(28);
+        shadow.setOffsetY(8);
+        box.setEffect(shadow);
+
+        box.getChildren().addAll(
+            menuItem("🔑  Alterar senha",    false),
+            menuSep(),
+            menuItem("⇄  Trocar operador", true),
+            menuItem("⏻  Sair",             true)
+        );
+
+        Popup popup = new Popup();
+        popup.setAutoHide(true);
+        popup.getContent().add(box);
+        return popup;
+    }
+
+    private javafx.scene.Node menuItem(String text, boolean danger) {
+        Label lbl = new Label(text);
+        String normalColor = danger ? "#ff6b6b" : "#dceff2";
+        String hoverBg     = danger ? "rgba(255,70,70,0.10)" : "rgba(45,216,255,0.10)";
+
+        lbl.setStyle(
+            "-fx-font-size:13px;-fx-font-weight:600;" +
+            "-fx-text-fill:" + normalColor + ";" +
+            "-fx-padding:9 16 9 16;" +
+            "-fx-cursor:hand;"
+        );
+        lbl.setMaxWidth(Double.MAX_VALUE);
+
+        lbl.setOnMouseEntered(e -> lbl.setStyle(
+            "-fx-font-size:13px;-fx-font-weight:600;" +
+            "-fx-text-fill:" + normalColor + ";" +
+            "-fx-padding:9 16 9 16;" +
+            "-fx-cursor:hand;" +
+            "-fx-background-color:" + hoverBg + ";"
+        ));
+        lbl.setOnMouseExited(e -> lbl.setStyle(
+            "-fx-font-size:13px;-fx-font-weight:600;" +
+            "-fx-text-fill:" + normalColor + ";" +
+            "-fx-padding:9 16 9 16;" +
+            "-fx-cursor:hand;"
+        ));
+        return lbl;
+    }
+
+    private javafx.scene.layout.Region menuSep() {
+        javafx.scene.layout.Region sep = new javafx.scene.layout.Region();
+        sep.setPrefHeight(1);
+        sep.setMaxHeight(1);
+        sep.setStyle("-fx-background-color:rgba(45,216,255,0.10);-fx-padding:0;");
+        VBox.setMargin(sep, new Insets(4, 0, 4, 0));
+        return sep;
     }
 
     // ── Clock block ───────────────────────────────────────────────────────────
