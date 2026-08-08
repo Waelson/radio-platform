@@ -43,7 +43,11 @@ public class MainWindow {
     private VBox            playoutCenter;
     private CatalogPanel    catalogPanel;
     private NextTrackBar    nextTrackBar;
+    private TabsPanel       tabsPanel;
     private StackPane       rootStack;
+
+    // ── Cart player (Hot Keys) ─────────────────────────────────────────────
+    private FfmpegAudioPlayer cartPlayer;
 
     // ── Ponto de entrada ──────────────────────────────────────────────────────
 
@@ -54,6 +58,7 @@ public class MainWindow {
         rightPanel   = new RightPanel();
         queuePanel   = new QueuePanel();
         catalogPanel = new CatalogPanel();
+        tabsPanel    = new TabsPanel();
 
         buildController();
         wireActions();
@@ -102,12 +107,11 @@ public class MainWindow {
     // ── Montagem do painel Playout ────────────────────────────────────────────
 
     private VBox buildPlayoutCenter() {
-        TabsPanel tabs = new TabsPanel();
-        VBox.setVgrow(tabs, Priority.ALWAYS);
+        VBox.setVgrow(tabsPanel, Priority.ALWAYS);
 
         nextTrackBar = new NextTrackBar();
 
-        VBox center = new VBox(10, nowPlaying, nextTrackBar, tabs);
+        VBox center = new VBox(10, nowPlaying, nextTrackBar, tabsPanel);
         center.setStyle("-fx-background-color:" + Theme.BG_MAIN + ";");
         center.setPadding(new Insets(14));
         VBox.setVgrow(center, Priority.ALWAYS);
@@ -117,6 +121,7 @@ public class MainWindow {
     // ── Wiring do controller ──────────────────────────────────────────────────
 
     private void buildController() {
+        cartPlayer = new FfmpegAudioPlayer();
         controller = new PlayerController(
             new FfmpegAudioPlayer(),
             new FfmpegAudioPlayer(),
@@ -166,6 +171,19 @@ public class MainWindow {
         // Da fila: tocar item ao clicar ▶ no hover do card
         queuePanel.setOnPlay(this::playTrack);
         queuePanel.setOnQueueChanged(this::updateControls);
+
+        // Hot Keys: toca via cart player dedicado
+        tabsPanel.setOnCartPlay(btn -> {
+            Track t = new Track(
+                btn.trackPath(),
+                btn.trackTitle() != null && !btn.trackTitle().isBlank() ? btn.trackTitle() : btn.label(),
+                btn.trackArtist() != null ? btn.trackArtist() : "",
+                btn.durationMs() / 1000.0
+            );
+            cartPlayer.stop();
+            cartPlayer.load(t);
+            cartPlayer.play();
+        });
     }
 
     // ── Ações do usuário ──────────────────────────────────────────────────────
