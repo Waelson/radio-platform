@@ -133,6 +133,7 @@ public class PlayerController {
 
     public void setVolume(float volume) {
         primaryPlayer.setVolume(volume);
+        secondaryPlayer.setVolume(volume);
     }
 
     public void dispose() {

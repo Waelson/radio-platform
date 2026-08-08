@@ -167,6 +167,7 @@ public class MainWindow {
         nowPlaying.setOnSeek(controller::seekFraction);
 
         rightPanel.getVolume().setOnProgramVolumeChange(controller::setVolume);
+        rightPanel.getVolume().setOnBotoneiraVolumeChange(cartPlayer::setVolume);
 
         // Do catálogo: tocar faixa diretamente ou adicionar à fila
         catalogPanel.setOnPlay(this::playTrack);

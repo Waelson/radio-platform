@@ -132,7 +132,7 @@ public class FfmpegAudioPlayer implements AudioPlayer {
 
     @Override
     public double getCurrentTime() {
-        if (channel != null)   return seekOffset + (double) channel.getFramesOffered() / SAMPLE_RATE;
+        if (channel != null)   return seekOffset + (double) channel.getFramesConsumed() / SAMPLE_RATE;
         if (dataLine == null)  return seekOffset;
         return seekOffset + (double) dataLine.getLongFramePosition() / SAMPLE_RATE;
     }
@@ -227,8 +227,11 @@ public class FfmpegAudioPlayer implements AudioPlayer {
                 if (channel == null && dataLine != null) {
                     dataLine.drain();
                 } else if (channel != null) {
-                    // Aguarda o mixer consumir todo o buffer antes de sinalizar fim
+                    // Aguarda o mixer consumir todo o buffer antes de sinalizar fim.
+                    // Continua disparando onTimeUpdate para a UI refletir o progresso real.
                     while (!channel.isEmpty() && state != PlaybackState.STOPPED) {
+                        double t = getCurrentTime();
+                        if (onTimeUpdate != null) Platform.runLater(() -> onTimeUpdate.accept(t));
                         try { Thread.sleep(20); } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             break;
@@ -237,6 +240,11 @@ public class FfmpegAudioPlayer implements AudioPlayer {
                     channel.setActive(false);
                 }
                 state = PlaybackState.STOPPED;
+                // Garante que o progresso chegue a 100% antes de sinalizar o fim
+                if (onTimeUpdate != null) {
+                    double dur = getDuration();
+                    Platform.runLater(() -> onTimeUpdate.accept(dur));
+                }
                 if (onEndOfTrack != null) Platform.runLater(onEndOfTrack);
             }
 

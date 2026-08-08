@@ -29,7 +29,8 @@ public class MixerChannel {
     private volatile byte[] currentChunk = null;
     private int chunkOffset = 0;
 
-    private long framesOffered = 0;
+    private long framesOffered   = 0;
+    private long framesConsumed  = 0;
     private final Object statsLock = new Object();
 
     private volatile float   volume = 1.0f;
@@ -95,6 +96,9 @@ public class MixerChannel {
                 chunkOffset  = 0;
             }
         }
+        if (written > 0) {
+            synchronized (statsLock) { framesConsumed += written / BYTES_PER_FRAME; }
+        }
         return written;
     }
 
@@ -110,12 +114,11 @@ public class MixerChannel {
         queue.clear();
         currentChunk = null;
         chunkOffset  = 0;
-        synchronized (statsLock) { framesOffered = 0; }
+        synchronized (statsLock) { framesOffered = 0; framesConsumed = 0; }
     }
 
-    public long getFramesOffered() {
-        synchronized (statsLock) { return framesOffered; }
-    }
+    public long getFramesOffered()   { synchronized (statsLock) { return framesOffered;  } }
+    public long getFramesConsumed()  { synchronized (statsLock) { return framesConsumed; } }
 
     /** True quando não há mais dados para o mixer consumir. */
     public boolean isEmpty() {

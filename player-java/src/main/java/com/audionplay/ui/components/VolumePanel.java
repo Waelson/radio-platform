@@ -17,6 +17,8 @@ import static com.audionplay.ui.Theme.*;
 public class VolumePanel extends VBox {
 
     private Consumer<Float> onProgramVolumeChange;
+    private Consumer<Float> onPreviewVolumeChange;
+    private Consumer<Float> onBotoneiraVolumeChange;
 
     public VolumePanel() {
         super(0);
@@ -28,28 +30,25 @@ public class VolumePanel extends VBox {
         VBox body = new VBox(2);
         body.setPadding(new Insets(9, 12, 9, 12));
         body.getChildren().addAll(
-            volRow("Programa",  1.00, true),
-            volRow("Preview",   1.00, false),
-            volRow("Botoneira", 1.00, false)
+            volRow("Programa",  1.00, v -> { if (onProgramVolumeChange  != null) onProgramVolumeChange.accept(v);  }),
+            volRow("Preview",   1.00, v -> { if (onPreviewVolumeChange   != null) onPreviewVolumeChange.accept(v);   }),
+            volRow("Botoneira", 1.00, v -> { if (onBotoneiraVolumeChange != null) onBotoneiraVolumeChange.accept(v); })
         );
 
         getChildren().addAll(hdr, body);
     }
 
-    /** Registra callback chamado quando o slider Programa muda. */
-    public void setOnProgramVolumeChange(Consumer<Float> cb) {
-        this.onProgramVolumeChange = cb;
-    }
+    public void setOnProgramVolumeChange(Consumer<Float> cb)   { this.onProgramVolumeChange   = cb; }
+    public void setOnPreviewVolumeChange(Consumer<Float> cb)   { this.onPreviewVolumeChange   = cb; }
+    public void setOnBotoneiraVolumeChange(Consumer<Float> cb) { this.onBotoneiraVolumeChange = cb; }
 
     // ── Builder ───────────────────────────────────────────────────────────────
 
-    private HBox volRow(String label, double val, boolean isProgram) {
-        // or-vol-label
+    private HBox volRow(String label, double val, Consumer<Float> onChange) {
         Label lbl = new Label(label);
         lbl.setStyle("-fx-font-size:10px;-fx-font-weight:700;-fx-text-fill:#88a0b5;");
         lbl.setMinWidth(66);
 
-        // or-vol-slider
         Slider slider = new Slider(0, 1, val);
         slider.setStyle(
             "-fx-control-inner-background:#061018;" +
@@ -58,7 +57,6 @@ public class VolumePanel extends VBox {
         );
         HBox.setHgrow(slider, Priority.ALWAYS);
 
-        // or-vol-pct
         Label pct = new Label((int)(val * 100) + "%");
         pct.setStyle("-fx-font-size:10px;-fx-font-weight:600;-fx-text-fill:#88a0b5;");
         pct.setMinWidth(32);
@@ -66,9 +64,7 @@ public class VolumePanel extends VBox {
 
         slider.valueProperty().addListener((o, ov, nv) -> {
             pct.setText((int)(nv.doubleValue() * 100) + "%");
-            if (isProgram && onProgramVolumeChange != null) {
-                onProgramVolumeChange.accept(nv.floatValue());
-            }
+            onChange.accept(nv.floatValue());
         });
 
         HBox row = new HBox(8, lbl, slider, pct);
