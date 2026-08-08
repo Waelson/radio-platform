@@ -1,5 +1,6 @@
 package com.audionplay.ui.components;
 
+import com.audionplay.db.entity.TrackEntity;
 import com.audionplay.domain.PlaybackState;
 import com.audionplay.ui.Theme;
 import com.audionplay.ui.WaveformView;
@@ -27,6 +28,8 @@ import java.util.function.Consumer;
 public class NowPlayingPanel extends VBox {
 
     // ── Campos de estado ──────────────────────────────────────────────────────
+    private final Label   categoryLabel;          // tipo do áudio (MÚSICA, VINHETA…)
+    private final Label[] metaValues = new Label[7]; // INÍCIO CUE INTRO OUTRO CUE-OUT GAIN ID
     private final Label  trackTitleLabel;
     private final Label  trackArtistLabel;
     private final Label  currentTimeLabel;
@@ -86,6 +89,9 @@ public class NowPlayingPanel extends VBox {
         );
 
         // ── Inicializa campos ─────────────────────────────────────────────────
+        categoryLabel = new Label("");
+        categoryLabel.setStyle("-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:#2dd8ff;");
+
         trackTitleLabel = new Label("—");
         trackTitleLabel.setStyle(
             "-fx-font-size:24px;-fx-font-weight:bold;-fx-text-fill:#eef7ff;"
@@ -219,6 +225,56 @@ public class NowPlayingPanel extends VBox {
         statusLabel.setManaged(show);
     }
 
+    /**
+     * Preenche o tipo de áudio e os CUE points a partir de uma TrackEntity.
+     * Chamado ao iniciar reprodução de um item da fila ou do catálogo.
+     */
+    public void setTrackMeta(TrackEntity entity) {
+        // ── Tipo do áudio (badge de categoria) ────────────────────────────────
+        String typeText;
+        String typeColor;
+        if (entity.type() != null) {
+            typeText = switch (entity.type()) {
+                case MUSIC   -> "MÚSICA";
+                case VINHETA -> "VINHETA";
+                case JINGLE  -> "JINGLE";
+                case SPOT    -> "SPOT";
+                case EFEITOS -> "EFEITOS";
+            };
+            typeColor = switch (entity.type()) {
+                case MUSIC   -> "#2dd8ff";
+                case VINHETA -> "#ce93d8";
+                case JINGLE  -> "#a5d6a7";
+                case SPOT    -> "#ffcc80";
+                case EFEITOS -> "#ef9a9a";
+            };
+        } else {
+            typeText  = "—";
+            typeColor = "#88a0b5";
+        }
+        categoryLabel.setText(typeText);
+        categoryLabel.setStyle("-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:" + typeColor + ";");
+
+        // ── INÍCIO: hora de início da reprodução ──────────────────────────────
+        metaValues[0].setText(java.time.LocalTime.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+
+        // ── CUE, INTRO, OUTRO, CUE OUT ────────────────────────────────────────
+        metaValues[1].setText(fmtMs(entity.cueInMs()));
+        metaValues[2].setText(fmtMs(entity.introMs()));
+        metaValues[3].setText(fmtMs(entity.outroMs()));
+        metaValues[4].setText(fmtMs(entity.cueOutMs()));
+
+        // ── GAIN (loudness LUFS se disponível) ────────────────────────────────
+        metaValues[5].setText(entity.loudnessLufs() != null
+            ? String.format(java.util.Locale.US, "%.1f dB", entity.loudnessLufs())
+            : "—");
+
+        // ── ID ────────────────────────────────────────────────────────────────
+        metaValues[6].setText(entity.id() != null && !entity.id().isBlank()
+            ? entity.id() : "—");
+    }
+
     /** Limpa todos os dados exibidos após a fila esvaziar. */
     public void clearTrack() {
         trackTitleLabel.setText("—");
@@ -228,6 +284,20 @@ public class NowPlayingPanel extends VBox {
         totalTimeLabel.setText("00:00");
         clearWaveform();
         resetProgress();
+        clearMeta();
+    }
+
+    private void clearMeta() {
+        categoryLabel.setText("");
+        for (Label l : metaValues) if (l != null) l.setText("—");
+    }
+
+    private static String fmtMs(Integer ms) {
+        if (ms == null) return "—";
+        int m     = ms / 60000;
+        int s     = (ms % 60000) / 1000;
+        int milli = ms % 1000;
+        return String.format("%d:%02d.%03d", m, s, milli);
     }
 
     public void resetProgress() {
@@ -305,10 +375,6 @@ public class NowPlayingPanel extends VBox {
 
     /** pn-content: categoria + título + artista + meta-row */
     private VBox buildContent() {
-        Label categoryLabel = new Label("—");
-        categoryLabel.setStyle(
-            "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:#2dd8ff;"
-        );
 
         VBox.setMargin(trackTitleLabel,  new Insets(6, 0, 0, 0));
         VBox.setMargin(trackArtistLabel, new Insets(6, 0, 0, 0));
@@ -334,17 +400,18 @@ public class NowPlayingPanel extends VBox {
         String[] labels = {"INÍCIO", "CUE", "INTRO", "OUTRO", "CUE OUT", "GAIN", "ID"};
         HBox row = new HBox(20);
         row.setAlignment(Pos.CENTER_LEFT);
-        for (String lbl : labels) {
-            Label name = new Label(lbl);
-            name.setStyle(
-                "-fx-font-size:9px;-fx-font-weight:700;-fx-text-fill:#4a6478;"
-            );
-            Label val = new Label("—");
-            val.setStyle(
+        for (int i = 0; i < labels.length; i++) {
+            Label name = new Label(labels[i]);
+            name.setStyle("-fx-font-size:9px;-fx-font-weight:700;-fx-text-fill:#4a6478;");
+            metaValues[i] = new Label("—");
+            metaValues[i].setStyle(
                 "-fx-font-size:12px;-fx-font-weight:700;-fx-text-fill:#d8e6ef;" +
                 "-fx-font-family:'Courier New',monospace;"
             );
-            row.getChildren().add(new VBox(3, name, val));
+            VBox cell = new VBox(3, name, metaValues[i]);
+            // coluna ID pode crescer
+            if (i == labels.length - 1) HBox.setHgrow(cell, Priority.ALWAYS);
+            row.getChildren().add(cell);
         }
         return row;
     }

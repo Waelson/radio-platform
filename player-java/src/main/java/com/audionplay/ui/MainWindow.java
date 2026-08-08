@@ -227,6 +227,7 @@ public class MainWindow {
             duration
         );
         nowPlaying.setTrack(track.title(), track.artist(), Theme.formatTime(duration));
+        nowPlaying.setTrackMeta(entity);
         controller.loadAndPlay(track);
         updateNextTrackBar();
     }
