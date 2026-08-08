@@ -215,10 +215,10 @@ public class MainWindow {
 
     /** Remove o item atual da fila e inicia o próximo. */
     private void playNext() {
-        queuePanel.pollFirst().ifPresent(next -> {
-            playTrack(next);
-            updateControls();
-        });
+        queuePanel.pollFirst().ifPresentOrElse(
+            next -> { playTrack(next); updateControls(); },
+            () -> { nowPlaying.clearTrack(); updateControls(); }
+        );
     }
 
     private void updateControls() {

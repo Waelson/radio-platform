@@ -219,6 +219,17 @@ public class NowPlayingPanel extends VBox {
         statusLabel.setManaged(show);
     }
 
+    /** Limpa todos os dados exibidos após a fila esvaziar. */
+    public void clearTrack() {
+        trackTitleLabel.setText("—");
+        trackArtistLabel.setText("");
+        currentTimeLabel.setText("00:00");
+        remainingTimeLabel.setText("00:00");
+        totalTimeLabel.setText("00:00");
+        clearWaveform();
+        resetProgress();
+    }
+
     public void resetProgress() {
         currentFraction = 0;
         progressFill.setPrefWidth(0);
