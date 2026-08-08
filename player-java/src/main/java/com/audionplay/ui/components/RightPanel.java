@@ -16,10 +16,10 @@ public class RightPanel extends VBox {
     private final VolumePanel volume;
 
     public RightPanel() {
-        super(14);
+        super(10);
         setPrefWidth(405); setMinWidth(369); setMaxWidth(438);
-        setPadding(new Insets(14));
-        setStyle("-fx-background-color:" + BG_PANEL + ";-fx-border-color:" + BORDER + ";-fx-border-width:0 0 0 1;");
+        setPadding(new Insets(10));
+        setStyle("-fx-background-color:" + BG_MAIN + ";");
 
         vuMeter = new VuMeterPanel();
         volume  = new VolumePanel();

@@ -12,53 +12,68 @@ import java.util.function.Consumer;
 import static com.audionplay.ui.Theme.*;
 
 /**
- * Painel de sliders de volume (PROGRAMA, PREVIEW, BOTONEIRA).
+ * Painel de volume — visual fiel ao or-card "Volume" do player.html.
  */
 public class VolumePanel extends VBox {
 
     private Consumer<Float> onProgramVolumeChange;
 
     public VolumePanel() {
-        super(10);
-        setStyle(
-            "-fx-background-color:#14172280;" +
-            "-fx-background-radius:8;-fx-padding:12;" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-radius:8;-fx-border-width:1;"
+        super(0);
+        setStyle(OR_CARD);
+
+        HBox hdr = Theme.orCardHeader("Volume");
+
+        // ── Vol body ──────────────────────────────────────────────────────────
+        VBox body = new VBox(2);
+        body.setPadding(new Insets(9, 12, 9, 12));
+        body.getChildren().addAll(
+            volRow("Programa",  1.00, true),
+            volRow("Preview",   1.00, false),
+            volRow("Botoneira", 1.00, false)
         );
-        getChildren().addAll(
-            Theme.lbl("VOLUME", "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_SEC + ";"),
-            volRow("PROGRAMA",  0.31, true),
-            volRow("PREVIEW",   0.22, false),
-            volRow("BOTONEIRA", 1.00, false)
-        );
+
+        getChildren().addAll(hdr, body);
     }
 
-    /** Registra callback chamado quando o slider PROGRAMA muda. */
+    /** Registra callback chamado quando o slider Programa muda. */
     public void setOnProgramVolumeChange(Consumer<Float> cb) {
         this.onProgramVolumeChange = cb;
     }
 
+    // ── Builder ───────────────────────────────────────────────────────────────
+
     private HBox volRow(String label, double val, boolean isProgram) {
-        Label l = Theme.lbl(label, "-fx-font-size:10px;-fx-text-fill:" + TEXT_SEC + ";");
-        l.setMinWidth(72);
+        // or-vol-label
+        Label lbl = new Label(label);
+        lbl.setStyle("-fx-font-size:10px;-fx-font-weight:700;-fx-text-fill:#88a0b5;");
+        lbl.setMinWidth(66);
 
-        Slider s = new Slider(0, 1, val);
-        s.setStyle("-fx-control-inner-background:#2A2E42;");
-        HBox.setHgrow(s, Priority.ALWAYS);
+        // or-vol-slider
+        Slider slider = new Slider(0, 1, val);
+        slider.setStyle(
+            "-fx-control-inner-background:#061018;" +
+            "-fx-accent:#36d399;" +
+            "-fx-pref-height:4;"
+        );
+        HBox.setHgrow(slider, Priority.ALWAYS);
 
-        Label v = Theme.lbl((int)(val * 100) + "%", "-fx-font-size:10px;-fx-text-fill:" + TEXT_PRI + ";");
-        v.setMinWidth(30);
-        v.setAlignment(Pos.CENTER_RIGHT);
+        // or-vol-pct
+        Label pct = new Label((int)(val * 100) + "%");
+        pct.setStyle("-fx-font-size:10px;-fx-font-weight:600;-fx-text-fill:#88a0b5;");
+        pct.setMinWidth(32);
+        pct.setAlignment(Pos.CENTER_RIGHT);
 
-        if (isProgram) {
-            s.valueProperty().addListener((o, ov, nv) -> {
-                if (onProgramVolumeChange != null) onProgramVolumeChange.accept(nv.floatValue());
-            });
-        }
+        slider.valueProperty().addListener((o, ov, nv) -> {
+            pct.setText((int)(nv.doubleValue() * 100) + "%");
+            if (isProgram && onProgramVolumeChange != null) {
+                onProgramVolumeChange.accept(nv.floatValue());
+            }
+        });
 
-        HBox row = new HBox(8, l, s, v);
+        HBox row = new HBox(8, lbl, slider, pct);
         row.setAlignment(Pos.CENTER);
+        row.setMinHeight(32);
         return row;
     }
 }

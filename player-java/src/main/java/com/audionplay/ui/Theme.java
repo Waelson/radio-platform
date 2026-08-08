@@ -79,4 +79,40 @@ public final class Theme {
         if (sec < 0) sec = 0;
         return String.format("%02d:%02d", (int)(sec / 60), (int)(sec % 60));
     }
+
+    // ── or-card helpers (painel direito) ──────────────────────────────────────
+
+    /** Estilo de card do painel direito (or-card). */
+    public static final String OR_CARD =
+        "-fx-background-color:#0e1b28;" +
+        "-fx-border-color:#20384c;-fx-border-width:1;" +
+        "-fx-border-radius:14;-fx-background-radius:14;";
+
+    /** Estilo do header do or-card (or-card-header). */
+    public static final String OR_CARD_HEADER =
+        "-fx-background-color:rgba(10,22,33,0.7);" +
+        "-fx-border-color:#20384c;-fx-border-width:0 0 1 0;";
+
+    /** Estilo do título do or-card (or-card-title). */
+    public static final String OR_TITLE =
+        "-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:#bdd0df;";
+
+    /** Cria um HBox header de or-card com título e nó opcional à direita. */
+    public static javafx.scene.layout.HBox orCardHeader(String title, javafx.scene.Node... right) {
+        javafx.scene.layout.HBox hdr = new javafx.scene.layout.HBox();
+        hdr.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        hdr.setMinHeight(42);
+        hdr.setPadding(new javafx.geometry.Insets(0, 12, 0, 12));
+        hdr.setStyle(OR_CARD_HEADER);
+        Label t = new Label(title);
+        t.setStyle(OR_TITLE);
+        hdr.getChildren().add(t);
+        if (right.length > 0) {
+            Region sp = new Region();
+            javafx.scene.layout.HBox.setHgrow(sp, Priority.ALWAYS);
+            hdr.getChildren().add(sp);
+            for (javafx.scene.Node n : right) hdr.getChildren().add(n);
+        }
+        return hdr;
+    }
 }

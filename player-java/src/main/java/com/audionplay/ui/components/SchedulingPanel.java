@@ -3,40 +3,46 @@ package com.audionplay.ui.components;
 import com.audionplay.ui.Theme;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 
 import static com.audionplay.ui.Theme.*;
 
 /**
- * Painel de agendamentos.
+ * Painel de agendamentos — visual fiel ao or-card "Agendamentos" do player.html.
  */
 public class SchedulingPanel extends VBox {
 
     public SchedulingPanel() {
-        super(10);
+        super(0);
+        setStyle(OR_CARD);
+        VBox.setVgrow(this, Priority.ALWAYS);
 
-        HBox hdr = new HBox();
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.getChildren().addAll(
-            Theme.lbl("AGENDAMENTOS",
-                "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_SEC + ";"),
-            Theme.hSpacer(),
-            Theme.lbl("Atualizar",
-                "-fx-font-size:11px;-fx-text-fill:" + BLUE + ";-fx-cursor:hand;")
+        // ── Header com botão Atualizar ─────────────────────────────────────────
+        Label refreshBtn = new Label("Atualizar");
+        refreshBtn.setStyle(
+            "-fx-pref-height:27;" +
+            "-fx-background-color:#0e1b28;" +
+            "-fx-border-color:#20384c;-fx-border-width:1;" +
+            "-fx-border-radius:7;-fx-background-radius:7;" +
+            "-fx-padding:0 8 0 8;" +
+            "-fx-font-size:10px;-fx-text-fill:#88a0b5;-fx-cursor:hand;"
         );
 
-        VBox empty = new VBox(
-            Theme.lbl("Nenhum evento agendado para hoje",
-                "-fx-font-size:11px;-fx-text-fill:" + TEXT_MUT + ";")
-        );
-        empty.setStyle(
-            "-fx-background-color:#14172280;" +
-            "-fx-background-radius:8;-fx-padding:20;" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-radius:8;-fx-border-width:1;"
-        );
+        HBox hdr = Theme.orCardHeader("Agendamentos", refreshBtn);
+
+        // ── Lista (or-ctx-list) ────────────────────────────────────────────────
+        VBox list = new VBox();
+        list.setPadding(new Insets(7));
+        VBox.setVgrow(list, Priority.ALWAYS);
+
+        Label empty = new Label("Nenhum evento agendado para hoje");
+        empty.setStyle("-fx-font-size:11px;-fx-text-fill:#4a6478;");
+        empty.setPadding(new Insets(16, 0, 16, 0));
+        empty.setMaxWidth(Double.MAX_VALUE);
         empty.setAlignment(Pos.CENTER);
+        list.getChildren().add(empty);
 
-        getChildren().addAll(hdr, empty);
+        getChildren().addAll(hdr, list);
     }
 }

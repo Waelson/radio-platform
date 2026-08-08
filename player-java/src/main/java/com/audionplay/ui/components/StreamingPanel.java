@@ -1,7 +1,10 @@
 package com.audionplay.ui.components;
 
 import com.audionplay.ui.Theme;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -9,56 +12,113 @@ import javafx.scene.shape.Circle;
 import static com.audionplay.ui.Theme.*;
 
 /**
- * Painel de configuração de servidores de streaming.
+ * Painel de streaming — visual fiel ao or-card "Streaming" do player.html.
  */
 public class StreamingPanel extends VBox {
 
     public StreamingPanel() {
-        super(10);
+        super(0);
+        setStyle(OR_CARD);
+        VBox.setVgrow(this, Priority.ALWAYS);
 
-        HBox hdr = new HBox();
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.getChildren().addAll(
-            Theme.lbl("STREAMING",
-                "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_SEC + ";"),
-            Theme.hSpacer(),
-            Theme.lbl("+ Servidor",
-                "-fx-font-size:11px;-fx-text-fill:" + BLUE + ";-fx-cursor:hand;")
+        // ── Header com botão + Servidor ────────────────────────────────────────
+        Label addBtn = new Label("+ Servidor");
+        addBtn.setStyle(
+            "-fx-pref-height:27;" +
+            "-fx-background-color:#0e1b28;" +
+            "-fx-border-color:#20384c;-fx-border-width:1;" +
+            "-fx-border-radius:7;-fx-background-radius:7;" +
+            "-fx-padding:0 8 0 8;" +
+            "-fx-font-size:10px;-fx-text-fill:#88a0b5;-fx-cursor:hand;"
         );
 
-        VBox card = new VBox(10);
+        HBox hdr = Theme.orCardHeader("Streaming", addBtn);
+
+        // ── Card list ──────────────────────────────────────────────────────────
+        VBox cardList = new VBox(7);
+        cardList.setPadding(new Insets(7));
+        VBox.setVgrow(cardList, Priority.ALWAYS);
+
+        cardList.getChildren().add(buildStreamingCard(
+            "CasterFM",
+            "sapirncast.fm:19656 · MP3 · 96kbps",
+            false
+        ));
+
+        getChildren().addAll(hdr, cardList);
+    }
+
+    // ── Builder de streaming-card ─────────────────────────────────────────────
+
+    private VBox buildStreamingCard(String name, String info, boolean connected) {
+        VBox card = new VBox(6);
+        card.setPadding(new Insets(10, 11, 46, 11));
         card.setStyle(
-            "-fx-background-color:#14172280;" +
-            "-fx-background-radius:8;-fx-padding:12;" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-radius:8;-fx-border-width:1;"
+            "-fx-background-color:#0a1520;" +
+            "-fx-border-color:#20384c;-fx-border-width:1;" +
+            "-fx-border-radius:10;-fx-background-radius:10;"
         );
 
-        HBox sh = new HBox(8);
-        sh.setAlignment(Pos.CENTER_LEFT);
-        sh.getChildren().addAll(
-            new Circle(5, Color.web("#404060")),
-            Theme.lbl("CasterFM",
-                "-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_PRI + ";"),
-            Theme.hSpacer(),
-            Theme.lbl("OFF",
-                "-fx-font-size:10px;-fx-text-fill:" + TEXT_SEC + ";" +
-                "-fx-background-color:#202440;-fx-background-radius:4;-fx-padding:2 8 2 8;")
+        // streaming-card-header
+        Circle dot = new Circle(3.5, Color.web("#4a6478"));
+
+        Label nameLbl = new Label(name);
+        nameLbl.setStyle(
+            "-fx-font-size:12px;-fx-font-weight:700;-fx-text-fill:#d7e3ec;"
+        );
+        HBox.setHgrow(nameLbl, Priority.ALWAYS);
+
+        Label badge = new Label("OFF");
+        badge.setStyle(
+            "-fx-font-size:9px;-fx-font-weight:800;" +
+            "-fx-padding:2 7 2 7;-fx-background-radius:4;-fx-border-radius:4;" +
+            "-fx-background-color:rgba(74,100,120,0.25);" +
+            "-fx-border-color:#20384c;-fx-border-width:1;" +
+            "-fx-text-fill:#4a6478;"
         );
 
-        HBox sbtn = new HBox(8,
-            Theme.outlineBtn("Conectar", BLUE),
-            Theme.outlineBtn("Editar",   TEXT_SEC),
-            Theme.outlineBtn("Remover",  TEXT_SEC)
-        );
+        HBox cardHdr = new HBox(6, dot, nameLbl, badge);
+        cardHdr.setAlignment(Pos.CENTER_LEFT);
 
-        card.getChildren().addAll(
-            sh,
-            Theme.lbl("sapirncast.fm:19656 · MP3 · 96kbps",
-                "-fx-font-size:10px;-fx-text-fill:" + TEXT_MUT + ";"),
-            sbtn
-        );
+        // info line
+        Label infoLbl = new Label(info);
+        infoLbl.setStyle("-fx-font-size:10px;-fx-text-fill:#4a6478;");
 
-        getChildren().addAll(hdr, card);
+        card.getChildren().addAll(cardHdr, infoLbl);
+
+        // ── Actions (simulam position: absolute bottom) ────────────────────────
+        HBox actions = new HBox(5,
+            streamBtn("Conectar", true,  false),
+            streamBtn("Editar",   false, false),
+            streamBtn("Remover",  false, false)
+        );
+        actions.setPadding(new Insets(8, 0, 0, 0));
+        card.getChildren().add(actions);
+
+        return card;
+    }
+
+    private Button streamBtn(String text, boolean primary, boolean danger) {
+        Button b = new Button(text);
+        String borderColor, textColor;
+        if (primary) {
+            borderColor = "rgba(32,230,255,0.35)";
+            textColor   = "#00d4ff";
+        } else if (danger) {
+            borderColor = "rgba(248,114,114,0.35)";
+            textColor   = "#f87272";
+        } else {
+            borderColor = "#20384c";
+            textColor   = "#88a0b5";
+        }
+        b.setStyle(
+            "-fx-font-size:10px;-fx-font-weight:700;" +
+            "-fx-padding:3 10 3 10;-fx-background-radius:6;-fx-border-radius:6;" +
+            "-fx-border-color:" + borderColor + ";-fx-border-width:1;" +
+            "-fx-background-color:#0e1b28;" +
+            "-fx-text-fill:" + textColor + ";" +
+            "-fx-cursor:hand;"
+        );
+        return b;
     }
 }

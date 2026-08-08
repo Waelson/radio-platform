@@ -1,6 +1,7 @@
 package com.audionplay.ui.components;
 
 import com.audionplay.ui.Theme;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
@@ -8,48 +9,58 @@ import javafx.scene.layout.*;
 import static com.audionplay.ui.Theme.*;
 
 /**
- * Painel de seleção do modo de operação (Live Assist / Automático).
+ * Painel Modo de Operação — visual fiel ao .or-card do player.html.
  */
 public class OpModePanel extends VBox {
 
     public OpModePanel() {
-        super(10);
+        super(0);
+        setStyle(OR_CARD);
 
-        HBox hdr = new HBox();
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.getChildren().addAll(
-            Theme.lbl("MODO DE OPERAÇÃO",
-                "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:" + TEXT_SEC + ";"),
-            Theme.hSpacer(),
-            Theme.lbl("ESTUDIO-PRINCIPAL",
-                "-fx-font-size:9px;-fx-text-fill:" + TEXT_SEC + ";" +
-                "-fx-background-color:#14172280;-fx-background-radius:4;" +
-                "-fx-padding:3 8 3 8;-fx-border-color:" + BORDER + ";" +
-                "-fx-border-radius:4;-fx-border-width:1;")
+        // ── Studio badge ──────────────────────────────────────────────────────
+        Label studioBadge = new Label("Studio A");
+        studioBadge.setStyle(
+            "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:#88a0b5;" +
+            "-fx-background-color:#0e1b28;" +
+            "-fx-border-color:#20384c;-fx-border-width:1;" +
+            "-fx-border-radius:99;-fx-background-radius:99;" +
+            "-fx-padding:0 9 0 9;-fx-pref-height:24;"
         );
 
-        HBox btns = new HBox(0);
-        btns.setStyle(
-            "-fx-background-color:#14172280;" +
-            "-fx-background-radius:8;" +
-            "-fx-border-color:" + BORDER + ";" +
-            "-fx-border-radius:8;-fx-border-width:1;"
-        );
+        // ── Header ────────────────────────────────────────────────────────────
+        HBox hdr = Theme.orCardHeader("MODO DE OPERAÇÃO", studioBadge);
 
-        Label liveAssist = Theme.lbl("Live Assist",
-            "-fx-font-size:13px;-fx-text-fill:" + TEXT_SEC + ";-fx-padding:10 0 10 0;");
+        // ── Botões de modo ────────────────────────────────────────────────────
+        String inactiveStyle =
+            "-fx-pref-height:50;-fx-max-width:Infinity;" +
+            "-fx-background-color:rgba(255,255,255,0.025);" +
+            "-fx-border-color:#20384c;-fx-border-width:1;" +
+            "-fx-border-radius:10;-fx-background-radius:10;" +
+            "-fx-text-fill:#88a0b5;-fx-font-size:10px;-fx-font-weight:bold;" +
+            "-fx-cursor:hand;";
+        String activeStyle =
+            "-fx-pref-height:50;-fx-max-width:Infinity;" +
+            "-fx-background-color:#36d399;" +
+            "-fx-border-color:#36d399;-fx-border-width:1;" +
+            "-fx-border-radius:10;-fx-background-radius:10;" +
+            "-fx-text-fill:#031b12;-fx-font-size:10px;-fx-font-weight:bold;" +
+            "-fx-cursor:hand;";
+
+        Label liveAssist = new Label("Live Assist");
+        liveAssist.setStyle(inactiveStyle);
         liveAssist.setMaxWidth(Double.MAX_VALUE);
         liveAssist.setAlignment(Pos.CENTER);
         HBox.setHgrow(liveAssist, Priority.ALWAYS);
 
-        Label automatico = Theme.lbl("Automático",
-            "-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:#142A14;" +
-            "-fx-background-color:" + GREEN + ";-fx-background-radius:6;-fx-padding:10 0 10 0;");
+        Label automatico = new Label("Automático");
+        automatico.setStyle(activeStyle);
         automatico.setMaxWidth(Double.MAX_VALUE);
         automatico.setAlignment(Pos.CENTER);
         HBox.setHgrow(automatico, Priority.ALWAYS);
 
-        btns.getChildren().addAll(liveAssist, automatico);
+        HBox btns = new HBox(7, liveAssist, automatico);
+        btns.setPadding(new Insets(9));
+
         getChildren().addAll(hdr, btns);
     }
 }
