@@ -44,6 +44,7 @@ public class MainWindow {
     private QueuePanel      queuePanel;
     private VBox            playoutCenter;
     private CatalogPanel    catalogPanel;
+    private RotacaoPanel    rotacaoPanel;
     private NextTrackBar    nextTrackBar;
     private TabsPanel       tabsPanel;
     private StackPane       rootStack;
@@ -61,6 +62,7 @@ public class MainWindow {
         rightPanel   = new RightPanel();
         queuePanel   = new QueuePanel();
         catalogPanel = new CatalogPanel();
+        rotacaoPanel = new RotacaoPanel();
         tabsPanel    = new TabsPanel();
 
         mixer = new SoftwareMixer(3); // ch0=program, ch1=secondary, ch2=cart
@@ -74,11 +76,13 @@ public class MainWindow {
 
         playoutCenter = buildPlayoutCenter();
 
-        // Área central comutável: Playout ou Catálogo
-        StackPane contentArea = new StackPane(playoutCenter, catalogPanel);
+        // Área central comutável: Playout, Catálogo ou Rotação
+        StackPane contentArea = new StackPane(playoutCenter, catalogPanel, rotacaoPanel);
         HBox.setHgrow(contentArea, Priority.ALWAYS);
         catalogPanel.setVisible(false);
         catalogPanel.setManaged(false);
+        rotacaoPanel.setVisible(false);
+        rotacaoPanel.setManaged(false);
 
         Sidebar sidebar = new Sidebar(this::handleNavigation);
 
@@ -93,13 +97,15 @@ public class MainWindow {
     // ── Navegação entre telas ─────────────────────────────────────────────────
 
     private void handleNavigation(String section) {
-        boolean isPlayout = section.equals("NO AR");
-        boolean isCatalog = section.equals("CATÁLOGO");
+        boolean isPlayout  = section.equals("NO AR");
+        boolean isCatalog  = section.equals("CATÁLOGO");
+        boolean isRotacao  = section.equals("ROTAÇÃO");
 
         show(playoutCenter, isPlayout);
         show(queuePanel,    isPlayout);
         show(rightPanel,    isPlayout);
         show(catalogPanel,  isCatalog);
+        show(rotacaoPanel,  isRotacao);
 
         if (isCatalog) catalogPanel.reload();
     }
@@ -183,6 +189,26 @@ public class MainWindow {
             playTrack(entity);
         });
         queuePanel.setOnQueueChanged(this::updateControls);
+
+        // Rotação: enfileira faixas geradas e permite CUE preview
+        rotacaoPanel.setOnEnqueue(tracks -> {
+            tracks.forEach(entity -> {
+                queuePanel.addTrack(entity);
+            });
+            int n = tracks.size();
+            Toast.show(rootStack, n + " faixa" + (n != 1 ? "s" : "") + " adicionada" + (n != 1 ? "s" : "") + " à fila");
+        });
+        rotacaoPanel.setOnCue(entity -> {
+            cartPlayer.stop();
+            Track t = new Track(
+                entity.path(),
+                entity.title().isBlank() ? entity.path() : entity.title(),
+                entity.artist(),
+                entity.durationMs() / 1000.0
+            );
+            cartPlayer.load(t);
+            cartPlayer.play();
+        });
 
         // Hot Keys: toca via cart player dedicado
         tabsPanel.setOnCartPlay(btn -> {
