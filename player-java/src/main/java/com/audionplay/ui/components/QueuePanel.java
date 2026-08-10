@@ -6,6 +6,8 @@ import com.audionplay.ui.Theme;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.SnapshotParameters;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
@@ -224,6 +226,7 @@ public class QueuePanel extends VBox {
     /** queue-info-bar: count | duration | ∅ | ⏰ */
     private HBox buildInfoBar() {
         Label clearBtn = sqBtn("∅");
+        clearBtn.setOnMouseClicked(e -> clearQueue());
         Label horaBtn  = sqBtn("⏰");
         horaBtn.setOnMouseClicked(e -> { if (onHoraCertaBtn != null) onHoraCertaBtn.run(); });
 
@@ -452,6 +455,28 @@ public class QueuePanel extends VBox {
             ? String.format("⏱ %d:%02d:%02d", h, m, sec)
             : String.format("⏱ %02d:%02d", m, sec);
         durationLabel.setText(fmt);
+    }
+
+    private void clearQueue() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.initOwner(getScene() != null ? getScene().getWindow() : null);
+        alert.setTitle("Limpar fila");
+        alert.setHeaderText(null);
+        alert.setContentText("Limpar toda a fila pendente?");
+        alert.showAndWait().ifPresent(btn -> {
+            if (btn != ButtonType.OK) return;
+            if (isPlaying && !entities.isEmpty()) {
+                // mantém apenas o item em reprodução (índice 0)
+                entities.subList(1, entities.size()).clear();
+            } else {
+                entities.clear();
+            }
+            totalItems = entities.size();
+            totalMs    = entities.stream().mapToLong(TrackEntity::durationMs).sum();
+            updateStats();
+            rebuildList();
+            fireQueueChanged();
+        });
     }
 
     private void fireQueueChanged() {
