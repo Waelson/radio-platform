@@ -314,14 +314,29 @@ public class FfmpegAudioPlayer implements AudioPlayer {
     private static List<String> buildCommand(String filePath, double fromSeconds, double limitSeconds) {
         java.util.List<String> cmd = new java.util.ArrayList<>();
         cmd.add(FfmpegLocator.ffmpeg());
-        cmd.add("-ss"); cmd.add(String.format(java.util.Locale.US, "%.3f", fromSeconds));
-        cmd.add("-i");  cmd.add(filePath);
-        if (limitSeconds > 0) {
-            cmd.add("-t"); cmd.add(String.format(java.util.Locale.US, "%.3f", limitSeconds));
+
+        // Suporte a múltiplos arquivos separados por "|" (ex.: hora-certa)
+        // Usa o filtro concat para encadear os streams de áudio decodificado.
+        String[] parts = filePath.split("\\|");
+        if (parts.length > 1) {
+            for (String part : parts) { cmd.add("-i"); cmd.add(part); }
+            StringBuilder filter = new StringBuilder();
+            for (int i = 0; i < parts.length; i++) filter.append("[").append(i).append(":a]");
+            filter.append("concat=n=").append(parts.length).append(":v=0:a=1[outa]");
+            cmd.add("-filter_complex"); cmd.add(filter.toString());
+            cmd.add("-map"); cmd.add("[outa]");
+        } else {
+            // Modo normal: seek + arquivo único
+            cmd.add("-ss"); cmd.add(String.format(java.util.Locale.US, "%.3f", fromSeconds));
+            cmd.add("-i");  cmd.add(filePath);
+            if (limitSeconds > 0) {
+                cmd.add("-t"); cmd.add(String.format(java.util.Locale.US, "%.3f", limitSeconds));
+            }
         }
-        cmd.add("-f");       cmd.add("s16le");
-        cmd.add("-ar");      cmd.add(String.valueOf(SAMPLE_RATE));
-        cmd.add("-ac");      cmd.add(String.valueOf(CHANNELS));
+
+        cmd.add("-f");        cmd.add("s16le");
+        cmd.add("-ar");       cmd.add(String.valueOf(SAMPLE_RATE));
+        cmd.add("-ac");       cmd.add(String.valueOf(CHANNELS));
         cmd.add("-loglevel"); cmd.add("quiet");
         cmd.add("pipe:1");
         return cmd;

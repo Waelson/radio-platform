@@ -172,11 +172,11 @@ public class PlaylistGenerator {
                 : new ResolveResult(null, "track fixo não encontrado: " + slot.fixedTrackId());
         }
 
-        // HORA_CERTA — sentinela (playout engine gera o áudio)
+        // HORA_CERTA — sentinela (path resolvido em tempo de reprodução pelo player)
         if ("HORA_CERTA".equals(slot.slotType())) {
             TrackEntity sentinel = new TrackEntity(
                 "hora_certa", "", "Hora Certa", "", "",
-                TrackType.VINHETA, 3000,
+                TrackType.HORA_CERTA, 10_000,
                 null, null, null, null, null, null,
                 LoudnessStatus.PENDING, "", null,
                 null, null, null, null, null

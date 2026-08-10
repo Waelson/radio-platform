@@ -274,18 +274,20 @@ public class NowPlayingPanel extends VBox {
         String typeColor;
         if (entity.type() != null) {
             typeText = switch (entity.type()) {
-                case MUSIC   -> "MÚSICA";
-                case VINHETA -> "VINHETA";
-                case JINGLE  -> "JINGLE";
-                case SPOT    -> "SPOT";
-                case EFEITOS -> "EFEITOS";
+                case MUSIC      -> "MÚSICA";
+                case VINHETA    -> "VINHETA";
+                case JINGLE     -> "JINGLE";
+                case SPOT       -> "SPOT";
+                case EFEITOS    -> "EFEITOS";
+                case HORA_CERTA -> "HORA CERTA";
             };
             typeColor = switch (entity.type()) {
-                case MUSIC   -> "#2dd8ff";
-                case VINHETA -> "#ce93d8";
-                case JINGLE  -> "#a5d6a7";
-                case SPOT    -> "#ffcc80";
-                case EFEITOS -> "#ef9a9a";
+                case MUSIC      -> "#2dd8ff";
+                case VINHETA    -> "#ce93d8";
+                case JINGLE     -> "#a5d6a7";
+                case SPOT       -> "#ffcc80";
+                case EFEITOS    -> "#ef9a9a";
+                case HORA_CERTA -> "#9d9ab8";
             };
         } else {
             typeText  = "—";

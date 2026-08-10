@@ -104,14 +104,27 @@ public class FfmpegWaveformAnalyzer implements WaveformAnalyzer {
     }
 
     private static List<String> buildCommand(String filePath) {
-        return List.of(
-            FfmpegLocator.ffmpeg(),
-            "-i",     filePath,
-            "-f",     "s16le",
-            "-ar",    String.valueOf(ANALYSIS_RATE),
-            "-ac",    "1",
-            "-loglevel", "quiet",
-            "pipe:1"
-        );
+        java.util.List<String> cmd = new java.util.ArrayList<>();
+        cmd.add(FfmpegLocator.ffmpeg());
+
+        String[] parts = filePath.split("\\|");
+        if (parts.length > 1) {
+            // Multi-arquivo (ex.: hora-certa): usa filtro concat para encadear
+            for (String part : parts) { cmd.add("-i"); cmd.add(part); }
+            StringBuilder filter = new StringBuilder();
+            for (int i = 0; i < parts.length; i++) filter.append("[").append(i).append(":a]");
+            filter.append("concat=n=").append(parts.length).append(":v=0:a=1[outa]");
+            cmd.add("-filter_complex"); cmd.add(filter.toString());
+            cmd.add("-map"); cmd.add("[outa]");
+        } else {
+            cmd.add("-i"); cmd.add(filePath);
+        }
+
+        cmd.add("-f");        cmd.add("s16le");
+        cmd.add("-ar");       cmd.add(String.valueOf(ANALYSIS_RATE));
+        cmd.add("-ac");       cmd.add("1");
+        cmd.add("-loglevel"); cmd.add("quiet");
+        cmd.add("pipe:1");
+        return cmd;
     }
 }

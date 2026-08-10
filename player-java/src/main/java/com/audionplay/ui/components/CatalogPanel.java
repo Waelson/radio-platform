@@ -524,31 +524,34 @@ public class CatalogPanel extends VBox {
 
     private static String typeLabel(TrackType t) {
         return switch (t) {
-            case MUSIC   -> "MUSIC";
-            case VINHETA -> "VINHETA";
-            case JINGLE  -> "JINGLE";
-            case SPOT    -> "SPOT";
-            case EFEITOS -> "EFEITOS";
+            case MUSIC      -> "MUSIC";
+            case VINHETA    -> "VINHETA";
+            case JINGLE     -> "JINGLE";
+            case SPOT       -> "SPOT";
+            case EFEITOS    -> "EFEITOS";
+            case HORA_CERTA -> "HORA CERTA";
         };
     }
 
     private static String typeBg(TrackType t) {
         return switch (t) {
-            case MUSIC   -> "rgba(0,188,212,0.15)";
-            case VINHETA -> "rgba(156,39,176,0.2)";
-            case JINGLE  -> "rgba(76,175,80,0.2)";
-            case SPOT    -> "rgba(255,152,0,0.2)";
-            case EFEITOS -> "rgba(244,67,54,0.15)";
+            case MUSIC      -> "rgba(0,188,212,0.15)";
+            case VINHETA    -> "rgba(156,39,176,0.2)";
+            case JINGLE     -> "rgba(76,175,80,0.2)";
+            case SPOT       -> "rgba(255,152,0,0.2)";
+            case EFEITOS    -> "rgba(244,67,54,0.15)";
+            case HORA_CERTA -> "rgba(157,154,184,0.15)";
         };
     }
 
     private static String typeColor(TrackType t) {
         return switch (t) {
-            case MUSIC   -> "#00d4ff";
-            case VINHETA -> "#ce93d8";
-            case JINGLE  -> "#a5d6a7";
-            case SPOT    -> "#ffcc80";
-            case EFEITOS -> "#ef9a9a";
+            case MUSIC      -> "#00d4ff";
+            case VINHETA    -> "#ce93d8";
+            case JINGLE     -> "#a5d6a7";
+            case SPOT       -> "#ffcc80";
+            case EFEITOS    -> "#ef9a9a";
+            case HORA_CERTA -> "#9d9ab8";
         };
     }
 

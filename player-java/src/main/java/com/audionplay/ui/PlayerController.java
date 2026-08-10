@@ -66,7 +66,7 @@ public class PlayerController {
         primaryPlayer.play();
         notifyState(PlaybackState.PLAYING);
 
-        // Análise de waveform em background
+        // Análise de waveform em background (suporta path multi-arquivo via concat filter)
         waveformAnalyzer.analyze(
             track.filePath(),
             200,

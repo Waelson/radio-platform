@@ -35,10 +35,18 @@ public record TrackEntity(
     // ── Enums mapeados ao CHECK do banco ──────────────────────────────────────
 
     public enum TrackType {
-        MUSIC, VINHETA, JINGLE, SPOT, EFEITOS;
+        MUSIC, VINHETA, JINGLE, SPOT, EFEITOS, HORA_CERTA;
 
         public static TrackType of(String v) {
-            return v == null ? MUSIC : valueOf(v.trim().toUpperCase());
+            if (v == null) return MUSIC;
+            return switch (v.trim().toUpperCase()) {
+                case "HORA_CERTA" -> HORA_CERTA;
+                case "VINHETA"    -> VINHETA;
+                case "JINGLE"     -> JINGLE;
+                case "SPOT"       -> SPOT;
+                case "EFEITOS"    -> EFEITOS;
+                default           -> MUSIC;
+            };
         }
     }
 
@@ -66,5 +74,22 @@ public record TrackEntity(
     /** True se a faixa já passou pela análise de loudness. */
     public boolean isLoudnessAnalyzed() {
         return loudnessStatus == LoudnessStatus.DONE;
+    }
+
+    /**
+     * Cria um item virtual de Hora Certa (não vem do banco de dados).
+     *
+     * @param concatPath  caminhos dos arquivos separados por "|"  (hora|minuto)
+     * @param durationMs  duração total estimada em ms
+     */
+    public static TrackEntity horaCerta(String concatPath, int durationMs) {
+        return new TrackEntity(
+            null, concatPath, "Hora Certa", "", "",
+            TrackType.HORA_CERTA, durationMs,
+            null, null, null, null,
+            null, null, LoudnessStatus.PENDING, null, null,
+            null, null, null, null,
+            java.time.LocalDateTime.now()
+        );
     }
 }

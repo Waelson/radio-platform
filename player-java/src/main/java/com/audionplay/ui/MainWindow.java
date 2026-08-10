@@ -9,6 +9,9 @@ import com.audionplay.audio.ffmpeg.LinearCrossfadeEngine;
 import com.audionplay.db.entity.TrackEntity;
 import com.audionplay.domain.PlaybackState;
 import com.audionplay.domain.Track;
+import com.audionplay.horacerta.HoraCertaConfig;
+import com.audionplay.horacerta.HoraCertaResolver;
+import com.audionplay.horacerta.HoraCertaScheduler;
 import com.audionplay.ui.components.*;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -53,6 +56,9 @@ public class MainWindow {
     private SoftwareMixer     mixer;
     private FfmpegAudioPlayer cartPlayer;
 
+    // ── Hora Certa ────────────────────────────────────────────────────────
+    private HoraCertaScheduler horaCertaScheduler;
+
     // ── Ponto de entrada ──────────────────────────────────────────────────────
 
     public StackPane build(Stage stage) {
@@ -69,6 +75,7 @@ public class MainWindow {
         mixer.start();
         buildController();
         wireActions();
+        initHoraCerta();
 
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color:" + Theme.BG_MAIN + ";");
@@ -287,29 +294,49 @@ public class MainWindow {
     private void playTrack(TrackEntity entity) {
         handleNavigation("NO AR");
 
-        nowPlaying.setStatus("Carregando...");
         nowPlaying.clearWaveform();
         nowPlaying.resetProgress();
         nowPlaying.setCurrentTime("00:00");
         nowPlaying.setRemainingTime("00:00");
+
+        boolean isHoraCerta = entity.type() == TrackEntity.TrackType.HORA_CERTA;
+
+        // Hora-certa com path vazio (sentinela da rotação) → resolve os arquivos agora
+        if (isHoraCerta && entity.path().isBlank()) {
+            try {
+                HoraCertaConfig cfg = HoraCertaConfig.load();
+                HoraCertaResolver resolver = new HoraCertaResolver(cfg);
+                java.time.LocalTime now = java.time.LocalTime.now();
+                java.util.List<String> paths = resolver.resolve(now);
+                int durationMs = resolver.probeTotalDurationMs(paths);
+                if (durationMs <= 0) durationMs = 10_000;
+                String concatPath = String.join("|", paths);
+                entity = TrackEntity.horaCerta(concatPath, durationMs);
+            } catch (Exception ex) {
+                nowPlaying.setStatus("Hora Certa: " + ex.getMessage());
+                System.err.println("[HoraCerta] Erro ao resolver para playback: " + ex.getMessage());
+                // Pula para o próximo item
+                Platform.runLater(this::playNext);
+                return;
+            }
+        }
 
         double duration = entity.durationMs() / 1000.0;
         Double cueIn  = entity.cueInMs()  != null ? entity.cueInMs()  / 1000.0 : null;
         Double cueOut = entity.cueOutMs() != null ? entity.cueOutMs() / 1000.0 : null;
         Double outro  = entity.outroMs()  != null ? entity.outroMs()  / 1000.0 : null;
         Double intro  = entity.introMs()  != null ? entity.introMs()  / 1000.0 : null;
-        Track track = new Track(
-            entity.path(),
-            entity.title().isBlank() ? entity.path() : entity.title(),
-            entity.artist(),
-            duration,
-            cueIn,
-            cueOut,
-            outro,
-            intro
-        );
+
+        String title = isHoraCerta ? "Hora Certa"
+            : (entity.title().isBlank() ? entity.path() : entity.title());
+
+        Track track = new Track(entity.path(), title, entity.artist(),
+            duration, cueIn, cueOut, outro, intro);
+
         nowPlaying.setTrack(track.title(), track.artist(), Theme.formatTime(duration));
         nowPlaying.setTrackMeta(entity);
+        nowPlaying.setStatus(isHoraCerta ? "Hora Certa..." : "Carregando...");
+
         controller.loadAndPlay(track);
         queuePanel.setIsPlaying(true);
         updateNextTrackBar();
@@ -388,6 +415,58 @@ public class MainWindow {
         } else {
             controller.play();
         }
+    }
+
+    // ── Hora Certa ────────────────────────────────────────────────────────────
+
+    private void initHoraCerta() {
+        horaCertaScheduler = new HoraCertaScheduler();
+
+        horaCertaScheduler.setOnFire((paths, time) -> {
+            // Resolve duração total dos arquivos
+            HoraCertaConfig cfg      = HoraCertaConfig.load();
+            HoraCertaResolver resolver = new HoraCertaResolver(cfg);
+            int durationMs = resolver.probeTotalDurationMs(paths);
+            if (durationMs <= 0) durationMs = 10_000; // fallback 10s
+
+            // Caminho concat: "hora.mp3|minuto.mp3"
+            String concatPath = String.join("|", paths);
+            TrackEntity hc    = TrackEntity.horaCerta(concatPath, durationMs);
+
+            // Insere após o item atual (AFTER_CURRENT, igual ao Go)
+            queuePanel.insertAfterCurrent(hc);
+
+            String label = String.format("Hora Certa %02d:%02d enfileirada", time.getHour(), time.getMinute());
+            Toast.show(rootStack, label);
+
+            // Se a fila estava vazia e o engine está parado, inicia imediatamente
+            if (controller.getState() == PlaybackState.STOPPED) {
+                queuePanel.peekFirst().ifPresent(this::playTrack);
+            }
+            updateControls();
+        });
+
+        horaCertaScheduler.setOnError(err ->
+            Toast.show(rootStack, "Hora Certa: " + err));
+
+        // Na primeira execução (hoursDir vazio), aplica e salva os defaults
+        HoraCertaConfig cfg = HoraCertaConfig.load();
+        if (cfg.hoursDir().isBlank()) {
+            cfg = HoraCertaConfig.defaults();
+            cfg.save();
+        }
+        horaCertaScheduler.applyConfig(cfg);
+
+        // Botão ⏰ na info-bar da fila abre o dialog de configuração
+        queuePanel.setOnHoraCertaBtn(() -> {
+            HoraCertaConfigDialog dialog = new HoraCertaConfigDialog(stage.getScene().getWindow());
+            dialog.setOnSaved(() -> {
+                // Reaplica configuração ao salvar
+                horaCertaScheduler.applyConfig(HoraCertaConfig.load());
+                Toast.show(rootStack, "Configuração de Hora Certa salva");
+            });
+            dialog.show();
+        });
     }
 
     // ── Utilitários ───────────────────────────────────────────────────────────

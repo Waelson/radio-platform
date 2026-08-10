@@ -43,6 +43,7 @@ public class QueuePanel extends VBox {
     private final List<TrackEntity>   entities       = new ArrayList<>();
     private Consumer<TrackEntity> onPlay;
     private Runnable              onQueueChanged;
+    private Runnable              onHoraCertaBtn;
     private TrackEntity           draggedEntity  = null;
 
     public QueuePanel() {
@@ -81,8 +82,9 @@ public class QueuePanel extends VBox {
 
     // ── API pública ───────────────────────────────────────────────────────────
 
-    public void setOnPlay(Consumer<TrackEntity> h) { this.onPlay = h; }
-    public void setOnQueueChanged(Runnable h)      { this.onQueueChanged = h; }
+    public void setOnPlay(Consumer<TrackEntity> h)  { this.onPlay         = h; }
+    public void setOnQueueChanged(Runnable h)       { this.onQueueChanged  = h; }
+    public void setOnHoraCertaBtn(Runnable h)       { this.onHoraCertaBtn = h; }
 
     public void setIsPlaying(boolean playing) {
         this.isPlaying = playing;
@@ -149,6 +151,22 @@ public class QueuePanel extends VBox {
         fireQueueChanged();
     }
 
+    /**
+     * Insere a entidade na posição 1 (logo após o item em reprodução) se a fila
+     * tiver itens, ou na posição 0 se estiver vazia — comportamento AFTER_CURRENT,
+     * compatível com o modo padrão do scheduler do playout Go.
+     */
+    public void insertAfterCurrent(TrackEntity entity) {
+        int pos = (!entities.isEmpty() && isPlaying) ? 1 : 0;
+        pos = Math.min(pos, entities.size());
+        entities.add(pos, entity);
+        totalItems++;
+        totalMs += entity.durationMs();
+        updateStats();
+        rebuildList();
+        fireQueueChanged();
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  LAYOUT
     // ══════════════════════════════════════════════════════════════════════════
@@ -207,6 +225,7 @@ public class QueuePanel extends VBox {
     private HBox buildInfoBar() {
         Label clearBtn = sqBtn("∅");
         Label horaBtn  = sqBtn("⏰");
+        horaBtn.setOnMouseClicked(e -> { if (onHoraCertaBtn != null) onHoraCertaBtn.run(); });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -386,10 +405,10 @@ public class QueuePanel extends VBox {
         String dur   = Theme.formatTime(entity.durationMs() / 1000.0);
         String title = entity.title().isBlank() ? entity.path() : entity.title();
         QueueCard card;
-        if (entity.type() == TrackType.MUSIC) {
+        if (entity.type() == TrackType.HORA_CERTA) {
+            card = QueueCard.horaCerta("--:--", dur);
+        } else if (entity.type() == TrackType.MUSIC) {
             card = QueueCard.music(title, entity.artist(), "--:--", dur, nextBadge);
-        } else if (entity.type() == TrackType.VINHETA || entity.type() == TrackType.JINGLE) {
-            card = QueueCard.vinheta(title, "--:--", dur);
         } else {
             card = QueueCard.vinheta(title, "--:--", dur);
         }
