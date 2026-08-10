@@ -8,10 +8,28 @@ public record Track(
     String filePath,
     String title,
     String artist,
-    double durationSeconds
+    double durationSeconds,
+    Double cueInSeconds,   // null = início do arquivo
+    Double cueOutSeconds   // null = fim do arquivo
 ) {
+    /** Construtor sem CUE points — inicia do zero, toca até o fim. */
+    public Track(String filePath, String title, String artist, double durationSeconds) {
+        this(filePath, title, artist, durationSeconds, null, null);
+    }
+
     public static Track unknown(String filePath) {
         String name = filePath.substring(filePath.lastIndexOf('/') + 1);
         return new Track(filePath, name, "Desconhecido", 0.0);
+    }
+
+    /** Ponto de início efetivo em segundos. */
+    public double effectiveStart() {
+        return cueInSeconds != null ? cueInSeconds : 0.0;
+    }
+
+    /** Duração efetiva da janela CUE IN→CUE OUT para barra de progresso. */
+    public double effectiveDuration() {
+        double end = cueOutSeconds != null ? cueOutSeconds : durationSeconds;
+        return Math.max(0, end - effectiveStart());
     }
 }

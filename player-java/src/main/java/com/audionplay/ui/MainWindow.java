@@ -258,11 +258,15 @@ public class MainWindow {
         nowPlaying.setRemainingTime("00:00");
 
         double duration = entity.durationMs() / 1000.0;
+        Double cueIn  = entity.cueInMs()  != null ? entity.cueInMs()  / 1000.0 : null;
+        Double cueOut = entity.cueOutMs() != null ? entity.cueOutMs() / 1000.0 : null;
         Track track = new Track(
             entity.path(),
             entity.title().isBlank() ? entity.path() : entity.title(),
             entity.artist(),
-            duration
+            duration,
+            cueIn,
+            cueOut
         );
         nowPlaying.setTrack(track.title(), track.artist(), Theme.formatTime(duration));
         nowPlaying.setTrackMeta(entity);

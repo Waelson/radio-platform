@@ -160,12 +160,15 @@ public class PlayerController {
     // ── Handlers internos ─────────────────────────────────────────────────────
 
     private void handleTimeUpdate(double currentSeconds) {
-        double total = loadedTrack != null ? loadedTrack.durationSeconds() : 1.0;
-        double frac  = total > 0 ? currentSeconds / total : 0.0;
+        if (loadedTrack == null) return;
+        double start    = loadedTrack.effectiveStart();
+        double duration = loadedTrack.effectiveDuration();
+        double elapsed  = Math.max(0, currentSeconds - start);
+        double frac     = duration > 0 ? Math.min(1.0, elapsed / duration) : 0.0;
 
         if (onProgressUpdate  != null) onProgressUpdate.accept(frac);
-        if (onTimeUpdate      != null) onTimeUpdate.accept(formatTime(currentSeconds));
-        if (onRemainingUpdate != null) onRemainingUpdate.accept(formatTime(total - currentSeconds));
+        if (onTimeUpdate      != null) onTimeUpdate.accept(formatTime(elapsed));
+        if (onRemainingUpdate != null) onRemainingUpdate.accept(formatTime(Math.max(0, duration - elapsed)));
     }
 
     private void handleEndOfTrack() {

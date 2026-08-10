@@ -45,6 +45,7 @@ public class FfmpegAudioPlayer implements AudioPlayer {
     private volatile double        seekOffset = 0.0;
 
     private Track          currentTrack;
+    private volatile double cueOutSeconds = -1; // -1 = sem limite
     private Process        ffmpegProcess;
     private SourceDataLine dataLine;      // apenas no modo standalone
     private Thread         playbackThread;
@@ -74,8 +75,9 @@ public class FfmpegAudioPlayer implements AudioPlayer {
     @Override
     public synchronized void load(Track track) {
         stop();
-        this.currentTrack = track;
-        this.seekOffset   = 0.0;
+        this.currentTrack  = track;
+        this.seekOffset    = track.effectiveStart();
+        this.cueOutSeconds = track.cueOutSeconds() != null ? track.cueOutSeconds() : -1;
     }
 
     @Override
@@ -170,7 +172,8 @@ public class FfmpegAudioPlayer implements AudioPlayer {
                 System.out.println("[Player] SourceDataLine aberta: " + dataLine.getBufferSize() + " bytes");
             }
 
-            List<String> cmd = buildCommand(currentTrack.filePath(), fromSeconds);
+            double limitSec = (cueOutSeconds > 0) ? Math.max(0, cueOutSeconds - fromSeconds) : 0;
+            List<String> cmd = buildCommand(currentTrack.filePath(), fromSeconds, limitSec);
             ffmpegProcess = new ProcessBuilder(cmd)
                 .redirectError(ProcessBuilder.Redirect.DISCARD)
                 .start();
@@ -306,16 +309,19 @@ public class FfmpegAudioPlayer implements AudioPlayer {
         return new float[]{rmsL, rmsR};
     }
 
-    private static List<String> buildCommand(String filePath, double fromSeconds) {
-        return List.of(
-            FfmpegLocator.ffmpeg(),
-            "-ss",    String.format(java.util.Locale.US, "%.3f", fromSeconds),
-            "-i",     filePath,
-            "-f",     "s16le",
-            "-ar",    String.valueOf(SAMPLE_RATE),
-            "-ac",    String.valueOf(CHANNELS),
-            "-loglevel", "quiet",
-            "pipe:1"
-        );
+    private static List<String> buildCommand(String filePath, double fromSeconds, double limitSeconds) {
+        java.util.List<String> cmd = new java.util.ArrayList<>();
+        cmd.add(FfmpegLocator.ffmpeg());
+        cmd.add("-ss"); cmd.add(String.format(java.util.Locale.US, "%.3f", fromSeconds));
+        cmd.add("-i");  cmd.add(filePath);
+        if (limitSeconds > 0) {
+            cmd.add("-t"); cmd.add(String.format(java.util.Locale.US, "%.3f", limitSeconds));
+        }
+        cmd.add("-f");       cmd.add("s16le");
+        cmd.add("-ar");      cmd.add(String.valueOf(SAMPLE_RATE));
+        cmd.add("-ac");      cmd.add(String.valueOf(CHANNELS));
+        cmd.add("-loglevel"); cmd.add("quiet");
+        cmd.add("pipe:1");
+        return cmd;
     }
 }
