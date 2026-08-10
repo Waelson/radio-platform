@@ -39,8 +39,9 @@ public class PlayerController {
     private Consumer<double[]>   onWaveformReady;
     private Consumer<String>     onError;
     private Consumer<PlaybackState> onStateChange;
-    private Runnable             onTrackEnd;       // chamado ao fim natural da faixa
-    private Runnable             onAutoCrossfade;  // chamado quando outro_ms é atingido
+    private Runnable             onTrackEnd;         // chamado ao fim natural da faixa
+    private Runnable             onAutoCrossfade;    // chamado quando outro_ms é atingido
+    private Consumer<Double>     onIntroCountdown;   // segundos restantes até intro (0 = limpar)
 
     public PlayerController(AudioPlayer primary,
                             AudioPlayer secondary,
@@ -155,6 +156,7 @@ public class PlayerController {
     public void setOnStateChange(Consumer<PlaybackState> cb)  { this.onStateChange     = cb; }
     public void setOnTrackEnd(Runnable cb)                    { this.onTrackEnd        = cb; }
     public void setOnAutoCrossfade(Runnable cb)               { this.onAutoCrossfade   = cb; }
+    public void setOnIntroCountdown(Consumer<Double> cb)      { this.onIntroCountdown  = cb; }
 
     /** float[0]=rmsL, float[1]=rmsR, normalizados 0.0–1.0 */
     public void setOnLevelUpdate(Consumer<float[]> cb) {
@@ -174,6 +176,14 @@ public class PlayerController {
         if (onProgressUpdate  != null) onProgressUpdate.accept(frac);
         if (onTimeUpdate      != null) onTimeUpdate.accept(formatTime(elapsed));
         if (onRemainingUpdate != null) onRemainingUpdate.accept(formatTime(Math.max(0, duration - elapsed)));
+
+        // Countdown de intro para o locutor
+        Double intro = loadedTrack.introSeconds();
+        Consumer<Double> icCb = onIntroCountdown;
+        if (icCb != null) {
+            double remaining = intro != null ? Math.max(0, intro - currentSeconds) : 0;
+            javafx.application.Platform.runLater(() -> icCb.accept(remaining));
+        }
 
         // Disparo automático de crossfade ao atingir outro_ms
         Double outro = loadedTrack.outroSeconds();

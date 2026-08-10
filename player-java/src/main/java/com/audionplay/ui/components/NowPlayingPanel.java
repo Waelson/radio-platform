@@ -46,6 +46,10 @@ public class NowPlayingPanel extends VBox {
     private final Region progressFill;
     private double currentFraction = 0.0;
 
+    // ── Countdown de intro ────────────────────────────────────────────────────
+    private final HBox  introCountdownRow;
+    private final Label introCountdownLabel;
+
     // ── Campos do topbar ──────────────────────────────────────────────────────
     private final Circle liveDot;
     private final Label  liveBadgeLabel;
@@ -151,6 +155,25 @@ public class NowPlayingPanel extends VBox {
         progressTrack.widthProperty().addListener((obs, o, n) ->
             progressFill.setPrefWidth(n.doubleValue() * currentFraction));
 
+        // Countdown de intro
+        introCountdownLabel = new Label("INTRO em 0.0s");
+        introCountdownLabel.setStyle(
+            "-fx-font-size:13px;-fx-font-weight:900;" +
+            "-fx-text-fill:#36d399;" +
+            "-fx-font-family:'Courier New',monospace;"
+        );
+        Label introIcon = new Label("▶");
+        introIcon.setStyle("-fx-font-size:10px;-fx-text-fill:#36d399;");
+        introCountdownRow = new HBox(6, introIcon, introCountdownLabel);
+        introCountdownRow.setAlignment(Pos.CENTER);
+        introCountdownRow.setPadding(new Insets(4, 16, 4, 16));
+        introCountdownRow.setStyle(
+            "-fx-background-color:rgba(54,211,153,0.09);" +
+            "-fx-border-color:rgba(54,211,153,0.22);-fx-border-width:1 0 1 0;"
+        );
+        introCountdownRow.setVisible(false);
+        introCountdownRow.setManaged(false);
+
         // Live badge
         liveDot = new Circle(3.5, Color.web("#4a6478"));
         liveBadgeLabel = new Label("NADA TOCANDO");
@@ -193,6 +216,7 @@ public class NowPlayingPanel extends VBox {
             buildContent(),
             waveformView,
             buildProgressWrap(),
+            introCountdownRow,
             buildTimesRow(),
             buildControls()
         );
@@ -215,6 +239,21 @@ public class NowPlayingPanel extends VBox {
 
     public void setCurrentTime(String t)        { currentTimeLabel.setText(t); }
     public void setRemainingTime(String t)      { remainingTimeLabel.setText(t); }
+
+    /**
+     * Atualiza o countdown de intro (tempo até o locutor parar de falar).
+     * @param secondsRemaining segundos restantes até o intro; 0 ou negativo = ocultar.
+     */
+    public void setIntroCountdown(double secondsRemaining) {
+        if (secondsRemaining > 0) {
+            introCountdownLabel.setText(String.format("INTRO em %.1fs", secondsRemaining));
+            introCountdownRow.setVisible(true);
+            introCountdownRow.setManaged(true);
+        } else {
+            introCountdownRow.setVisible(false);
+            introCountdownRow.setManaged(false);
+        }
+    }
     public void setWaveformPeaks(double[] peaks){ waveformView.setPeaks(peaks); }
     public void clearWaveform()                 { waveformView.clear(); }
 
@@ -290,6 +329,7 @@ public class NowPlayingPanel extends VBox {
         clearWaveform();
         resetProgress();
         clearMeta();
+        setIntroCountdown(0);
     }
 
     private void clearMeta() {

@@ -11,17 +11,24 @@ public record Track(
     double durationSeconds,
     Double cueInSeconds,    // null = início do arquivo
     Double cueOutSeconds,   // null = fim do arquivo
-    Double outroSeconds     // null = sem crossfade automático
+    Double outroSeconds,    // null = sem crossfade automático
+    Double introSeconds     // null = sem countdown de intro para o locutor
 ) {
-    /** Construtor sem CUE/outro points. */
+    /** Construtor sem CUE/outro/intro points. */
     public Track(String filePath, String title, String artist, double durationSeconds) {
-        this(filePath, title, artist, durationSeconds, null, null, null);
+        this(filePath, title, artist, durationSeconds, null, null, null, null);
     }
 
-    /** Construtor com CUE IN/OUT mas sem outro. */
+    /** Construtor com CUE IN/OUT mas sem outro/intro. */
     public Track(String filePath, String title, String artist, double durationSeconds,
                  Double cueInSeconds, Double cueOutSeconds) {
-        this(filePath, title, artist, durationSeconds, cueInSeconds, cueOutSeconds, null);
+        this(filePath, title, artist, durationSeconds, cueInSeconds, cueOutSeconds, null, null);
+    }
+
+    /** Construtor com CUE IN/OUT + outro, sem intro. */
+    public Track(String filePath, String title, String artist, double durationSeconds,
+                 Double cueInSeconds, Double cueOutSeconds, Double outroSeconds) {
+        this(filePath, title, artist, durationSeconds, cueInSeconds, cueOutSeconds, outroSeconds, null);
     }
 
     public static Track unknown(String filePath) {

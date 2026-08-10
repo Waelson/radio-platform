@@ -147,11 +147,15 @@ public class MainWindow {
         controller.setOnTimeUpdate(nowPlaying::setCurrentTime);
         controller.setOnRemainingUpdate(nowPlaying::setRemainingTime);
         controller.setOnWaveformReady(nowPlaying::setWaveformPeaks);
+        controller.setOnIntroCountdown(nowPlaying::setIntroCountdown);
         controller.setOnError(err -> nowPlaying.setStatus("Erro: " + err));
         controller.setOnStateChange(state -> {
             nowPlaying.applyState(state);
             if (state != PlaybackState.PLAYING) vuMeter.startDecay();
-            if (state == PlaybackState.STOPPED) queuePanel.setIsPlaying(false);
+            if (state == PlaybackState.STOPPED) {
+                queuePanel.setIsPlaying(false);
+                nowPlaying.setIntroCountdown(0);
+            }
             updateControls();
         });
         controller.setOnTrackEnd(() -> Platform.runLater(this::playNext));
@@ -162,10 +166,11 @@ public class MainWindow {
                 Double ci     = nextEntity.cueInMs()  != null ? nextEntity.cueInMs()  / 1000.0 : null;
                 Double co     = nextEntity.cueOutMs() != null ? nextEntity.cueOutMs() / 1000.0 : null;
                 Double ot     = nextEntity.outroMs()  != null ? nextEntity.outroMs()  / 1000.0 : null;
+                Double it     = nextEntity.introMs()  != null ? nextEntity.introMs()  / 1000.0 : null;
                 Track nextTrack = new Track(
                     nextEntity.path(),
                     nextEntity.title().isBlank() ? nextEntity.path() : nextEntity.title(),
-                    nextEntity.artist(), dur, ci, co, ot
+                    nextEntity.artist(), dur, ci, co, ot, it
                 );
                 nowPlaying.setCrossfadeInProgress(true);
                 nowPlaying.setStatus("Crossfade automático...");
@@ -292,6 +297,7 @@ public class MainWindow {
         Double cueIn  = entity.cueInMs()  != null ? entity.cueInMs()  / 1000.0 : null;
         Double cueOut = entity.cueOutMs() != null ? entity.cueOutMs() / 1000.0 : null;
         Double outro  = entity.outroMs()  != null ? entity.outroMs()  / 1000.0 : null;
+        Double intro  = entity.introMs()  != null ? entity.introMs()  / 1000.0 : null;
         Track track = new Track(
             entity.path(),
             entity.title().isBlank() ? entity.path() : entity.title(),
@@ -299,7 +305,8 @@ public class MainWindow {
             duration,
             cueIn,
             cueOut,
-            outro
+            outro,
+            intro
         );
         nowPlaying.setTrack(track.title(), track.artist(), Theme.formatTime(duration));
         nowPlaying.setTrackMeta(entity);
