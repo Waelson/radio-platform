@@ -29,7 +29,8 @@ public class PlayerController {
     private final WaveformAnalyzer waveformAnalyzer;
     private final CrossfadeEngine  crossfadeEngine;
 
-    private Track loadedTrack;
+    private Track   loadedTrack;
+    private boolean crossfadeTriggered = false; // evita disparo duplo por outro_ms
 
     // Callbacks para a UI atualizar
     private Consumer<Double>     onProgressUpdate; // fração 0.0–1.0
@@ -39,6 +40,7 @@ public class PlayerController {
     private Consumer<String>     onError;
     private Consumer<PlaybackState> onStateChange;
     private Runnable             onTrackEnd;       // chamado ao fim natural da faixa
+    private Runnable             onAutoCrossfade;  // chamado quando outro_ms é atingido
 
     public PlayerController(AudioPlayer primary,
                             AudioPlayer secondary,
@@ -57,7 +59,8 @@ public class PlayerController {
     // ── Ações disparadas pela UI ──────────────────────────────────────────────
 
     public void loadAndPlay(Track track) {
-        this.loadedTrack = track;
+        this.loadedTrack        = track;
+        this.crossfadeTriggered = false;
         primaryPlayer.load(track);
         primaryPlayer.play();
         notifyState(PlaybackState.PLAYING);
@@ -121,7 +124,8 @@ public class PlayerController {
                 primaryPlayer   = secondaryPlayer;
                 secondaryPlayer = tmp;
 
-                loadedTrack = nextTrack;
+                loadedTrack        = nextTrack;
+                crossfadeTriggered = false; // permite que o outro da próxima faixa dispare
                 notifyState(PlaybackState.PLAYING);
                 if (onComplete != null) onComplete.run();
             }
@@ -150,6 +154,7 @@ public class PlayerController {
     public void setOnError(Consumer<String> cb)               { this.onError           = cb; }
     public void setOnStateChange(Consumer<PlaybackState> cb)  { this.onStateChange     = cb; }
     public void setOnTrackEnd(Runnable cb)                    { this.onTrackEnd        = cb; }
+    public void setOnAutoCrossfade(Runnable cb)               { this.onAutoCrossfade   = cb; }
 
     /** float[0]=rmsL, float[1]=rmsR, normalizados 0.0–1.0 */
     public void setOnLevelUpdate(Consumer<float[]> cb) {
@@ -169,9 +174,18 @@ public class PlayerController {
         if (onProgressUpdate  != null) onProgressUpdate.accept(frac);
         if (onTimeUpdate      != null) onTimeUpdate.accept(formatTime(elapsed));
         if (onRemainingUpdate != null) onRemainingUpdate.accept(formatTime(Math.max(0, duration - elapsed)));
+
+        // Disparo automático de crossfade ao atingir outro_ms
+        Double outro = loadedTrack.outroSeconds();
+        if (!crossfadeTriggered && outro != null && currentSeconds >= outro) {
+            crossfadeTriggered = true;
+            if (onAutoCrossfade != null) javafx.application.Platform.runLater(onAutoCrossfade);
+        }
     }
 
     private void handleEndOfTrack() {
+        // Durante crossfade, o fim natural da música A é esperado e não deve acionar playNext
+        if (crossfadeEngine.isRunning()) return;
         notifyState(PlaybackState.STOPPED);
         if (onTrackEnd != null) onTrackEnd.run();
     }

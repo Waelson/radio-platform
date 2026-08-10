@@ -155,6 +155,37 @@ public class MainWindow {
             updateControls();
         });
         controller.setOnTrackEnd(() -> Platform.runLater(this::playNext));
+        controller.setOnAutoCrossfade(() -> {
+            // A fila usa Option A: index 0 = faixa tocando, index 1 = próxima
+            queuePanel.peekSecond().ifPresent(nextEntity -> {
+                double dur    = nextEntity.durationMs() / 1000.0;
+                Double ci     = nextEntity.cueInMs()  != null ? nextEntity.cueInMs()  / 1000.0 : null;
+                Double co     = nextEntity.cueOutMs() != null ? nextEntity.cueOutMs() / 1000.0 : null;
+                Double ot     = nextEntity.outroMs()  != null ? nextEntity.outroMs()  / 1000.0 : null;
+                Track nextTrack = new Track(
+                    nextEntity.path(),
+                    nextEntity.title().isBlank() ? nextEntity.path() : nextEntity.title(),
+                    nextEntity.artist(), dur, ci, co, ot
+                );
+                nowPlaying.setCrossfadeInProgress(true);
+                nowPlaying.setStatus("Crossfade automático...");
+                controller.crossfadeTo(nextTrack, () -> {
+                    queuePanel.pollFirst(); // remove nextEntity da fila (agora está tocando)
+                    nowPlaying.setTrack(nextTrack.title(), nextTrack.artist(), Theme.formatTime(nextTrack.effectiveDuration()));
+                    nowPlaying.setTrackMeta(nextEntity);
+                    nowPlaying.resetProgress();
+                    nowPlaying.clearWaveform();
+                    nowPlaying.setCrossfadeInProgress(false);
+                    nowPlaying.setStatus("Analisando waveform...");
+                    new com.audionplay.audio.ffmpeg.FfmpegWaveformAnalyzer().analyze(
+                        nextTrack.filePath(), 200,
+                        peaks -> { nowPlaying.setWaveformPeaks(peaks); nowPlaying.setStatus(""); },
+                        err   -> nowPlaying.setStatus("Erro waveform: " + err)
+                    );
+                    updateControls();
+                });
+            });
+        });
         // VU meter alimentado pelo mixer — reflete o mix de todos os canais
         mixer.setOnLevelUpdate(vuMeter::applyLevels);
     }
@@ -260,13 +291,15 @@ public class MainWindow {
         double duration = entity.durationMs() / 1000.0;
         Double cueIn  = entity.cueInMs()  != null ? entity.cueInMs()  / 1000.0 : null;
         Double cueOut = entity.cueOutMs() != null ? entity.cueOutMs() / 1000.0 : null;
+        Double outro  = entity.outroMs()  != null ? entity.outroMs()  / 1000.0 : null;
         Track track = new Track(
             entity.path(),
             entity.title().isBlank() ? entity.path() : entity.title(),
             entity.artist(),
             duration,
             cueIn,
-            cueOut
+            cueOut,
+            outro
         );
         nowPlaying.setTrack(track.title(), track.artist(), Theme.formatTime(duration));
         nowPlaying.setTrackMeta(entity);

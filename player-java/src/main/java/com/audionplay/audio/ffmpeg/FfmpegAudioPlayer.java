@@ -213,16 +213,18 @@ public class FfmpegAudioPlayer implements AudioPlayer {
                     dataLine.write(out, 0, read);
                     // VU meter (~100ms)
                     long now = System.currentTimeMillis();
-                    if (onLevelUpdate != null && now - lastLevelCallMs >= 100) {
+                    Consumer<float[]> luCb = onLevelUpdate;
+                    if (luCb != null && now - lastLevelCallMs >= 100) {
                         lastLevelCallMs = now;
                         float[] levels = computeRms(out, read);
-                        Platform.runLater(() -> onLevelUpdate.accept(levels));
+                        Platform.runLater(() -> luCb.accept(levels));
                     }
                 }
 
-                // Posição
+                // Posição — captura o callback para evitar race condition com o crossfade
                 double t = getCurrentTime();
-                if (onTimeUpdate != null) Platform.runLater(() -> onTimeUpdate.accept(t));
+                Consumer<Double> tuCb = onTimeUpdate;
+                if (tuCb != null) Platform.runLater(() -> tuCb.accept(t));
             }
 
             // Fim natural do stream
