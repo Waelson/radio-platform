@@ -377,6 +377,12 @@ public class CatalogPanel extends VBox {
                     TrackEntity t = getItem();
                     if (t != null) firePlay(t);
                 });
+                cutBtn.setOnAction(e -> {
+                    TrackEntity t = getItem();
+                    if (t == null) return;
+                    javafx.stage.Window owner = getScene().getWindow();
+                    new CueEditorDialog(owner, t, () -> Platform.runLater(CatalogPanel.this::reload)).show();
+                });
                 queueBtn.setOnAction(e -> {
                     TrackEntity t = getItem();
                     if (t != null) fireAddToQueue(t);

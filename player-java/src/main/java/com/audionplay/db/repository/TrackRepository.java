@@ -231,6 +231,26 @@ public class TrackRepository {
         return rs.wasNull() ? null : v;
     }
 
+    /** Atualiza os CUE points de uma faixa (campos nullable). */
+    public void updateCuePoints(String id, Integer cueInMs, Integer introMs,
+                                Integer outroMs, Integer cueOutMs) throws SQLException {
+        String sql = "UPDATE tracks SET cue_in_ms=?, intro_ms=?, outro_ms=?, cue_out_ms=? WHERE id=?";
+        try (PooledConnection pc = Database.pool().borrow();
+             PreparedStatement ps = pc.get().prepareStatement(sql)) {
+            setNullInt(ps, 1, cueInMs);
+            setNullInt(ps, 2, introMs);
+            setNullInt(ps, 3, outroMs);
+            setNullInt(ps, 4, cueOutMs);
+            ps.setString(5, id);
+            ps.executeUpdate();
+        }
+    }
+
+    private static void setNullInt(PreparedStatement ps, int idx, Integer v) throws SQLException {
+        if (v == null) ps.setNull(idx, java.sql.Types.INTEGER);
+        else ps.setInt(idx, v);
+    }
+
     private static LocalDateTime parseDateTime(String value) {
         if (value == null || value.isBlank()) return null;
         try { return LocalDateTime.parse(value.replace(" ", "T")); }
