@@ -265,6 +265,11 @@ public class NowPlayingPanel extends VBox {
         metaValues[3].setText(fmtMs(entity.outroMs()));
         metaValues[4].setText(fmtMs(entity.cueOutMs()));
 
+        // Marcadores no waveform
+        waveformView.setCueMarkers(entity.cueInMs(), entity.introMs(),
+                                   entity.outroMs(), entity.cueOutMs(),
+                                   entity.durationMs());
+
         // ── GAIN (loudness LUFS se disponível) ────────────────────────────────
         metaValues[5].setText(entity.loudnessLufs() != null
             ? String.format(java.util.Locale.US, "%.1f dB", entity.loudnessLufs())
