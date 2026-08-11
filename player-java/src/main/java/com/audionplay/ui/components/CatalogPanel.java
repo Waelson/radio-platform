@@ -65,7 +65,7 @@ public class CatalogPanel extends VBox {
 
         VBox card = new VBox(0);
         card.setStyle(
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:14;-fx-background-radius:14;"
         );
@@ -91,7 +91,7 @@ public class CatalogPanel extends VBox {
 
     private HBox buildHeader() {
         Label title = new Label("CONSULTAR CATÁLOGO");
-        title.setStyle("-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:#bdd0df;");
+        title.setStyle("-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:#20e6ff;");
 
         // chip verde com dot
         Circle dot = new Circle(3.5, Color.web("#36d399"));
@@ -114,7 +114,7 @@ public class CatalogPanel extends VBox {
 
         Button reloadBtn = new Button("↻  Recarregar");
         reloadBtn.setStyle(
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:7;-fx-background-radius:7;" +
             "-fx-text-fill:#88a0b5;-fx-font-size:10px;" +
@@ -130,8 +130,9 @@ public class CatalogPanel extends VBox {
         hdr.setMinHeight(44);
         hdr.setPadding(new Insets(0, 14, 0, 14));
         hdr.setStyle(
-            "-fx-background-color:rgba(10,22,33,0.7);" +
-            "-fx-border-color:#20384c;-fx-border-width:0 0 1 0;"
+            "-fx-background-color:linear-gradient(from 0% 0% to 0% 100%, #6b6b6b 0%, #555555 22%, #3a3a3a 47%, #080808 49%, #040404 72%, #000000 100%);" +
+            "-fx-border-color:#333333;-fx-border-width:0 0 1 0;" +
+            "-fx-background-radius:14 14 0 0;"
         );
         return hdr;
     }
@@ -207,8 +208,8 @@ public class CatalogPanel extends VBox {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setStyle(
             "-fx-base:#0b1925;-fx-background:#0b1925;" +
-            "-fx-control-inner-background:#0e1b28;" +
-            "-fx-control-inner-background-alt:#0e1b28;" +
+            "-fx-control-inner-background:#000000;" +
+            "-fx-control-inner-background-alt:#000000;" +
             "-fx-accent:#00d4ff;" +
             "-fx-selection-bar:rgba(0,212,255,0.09);" +
             "-fx-selection-bar-non-focused:rgba(0,212,255,0.05);" +
@@ -251,7 +252,7 @@ public class CatalogPanel extends VBox {
         pageInfoLabel.setStyle("-fx-font-size:11px;-fx-text-fill:#5f788e;");
 
         String btnStyle =
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:7;-fx-background-radius:7;" +
             "-fx-text-fill:#88a0b5;-fx-font-size:11px;" +

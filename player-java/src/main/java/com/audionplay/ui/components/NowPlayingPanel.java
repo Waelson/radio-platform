@@ -68,7 +68,7 @@ public class NowPlayingPanel extends VBox {
     private static final String BTN_SECONDARY =
         BTN_BASE +
         "-fx-border-color:#20384c;-fx-border-width:1;" +
-        "-fx-background-color:linear-gradient(to bottom,#122334,#0e1b28);" +
+        "-fx-background-color:#000000;" +
         "-fx-text-fill:#d7e3ec;";
     private static final String BTN_PRIMARY_PLAY =
         BTN_BASE +

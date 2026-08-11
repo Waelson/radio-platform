@@ -25,7 +25,7 @@ public class StreamingPanel extends VBox {
         Label addBtn = new Label("+ Servidor");
         addBtn.setStyle(
             "-fx-pref-height:27;" +
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:7;-fx-background-radius:7;" +
             "-fx-padding:0 8 0 8;" +
@@ -115,7 +115,7 @@ public class StreamingPanel extends VBox {
             "-fx-font-size:10px;-fx-font-weight:700;" +
             "-fx-padding:3 10 3 10;-fx-background-radius:6;-fx-border-radius:6;" +
             "-fx-border-color:" + borderColor + ";-fx-border-width:1;" +
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-text-fill:" + textColor + ";" +
             "-fx-cursor:hand;"
         );

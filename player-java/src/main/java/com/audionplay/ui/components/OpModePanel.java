@@ -21,7 +21,7 @@ public class OpModePanel extends VBox {
         Label studioBadge = new Label("Studio A");
         studioBadge.setStyle(
             "-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:#88a0b5;" +
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:99;-fx-background-radius:99;" +
             "-fx-padding:0 9 0 9;-fx-pref-height:24;"

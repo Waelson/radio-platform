@@ -84,18 +84,19 @@ public final class Theme {
 
     /** Estilo de card do painel direito (or-card). */
     public static final String OR_CARD =
-        "-fx-background-color:#0e1b28;" +
+        "-fx-background-color:#000000;" +
         "-fx-border-color:#20384c;-fx-border-width:1;" +
         "-fx-border-radius:14;-fx-background-radius:14;";
 
     /** Estilo do header do or-card (or-card-header). */
     public static final String OR_CARD_HEADER =
-        "-fx-background-color:rgba(10,22,33,0.7);" +
-        "-fx-border-color:#20384c;-fx-border-width:0 0 1 0;";
+        "-fx-background-color:linear-gradient(from 0% 0% to 0% 100%, #6b6b6b 0%, #555555 22%, #3a3a3a 47%, #080808 49%, #040404 72%, #000000 100%);" +
+        "-fx-border-color:#333333;-fx-border-width:0 0 1 0;" +
+        "-fx-background-radius:14 14 0 0;";
 
     /** Estilo do título do or-card (or-card-title). */
     public static final String OR_TITLE =
-        "-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:#bdd0df;";
+        "-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:#20e6ff;";
 
     /** Cria um HBox header de or-card com título e nó opcional à direita. */
     public static javafx.scene.layout.HBox orCardHeader(String title, javafx.scene.Node... right) {
@@ -104,7 +105,7 @@ public final class Theme {
         hdr.setMinHeight(42);
         hdr.setPadding(new javafx.geometry.Insets(0, 12, 0, 12));
         hdr.setStyle(OR_CARD_HEADER);
-        Label t = new Label(title);
+        Label t = new Label(title.toUpperCase());
         t.setStyle(OR_TITLE);
         hdr.getChildren().add(t);
         if (right.length > 0) {

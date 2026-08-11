@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playout Concept — Rádio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-main:    #000000;
+    --bg-card:    #000000;
+    --bg-dark:    #000000;
+    --border:     #1a3044;
+    --text-pri:   #ddeeff;
+    --text-sec:   #7a9ab5;
+    --text-dim:   #3d5a6a;
+    --accent:     #3b8ec8;
+    --accent-dim: rgba(59,142,200,0.15);
+    --green:      #3cff70;
+    --green-dim:  rgba(60,255,112,0.15);
+    --orange:     #ff8c00;
+    --orange-dim: rgba(255,140,0,0.15);
+    --amber:      #ff8c00;
+    --amber-dim:  rgba(255,140,0,0.12);
+    --red:        #e05050;
+    --purple:     #9d9ab8;
+    --radius:     14px;
+    --radius-sm:  8px;
+  }
+
+  body {
+    background: var(--bg-main);
+    color: var(--text-pri);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR broadcast ───────────────────────────────────────── */
+  .topbar {
+    height: 52px;
+    background-color: #111;
+    background-image: linear-gradient(to bottom, #6b6b6b 0%, #555555 22%, #3a3a3a 47%, #080808 49%, #040404 72%, #000000 100%);
+    border-bottom: 2px solid #1a2a1a;
+    display: flex; align-items: stretch;
+    flex-shrink: 0; overflow: hidden;
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+  }
+
+  /* divisor vertical reutilizável */
+  .tb-sep {
+    width: 1px; background: linear-gradient(to bottom, transparent, #2a4a2a 30%, #2a4a2a 70%, transparent);
+    margin: 6px 0; flex-shrink: 0;
+  }
+
+  /* célula genérica */
+  .tb-cell {
+    display: flex; align-items: center; justify-content: center;
+    gap: 7px; padding: 0 14px; flex-shrink: 0;
+  }
+
+  /* logo / estação */
+  .tb-station {
+    padding: 0 14px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,255,80,.04);
+  }
+  .tb-station-ring {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 2px solid #3cff70;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 10px rgba(60,255,112,.3), inset 0 0 6px rgba(60,255,112,.1);
+    font-size: 17px; color: #3cff70;
+    animation: ring-glow 2.5s ease-in-out infinite;
+  }
+  @keyframes ring-glow {
+    0%,100% { box-shadow: 0 0 8px rgba(60,255,112,.3), inset 0 0 4px rgba(60,255,112,.1); }
+    50%      { box-shadow: 0 0 18px rgba(60,255,112,.6), inset 0 0 10px rgba(60,255,112,.25); }
+  }
+
+  /* ícones de status (mic, fone) */
+  .tb-status-icon {
+    font-size: 18px; color: #00d4c8;
+    filter: drop-shadow(0 0 4px rgba(0,212,200,.5));
+    cursor: pointer; transition: filter .15s;
+  }
+  .tb-status-icon:hover { filter: drop-shadow(0 0 8px rgba(0,212,200,.9)); }
+  .tb-status-icon.on-air-icon { color: #ff4040; filter: drop-shadow(0 0 6px rgba(255,64,64,.7)); animation: blink 1.1s ease-in-out infinite; }
+
+  /* relógio digital */
+  .tb-clock-wrap {
+    padding: 0 18px; display: flex; align-items: center;
+    background: rgba(0,0,0,.3);
+  }
+  .tb-clock {
+    font-size: 28px; font-weight: 700; letter-spacing: .12em;
+    color: #3cff70;
+    text-shadow: 0 0 12px rgba(60,255,112,.7), 0 0 24px rgba(60,255,112,.3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* data */
+  .tb-date {
+    font-size: 11px; color: #5aaa6a; letter-spacing: .04em;
+    line-height: 1.4; text-align: left;
+  }
+
+  /* metadados (clima, listeners) */
+  .tb-meta-icon { font-size: 15px; color: #3cff70; }
+  .tb-meta-val { font-size: 13px; color: #8ade9a; letter-spacing: .04em; }
+  .tb-meta-unit { font-size: 10px; color: #4a7a5a; }
+
+  /* listeners badge */
+  .tb-listeners {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(0,255,80,.06); border: 1px solid rgba(60,255,112,.2);
+    border-radius: 6px; padding: 3px 9px;
+  }
+  .tb-listeners-icon { font-size: 14px; color: #3cff70; }
+  .tb-listeners-num  { font-size: 14px; font-weight: 700; color: #3cff70; }
+
+  /* operador */
+  .tb-operator {
+    display: flex; align-items: center; gap: 8px; padding: 0 14px;
+    flex: 1;
+  }
+  .tb-operator-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(60,255,112,.1); border: 1px solid rgba(60,255,112,.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #3cff70;
+  }
+  .tb-operator-info { display: flex; flex-direction: column; gap: 1px; }
+  .tb-operator-name { font-size: 12px; font-weight: 700; color: #b0e8b8; letter-spacing: .04em; }
+  .tb-operator-role { font-size: 10px; color: #4a7a5a; }
+
+  /* botões direita */
+  .tb-action {
+    width: 44px; height: 100%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; border-left: 1px solid #1a2a1a;
+    color: #4a7a5a; font-size: 16px; cursor: pointer;
+    transition: color .15s, background .15s;
+  }
+  .tb-action:hover { background: rgba(60,255,112,.06); color: #3cff70; }
+  .tb-action.power:hover { background: rgba(224,80,80,.1); color: var(--red); }
+
+  /* logo rádio (direita) */
+  .tb-logo {
+    padding: 0 16px; display: flex; align-items: center;
+    border-left: 1px solid #1a2a1a; background: rgba(255,255,255,.02);
+  }
+  .tb-logo-text {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 18px; font-weight: 900; letter-spacing: -.01em;
+    color: #d0d0d0;
+  }
+  .tb-logo-text em { font-style: normal; color: #3cff70; }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  /* ── MAIN GRID ───────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    overflow: hidden;
+  }
+
+  /* ── CARD BASE ───────────────────────────────────────────────── */
+  .card {
+    background: #000000;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .card-header {
+    background: linear-gradient(to bottom, #6b6b6b 0%, #555555 22%, #3a3a3a 47%, #080808 49%, #040404 72%, #000000 100%);
+    border-bottom: 1px solid #333;
+    padding: 0 14px; height: 40px;
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .card-header-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    color: #3cff70;
+    text-shadow: 0 0 10px rgba(60,255,112,.7), 0 0 22px rgba(60,255,112,.3);
+  }
+  .card-header-spacer { flex: 1; }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LEFT COLUMN — Now Playing + Queue
+  ═══════════════════════════════════════════════════════════════ */
+  .left-col { display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+
+  /* ── NOW PLAYING ─────────────────────────────────────────────── */
+  .now-playing { flex-shrink: 0; background: #000000; }
+  .np-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .np-track-info { display: flex; flex-direction: column; gap: 3px; }
+  .np-title { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .np-artist { font-size: 12px; color: rgba(60,255,112,.5); }
+
+  .waveform-wrap { position: relative; height: 52px; background: #050c14; border-radius: 8px; overflow: hidden; cursor: pointer; }
+  .waveform-bars { display: flex; align-items: flex-end; gap: 1.5px; height: 100%; padding: 4px; }
+  .waveform-bar { flex: 1; border-radius: 2px 2px 0 0; transition: background .1s; }
+  .waveform-bar.played  { background: rgba(60,255,112,.5); }
+  .waveform-bar.current { background: #3cff70; box-shadow: 0 0 8px rgba(60,255,112,.8); }
+  .waveform-bar.pending { background: rgba(60,255,112,.15); }
+  .waveform-playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #3cff70; left: 38%; box-shadow: 0 0 8px rgba(60,255,112,.9); pointer-events: none; }
+
+  .intro-countdown {
+    background: var(--green-dim); border: 1px solid rgba(62,207,114,.3); border-radius: 6px;
+    padding: 5px 10px; text-align: center;
+    font-size: 12px; font-weight: 700; color: var(--green); letter-spacing: .05em;
+  }
+  .times-row { display: flex; justify-content: space-between; font-size: 11px; color: rgba(60,255,112,.55); font-variant-numeric: tabular-nums; }
+  .times-row .elapsed { color: #3cff70; font-weight: 700; text-shadow: 0 0 8px rgba(60,255,112,.6); }
+  .times-row .remaining { color: var(--orange); }
+
+  .transport { display: flex; align-items: center; gap: 7px; }
+  .t-btn {
+    height: 34px; padding: 0 12px; border-radius: var(--radius-sm);
+    border: 1px solid #1a4a28; background: transparent; color: #3cff70;
+    font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: .15s;
+  }
+  .t-btn:hover { border-color: #3cff70; background: rgba(60,255,112,.06); }
+  .t-btn.play { background: #0a4a1e; border-color: #1a7a38; color: #3cff70; flex: 1; font-size: 17px; font-weight: 800; box-shadow: none; }
+  .t-btn.play:hover { background: #0d5c26; border-color: #3cff70; }
+  .t-btn.cue { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--orange); border-color: rgba(255,140,0,.35); }
+  .t-btn.cue:hover { border-color: var(--orange); background: rgba(255,140,0,.08); }
+
+  .volume-row { display: flex; align-items: center; gap: 8px; }
+  .vol-label { font-size: 10px; color: var(--text-dim); font-weight: 700; letter-spacing: .06em; min-width: 28px; }
+  .vol-track { flex: 1; height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; position: relative; cursor: pointer; }
+  .vol-fill { height: 100%; border-radius: 2px; background: var(--accent); width: 78%; }
+  .vol-thumb { position: absolute; top: 50%; right: 22%; transform: translate(50%,-50%); width: 10px; height: 10px; border-radius: 50%; background: var(--text-pri); border: 2px solid var(--accent); }
+  .vol-icon { font-size: 14px; color: var(--text-sec); }
+
+  .vu-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .vu-row { display: flex; align-items: center; gap: 6px; }
+  .vu-label { font-size: 10px; font-weight: 700; color: var(--text-dim); width: 12px; }
+  .vu-bar { flex: 1; height: 8px; border-radius: 2px; background: rgba(255,255,255,.05); overflow: hidden; }
+  .vu-fill { height: 100%; border-radius: 2px; }
+  .vu-fill.left  { width: 72%; background: linear-gradient(to right, #3ecf72 60%, #f0b429 85%, #e05050 100%); }
+  .vu-fill.right { width: 65%; background: linear-gradient(to right, #3ecf72 60%, #f0b429 85%, #e05050 100%); }
+  .vu-db { font-size: 10px; color: var(--text-dim); width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .pfl-row { display: flex; align-items: center; gap: 8px; }
+  .pfl-label { font-size: 10px; font-weight: 700; color: var(--text-dim); letter-spacing: .06em; }
+  .pfl-btn {
+    height: 26px; padding: 0 12px;
+    border: 1px solid rgba(255,191,75,.3); border-radius: 6px;
+    background: transparent; color: var(--amber);
+    font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: .04em;
+    transition: .15s;
+  }
+  .pfl-btn:hover { background: var(--amber-dim); border-color: var(--amber); }
+
+  /* ── Microfone / Talkover ── */
+  .mic-panel {
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.02);
+    padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: border-color .2s, background .2s;
+  }
+  .mic-panel.active {
+    border-color: rgba(255,140,0,.5);
+    background: rgba(255,140,0,.06);
+  }
+
+  .mic-top-row { display: flex; align-items: center; gap: 10px; }
+
+  .mic-btn {
+    width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.06);
+    color: var(--text-sec); font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: .2s; position: relative;
+  }
+  .mic-btn:hover { border-color: var(--red); color: var(--red); }
+  .mic-btn.active {
+    background: var(--orange); border-color: var(--orange); color: #000;
+    box-shadow: 0 0 0 4px rgba(255,140,0,.25);
+    animation: mic-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    0%,100% { box-shadow: 0 0 0 4px rgba(255,140,0,.25); }
+    50%      { box-shadow: 0 0 0 10px rgba(255,140,0,.0); }
+  }
+
+  .mic-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .mic-status {
+    font-size: 11px; font-weight: 800; letter-spacing: .07em;
+    color: var(--text-dim); transition: color .2s;
+  }
+  .mic-panel.active .mic-status { color: var(--orange); }
+
+  /* VU do mic */
+  .mic-vu { display: flex; align-items: flex-end; gap: 2px; height: 18px; }
+  .mic-vu-bar {
+    width: 4px; border-radius: 2px 2px 0 0;
+    background: rgba(255,255,255,.08);
+    transition: height .08s, background .08s;
+    height: 30%;
+  }
+
+  /* duck label + slider */
+  .mic-duck-row { display: flex; align-items: center; gap: 8px; }
+  .mic-duck-label { font-size: 10px; font-weight: 700; color: var(--text-dim); letter-spacing: .05em; min-width: 48px; }
+  .mic-duck-track {
+    flex: 1; height: 4px; background: rgba(255,255,255,.08);
+    border-radius: 2px; position: relative; cursor: pointer;
+  }
+  .mic-duck-fill { height: 100%; border-radius: 2px; background: #3cff70; width: 60%; box-shadow: 0 0 6px rgba(60,255,112,.5); }
+  .mic-duck-thumb {
+    position: absolute; top: 50%; right: 40%; transform: translate(50%,-50%);
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #000; border: 2px solid #3cff70;
+    box-shadow: 0 0 6px rgba(60,255,112,.7);
+  }
+  .mic-duck-val { font-size: 10px; color: var(--text-sec); min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* talkover badge na waveform */
+  .waveform-duck-overlay {
+    position: absolute; inset: 0;
+    background: rgba(224,80,80,.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; letter-spacing: .08em; color: rgba(224,80,80,.8);
+    opacity: 0; transition: opacity .25s; pointer-events: none;
+  }
+  .waveform-duck-overlay.active { opacity: 1; }
+  .outro-badge {
+    background: rgba(224,80,80,.15); border: 1px solid rgba(224,80,80,.35);
+    border-radius: 4px; font-size: 10px; font-weight: 700; color: var(--red);
+    padding: 1px 6px; letter-spacing: .04em;
+  }
+
+  /* ── QUEUE ───────────────────────────────────────────────────── */
+  .queue-card { flex: 1; overflow: hidden; }
+
+  .queue-toolbar {
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+    display: flex; gap: 6px; flex-shrink: 0;
+  }
+  .queue-search {
+    flex: 1; height: 28px;
+    background: #071019; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-pri); padding: 0 10px; font-size: 12px; outline: none;
+  }
+  .queue-search::placeholder { color: var(--text-dim); }
+  .sq-btn {
+    width: 28px; height: 28px;
+    background: transparent; border: 1px solid rgba(220,239,242,.12);
+    border-radius: 6px; color: var(--text-sec); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: .15s;
+  }
+  .sq-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .queue-info-bar {
+    padding: 4px 10px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .qi-stat { font-size: 11px; font-weight: 700; color: var(--text-sec); }
+  .qi-stat + .qi-stat { border-left: 1px solid rgba(255,255,255,.08); padding-left: 8px; }
+  .qi-spacer { flex: 1; }
+
+  .queue-list { flex: 1; overflow-y: auto; padding: 5px; }
+  .queue-list::-webkit-scrollbar { width: 4px; }
+  .queue-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── QueueCard — fiel ao QueueCard.java ── */
+  .q-item {
+    display: flex; flex-direction: row; align-items: stretch;
+    min-height: 76px; border-radius: 9px; border: 1px solid transparent;
+    margin-bottom: 5px; cursor: pointer; position: relative;
+    padding: 6px 8px 6px 5px; overflow: hidden;
+    transition: filter .12s;
+  }
+  .q-item:hover { filter: brightness(1.12); }
+  .q-item:hover .q-actions { opacity: 1; pointer-events: auto; }
+
+  /* gradientes por tipo */
+  .q-item.music   { background: linear-gradient(to bottom,#1a6875 0%,#155e69 22%,#0d4f5a 47%,#022830 49%,#011e24 72%,#011318 100%); border-color: #7ad4e0; }
+  .q-item.vinheta { background: linear-gradient(to bottom,#6a2080 0%,#5e1c72 22%,#521863 47%,#220830 49%,#170522 72%,#0f0316 100%); border-color: #b87ad4; }
+  .q-item.hora    { background: linear-gradient(to bottom,#5752aa 0%,#4a469d 22%,#403c94 47%,#171473 49%,#0e0c68 72%,#07065a 100%); border-color: #9d9ab8; }
+  .q-item.playing { background: linear-gradient(to bottom,#7a1520 0%,#6e111c 22%,#5e0e18 47%,#2e0408 49%,#1e0205 72%,#140103 100%); border-color: #d47a85; padding-left: 8px; }
+
+  /* drag handle */
+  .q-handle { width: 18px; display: flex; align-items: center; justify-content: center; padding-right: 4px; flex-shrink: 0; }
+  .q-handle span { font-size: 14px; color: rgba(255,255,255,.20); }
+  .q-item.playing .q-handle { display: none; }
+
+  /* index col: icon + time + dur */
+  .q-index {
+    width: 48px; min-width: 48px; max-width: 48px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  }
+  .q-icon { line-height: 1; }
+  .q-item.music   .q-icon, .q-item.vinheta .q-icon, .q-item.hora .q-icon { font-size: 22px; color: rgba(255,255,255,.70); }
+  .q-item.playing .q-icon { font-size: 14px; color: #ff8fa1; letter-spacing: -1px; }
+  .q-time { font-size: 10px; font-family: 'Courier New', monospace; }
+  .q-item.music   .q-time, .q-item.vinheta .q-time, .q-item.hora .q-time { color: #88a0b5; }
+  .q-item.playing .q-time { color: #ff8fa1; }
+  .q-dur  { font-size: 10px; font-weight: 700; font-family: 'Courier New', monospace; }
+  .q-item.music   .q-dur, .q-item.vinheta .q-dur, .q-item.hora .q-dur { color: #ffffff; }
+  .q-item.playing .q-dur { color: #ff8fa1; }
+
+  /* type bar */
+  .q-bar { width: 4px; min-width: 4px; max-width: 4px; border-radius: 4px; margin: 0 8px; align-self: stretch; }
+  .q-item.music   .q-bar { background: #00d4ff; }
+  .q-item.vinheta .q-bar { background: #d36aff; }
+  .q-item.hora    .q-bar { background: #ffffff; }
+  .q-item.playing .q-bar { background: rgba(255,77,103,.80); }
+
+  /* track content */
+  .q-track { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding-right: 8px; min-width: 0; }
+  .q-title-row { display: flex; align-items: center; gap: 6px; }
+  .q-title { font-size: 13px; font-weight: 700; color: #d7e3ec; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .q-item.playing .q-title { color: #ff8fa1; }
+  .q-item.hora    .q-title { font-size: 13px; font-weight: 900; color: #ffffff; }
+  .q-next-badge {
+    font-size: 8px; font-weight: 800; color: var(--orange);
+    background: rgba(255,140,0,.15); border: 1px solid var(--orange);
+    border-radius: 4px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0;
+  }
+  .q-artist { font-size: 10px; color: rgba(60,255,112,.6); }
+  .q-type-badge {
+    font-size: 9px; font-weight: 700; color: #88a0b5;
+    background: rgba(255,255,255,.06); border-radius: 5px; padding: 2px 5px;
+    align-self: flex-start;
+  }
+
+  /* hover actions overlay */
+  .q-actions {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    display: flex; gap: 5px; align-items: center;
+    opacity: 0; pointer-events: none; transition: opacity .12s;
+  }
+  .q-act-btn {
+    height: 30px; padding: 0 10px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; background: rgba(0,0,0,.75);
+    border: 1px solid rgba(255,255,255,.30); color: #ffffff;
+    transition: .12s;
+  }
+  .q-act-btn:hover { background: rgba(0,0,0,.95); border-color: rgba(255,255,255,.70); }
+
+  .q-sep { display: flex; align-items: center; gap: 8px; padding: 3px 0; margin-bottom: 3px; }
+  .q-sep-line { flex: 1; height: 1px; background: rgba(255,255,255,.06); }
+  .q-sep-label { font-size: 9px; font-weight: 800; color: var(--orange); letter-spacing: .08em; }
+
+
+  /* ═══════════════════════════════════════════════════════════════
+     CENTER COLUMN — Catalog
+  ═══════════════════════════════════════════════════════════════ */
+  .center-col { display: flex; flex-direction: column; overflow: hidden; }
+  .catalog-card { flex: 1; overflow: hidden; }
+
+  .catalog-search-wrap {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    display: flex; gap: 7px; flex-shrink: 0;
+  }
+  .catalog-search {
+    flex: 1; height: 30px;
+    background: #071019; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-pri); padding: 0 10px; font-size: 12px; outline: none;
+  }
+  .catalog-search::placeholder { color: var(--text-dim); }
+  .catalog-search:focus { border-color: #3cff70; outline: none; }
+  .catalog-filters {
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0;
+  }
+  .filter-chip {
+    height: 24px; padding: 0 10px;
+    border: 1px solid #3cff70; border-radius: 20px;
+    background: transparent; color: #3cff70; font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; transition: .15s;
+  }
+  .filter-chip:hover { background: rgba(60,255,112,.08); }
+  .filter-chip.active { background: rgba(60,255,112,.15); border-color: #3cff70; color: #3cff70; }
+  .catalog-list { flex: 1; overflow-y: auto; padding: 0; }
+  .catalog-list::-webkit-scrollbar { width: 4px; }
+  .catalog-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .cat-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 10px;
+    min-height: 42px;
+    border: none; border-radius: 0;
+    cursor: pointer;
+    transition: background .1s;
+    border-left: 3px solid transparent;
+  }
+  .cat-item:nth-child(odd)  { background: #000000; }
+  .cat-item:nth-child(even) { background: #0d2e12; }
+  .cat-item:hover {
+    background: #142336;
+    border-left-color: var(--accent);
+  }
+  .cat-item:hover .add-btn { opacity: 1; }
+
+  /* badge circular de tipo */
+  .cat-type-tag {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; letter-spacing: .04em;
+    flex-shrink: 0;
+  }
+  .cat-type-tag.music   { background: rgba(0,212,255,.18);   color: #00d4ff;  border: 1px solid rgba(0,212,255,.35); }
+  .cat-type-tag.vinheta { background: rgba(211,106,255,.18); color: #d36aff;  border: 1px solid rgba(211,106,255,.35); }
+  .cat-type-tag.hora    { background: rgba(200,198,255,.18); color: #c8c6ff;  border: 1px solid rgba(200,198,255,.35); }
+
+  .cat-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+  .cat-title  { font-size: 12px; font-weight: 700; color: #ddeeff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-artist { font-size: 10px; color: rgba(60,255,112,.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .cat-dur {
+    font-size: 11px; font-weight: 600; color: #5f7a8e;
+    font-variant-numeric: tabular-nums;
+    min-width: 36px; text-align: right; flex-shrink: 0;
+  }
+
+  /* botão de adicionar como círculo colorido */
+  .add-btn {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(59,142,200,.85);
+    border: none; color: #fff;
+    font-size: 14px; font-weight: 700; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .15s, background .15s;
+  }
+  .add-btn:hover { background: #3b8ec8; }
+
+  /* ═══════════════════════════════════════════════════════════════
+     RIGHT COLUMN — Botoeira (cart player)
+  ═══════════════════════════════════════════════════════════════ */
+  .right-col { display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .cart-card  { flex: 1; overflow: hidden; }
+
+  .cart-bank-tabs {
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+    display: flex; gap: 5px; flex-shrink: 0; overflow-x: auto;
+  }
+  .cart-bank-tabs::-webkit-scrollbar { display: none; }
+  .bank-tab {
+    height: 26px; padding: 0 12px;
+    border: 1px solid #3cff70; border-radius: 20px;
+    background: transparent; color: #3cff70; font-size: 11px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; transition: .15s;
+  }
+  .bank-tab:hover { background: rgba(60,255,112,.08); }
+  .bank-tab.active { background: rgba(60,255,112,.15); border-color: #3cff70; color: #3cff70; }
+
+  .cart-grid {
+    flex: 1; overflow-y: auto;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    align-content: start;
+  }
+  .cart-grid::-webkit-scrollbar { width: 4px; }
+  .cart-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .cart-btn {
+    border-radius: 10px;
+    border: 1px solid transparent;
+    padding: 10px 8px 8px;
+    display: flex; flex-direction: column; gap: 6px;
+    cursor: pointer; text-align: left;
+    transition: .12s; position: relative; overflow: hidden;
+    min-height: 72px;
+  }
+  .cart-btn:active { transform: scale(.97); }
+
+  /* cores por categoria — verde e laranja */
+  .cart-btn.jingle  { background: linear-gradient(to bottom,#1a4a1a 0%,#133a13 22%,#0a2a0a 47%,#020802 49%,#010401 72%,#000000 100%); border-color: #2a6a2a; }
+  .cart-btn.efeito  { background: linear-gradient(to bottom,#4a2a00 0%,#3a2000 22%,#2a1500 47%,#080400 49%,#040200 72%,#000000 100%); border-color: #6a3a00; }
+  .cart-btn.vinheta { background: linear-gradient(to bottom,#1a4a1a 0%,#133a13 22%,#0a2a0a 47%,#020802 49%,#010401 72%,#000000 100%); border-color: #2a6a2a; }
+  .cart-btn.locucao { background: linear-gradient(to bottom,#4a2a00 0%,#3a2000 22%,#2a1500 47%,#080400 49%,#040200 72%,#000000 100%); border-color: #6a3a00; }
+  .cart-btn.off     { background: rgba(255,255,255,.02); border-color: rgba(255,255,255,.06); color: var(--text-dim); cursor: default; }
+
+  .cart-btn:hover:not(.off) { filter: brightness(1.15); }
+
+  .cart-btn-name { font-size: 11px; font-weight: 700; line-height: 1.3; }
+  .cart-btn.jingle  .cart-btn-name { color: #3cff70; }
+  .cart-btn.efeito  .cart-btn-name { color: var(--orange); }
+  .cart-btn.vinheta .cart-btn-name { color: #3cff70; }
+  .cart-btn.locucao .cart-btn-name { color: var(--orange); }
+  .cart-btn.off     .cart-btn-name { color: var(--text-dim); font-weight: 400; }
+
+  .cart-btn-meta { display: flex; align-items: center; justify-content: space-between; }
+  .cart-btn-dur { font-size: 10px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .cart-btn-cat {
+    font-size: 8px; font-weight: 800; letter-spacing: .06em;
+    border-radius: 3px; padding: 1px 5px;
+  }
+  .cart-btn.jingle  .cart-btn-cat { background: rgba(60,255,112,.15);  color: #3cff70; }
+  .cart-btn.efeito  .cart-btn-cat { background: rgba(255,140,0,.15);   color: var(--orange); }
+  .cart-btn.vinheta .cart-btn-cat { background: rgba(60,255,112,.15);  color: #3cff70; }
+  .cart-btn.locucao .cart-btn-cat { background: rgba(255,140,0,.15);   color: var(--orange); }
+
+  /* progress bar inside cart button (when playing) */
+  .cart-progress {
+    position: absolute; bottom: 0; left: 0;
+    height: 3px; background: var(--orange); border-radius: 0 0 0 10px;
+    width: 0; transition: width .4s linear;
+  }
+  .cart-btn.playing .cart-progress { width: 55%; }
+  .cart-btn.playing { box-shadow: 0 0 0 1px var(--orange) inset; }
+  .cart-btn.playing .cart-btn-name { color: var(--orange); }
+
+  /* stop all */
+  .cart-stop-row {
+    padding: 8px 10px; border-top: 1px solid var(--border);
+    display: flex; gap: 7px; flex-shrink: 0;
+  }
+  .cart-stop-btn {
+    flex: 1; height: 32px;
+    border: 1px solid #3cff70; border-radius: var(--radius-sm);
+    background: #0a4a1e; color: #3cff70;
+    font-size: 12px; font-weight: 800; cursor: pointer; letter-spacing: .04em;
+    transition: .15s;
+  }
+  .cart-stop-btn:hover { background: #0d5c26; border-color: #3cff70; }
+  .cart-vol-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: transparent; color: var(--text-sec); font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: .15s;
+  }
+  .cart-vol-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── SCHEDULE BAR ────────────────────────────────────────────── */
+  .schedule-bar {
+    height: 36px;
+    background: #000; border-top: 1px solid #1a3a1a;
+    display: flex; align-items: center; padding: 0 14px; gap: 10px;
+    flex-shrink: 0; overflow: hidden;
+  }
+  .sched-label { font-size: 10px; font-weight: 700; color: rgba(60,255,112,.5); letter-spacing: .07em; flex-shrink: 0; }
+  .sched-items { display: flex; gap: 6px; flex: 1; overflow: hidden; }
+  .sched-item {
+    height: 22px; padding: 0 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .sched-item.past   { background: rgba(255,255,255,.03); color: rgba(60,255,112,.3); }
+  .sched-item.now    { background: rgba(255,140,0,.15); color: var(--orange); border: 1px solid rgba(255,140,0,.4); }
+  .sched-item.future { background: rgba(255,255,255,.03); color: rgba(60,255,112,.55); }
+  .sched-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ TOPBAR ══════════════════════ -->
+<header class="topbar">
+
+  <!-- Logo -->
+  <div class="tb-logo" style="border-left:none; border-right:none;">
+    <span class="tb-logo-text"><em>audio</em>play</span>
+  </div>
+
+  <!-- Espaço -->
+  <div style="flex:1;"></div>
+  <div class="tb-sep"></div>
+
+  <!-- Relógio digital -->
+  <div class="tb-clock-wrap">
+    <span class="tb-clock" id="clock">00:00:00</span>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Data -->
+  <div class="tb-cell">
+    <span class="tb-date" id="date-display">carregando...</span>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Clima -->
+  <div class="tb-cell" style="gap:4px;">
+    <span class="tb-meta-icon">🌡</span>
+    <span class="tb-meta-val">26</span>
+    <span class="tb-meta-unit">°C</span>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Umidade -->
+  <div class="tb-cell" style="gap:4px;">
+    <span class="tb-meta-icon">💧</span>
+    <span class="tb-meta-val">39</span>
+    <span class="tb-meta-unit">%</span>
+  </div>
+  <div class="tb-sep"></div>
+
+  <!-- Power -->
+  <button class="tb-action power" title="Encerrar">⏻</button>
+
+</header>
+
+<!-- ══════════════════════ MAIN ══════════════════════ -->
+<div class="main">
+
+  <!-- ════════════════════════════════════════════
+       LEFT: Now Playing + Queue
+  ════════════════════════════════════════════ -->
+  <div class="left-col">
+
+    <!-- NOW PLAYING -->
+    <div class="card now-playing">
+      <div class="card-header">
+        <span class="card-header-title">TOCANDO AGORA</span>
+        <div class="card-header-spacer"></div>
+        <span class="outro-badge">OUTRO em 18s</span>
+      </div>
+      <div class="np-body">
+
+        <div class="np-track-info">
+          <div class="np-title">Evidências</div>
+          <div class="np-artist">Chitãozinho &amp; Xororó &nbsp;·&nbsp; <span style="color:var(--text-dim)">Sertanejo</span></div>
+        </div>
+
+        <div class="waveform-wrap">
+          <div class="waveform-bars" id="waveform-bars"></div>
+          <div class="waveform-playhead"></div>
+          <div class="waveform-duck-overlay" id="duck-overlay">DUCKING -60%</div>
+        </div>
+
+        <div class="intro-countdown">INTRO em 2.4s — aguardar antes de falar</div>
+
+        <div class="times-row">
+          <span class="elapsed">01:24</span>
+          <span>03:42</span>
+          <span class="remaining">-02:18</span>
+        </div>
+
+        <!-- Microfone / Talkover -->
+        <div class="mic-panel" id="mic-panel">
+          <div class="mic-top-row">
+            <button class="mic-btn" id="mic-btn" title="Ativar microfone / talkover">🎙</button>
+            <div class="mic-info">
+              <div class="mic-status" id="mic-status">MIC — DESATIVADO</div>
+              <div class="mic-vu" id="mic-vu">
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+                <div class="mic-vu-bar"></div><div class="mic-vu-bar"></div>
+              </div>
+            </div>
+          </div>
+          <div class="mic-duck-row">
+            <span class="mic-duck-label">DUCKING</span>
+            <div class="mic-duck-track">
+              <div class="mic-duck-fill"></div>
+              <div class="mic-duck-thumb"></div>
+            </div>
+            <span class="mic-duck-val">-60%</span>
+          </div>
+        </div>
+
+        <div class="transport">
+          <button class="t-btn">⏮</button>
+          <button class="t-btn">⏸</button>
+          <button class="t-btn play">▶</button>
+          <button class="t-btn">⏭</button>
+          <button class="t-btn cue">CUE</button>
+        </div>
+
+
+      </div>
+    </div>
+
+    <!-- QUEUE -->
+    <div class="card queue-card">
+      <div class="card-header">
+        <span class="card-header-title">FILA DE REPRODUÇÃO</span>
+      </div>
+      <div class="queue-toolbar">
+        <input class="queue-search" type="text" placeholder="Buscar na fila...">
+        <button class="sq-btn" title="Atualizar">↻</button>
+        <button class="sq-btn" title="Limpar fila" style="color:var(--orange);border-color:rgba(255,140,0,.35)">∅</button>
+        <button class="sq-btn" title="Hora Certa" style="color:var(--orange);border-color:rgba(255,140,0,.35)">⏰</button>
+      </div>
+      <div class="queue-info-bar">
+        <span class="qi-stat">5 ITENS</span>
+        <span class="qi-stat">⏱ 18:31</span>
+        <div class="qi-spacer"></div>
+      </div>
+
+      <div class="queue-list">
+
+        <!-- PLAYING -->
+        <div class="q-item playing">
+          <div class="q-index">
+            <span class="q-icon">▮▮▮</span>
+            <span class="q-time">01:24</span>
+            <span class="q-dur">03:42</span>
+          </div>
+          <div class="q-bar"></div>
+          <div class="q-track">
+            <div class="q-title-row"><span class="q-title">Evidências</span></div>
+            <span class="q-artist">Chitãozinho &amp; Xororó</span>
+          </div>
+          <div class="q-actions">
+            <button class="q-act-btn">🎧</button>
+          </div>
+        </div>
+
+        <div class="q-sep"><div class="q-sep-line"></div><span class="q-sep-label">A SEGUIR</span><div class="q-sep-line"></div></div>
+
+        <!-- MUSIC — próximo -->
+        <div class="q-item music">
+          <div class="q-handle"><span>⠿</span></div>
+          <div class="q-index">
+            <span class="q-icon">♪</span>
+            <span class="q-time">--:--</span>
+            <span class="q-dur">05:06</span>
+          </div>
+          <div class="q-bar"></div>
+          <div class="q-track">
+            <div class="q-title-row">
+              <span class="q-title">Zombie</span>
+              <span class="q-next-badge">PRÓXIMO</span>
+            </div>
+            <span class="q-artist">The Cranberries</span>
+            <span class="q-type-badge">Música</span>
+          </div>
+          <div class="q-actions">
+            <button class="q-act-btn">▶</button>
+            <button class="q-act-btn">✕</button>
+            <button class="q-act-btn">🎧</button>
+          </div>
+        </div>
+
+        <!-- VINHETA -->
+        <div class="q-item vinheta">
+          <div class="q-handle"><span>⠿</span></div>
+          <div class="q-index">
+            <span class="q-icon">♪</span>
+            <span class="q-time">--:--</span>
+            <span class="q-dur">00:15</span>
+          </div>
+          <div class="q-bar"></div>
+          <div class="q-track">
+            <div class="q-title-row"><span class="q-title">Vinheta BH Rádio</span></div>
+            <span class="q-type-badge">Vinheta</span>
+          </div>
+          <div class="q-actions">
+            <button class="q-act-btn">▶</button>
+            <button class="q-act-btn">✕</button>
+            <button class="q-act-btn">🎧</button>
+          </div>
+        </div>
+
+        <!-- HORA CERTA -->
+        <div class="q-item hora">
+          <div class="q-handle"><span>⠿</span></div>
+          <div class="q-index">
+            <span class="q-icon">🕐</span>
+            <span class="q-time">--:--</span>
+            <span class="q-dur">~01:00</span>
+          </div>
+          <div class="q-bar"></div>
+          <div class="q-track">
+            <div class="q-title-row"><span class="q-title">HORA CERTA</span></div>
+          </div>
+          <div class="q-actions">
+            <button class="q-act-btn">▶</button>
+            <button class="q-act-btn">✕</button>
+            <button class="q-act-btn">🎧</button>
+          </div>
+        </div>
+
+        <!-- MUSIC -->
+        <div class="q-item music">
+          <div class="q-handle"><span>⠿</span></div>
+          <div class="q-index">
+            <span class="q-icon">♪</span>
+            <span class="q-time">--:--</span>
+            <span class="q-dur">04:56</span>
+          </div>
+          <div class="q-bar"></div>
+          <div class="q-track">
+            <div class="q-title-row"><span class="q-title">Personal Jesus</span></div>
+            <span class="q-artist">Depeche Mode</span>
+            <span class="q-type-badge">Música</span>
+          </div>
+          <div class="q-actions">
+            <button class="q-act-btn">▶</button>
+            <button class="q-act-btn">✕</button>
+            <button class="q-act-btn">🎧</button>
+          </div>
+        </div>
+
+        <!-- MUSIC -->
+        <div class="q-item music">
+          <div class="q-handle"><span>⠿</span></div>
+          <div class="q-index">
+            <span class="q-icon">♪</span>
+            <span class="q-time">--:--</span>
+            <span class="q-dur">05:56</span>
+          </div>
+          <div class="q-bar"></div>
+          <div class="q-track">
+            <div class="q-title-row"><span class="q-title">Sweet Child O' Mine</span></div>
+            <span class="q-artist">Guns N' Roses</span>
+            <span class="q-type-badge">Música</span>
+          </div>
+          <div class="q-actions">
+            <button class="q-act-btn">▶</button>
+            <button class="q-act-btn">✕</button>
+            <button class="q-act-btn">🎧</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       CENTER: Catalog
+  ════════════════════════════════════════════ -->
+  <div class="center-col">
+    <div class="card catalog-card">
+      <div class="card-header">
+        <span class="card-header-title">CATÁLOGO</span>
+      </div>
+      <div class="catalog-search-wrap">
+        <input class="catalog-search" type="text" placeholder="🔍  Buscar músicas, vinhetas...">
+      </div>
+      <div class="catalog-filters">
+        <button class="filter-chip active">Todos</button>
+        <button class="filter-chip">Música</button>
+        <button class="filter-chip">Vinheta</button>
+        <button class="filter-chip">Hora Certa</button>
+      </div>
+      <div class="catalog-list">
+
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Zombie</div><div class="cat-artist">The Cranberries</div></div><span class="cat-dur">05:06</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Personal Jesus</div><div class="cat-artist">Depeche Mode</div></div><span class="cat-dur">04:56</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag vinheta">VNH</span><div class="cat-info"><div class="cat-title">Vinheta BH Rádio</div><div class="cat-artist">Chamada Top</div></div><span class="cat-dur">00:15</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Sweet Child O' Mine</div><div class="cat-artist">Guns N' Roses</div></div><span class="cat-dur">05:56</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Billie Jean</div><div class="cat-artist">Michael Jackson</div></div><span class="cat-dur">04:54</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag vinheta">VNH</span><div class="cat-info"><div class="cat-title">Vinheta Noturna</div><div class="cat-artist">Chamada Programação</div></div><span class="cat-dur">00:22</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Bohemian Rhapsody</div><div class="cat-artist">Queen</div></div><span class="cat-dur">05:55</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Hotel California</div><div class="cat-artist">Eagles</div></div><span class="cat-dur">06:30</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Wonderwall</div><div class="cat-artist">Oasis</div></div><span class="cat-dur">04:19</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Smells Like Teen Spirit</div><div class="cat-artist">Nirvana</div></div><span class="cat-dur">05:01</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag vinheta">VNH</span><div class="cat-info"><div class="cat-title">Abertura Manhã</div><div class="cat-artist">Chamada Especial</div></div><span class="cat-dur">00:18</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag hora">HRS</span><div class="cat-info"><div class="cat-title">Hora Certa</div><div class="cat-artist" style="color:var(--purple)">Automático via scheduler</div></div><span class="cat-dur">~01:00</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Shape of You</div><div class="cat-artist">Ed Sheeran</div></div><span class="cat-dur">03:53</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+        <div class="cat-item"><span class="cat-type-tag music">MÚS</span><div class="cat-info"><div class="cat-title">Blinding Lights</div><div class="cat-artist">The Weeknd</div></div><span class="cat-dur">03:20</span><button class="add-btn" title="Adicionar à fila">+</button></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       RIGHT: Botoeira (Cart Player)
+  ════════════════════════════════════════════ -->
+  <div class="right-col">
+    <div class="card cart-card">
+      <div class="card-header">
+        <span class="card-header-title">BOTOEIRA</span>
+        <div class="card-header-spacer"></div>
+        <span style="font-size:10px;color:var(--text-dim)">disparo imediato</span>
+      </div>
+
+      <!-- banco de botões -->
+      <div class="cart-bank-tabs">
+        <button class="bank-tab active">Jingles</button>
+        <button class="bank-tab">Efeitos</button>
+        <button class="bank-tab">Vinhetas</button>
+        <button class="bank-tab">Locuções</button>
+        <button class="bank-tab">Banco B</button>
+      </div>
+
+      <div class="cart-grid">
+
+        <!-- jingles -->
+        <button class="cart-btn jingle playing">
+          <span class="cart-btn-name">Abertura Manhã</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:08</span>
+            <span class="cart-btn-cat">JNG</span>
+          </div>
+          <div class="cart-progress"></div>
+        </button>
+
+        <button class="cart-btn jingle">
+          <span class="cart-btn-name">BH Rádio ID</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:06</span>
+            <span class="cart-btn-cat">JNG</span>
+          </div>
+        </button>
+
+        <button class="cart-btn jingle">
+          <span class="cart-btn-name">Top das Mais</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:12</span>
+            <span class="cart-btn-cat">JNG</span>
+          </div>
+        </button>
+
+        <button class="cart-btn efeito">
+          <span class="cart-btn-name">Aplausos</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:05</span>
+            <span class="cart-btn-cat">EFX</span>
+          </div>
+        </button>
+
+        <button class="cart-btn efeito">
+          <span class="cart-btn-name">Risada Público</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:04</span>
+            <span class="cart-btn-cat">EFX</span>
+          </div>
+        </button>
+
+        <button class="cart-btn vinheta">
+          <span class="cart-btn-name">Encerramento Noite</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:22</span>
+            <span class="cart-btn-cat">VNH</span>
+          </div>
+        </button>
+
+        <button class="cart-btn locucao">
+          <span class="cart-btn-name">Promoção Semana</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:30</span>
+            <span class="cart-btn-cat">LOC</span>
+          </div>
+        </button>
+
+        <button class="cart-btn jingle">
+          <span class="cart-btn-name">Flash Notícia</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:09</span>
+            <span class="cart-btn-cat">JNG</span>
+          </div>
+        </button>
+
+        <button class="cart-btn efeito">
+          <span class="cart-btn-name">Sirene Urgente</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:03</span>
+            <span class="cart-btn-cat">EFX</span>
+          </div>
+        </button>
+
+        <button class="cart-btn vinheta">
+          <span class="cart-btn-name">Chamada Tarde</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:18</span>
+            <span class="cart-btn-cat">VNH</span>
+          </div>
+        </button>
+
+        <button class="cart-btn locucao">
+          <span class="cart-btn-name">Patrocínio A</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:20</span>
+            <span class="cart-btn-cat">LOC</span>
+          </div>
+        </button>
+
+        <button class="cart-btn off">
+          <span class="cart-btn-name">— vazio —</span>
+          <div class="cart-btn-meta"><span class="cart-btn-dur">—</span></div>
+        </button>
+
+        <button class="cart-btn jingle">
+          <span class="cart-btn-name">Intervalo Certo</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:07</span>
+            <span class="cart-btn-cat">JNG</span>
+          </div>
+        </button>
+
+        <button class="cart-btn efeito">
+          <span class="cart-btn-name">Gongo</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:02</span>
+            <span class="cart-btn-cat">EFX</span>
+          </div>
+        </button>
+
+        <button class="cart-btn vinheta">
+          <span class="cart-btn-name">Abertura Especial</span>
+          <div class="cart-btn-meta">
+            <span class="cart-btn-dur">00:15</span>
+            <span class="cart-btn-cat">VNH</span>
+          </div>
+        </button>
+
+      </div>
+
+      <div class="cart-stop-row">
+        <button class="cart-stop-btn">■ PARAR TUDO</button>
+        <button class="cart-vol-btn" title="Volume botoeira">🔊</button>
+      </div>
+    </div>
+    <!-- BREAK CARD -->
+    <div class="card break-card" style="flex-shrink:0;">
+      <div class="card-header">
+        <span class="card-header-title">PRÓXIMO BREAK</span>
+      </div>
+      <div style="padding:12px;">
+        <div style="
+          display:flex; align-items:center; gap:12px;
+          background:#000; border:1px solid rgba(255,140,0,.3);
+          border-radius:10px; padding:12px; opacity:.5;
+        ">
+          <div style="
+            width:44px; height:44px; border-radius:10px; flex-shrink:0;
+            background:rgba(255,191,75,.12);
+            display:flex; align-items:center; justify-content:center;
+            font-size:20px; color:var(--orange);
+          ">◫</div>
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:600; color:var(--text-pri);">Nenhum break agendado</div>
+            <div style="font-size:11px; color:var(--text-sec); margin-top:3px;">—</div>
+          </div>
+          <div style="font-size:24px; font-weight:700; color:var(--orange);">—</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ══════════════════════ SCHEDULE BAR ══════════════════════ -->
+<div class="schedule-bar">
+  <span class="sched-label">PROGRAMAÇÃO</span>
+  <div class="sched-items">
+    <div class="sched-item past"><div class="sched-dot"></div>18:00 Manhã Musical</div>
+    <div class="sched-item past"><div class="sched-dot"></div>19:00 Hits do Dia</div>
+    <div class="sched-item now"><div class="sched-dot"></div>20:00 Noite em Alta</div>
+    <div class="sched-item future"><div class="sched-dot"></div>21:00 Clássicos</div>
+    <div class="sched-item future"><div class="sched-dot"></div>22:00 Top 40</div>
+    <div class="sched-item future"><div class="sched-dot"></div>23:00 Madrugada</div>
+  </div>
+</div>
+
+<script>
+  // Relógio e data em tempo real
+  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  function tick() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+
+    const dateEl = document.getElementById('date-display');
+    if (dateEl) {
+      dateEl.textContent = `${diasSemana[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
+    }
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Waveform simulada
+  (function() {
+    const wrap = document.getElementById('waveform-bars');
+    const total = 80, playedUntil = Math.floor(total * 0.38);
+    for (let i = 0; i < total; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'waveform-bar';
+      bar.style.height = (20 + Math.random() * 60 * Math.abs(Math.sin(i * 0.35 + 1))) + '%';
+      bar.classList.add(i < playedUntil - 1 ? 'played' : i === playedUntil ? 'current' : 'pending');
+      wrap.appendChild(bar);
+    }
+  })();
+
+  // Microfone / Talkover
+  (function() {
+    const micBtn    = document.getElementById('mic-btn');
+    const micPanel  = document.getElementById('mic-panel');
+    const micStatus = document.getElementById('mic-status');
+    const duckOvl   = document.getElementById('duck-overlay');
+    const vuBars    = document.querySelectorAll('#mic-vu .mic-vu-bar');
+    let micActive = false;
+    let vuInterval = null;
+
+    function animateVu() {
+      vuBars.forEach((bar, i) => {
+        const h = micActive ? (15 + Math.random() * 85) : 15;
+        bar.style.height = h + '%';
+          const intensity = micActive ? h / 100 : 0;
+        bar.style.background = micActive
+          ? `rgba(60,255,${Math.floor(112 * (1 - intensity * 0.6))},${0.3 + intensity * 0.7})`
+          : 'rgba(255,255,255,.08)';
+        bar.style.boxShadow = micActive && h > 60
+          ? `0 0 4px rgba(60,255,112,.6)`
+          : 'none';
+      });
+    }
+
+    micBtn.addEventListener('click', () => {
+      micActive = !micActive;
+      micBtn.classList.toggle('active', micActive);
+      micPanel.classList.toggle('active', micActive);
+      duckOvl.classList.toggle('active', micActive);
+      micStatus.textContent = micActive ? 'MIC — AO VIVO' : 'MIC — DESATIVADO';
+
+      if (micActive) {
+        vuInterval = setInterval(animateVu, 80);
+      } else {
+        clearInterval(vuInterval);
+        animateVu(); // reset bars
+      }
+    });
+  })();
+
+  // Previsão de horário na fila
+  function updateQueueTimes() {
+    const now = new Date();
+
+    // Tempo restante do item em reprodução (demo: 2min18s)
+    let remainingSec = 2 * 60 + 18;
+
+    document.querySelectorAll('.queue-list .q-item:not(.playing)').forEach(item => {
+      const timeEl = item.querySelector('.q-time');
+      const durEl  = item.querySelector('.q-dur');
+      if (!timeEl || !durEl) return;
+
+      // Calcula hora prevista de início
+      const startAt = new Date(now.getTime() + remainingSec * 1000);
+      const h = String(startAt.getHours()).padStart(2, '0');
+      const m = String(startAt.getMinutes()).padStart(2, '0');
+      timeEl.textContent = `${h}:${m}`;
+      timeEl.style.color = '#3ecf72';
+      timeEl.style.fontWeight = '700';
+
+      // Acumula duração do item para o próximo
+      const durText = durEl.textContent.replace('~', '').trim();
+      const parts = durText.split(':');
+      if (parts.length === 2) {
+        remainingSec += parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      }
+    });
+  }
+
+  updateQueueTimes();
+  setInterval(updateQueueTimes, 10000);
+
+  // Filtros do catálogo
+  document.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Banco de botões
+  document.querySelectorAll('.bank-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.bank-tab').forEach(b => b.classList.remove('active'));
+      tab.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

@@ -63,7 +63,7 @@ public class QueuePanel extends VBox {
         // ── Queue section card ─────────────────────────────────────────────────
         VBox queueCard = new VBox(0);
         queueCard.setStyle(
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:14;-fx-background-radius:14;"
         );
@@ -177,15 +177,15 @@ public class QueuePanel extends VBox {
     private HBox buildHeader() {
         Label title = new Label("FILA DE REPRODUÇÃO");
         title.setStyle(
-            "-fx-font-size:11px;-fx-font-weight:bold;-fx-text-fill:#bdd0df;"
+            "-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:#20e6ff;"
         );
         HBox hdr = new HBox(title);
         hdr.setAlignment(Pos.CENTER_LEFT);
         hdr.setMinHeight(42);
         hdr.setPadding(new Insets(0, 12, 0, 12));
         hdr.setStyle(
-            "-fx-background-color:#0a1621;" +
-            "-fx-border-color:#20384c;-fx-border-width:0 0 1 0;" +
+            "-fx-background-color:linear-gradient(from 0% 0% to 0% 100%, #6b6b6b 0%, #555555 22%, #3a3a3a 47%, #080808 49%, #040404 72%, #000000 100%);" +
+            "-fx-border-color:#333333;-fx-border-width:0 0 1 0;" +
             "-fx-background-radius:14 14 0 0;"
         );
         return hdr;
@@ -243,13 +243,13 @@ public class QueuePanel extends VBox {
 
     private ScrollPane buildScrollPane() {
         list.setPadding(new Insets(5, 5, 5, 5));
-        list.setStyle("-fx-background-color:#0e1b28;");
+        list.setStyle("-fx-background-color:#000000;");
 
         ScrollPane scroll = new ScrollPane(list);
         scroll.setFitToWidth(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setStyle(
-            "-fx-background-color:#0e1b28;-fx-background:#0e1b28;" +
+            "-fx-background-color:#000000;-fx-background:#000000;" +
             "-fx-border-color:transparent;"
         );
         return scroll;
@@ -297,7 +297,7 @@ public class QueuePanel extends VBox {
         VBox outer = new VBox(inner);
         outer.setPadding(new Insets(10));
         outer.setStyle(
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:14;-fx-background-radius:14;"
         );

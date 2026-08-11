@@ -149,7 +149,7 @@ public class TopBar extends HBox {
         pill.setPadding(new Insets(5, 12, 5, 8));
         pill.setMaxHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
         pill.setStyle(
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:999;-fx-background-radius:999;" +
             "-fx-cursor:hand;"

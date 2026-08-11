@@ -35,7 +35,7 @@ public class VuMeterPanel extends VBox {
         lufsBadge = new Label("LUFS —");
         lufsBadge.setStyle(
             "-fx-pref-height:27;" +
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:7;-fx-background-radius:7;" +
             "-fx-padding:0 8 0 8;" +

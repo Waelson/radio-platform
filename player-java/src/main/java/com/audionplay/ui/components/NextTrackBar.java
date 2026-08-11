@@ -23,7 +23,7 @@ public class NextTrackBar extends HBox {
         setPadding(new Insets(12));
         setMinHeight(118);
         setStyle(
-            "-fx-background-color:#0e1b28;" +
+            "-fx-background-color:#000000;" +
             "-fx-background-radius:14;" +
             "-fx-border-color:#20384c;" +
             "-fx-border-radius:14;-fx-border-width:1;"
