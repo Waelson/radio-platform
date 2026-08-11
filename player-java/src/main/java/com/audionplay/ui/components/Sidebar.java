@@ -22,7 +22,7 @@ public class Sidebar extends VBox {
 
     private static final String CYAN      = "#20e6ff";
     private static final String COLOR_OFF = "#4a6478";
-    private static final String BG_RAIL   = "rgba(7,16,25,0.97)";
+    private static final String BG_RAIL   = "#000000";
     private static final String BORDER    = "#20384c";
 
     private VBox activeBtn;
@@ -111,8 +111,8 @@ public class Sidebar extends VBox {
     private static void applyActive(VBox btn) {
         btn.setStyle(
             "-fx-background-color:linear-gradient(from 0% 0% to 100% 100%, rgba(32,230,255,0.12), rgba(57,120,255,0.05));" +
-            "-fx-border-color:" + CYAN + " transparent transparent transparent;" +
-            "-fx-border-width:0 0 0 3;" +
+            "-fx-border-color:" + CYAN + ";" +
+            "-fx-border-width:1 1 1 3;" +
             "-fx-border-radius:12;-fx-background-radius:12;"
         );
         setChildrenColor(btn, CYAN);

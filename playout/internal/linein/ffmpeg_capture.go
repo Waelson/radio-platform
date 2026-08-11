@@ -55,6 +55,7 @@ func (c *FFmpegCapture) Open(ctx context.Context, cfg LineInConfig) error {
 	args := buildCaptureArgs(cfg.DeviceID)
 	// Append common output args: PCM float32 LE stereo 48 kHz → stdout.
 	args = append(args,
+		"-fflags", "nobuffer",
 		"-f", "f32le",
 		"-acodec", "pcm_f32le",
 		"-ac", "2",

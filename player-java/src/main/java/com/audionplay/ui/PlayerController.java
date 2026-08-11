@@ -168,12 +168,15 @@ public class PlayerController {
 
     private void handleTimeUpdate(double currentSeconds) {
         if (loadedTrack == null) return;
-        double start    = loadedTrack.effectiveStart();
-        double duration = loadedTrack.effectiveDuration();
-        double elapsed  = Math.max(0, currentSeconds - start);
-        double frac     = duration > 0 ? Math.min(1.0, elapsed / duration) : 0.0;
+        double start      = loadedTrack.effectiveStart();
+        double duration   = loadedTrack.effectiveDuration();
+        double totalDur   = loadedTrack.durationSeconds();
+        double elapsed    = Math.max(0, currentSeconds - start);
+        // Progress fraction uses total track duration so the waveform playhead
+        // stays aligned with the CUE markers (which are also relative to total).
+        double fracTotal  = totalDur > 0 ? Math.min(1.0, currentSeconds / totalDur) : 0.0;
 
-        if (onProgressUpdate  != null) onProgressUpdate.accept(frac);
+        if (onProgressUpdate  != null) onProgressUpdate.accept(fracTotal);
         if (onTimeUpdate      != null) onTimeUpdate.accept(formatTime(elapsed));
         if (onRemainingUpdate != null) onRemainingUpdate.accept(formatTime(Math.max(0, duration - elapsed)));
 

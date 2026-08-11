@@ -16,6 +16,7 @@ type Config struct {
 	Preview         PreviewConfig         `yaml:"preview"          json:"preview"`
 	Scheduler       SchedulerConfig       `yaml:"scheduler"        json:"scheduler"`
 	HotKeys         HotKeysConfig         `yaml:"hotkeys"          json:"hotkeys"`
+	LineIn          LineInConfig          `yaml:"line_in"          json:"line_in"`
 	TransmissionLog TransmissionLogConfig `yaml:"transmission_log" json:"transmission_log"`
 }
 
@@ -175,6 +176,14 @@ type PreviewConfig struct {
 	// device_id should differ from the main output and hot keys output devices.
 	// Leave device_id empty to use the driver's default device.
 	Output OutputConfig `yaml:"output" json:"output"`
+}
+
+// LineInConfig configures the line-in (external audio capture) feature.
+type LineInConfig struct {
+	// DefaultDeviceID is the platform-specific capture device identifier used
+	// when a line-in session is started without an explicit device_id.
+	// Leave empty to require the caller to always specify the device.
+	DefaultDeviceID string `yaml:"default_device_id" json:"default_device_id"`
 }
 
 // TransmissionLogConfig configures the append-only JSONL log writer that records

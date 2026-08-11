@@ -14,6 +14,7 @@ const (
 	AssetTypeEffect     AssetType = "EFFECT"
 	AssetTypeVoice      AssetType = "VOICE"
 	AssetTypeHoraCerta  AssetType = "HORA_CERTA"
+	AssetTypeLiveInput  AssetType = "LINE_IN" // virtual: live external audio capture
 	AssetTypeUnknown    AssetType = "UNKNOWN"
 )
 

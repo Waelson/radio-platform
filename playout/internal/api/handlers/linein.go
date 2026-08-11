@@ -281,6 +281,22 @@ func LineInRecordings(list func() []LineInRecordingData) http.HandlerFunc {
 	}
 }
 
+// LineInGetConfig returns a handler for GET /v1/linein/config.
+// It reads the stored default input device ID from the provided store.
+// If store is nil, returns an empty default_device_id.
+func LineInGetConfig(store LineInConfigStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		deviceID := ""
+		if store != nil {
+			deviceID = store.GetLineInDefaultDeviceID()
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":   true,
+			"data": map[string]any{"default_device_id": deviceID},
+		})
+	}
+}
+
 // LineInPatchConfig returns a handler for PATCH /v1/linein/config.
 // It persists the default input device ID via the provided store.
 // If store is nil, returns 501 Not Implemented.

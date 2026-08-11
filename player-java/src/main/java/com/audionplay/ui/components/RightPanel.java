@@ -17,7 +17,7 @@ public class RightPanel extends VBox {
 
     public RightPanel() {
         super(10);
-        setPrefWidth(405); setMinWidth(369); setMaxWidth(438);
+        setMinWidth(300); setMaxWidth(Double.MAX_VALUE);
         setPadding(new Insets(10));
         setStyle("-fx-background-color:" + BG_MAIN + ";");
 

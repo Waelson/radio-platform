@@ -81,11 +81,16 @@ func (rb *ringBuf) read(out []float32) {
 
 // MixBus aggregates audio from multiple sources and outputs a single mixed
 // stream at a fixed 20 ms rate.
+//
+// Main source (playback + line-in): frames arrive via MainIn(). The Mixer
+// fans out to this channel from its Write() method, so both playback and
+// line-in audio are already mixed before reaching the MixBus.
+// Cart source: frames arrive directly via CartIn() from the cart player.
 type MixBus struct {
 	mainRing *ringBuf
 	cartRing *ringBuf
 
-	mainIn chan []float32 // playback manager writes here
+	mainIn chan []float32 // Mixer writes here (playback + line-in combined)
 	cartIn chan []float32 // cart player writes here
 	outCh  chan []float32 // streaming manager reads here
 }
@@ -101,8 +106,9 @@ func New() *MixBus {
 	}
 }
 
-// MainIn returns the write-only channel for the main playback source.
-// Pass this to playback.Manager.SetStreamingTap.
+// MainIn returns the write-only channel for the main audio source.
+// Pass this to mixer.Mixer.SetStreamingTap so that all audio routed through
+// the Mixer (playback and line-in) reaches the streaming pipeline.
 func (m *MixBus) MainIn() chan<- []float32 { return m.mainIn }
 
 // CartIn returns the write-only channel for the cart player source.
@@ -121,7 +127,7 @@ func (m *MixBus) Run(ctx context.Context) {
 
 	mainBuf := make([]float32, tickSamples)
 	cartBuf := make([]float32, tickSamples)
-	mixed := make([]float32, tickSamples)
+	mixed   := make([]float32, tickSamples)
 
 	drainInputs := func() {
 		for {

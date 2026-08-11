@@ -40,7 +40,7 @@ public class TopBar extends HBox {
         setAlignment(Pos.CENTER_LEFT);
         setMinHeight(66);
         setStyle(
-            "-fx-background-color:rgba(7,16,25,0.95);" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:0 0 1 0;"
         );
         setPadding(new Insets(0, 20, 0, 20));

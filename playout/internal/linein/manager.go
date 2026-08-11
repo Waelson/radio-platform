@@ -7,15 +7,33 @@ import (
 	"log/slog"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Waelson/radio-playout-engine/internal/audio/output"
+	"github.com/Waelson/radio-playout-engine/internal/state"
 )
 
 const (
 	// bufferFrames is the number of PCM frames per read/write iteration.
 	// At 48 kHz stereo this is ~42 ms of audio per loop iteration.
 	bufferFrames = 2048
+
+	// pcmChanSize is the capacity of the Go channel that decouples the
+	// avfoundation reader goroutine from the ring-buffer writer loop.
+	// 64 chunks × ~42 ms = ~2.7 s of headroom for avfoundation delivery
+	// stalls (USB packet jitter, system load spikes, etc.) without any
+	// audio underrun reaching the CoreAudio ring buffer.
+	pcmChanSize = 64
+
+	// preBufferChunks is the number of PCM chunks written to the ring buffer
+	// before the AudioQueue is started. With the producer-consumer pattern
+	// the Go channel is already full from the avfoundation burst, so the
+	// consumer writes these chunks nearly instantly (no perceptible startup
+	// delay). After Start() the 3 initial AudioQueue callbacks drain 3 chunks,
+	// leaving ~7 chunks (~294 ms) of steady-state headroom that absorbs
+	// delivery jitter without causing ring-empty silence callbacks.
+	preBufferChunks = 1
 
 	// levelUpdateInterval controls how often EventLevelUpdate is emitted.
 	levelUpdateInterval = 500 * time.Millisecond
@@ -35,10 +53,12 @@ type LineInManager struct {
 	input    InputDevice
 	out      output.OutputDevice
 	recorder output.OutputDevice // optional; simultaneous recording (caller owns lifecycle)
+	stateMgr *state.Manager      // optional; provides MainVolume for gain control
 	log      *slog.Logger
 	cancel   context.CancelFunc
 	mu       sync.Mutex
 	active   bool
+	paused   atomic.Bool // when true, frames are zeroed before writing (silence)
 }
 
 // NewLineInManager creates a manager with the given devices.
@@ -73,10 +93,16 @@ func (m *LineInManager) Start(ctx context.Context, cfg LineInConfig) (<-chan Eve
 // SetRecorder attaches an optional secondary output that receives the same
 // PCM frames as the main output (simultaneous recording).
 // Must be called before Start. The caller is responsible for closing the
-// recorder after the session ends — the manager writes to it but does not
-// close it, allowing the caller to do post-processing (e.g. WAV→MP3 conversion).
+// recorder after the session ends.
 func (m *LineInManager) SetRecorder(r output.OutputDevice) {
 	m.recorder = r
+}
+
+// SetStateManager attaches the state manager so that the main volume level is
+// applied to line-in frames before they are written to the output device.
+// Must be called before Start.
+func (m *LineInManager) SetStateManager(s *state.Manager) {
+	m.stateMgr = s
 }
 
 // Stop signals the active session to stop.
@@ -89,8 +115,28 @@ func (m *LineInManager) Stop() {
 	}
 }
 
+// Pause silences the line-in output without stopping the session.
+// The capture device keeps running; frames are replaced with silence so the
+// output buffer stays fed and resuming is glitch-free.
+func (m *LineInManager) Pause() { m.paused.Store(true) }
+
+// Resume restores live audio output after a Pause.
+func (m *LineInManager) Resume() { m.paused.Store(false) }
+
 // run is the main goroutine. It opens the input device, routes PCM to the
 // output device, runs the silence watchdog, and emits events.
+//
+// Architecture (two-stage pipeline):
+//
+//	[FFmpeg/avfoundation] → producer goroutine → [Go channel, pcmChanSize]
+//	                      → consumer loop      → [C ring buffer]
+//	                      → CoreAudio pullCallback (always re-enqueues)
+//
+// The Go channel decouples avfoundation delivery jitter (USB packet bursts,
+// system load spikes) from the CoreAudio ring-buffer write rate. The ring
+// buffer itself decouples the Go writer from the CoreAudio hardware clock.
+// With both buffers combined, audio remains glitch-free even if avfoundation
+// stalls for up to ~2.7 s.
 func (m *LineInManager) run(ctx context.Context, cfg LineInConfig, events chan<- Event) {
 	defer func() {
 		m.mu.Lock()
@@ -110,31 +156,68 @@ func (m *LineInManager) run(ctx context.Context, cfg LineInConfig, events chan<-
 	m.emit(events, Event{Type: EventStarted})
 	m.logf("line-in session started", "label", cfg.Label, "device", cfg.DeviceID)
 
-	buf := make([]float32, bufferFrames*2) // stereo
+	// ── Producer goroutine ──────────────────────────────────────────────────
+	// Reads from FFmpeg as fast as avfoundation delivers (including the
+	// startup burst) and forwards chunks to pcmCh. The channel buffer absorbs
+	// delivery jitter so the consumer loop never has to wait on avfoundation.
+	errCh := make(chan error, 1)
+	pcmCh := make(chan []float32, pcmChanSize)
+	producerDone := make(chan struct{})
+	go func() {
+		defer close(producerDone)
+		defer close(pcmCh)
+		for {
+			b := make([]float32, bufferFrames*2)
+			n, err := m.input.ReadFrames(ctx, b)
+			if n > 0 {
+				select {
+				case pcmCh <- b[:n*2]:
+				case <-ctx.Done():
+					return
+				}
+			}
+			if err == io.EOF || (err != nil && ctx.Err() != nil) {
+				return
+			}
+			if err != nil {
+				select {
+				case errCh <- err:
+				default:
+				}
+				return
+			}
+		}
+	}()
+
+	// Ensure the producer goroutine exits BEFORE m.input.Close() is called.
+	// Go defers run LIFO, so registering these two after m.input.Close() means
+	// they execute in this order on any return:
+	//   1. m.cancel()       — signals the producer to exit via ctx.Done()
+	//   2. <-producerDone  — waits for the producer to fully exit
+	//   3. m.input.Close() — now safe: no concurrent ReadFrames in progress
+	// Without this ordering, duration_ms expiry caused a use-after-free crash:
+	// run() returned without cancelling ctx, defer m.input.Close() freed the
+	// C session, and the still-running producer called caInputAvail/caInputRead
+	// on the freed pointer → SIGSEGV.
+	defer func() { <-producerDone }()
+	defer m.cancel()
 
 	silenceThresholdLinear := dbfsToLinear(cfg.silenceThresholdDBFS())
 	silenceThresholdDur := time.Duration(cfg.silenceThresholdMS()) * time.Millisecond
 
 	var silenceSince *time.Time
 	var silenceAlerted bool
-
 	lastLevelUpdate := time.Now()
 
-	for {
-		// Duration cap: stop when configured duration has elapsed.
-		if cfg.DurationMS > 0 {
-			elapsed := time.Since(startedAt)
-			if elapsed >= time.Duration(cfg.DurationMS)*time.Millisecond {
-				m.logf("line-in duration cap reached", "duration_ms", cfg.DurationMS)
-				m.emit(events, Event{
-					Type:      EventStopped,
-					ElapsedMS: elapsed.Milliseconds(),
-				})
-				return
-			}
-		}
+	queueStarted := false
+	preBuffered := 0
 
-		// Check for external stop signal.
+	for {
+		// Priority stop check: when ctx is cancelled, exit immediately
+		// without draining buffered frames from pcmCh. Without this,
+		// the select below would randomly pick pcmCh over ctx.Done()
+		// for up to ~2.7 s while the channel drains (pcmChanSize = 64
+		// chunks × ~42 ms each), causing audible delay after Stop/Pause/Skip.
 		select {
 		case <-ctx.Done():
 			elapsed := time.Since(startedAt)
@@ -143,37 +226,83 @@ func (m *LineInManager) run(ctx context.Context, cfg LineInConfig, events chan<-
 		default:
 		}
 
-		n, err := m.input.ReadFrames(ctx, buf)
-		if err == io.EOF || (err != nil && ctx.Err() != nil) {
+		// Duration cap.
+		if cfg.DurationMS > 0 {
+			elapsed := time.Since(startedAt)
+			if elapsed >= time.Duration(cfg.DurationMS)*time.Millisecond {
+				m.logf("line-in duration cap reached", "duration_ms", cfg.DurationMS)
+				m.emit(events, Event{Type: EventStopped, ElapsedMS: elapsed.Milliseconds()})
+				return
+			}
+		}
+
+		// Wait for the next PCM chunk, an input error, or a stop signal.
+		var frames []float32
+		select {
+		case <-ctx.Done():
 			elapsed := time.Since(startedAt)
 			m.emit(events, Event{Type: EventStopped, ElapsedMS: elapsed.Milliseconds()})
 			return
-		}
-		if err != nil {
+		case err := <-errCh:
 			m.emit(events, Event{Type: EventError, Err: fmt.Errorf("linein: read: %w", err)})
 			return
-		}
-		if n == 0 {
-			continue
+		case f, ok := <-pcmCh:
+			if !ok {
+				// Producer closed — FFmpeg reached EOF.
+				elapsed := time.Since(startedAt)
+				m.emit(events, Event{Type: EventStopped, ElapsedMS: elapsed.Milliseconds()})
+				return
+			}
+			frames = f
 		}
 
-		frames := buf[:n*2]
+		// When paused, replace frames with silence so the output buffer stays
+		// fed and the device does not underrun. The capture device keeps running
+		// so resuming is glitch-free (no startup delay or buffer refill needed).
+		if m.paused.Load() {
+			for i := range frames {
+				frames[i] = 0
+			}
+		}
 
-		// Write to main output device.
+		// Apply main volume gain so the line-in level respects the same
+		// volume control used by regular playback.
+		if m.stateMgr != nil {
+			applyGain(frames, m.stateMgr.MainVolume())
+		}
+
+		// Write to ring buffer via the Mixer. The Mixer fans out to the
+		// health monitor and the streaming tap automatically.
 		if _, werr := m.out.Write(ctx, frames); werr != nil {
 			m.emit(events, Event{Type: EventError, Err: fmt.Errorf("linein: write output: %w", werr)})
 			return
 		}
 
-		// Write to recorder (simultaneous recording). Errors are non-fatal —
-		// a recording failure must never interrupt the live transmission.
-		if m.recorder != nil {
-			if _, werr := m.recorder.Write(ctx, frames); werr != nil {
-				m.logf("linein: recorder write error (recording may be incomplete)", "err", werr)
+		// Start the AudioQueue only after preBufferChunks chunks are in the
+		// ring. The producer-consumer pattern fills the Go channel from the
+		// avfoundation burst, so the consumer writes these chunks almost
+		// instantly. After Start() the ring has ~7 chunks of headroom
+		// (~294 ms) that absorbs delivery jitter without silence callbacks.
+		if !queueStarted {
+			preBuffered++
+			if preBuffered >= preBufferChunks {
+				queueStarted = true
+				if serr := m.out.Start(ctx); serr != nil {
+					m.emit(events, Event{Type: EventError, Err: fmt.Errorf("linein: start output: %w", serr)})
+					return
+				}
+				m.logf("line-in output started", "label", cfg.Label)
 			}
 		}
 
-		// ── Silence watchdog ──────────────────────────────────────────────
+		// Write to recorder (non-fatal).
+		if m.recorder != nil {
+			if _, werr := m.recorder.Write(ctx, frames); werr != nil {
+				m.logf("linein: recorder write error", "err", werr)
+			}
+		}
+
+		// ── Silence watchdog ─────────────────────────────────────────────
 		rms := computeRMS(frames)
 		if rms < silenceThresholdLinear {
 			now := time.Now()
@@ -201,7 +330,7 @@ func (m *LineInManager) run(ctx context.Context, cfg LineInConfig, events chan<-
 			silenceAlerted = false
 		}
 
-		// ── Level update ──────────────────────────────────────────────────
+		// ── Level update ─────────────────────────────────────────────────
 		if time.Since(lastLevelUpdate) >= levelUpdateInterval {
 			lastLevelUpdate = time.Now()
 			m.emit(events, Event{
@@ -216,8 +345,6 @@ func (m *LineInManager) emit(ch chan<- Event, e Event) {
 	select {
 	case ch <- e:
 	default:
-		// Drop non-critical level events if the channel is full.
-		// Critical events (error, stopped) are always retried via a blocking send.
 		if e.Type == EventError || e.Type == EventStopped || e.Type == EventSilenceStop {
 			ch <- e
 		}
@@ -232,7 +359,17 @@ func (m *LineInManager) logf(msg string, args ...any) {
 
 // ── Audio helpers ─────────────────────────────────────────────────────────────
 
-// computeRMS returns the root mean square amplitude of the frame buffer.
+// applyGain multiplies every sample in buf by gain. Returns immediately when
+// gain == 1.0 to keep the hot path allocation-free.
+func applyGain(buf []float32, gain float32) {
+	if gain == 1.0 {
+		return
+	}
+	for i := range buf {
+		buf[i] *= gain
+	}
+}
+
 func computeRMS(frames []float32) float64 {
 	if len(frames) == 0 {
 		return 0
@@ -245,8 +382,6 @@ func computeRMS(frames []float32) float64 {
 	return math.Sqrt(sum / float64(len(frames)))
 }
 
-// linearToDBFS converts a linear amplitude to dBFS.
-// Returns -144 for zero input (treated as silence floor).
 func linearToDBFS(linear float64) float64 {
 	if linear <= 0 {
 		return -144
@@ -254,7 +389,6 @@ func linearToDBFS(linear float64) float64 {
 	return 20 * math.Log10(linear)
 }
 
-// dbfsToLinear converts a dBFS value to linear amplitude.
 func dbfsToLinear(dbfs float64) float64 {
 	if dbfs <= -144 {
 		return 0

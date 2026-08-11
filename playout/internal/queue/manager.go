@@ -507,6 +507,21 @@ func (m *Manager) ClearCurrent() {
 	m.mu.Unlock()
 }
 
+// MarkCurrentPlayed transitions the current item to PLAYED status without
+// removing it from the queue. The item remains visible as "current" until
+// replaced by the next SetCurrent / PopAsCurrent call.
+// Used by the line-in handler so the virtual LINE_IN item stays visible
+// in the playlist after the session ends.
+func (m *Manager) MarkCurrentPlayed() {
+	m.mu.Lock()
+	if m.current != nil {
+		m.current.Status = ItemStatusPlayed
+	}
+	m.publishAndUpdateLocked("mark_current_played")
+	m.persist()
+	m.mu.Unlock()
+}
+
 // PrependItem inserts an already-built QueueItem at the front of the pending
 // queue with status QUEUED. Used by the playback manager to return a
 // crossfade-preloaded item to the queue when stop is issued mid-crossfade.

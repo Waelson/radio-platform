@@ -238,6 +238,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/linein/stop",    handlers.LineInStop(s.cmdBus, s.stateMgr))
 	mux.HandleFunc("GET /v1/linein/status",   handlers.LineInStatus(s.stateMgr))
 	mux.HandleFunc("GET /v1/linein/devices",     handlers.LineInDevices(s.lineInListDevices))
+	mux.HandleFunc("GET /v1/linein/config",      handlers.LineInGetConfig(s.lineInConfigStore))
 	mux.HandleFunc("PATCH /v1/linein/config",    handlers.LineInPatchConfig(s.lineInConfigStore))
 	mux.HandleFunc("GET /v1/linein/recordings",  handlers.LineInRecordings(s.lineInListRecordings))
 

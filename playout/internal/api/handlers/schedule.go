@@ -34,14 +34,29 @@ type breakItemInput struct {
 	Close *queueItemInput  `json:"close,omitempty"`
 }
 
+// lineInInput is the schedule-handler DTO for a line-in entry.
+type lineInInput struct {
+	DeviceID             string  `json:"device_id,omitempty"`
+	Label                string  `json:"label,omitempty"`
+	DurationMS           int64   `json:"duration_ms,omitempty"`
+	OnSilence            string  `json:"on_silence,omitempty"`
+	SilenceThresholdDBFS float64 `json:"silence_threshold_dbfs,omitempty"`
+	SilenceThresholdMS   int64   `json:"silence_threshold_ms,omitempty"`
+	Record               bool    `json:"record,omitempty"`
+	RecordPath           string  `json:"record_path,omitempty"`
+	RecordFormat         string  `json:"record_format,omitempty"`
+}
+
 type scheduleAddRequest struct {
 	Name        string          `json:"name"`
 	Enabled     bool            `json:"enabled"`
 	CronExpr    string          `json:"cron_expr"`
 	FireAt      *time.Time      `json:"fire_at"`
 	TriggerMode string          `json:"trigger_mode"`
-	Item        *queueItemInput `json:"item,omitempty"`  // mutually exclusive with Break
-	Break       *breakItemInput `json:"break,omitempty"` // mutually exclusive with Item
+	Item        *queueItemInput `json:"item,omitempty"`       // mutually exclusive with Break, LineIn, LineInStop
+	Break       *breakItemInput `json:"break,omitempty"`      // mutually exclusive with Item, LineIn, LineInStop
+	LineIn      *lineInInput    `json:"line_in,omitempty"`    // mutually exclusive with Item, Break, LineInStop
+	LineInStop  bool            `json:"line_in_stop,omitempty"` // mutually exclusive with Item, Break, LineIn
 }
 
 type scheduleEntryView struct {
@@ -53,6 +68,8 @@ type scheduleEntryView struct {
 	TriggerMode string          `json:"trigger_mode"`
 	Item        *queueItemInput `json:"item,omitempty"`
 	Break       *breakItemInput `json:"break,omitempty"`
+	LineIn      *lineInInput    `json:"line_in,omitempty"`
+	LineInStop  bool            `json:"line_in_stop,omitempty"`
 	CreatedAt   time.Time       `json:"created_at"`
 	LastFiredAt *time.Time      `json:"last_fired_at,omitempty"`
 	NextFireAt  *time.Time      `json:"next_fire_at,omitempty"`
@@ -74,11 +91,25 @@ func validateScheduleRequest(req scheduleAddRequest) string {
 	if req.CronExpr != "" && req.FireAt != nil {
 		return "cron_expr and fire_at are mutually exclusive"
 	}
-	if req.Item != nil && req.Break != nil {
-		return "item and break are mutually exclusive"
+	// Count how many mutually exclusive payload types are set.
+	payloadCount := 0
+	if req.Item != nil {
+		payloadCount++
 	}
-	if req.Item == nil && req.Break == nil {
-		return "exactly one of item or break must be set"
+	if req.Break != nil {
+		payloadCount++
+	}
+	if req.LineIn != nil {
+		payloadCount++
+	}
+	if req.LineInStop {
+		payloadCount++
+	}
+	if payloadCount > 1 {
+		return "item, break, line_in and line_in_stop are mutually exclusive"
+	}
+	if payloadCount == 0 {
+		return "exactly one of item, break, line_in or line_in_stop must be set"
 	}
 	if req.Item != nil {
 		if req.Item.Path == "" && req.Item.Type != "HORA_CERTA" {
@@ -135,9 +166,24 @@ func toScheduleEntry(req scheduleAddRequest) scheduler.Entry {
 		FireAt:      req.FireAt,
 		TriggerMode: mode,
 		Break:       toCommandBreak(req.Break),
+		LineInStop:  req.LineInStop,
 	}
 	if req.Item != nil {
 		e.Item = toCommandItem(*req.Item)
+	}
+	if req.LineIn != nil {
+		e.LineIn = &commands.LineInStartPayload{
+			DeviceID:             req.LineIn.DeviceID,
+			Label:                req.LineIn.Label,
+			DurationMS:           req.LineIn.DurationMS,
+			OnSilence:            req.LineIn.OnSilence,
+			SilenceThresholdDBFS: req.LineIn.SilenceThresholdDBFS,
+			SilenceThresholdMS:   req.LineIn.SilenceThresholdMS,
+			Record:               req.LineIn.Record,
+			RecordPath:           req.LineIn.RecordPath,
+			RecordFormat:         req.LineIn.RecordFormat,
+			TriggeredBy:          "schedule",
+		}
 	}
 	return e
 }
@@ -172,6 +218,20 @@ func toScheduleView(e scheduler.Entry, nextFireAt *time.Time) scheduleEntryView 
 			bv.Close = &cv
 		}
 		v.Break = bv
+	} else if e.LineIn != nil {
+		v.LineIn = &lineInInput{
+			DeviceID:             e.LineIn.DeviceID,
+			Label:                e.LineIn.Label,
+			DurationMS:           e.LineIn.DurationMS,
+			OnSilence:            e.LineIn.OnSilence,
+			SilenceThresholdDBFS: e.LineIn.SilenceThresholdDBFS,
+			SilenceThresholdMS:   e.LineIn.SilenceThresholdMS,
+			Record:               e.LineIn.Record,
+			RecordPath:           e.LineIn.RecordPath,
+			RecordFormat:         e.LineIn.RecordFormat,
+		}
+	} else if e.LineInStop {
+		v.LineInStop = true
 	} else {
 		item := fromCommandItem(e.Item)
 		v.Item = &item

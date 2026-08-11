@@ -19,6 +19,7 @@ func buildCaptureArgs(deviceID string) []string {
 	return []string{
 		"-hide_banner", "-loglevel", "error",
 		"-f", "avfoundation",
+		"-thread_queue_size", "512",
 		"-i", id,
 	}
 }

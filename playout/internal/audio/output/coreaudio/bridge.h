@@ -2,67 +2,99 @@
 #define COREAUDIO_BRIDGE_H
 
 #include <AudioToolbox/AudioToolbox.h>
+#include <stdatomic.h>
+#include <stdint.h>
 
-// Called by the AudioQueue callback; implemented in coreaudio.go via CGO export.
-extern void goBufferReady(void *userData, AudioQueueRef queue, AudioQueueBufferRef buf);
+// ── SPSC lock-free ring buffer ────────────────────────────────────────────────
+// Single-producer (Go goroutine via Write) /
+// single-consumer (CoreAudio callback thread).
+//
+// The ring buffer decouples the Go writer rate (FFmpeg / playback loop) from
+// the CoreAudio consumption rate. When the producer is ahead (burst delivery),
+// the ring absorbs the surplus. When the producer stalls, the callback serves
+// silence instead of letting the AudioQueue auto-stop.
+typedef struct {
+    float            *data;
+    uint32_t          cap;   // capacity in samples — always a power of 2
+    _Atomic uint32_t  head;  // write cursor, advanced by producer (Go)
+    _Atomic uint32_t  tail;  // read cursor,  advanced by consumer (C callback)
+} CARingBuf;
 
-// Creates and configures an output AudioQueue.
-// Returns 0 on success, OSStatus on failure.
-OSStatus caNewQueue(
-    double         sampleRate,
-    int            channels,
-    void          *userData,
-    AudioQueueRef *outQueue
-);
+// Allocates a ring buffer. capacitySamples is rounded up to the next power-of-2.
+CARingBuf *caRingCreate(uint32_t capacitySamples);
 
-// Allocates a buffer in the queue.
-OSStatus caAllocBuffer(
-    AudioQueueRef        queue,
-    int                  bufferFrames,
-    int                  channels,
-    AudioQueueBufferRef *outBuf
-);
+// Frees a ring buffer created by caRingCreate.
+void caRingFree(CARingBuf *r);
 
-// Fills a buffer with float32 PCM and enqueues it.
-OSStatus caEnqueueBuffer(
-    AudioQueueRef       queue,
-    AudioQueueBufferRef buf,
-    const float        *frames,
-    int                 nFrames,
-    int                 channels
-);
+// Discards all buffered data (moves tail to head).
+void caRingDrain(CARingBuf *r);
 
-// Returns 1 if the AudioQueue is currently running, 0 otherwise.
-int caIsRunning(AudioQueueRef queue);
+// Writes up to n samples from src into the ring buffer.
+// Returns the number of samples actually written (may be < n if buffer is full).
+uint32_t caRingWrite(CARingBuf *r, const float *src, uint32_t n);
 
-// Finds an audio output device by its name.
-// Returns noErr (0) and sets *outID on success.
-// Returns kAudioHardwareUnknownPropertyError if not found.
+// Reads exactly n samples from the ring buffer into dst.
+// Fills any remainder with 0.0f (silence) if fewer than n samples are available.
+void caRingRead(CARingBuf *r, float *dst, uint32_t n);
+
+// Returns the number of samples available for reading.
+uint32_t caRingAvail(CARingBuf *r);
+
+// Returns the number of samples of free space available for writing.
+uint32_t caRingSpace(CARingBuf *r);
+
+// ── AudioQueue — pull model ────────────────────────────────────────────────────
+// The pull-model callback reads from the ring buffer on every invocation and
+// always re-enqueues the buffer. The AudioQueue NEVER auto-stops: when the ring
+// is empty the callback serves silence, but playback continues uninterrupted.
+//
+// Usage:
+//   1. caRingCreate()      — create ring buffer
+//   2. caNewQueuePull()    — create AudioQueue using pull callback
+//   3. caAllocBuffer() ×N  — allocate N AudioQueue buffers
+//   4. caEnqueueSilent() ×N — kick-start the circular buffer loop
+//   5. AudioQueueStart()   — begin playback (silence until ring has data)
+//   6. caRingWrite()       — feed PCM data from Go; callback picks it up
+//   7. AudioQueueStop()    — stop playback
+//   8. caRingFree()        — release ring buffer
+
+// Creates an output AudioQueue in pull mode. ring must remain valid for the
+// lifetime of the queue.
+OSStatus caNewQueuePull(double sampleRate, int channels,
+                        CARingBuf *ring, AudioQueueRef *outQueue);
+
+// Allocates one AudioQueue buffer of bufferFrames × channels × sizeof(float) bytes.
+OSStatus caAllocBuffer(AudioQueueRef queue, int bufferFrames,
+                       int channels, AudioQueueBufferRef *outBuf);
+
+// Fills buf with silence and enqueues it. Call once per buffer at startup to
+// kick-start the pull-model circular loop.
+OSStatus caEnqueueSilent(AudioQueueRef queue, AudioQueueBufferRef buf);
+
+// ── Device enumeration ────────────────────────────────────────────────────────
+
+// Finds an output device by human-readable name. Sets *outID on success.
 OSStatus caFindDeviceByName(const char *name, AudioDeviceID *outID);
 
-// Finds an audio output device by its persistent UID (kAudioDevicePropertyDeviceUID).
-// Returns noErr (0) and sets *outID on success.
-// Returns kAudioHardwareUnknownPropertyError if not found.
+// Finds an output device by persistent UID (kAudioDevicePropertyDeviceUID).
 OSStatus caFindDeviceByUID(const char *uid, AudioDeviceID *outID);
 
 // Routes an AudioQueue to a specific output device.
 OSStatus caSetQueueDevice(AudioQueueRef queue, AudioDeviceID deviceID);
 
-// Writes the names of all output devices into buf (newline-separated).
-// bufSize is the total buffer capacity; returns the number of bytes written.
+// Writes newline-separated device names into buf. Returns bytes written.
 int caListOutputDevices(char *buf, int bufSize);
 
-// CADeviceEntry holds structured metadata for one output device.
+// Holds metadata for one output device returned by caEnumOutputDevices.
 typedef struct {
-    char   uid[256];            // kAudioDevicePropertyDeviceUID — persists across renames
-    char   name[256];           // kAudioObjectPropertyName — human-readable label
-    int    maxOutputChannels;   // total output channels across all output streams
-    double defaultSampleRate;   // kAudioDevicePropertyNominalSampleRate
-    int    isDefault;           // 1 if this is the system default output device
+    char   uid[256];
+    char   name[256];
+    int    maxOutputChannels;
+    double defaultSampleRate;
+    int    isDefault;
 } CADeviceEntry;
 
-// Fills out[0..maxCount-1] with metadata for each available output device.
-// Returns the number of entries written (always <= maxCount).
+// Enumerates output devices into out[0..maxCount-1]. Returns count written.
 int caEnumOutputDevices(CADeviceEntry *out, int maxCount);
 
-#endif
+#endif /* COREAUDIO_BRIDGE_H */

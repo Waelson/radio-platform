@@ -386,6 +386,12 @@ var configPageTpl = `<!DOCTYPE html>
         <label class="lbl">Hot Keys</label>
         <select id="cart-device"></select>
       </div>
+      <div class="subsection" style="margin-top:28px">Entrada de Linha (Line-In)</div>
+      <div class="field">
+        <label class="lbl">Dispositivo de entrada padrão</label>
+        <select id="linein-device"></select>
+        <div class="hint">Dispositivo de captura usado como padrão ao iniciar uma sessão Line-In pelo modal ou pelo agendador.</div>
+      </div>
     </div>
 
     <!-- ÁUDIO -->
@@ -716,9 +722,10 @@ var configPageTpl = `<!DOCTYPE html>
   var errorBannerTimer = null;
   var corsOrigins   = [];
   var corsSelected  = -1;
-  var audioDeviceID = '';
-  var prevDeviceID  = '';
-  var cartDeviceID  = '';
+  var audioDeviceID   = '';
+  var prevDeviceID    = '';
+  var cartDeviceID    = '';
+  var lineInDeviceID  = '';
 
   // ── Navigation ───────────────────────────────────────────────
   document.querySelectorAll('.nav-item').forEach(function(item) {
@@ -959,6 +966,9 @@ var configPageTpl = `<!DOCTYPE html>
     var ct = cfg.hotkeys || {};
     cartDeviceID = (ct.output && ct.output.device_id) || '';
 
+    var li = cfg.line_in || {};
+    lineInDeviceID = li.default_device_id || '';
+
     var tl = cfg.transmission_log || {};
     setCheck('tl-enabled', tl.enabled);
     setVal('tl-dir', tl.dir);
@@ -982,7 +992,7 @@ var configPageTpl = `<!DOCTYPE html>
 
   // ── Load devices ─────────────────────────────────────────────
   function loadDevices() {
-    return fetch('/v1/devices')
+    var outputP = fetch('/v1/devices')
       .then(function(r) { return r.json(); })
       .then(function(resp) {
         var devs = Array.isArray(resp) ? resp : (Array.isArray(resp.devices) ? resp.devices : []);
@@ -991,6 +1001,19 @@ var configPageTpl = `<!DOCTYPE html>
         populateDeviceSelect('cart-device', devs, cartDeviceID);
       })
       .catch(function() {});
+
+    var inputP = fetch('/v1/linein/devices')
+      .then(function(r) { return r.json(); })
+      .then(function(resp) {
+        var devs = Array.isArray(resp) ? resp
+          : Array.isArray(resp.devices) ? resp.devices
+          : (resp.data && Array.isArray(resp.data.devices)) ? resp.data.devices
+          : [];
+        populateDeviceSelect('linein-device', devs, lineInDeviceID);
+      })
+      .catch(function() {});
+
+    return Promise.all([outputP, inputP]);
   }
 
   function populateDeviceSelect(id, devs, selectedID) {
@@ -1090,6 +1113,9 @@ var configPageTpl = `<!DOCTYPE html>
           device_id: getVal('cart-device')
         }
       },
+      line_in: {
+        default_device_id: getVal('linein-device')
+      },
       transmission_log: {
         enabled:            getCheck('tl-enabled'),
         dir:                getVal('tl-dir'),
@@ -1143,6 +1169,7 @@ var configPageTpl = `<!DOCTYPE html>
       showBanner('error', 'Dispositivo de Preview deve ser diferente do dispositivo Principal e do Hot Keys.');
       return;
     }
+
     fetch('/v1/config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1183,6 +1210,7 @@ var configPageTpl = `<!DOCTYPE html>
   }
   function confirmDiscard() {
     hideDiscardBar();
+    lineInDeviceID = '';
     loadConfig().then(loadDevices);
   }
 

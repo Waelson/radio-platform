@@ -86,7 +86,7 @@ public class NowPlayingPanel extends VBox {
     public NowPlayingPanel() {
         super(0);
         setStyle(
-            "-fx-background-color:#0a1520;" +
+            "-fx-background-color:#000000;" +
             "-fx-background-radius:12;" +
             "-fx-border-color:#20384c;" +
             "-fx-border-radius:12;-fx-border-width:1;"
@@ -416,7 +416,11 @@ public class NowPlayingPanel extends VBox {
         topbar.setAlignment(Pos.CENTER_LEFT);
         topbar.setPadding(new Insets(0, 14, 0, 14));
         topbar.setMinHeight(48);
-        topbar.setStyle("-fx-border-color:#20384c;-fx-border-width:0 0 1 0;");
+        topbar.setStyle(
+            "-fx-background-color:linear-gradient(from 0% 0% to 0% 100%, #6b6b6b 0%, #555555 22%, #3a3a3a 47%, #080808 49%, #040404 72%, #000000 100%);" +
+            "-fx-border-color:#333333;-fx-border-width:0 0 1 0;" +
+            "-fx-background-radius:12 12 0 0;"
+        );
         return topbar;
     }
 

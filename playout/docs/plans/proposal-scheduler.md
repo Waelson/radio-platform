@@ -11,26 +11,50 @@ O Scheduler é um módulo interno do Playout Engine responsável por disparar it
 ### Como o locutor e o operador enxergam o scheduler
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Player / UI                                                │
-│                                                             │
-│  [Grade Horária]                                            │
-│  ├─ 10:00  Noticiário         CROSSFADE    ativo  ✓         │
-│  ├─ 10:30  Spot Banco X       AFTER_CURRENT ativo ✓         │
-│  ├─ 12:00  Vinheta Meio-dia   INTERRUPT    ativo  ✓         │
-│  └─ 20:00  Transmissão Ao Vivo INTERRUPT   one-shot ✓       │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Player / UI                                                     │
+│                                                                  │
+│  [Grade Horária]                                                 │
+│  ├─ 10:00  Noticiário           CROSSFADE     recorrente  ✓      │
+│  ├─ 10:30  Spot Banco X         AFTER_CURRENT recorrente  ✓      │
+│  ├─ 12:00  Vinheta Meio-dia     INTERRUPT     recorrente  ✓      │
+│  ├─ 19:00  Voz do Brasil        INTERRUPT     recorrente  ✓  📡  │
+│  └─ 2026-07-30T20:00  Live Esp. INTERRUPT     one-shot    ✓  📡  │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+**Tipos de agendamento — `cron_expr` vs `fire_at`:**
+
+| Tipo | Campo | Exemplo | Quando usar |
+|---|---|---|---|
+| **Recorrente** | `cron_expr` | `"0 19 * * 1-5"` | Programas fixos (diários, semanais, etc.) |
+| **Pontual (one-shot)** | `fire_at` | `"2026-07-30T20:00:00-03:00"` | Evento único em data/hora específica |
+
+Os dois campos são **mutuamente exclusivos** — exatamente um deve ser informado.
+Entradas `fire_at` são automaticamente desativadas após o disparo.
+
+**Tipos de payload — o que é agendado:**
+
+| Payload | Campo JSON | Quando usar |
+|---|---|---|
+| Áudio da fila | `item` | Spot, jingle, noticiário gravado, vinheta |
+| Bloco comercial | `break` | Conjunto de spots com vinheta de abertura/fechamento |
+| **Line-In (ao vivo)** | `line_in` | Entrada de linha ao vivo (ex.: Voz do Brasil via satélite) |
+| **Encerrar Line-In** | `line_in_stop: true` | Encerra sessão de linha ativa no horário agendado |
+
+Os quatro payloads são **mutuamente exclusivos** — exatamente um deve ser informado.
 
 **Cenários típicos de operação:**
 
-| Cenário | Cron / Horário | Modo de disparo |
-|---|---|---|
-| Noticiário diário às 10h | `0 10 * * *` | `CROSSFADE` — encavalha suavemente na música atual |
-| Jingle a cada 30 min | `0,30 * * * *` | `AFTER_CURRENT` — aguarda a música terminar |
-| Spot comercial (seg-sex, 9h/12h/18h) | `0 9,12,18 * * 1-5` | `AFTER_CURRENT` |
-| Vinheta de ID a cada hora cheia | `0 * * * *` | `INTERRUPT` — interrompe imediatamente |
-| Evento único — live amanhã às 20h | fire_at: `2026-07-07T20:00:00` | `INTERRUPT` |
+| Cenário | Modo de agendamento | Payload | Modo de disparo |
+|---|---|---|---|
+| Noticiário diário às 10h | `cron_expr: "0 10 * * *"` | `item` | `CROSSFADE` |
+| Jingle a cada 30 min | `cron_expr: "0,30 * * * *"` | `item` | `AFTER_CURRENT` |
+| Spot comercial (seg-sex) | `cron_expr: "0 9,12,18 * * 1-5"` | `break` | `AFTER_CURRENT` |
+| Vinheta de ID a cada hora | `cron_expr: "0 * * * *"` | `item` | `INTERRUPT` |
+| **Voz do Brasil (seg-sex, 19h)** | `cron_expr: "0 19 * * 1-5"` | `line_in` | `INTERRUPT` |
+| **Live especial pontual** | `fire_at: "2026-07-30T20:00:00-03:00"` | `line_in` | `INTERRUPT` |
+| Encerrar Voz do Brasil às 20h | `cron_expr: "0 20 * * 1-5"` | `line_in_stop: true` | — |
 
 **O que acontece quando um entry dispara:**
 
@@ -54,30 +78,22 @@ type Entry struct {
     ID          string      // ULID gerado no ADD
     Name        string      // "Noticiário das 10h"
     Enabled     bool        // false = pausado sem remover
-    CronExpr    string      // expressão cron 5 campos (minuto precision)
-                            // "" quando FireAt for usado
-    FireAt      *time.Time  // horário único de disparo (one-shot)
-    TriggerMode TriggerMode // INTERRUPT | AFTER_CURRENT | CROSSFADE | SKIP_IF_BUSY
-    Item        ScheduledItem
-    CreatedAt   time.Time
-    LastFiredAt *time.Time  // preenchido após cada disparo
-    NextFireAt  *time.Time  // calculado pelo scheduler (read-only na API)
-}
 
-// ScheduledItem é o áudio a ser reproduzido quando a entrada disparar.
-// Tem os mesmos campos de um QueueItem — o scheduler converte para QueueItem antes de enviar.
-type ScheduledItem struct {
-    AssetID    string
-    Path       string
-    Type       string            // SPOT | JINGLE | BED | VOICE | MUSIC | etc.
-    Title      string
-    Artist     string
-    DurationMS int64
-    CueInMS    int64
-    CueOutMS   int64
-    Transition TransitionSpec    // usado em INTERRUPT e CROSSFADE
-    Mandatory  bool
-    Metadata   map[string]string
+    // Modo de agendamento — exatamente um deve ser preenchido:
+    CronExpr    string      // expressão cron 5 campos (minuto precision)
+    FireAt      *time.Time  // horário único de disparo (one-shot); auto-desativado após disparo
+
+    TriggerMode TriggerMode // INTERRUPT | AFTER_CURRENT | CROSSFADE | SKIP_IF_BUSY
+
+    // Payload — exatamente um deve ser preenchido:
+    Item        commands.QueueItemInput    // áudio da fila
+    Break       *commands.BreakItemInput   // bloco comercial
+    LineIn      *commands.LineInStartPayload // entrada de linha ao vivo
+    LineInStop  bool                       // encerra sessão de linha ativa
+
+    CreatedAt   time.Time
+    LastFiredAt time.Time   // preenchido após cada disparo
+    NextFireAt  *time.Time  // calculado pelo scheduler (read-only na API)
 }
 
 type TriggerMode string
@@ -218,7 +234,25 @@ quando entry dispara:
 
 Adiciona uma entrada de agendamento.
 
-**Request:**
+**Campos de agendamento (mutuamente exclusivos):**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `cron_expr` | string | Expressão cron 5 campos — agendamento recorrente |
+| `fire_at` | string (ISO 8601) | Data/hora única de disparo — one-shot; desativado após disparar |
+
+**Campos de payload (mutuamente exclusivos):**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `item` | object | Áudio a inserir na fila |
+| `break` | object | Bloco comercial com spots |
+| `line_in` | object | Iniciar captura de linha ao vivo |
+| `line_in_stop` | bool | Encerrar sessão de linha ativa |
+
+---
+
+**Exemplo 1 — Noticiário recorrente com `cron_expr` + `item`:**
 ```json
 {
   "name": "Noticiário das 10h",
@@ -226,15 +260,54 @@ Adiciona uma entrada de agendamento.
   "cron_expr": "0 10 * * *",
   "trigger_mode": "CROSSFADE",
   "item": {
-    "asset_id": "asset_noticiao_10h",
     "path": "/media/spots/noticiao.mp3",
     "type": "SPOT",
     "title": "Noticiário das 10h",
     "duration_ms": 120000,
-    "cue_in_ms": 0,
-    "cue_out_ms": 120000,
     "transition": { "type": "CROSSFADE", "duration_ms": 3000 }
   }
+}
+```
+
+**Exemplo 2 — Voz do Brasil recorrente com `cron_expr` + `line_in`:**
+```json
+{
+  "name": "Voz do Brasil",
+  "enabled": true,
+  "cron_expr": "0 19 * * 1-5",
+  "trigger_mode": "INTERRUPT",
+  "line_in": {
+    "device_id": "1",
+    "label": "Voz do Brasil",
+    "duration_ms": 3600000,
+    "on_silence": "alert"
+  }
+}
+```
+
+**Exemplo 3 — Live especial pontual com `fire_at` + `line_in`:**
+```json
+{
+  "name": "Live Especial 30/07",
+  "enabled": true,
+  "fire_at": "2026-07-30T20:00:00-03:00",
+  "trigger_mode": "INTERRUPT",
+  "line_in": {
+    "device_id": "1",
+    "label": "Live Especial",
+    "duration_ms": 7200000,
+    "on_silence": "alert"
+  }
+}
+```
+
+**Exemplo 4 — Encerrar Line-In às 20h com `line_in_stop`:**
+```json
+{
+  "name": "Encerrar Voz do Brasil",
+  "enabled": true,
+  "cron_expr": "0 20 * * 1-5",
+  "line_in_stop": true
 }
 ```
 
@@ -244,14 +317,19 @@ Adiciona uma entrada de agendamento.
   "ok": true,
   "entry": {
     "id": "01JZ...",
-    "name": "Noticiário das 10h",
+    "name": "Voz do Brasil",
     "enabled": true,
-    "cron_expr": "0 10 * * *",
-    "trigger_mode": "CROSSFADE",
-    "next_fire_at": "2026-07-07T10:00:00-03:00",
+    "cron_expr": "0 19 * * 1-5",
+    "trigger_mode": "INTERRUPT",
+    "next_fire_at": "2026-07-30T19:00:00-03:00",
     "last_fired_at": null,
-    "created_at": "2026-07-06T13:00:00-03:00",
-    "item": { "..." }
+    "created_at": "2026-07-30T13:00:00-03:00",
+    "line_in": {
+      "device_id": "1",
+      "label": "Voz do Brasil",
+      "duration_ms": 3600000,
+      "on_silence": "alert"
+    }
   }
 }
 ```

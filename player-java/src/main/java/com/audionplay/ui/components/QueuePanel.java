@@ -50,7 +50,7 @@ public class QueuePanel extends VBox {
 
     public QueuePanel() {
         super(10); // gap entre queue card e break card
-        setPrefWidth(422); setMinWidth(369); setMaxWidth(465);
+        setMinWidth(300); setMaxWidth(Double.MAX_VALUE);
         setPadding(new Insets(10));
         setStyle("-fx-background-color:" + BG_MAIN + ";");
 

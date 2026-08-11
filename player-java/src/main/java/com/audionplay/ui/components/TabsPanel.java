@@ -84,7 +84,7 @@ public class TabsPanel extends VBox {
     public TabsPanel() {
         super(0);
         setStyle(
-            "-fx-background-color:#0a1520;" +
+            "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
             "-fx-border-radius:12;-fx-background-radius:12;"
         );
@@ -129,7 +129,7 @@ public class TabsPanel extends VBox {
             tabLbl("Notas",          false)
         );
         tabs.setPadding(new Insets(7, 8, 0, 8));
-        tabs.setStyle("-fx-background-color:rgba(5,14,22,0.4);");
+        tabs.setStyle("-fx-background-color:#000000;");
         return tabs;
     }
 
@@ -140,8 +140,8 @@ public class TabsPanel extends VBox {
         if (active) {
             l.setStyle(
                 "-fx-font-size:12px;-fx-font-weight:700;-fx-cursor:hand;-fx-text-fill:#00d4ff;" +
-                "-fx-background-color:#0a1520;" +
-                "-fx-border-color:#20384c #20384c #0a1520 #20384c;-fx-border-width:1;" +
+                "-fx-background-color:#000000;" +
+                "-fx-border-color:#20384c #20384c #000000 #20384c;-fx-border-width:1;" +
                 "-fx-background-radius:8 8 0 0;-fx-border-radius:8 8 0 0;"
             );
         } else {

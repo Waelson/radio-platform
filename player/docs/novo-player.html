@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>Audion Enterprise Playout — Protótipo operacional</title>
+  <style>
+    :root {
+      --bg: #071019;
+      --bg-2: #0b1622;
+      --panel: #0e1b28;
+      --panel-2: #122334;
+      --panel-3: #172a3d;
+      --line: #20384c;
+      --line-strong: #31536d;
+      --text: #eef7ff;
+      --muted: #88a0b5;
+      --muted-2: #5f788e;
+      --cyan: #00d4ff;
+      --cyan-2: #56e4ff;
+      --blue: #3978ff;
+      --green: #36d399;
+      --amber: #ffbf4b;
+      --orange: #ff8b3d;
+      --red: #ff4d67;
+      --magenta: #d36aff;
+      --purple: #8b7cff;
+      --shadow: 0 18px 45px rgba(0, 0, 0, .28);
+      --radius: 14px;
+      --radius-sm: 9px;
+      --topbar-h: 66px;
+      --rail-w: 76px;
+      --font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% -15%, rgba(0, 212, 255, .11), transparent 34%),
+        radial-gradient(circle at 94% 8%, rgba(57, 120, 255, .09), transparent 26%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 2px;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: var(--rail-w) minmax(0, 1fr);
+      grid-template-rows: var(--topbar-h) minmax(0, 1fr) 30px;
+      grid-template-areas:
+        "top top"
+        "rail main"
+        "rail footer";
+    }
+
+    .topbar {
+      grid-area: top;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 0 15px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(7, 16, 25, .88);
+      backdrop-filter: blur(18px);
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 195px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      position: relative;
+      border: 1px solid rgba(0, 212, 255, .5);
+      border-radius: 11px;
+      background: linear-gradient(145deg, rgba(0, 212, 255, .22), rgba(57, 120, 255, .08));
+      box-shadow: inset 0 0 20px rgba(0, 212, 255, .12), 0 8px 22px rgba(0, 0, 0, .25);
+    }
+    .brand-mark::before {
+      content: "";
+      position: absolute;
+      inset: 8px 8px 8px 11px;
+      background: var(--cyan);
+      clip-path: polygon(0 0, 100% 50%, 0 100%);
+      filter: drop-shadow(0 0 7px rgba(0, 212, 255, .65));
+    }
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      width: 3px;
+      height: 22px;
+      top: 6px;
+      left: 7px;
+      border-radius: 3px;
+      background: var(--cyan-2);
+      box-shadow: -5px 5px 0 -1px rgba(86, 228, 255, .45), -9px 8px 0 -1px rgba(86, 228, 255, .22);
+    }
+    .brand-title { font-size: 14px; font-weight: 760; letter-spacing: .25px; }
+    .brand-sub { margin-top: 2px; color: var(--muted); font-size: 10px; letter-spacing: .75px; text-transform: uppercase; }
+
+    .station-select {
+      height: 38px;
+      min-width: 176px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 0 35px 0 11px;
+      cursor: pointer;
+    }
+
+    .status-cluster { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .chip {
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(14, 27, 40, .78);
+      color: var(--muted);
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .dot.live { background: var(--green); box-shadow: 0 0 0 4px rgba(54, 211, 153, .1), 0 0 12px rgba(54, 211, 153, .8); }
+    .dot.warn { background: var(--amber); }
+    .dot.danger { background: var(--red); }
+
+    .top-spacer { flex: 1; min-width: 12px; }
+    .clock-block { text-align: right; min-width: 146px; }
+    .clock-time { font-size: 23px; font-variant-numeric: tabular-nums; font-weight: 790; letter-spacing: .8px; line-height: 1; }
+    .clock-date { margin-top: 4px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
+
+    .top-icon-btn {
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      cursor: pointer;
+      transition: .18s ease;
+    }
+    .top-icon-btn:hover { border-color: var(--line-strong); background: var(--panel-2); transform: translateY(-1px); }
+
+    .rail {
+      grid-area: rail;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      padding: 11px 8px;
+      border-right: 1px solid var(--line);
+      background: rgba(9, 19, 29, .86);
+      z-index: 10;
+    }
+    .rail-btn {
+      width: 58px;
+      min-height: 52px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      gap: 2px;
+      padding: 6px 3px;
+      transition: .18s ease;
+    }
+    .rail-btn .ico { font-size: 18px; line-height: 1; }
+    .rail-btn .lbl { font-size: 9px; font-weight: 700; letter-spacing: .2px; }
+    .rail-btn:hover { color: var(--text); background: rgba(255,255,255,.035); }
+    .rail-btn.active {
+      color: var(--cyan-2);
+      border-color: rgba(0,212,255,.24);
+      background: linear-gradient(145deg, rgba(0,212,255,.13), rgba(57,120,255,.06));
+      box-shadow: inset 3px 0 0 var(--cyan);
+    }
+    .rail-divider { width: 36px; height: 1px; background: var(--line); margin: 3px 0; }
+    .rail-bottom { margin-top: auto; }
+
+    .main { grid-area: main; min-width: 0; min-height: 0; padding: 10px; overflow: hidden; }
+    .workspace { width: 100%; height: 100%; min-height: 0; display: none; }
+    .workspace.active { display: grid; }
+
+    .onair-layout {
+      grid-template-columns: minmax(310px, 27%) minmax(470px, 1fr) minmax(285px, 24%);
+      gap: 10px;
+    }
+
+    .column { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(18,35,52,.94), rgba(12,25,37,.96));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-header {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(10, 22, 33, .7);
+    }
+    .panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; font-weight: 790; color: #bdd0df; }
+    .panel-header .spacer { flex: 1; }
+    .panel-actions { display: flex; align-items: center; gap: 6px; }
+    .tiny-btn {
+      height: 27px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel);
+      color: var(--muted);
+      padding: 0 8px;
+      cursor: pointer;
+      font-size: 10px;
+    }
+    .tiny-btn:hover { color: var(--text); border-color: var(--line-strong); }
+    .tiny-btn.active { color: var(--cyan-2); border-color: rgba(0,212,255,.35); background: rgba(0,212,255,.08); }
+
+    .log-panel { flex: 1 1 auto; display: flex; flex-direction: column; }
+    .log-toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 7px;
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .search-input, .filter-select {
+      height: 32px;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #091521;
+      color: var(--text);
+      padding: 0 10px;
+    }
+    .search-input::placeholder { color: var(--muted-2); }
+    .log-list { flex: 1; min-height: 0; overflow: auto; padding: 5px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+    .log-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 48px 4px minmax(0,1fr) 50px;
+      gap: 8px;
+      align-items: center;
+      min-height: 52px;
+      padding: 6px 8px 6px 5px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: #d7e3ec;
+      cursor: grab;
+      user-select: none;
+    }
+    .log-row:hover { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.045); }
+    .log-row.current {
+      background: linear-gradient(90deg, rgba(0,212,255,.13), rgba(0,212,255,.025));
+      border-color: rgba(0,212,255,.28);
+      box-shadow: inset 3px 0 0 var(--cyan);
+    }
+    .log-row.next { background: rgba(57,120,255,.065); }
+    .log-row.dragging { opacity: .4; }
+    .log-time { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; text-align: center; }
+    .type-bar { height: 32px; border-radius: 4px; background: var(--cyan); }
+    .type-bar.spot { background: var(--amber); }
+    .type-bar.link { background: var(--magenta); }
+    .type-bar.voice { background: var(--green); }
+    .type-bar.news { background: var(--red); }
+    .log-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 720; }
+    .log-meta { margin-top: 4px; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; min-width: 0; }
+    .log-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-dur { color: #b8c9d7; font-variant-numeric: tabular-nums; font-size: 11px; text-align: right; }
+    .row-badge { display: inline-flex; padding: 2px 5px; border-radius: 5px; background: rgba(255,255,255,.06); color: var(--muted); }
+    .hard-time { color: var(--amber); }
+
+    .break-summary { flex: 0 0 auto; padding: 10px; }
+    .break-card {
+      display: grid;
+      grid-template-columns: 43px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid rgba(255,191,75,.22);
+      border-radius: 11px;
+      background: rgba(255,191,75,.06);
+    }
+    .break-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,191,75,.12); color: var(--amber); font-size: 19px; }
+    .break-main { font-weight: 740; }
+    .break-sub { color: var(--muted); margin-top: 4px; font-size: 10px; }
+    .break-count { font-size: 22px; font-weight: 800; color: var(--amber); font-variant-numeric: tabular-nums; }
+
+    .deck {
+      position: relative;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(160deg, #10283a 0%, #0c1e2d 55%, #0a1722 100%);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .deck.onair { min-height: 322px; border-color: rgba(0,212,255,.35); }
+    .deck.onair::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(0,212,255,.03), transparent 35%), radial-gradient(circle at 82% 5%, rgba(0,212,255,.14), transparent 32%);
+    }
+    .deck-top { min-height: 48px; display: flex; align-items: center; gap: 9px; padding: 0 14px; border-bottom: 1px solid var(--line); position: relative; }
+    .live-label {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 9px;
+      border-radius: 7px;
+      background: rgba(255,77,103,.13);
+      color: #ff8fa1;
+      border: 1px solid rgba(255,77,103,.28);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .75px;
+    }
+    .live-label .dot { background: var(--red); box-shadow: 0 0 10px rgba(255,77,103,.75); animation: pulse 1.3s infinite; }
+    @keyframes pulse { 50% { opacity: .4; } }
+    .deck-source { color: var(--muted); font-size: 10px; }
+    .deck-top .spacer { flex: 1; }
+    .mode-pill { padding: 5px 9px; border-radius: 7px; background: rgba(54,211,153,.1); color: var(--green); border: 1px solid rgba(54,211,153,.24); font-size: 10px; font-weight: 760; }
+
+    .deck-body { position: relative; padding: 16px 16px 13px; }
+    .track-kicker { color: var(--cyan-2); text-transform: uppercase; font-size: 10px; font-weight: 760; letter-spacing: 1px; }
+    .track-title { margin-top: 6px; font-size: clamp(23px, 2.2vw, 35px); line-height: 1.08; font-weight: 820; letter-spacing: -.65px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .track-artist { margin-top: 6px; font-size: 15px; color: #b8cad8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .deck-data-row { margin-top: 13px; display: flex; gap: 16px; color: var(--muted); font-size: 10px; }
+    .deck-data-row strong { color: #d8e6ef; font-weight: 700; }
+
+    .wave-wrap { height: 67px; margin-top: 13px; position: relative; border-radius: 9px; overflow: hidden; background: rgba(4,12,19,.52); border: 1px solid rgba(49,83,109,.55); }
+    #waveCanvas { width: 100%; height: 100%; display: block; }
+    .wave-cursor { position: absolute; top: 0; bottom: 0; width: 2px; left: 20%; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.7); pointer-events: none; }
+    .wave-cue { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,191,75,.72); }
+    .wave-cue.out { right: 9%; }
+    .wave-cue.in { left: 3%; }
+
+    .progress-area { margin-top: 11px; }
+    .progress-track { height: 8px; border-radius: 99px; background: #07131d; border: 1px solid rgba(49,83,109,.5); overflow: hidden; }
+    .progress-fill { width: 20%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--blue)); box-shadow: 0 0 13px rgba(0,212,255,.45); }
+    .time-row { margin-top: 8px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; font-variant-numeric: tabular-nums; }
+    .elapsed { color: var(--muted); font-size: 13px; }
+    .duration { color: var(--muted); font-size: 13px; text-align: right; }
+    .remaining { font-size: 35px; line-height: .9; font-weight: 850; letter-spacing: -.5px; color: #f4fbff; }
+    .remaining.warning { color: var(--amber); }
+    .remaining.critical { color: var(--red); animation: pulse .8s infinite; }
+
+    .transport {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.25fr 1fr 1fr;
+      gap: 8px;
+      padding: 11px;
+      border-top: 1px solid var(--line);
+      background: rgba(5,14,22,.6);
+    }
+    .transport-btn {
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      cursor: pointer;
+      font-weight: 760;
+      transition: .16s ease;
+    }
+    .transport-btn:hover { transform: translateY(-1px); border-color: var(--line-strong); filter: brightness(1.08); }
+    .transport-btn.primary { background: linear-gradient(180deg, #00bfe9, #008aad); border-color: #10cbed; color: #00141b; font-size: 15px; }
+    .transport-btn.danger { color: #ff90a1; border-color: rgba(255,77,103,.28); background: rgba(255,77,103,.08); }
+
+    .next-deck { min-height: 118px; display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 12px; }
+    .next-cover {
+      height: 92px;
+      border-radius: 11px;
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      color: var(--blue);
+      background: linear-gradient(145deg, rgba(57,120,255,.2), rgba(211,106,255,.08)), #0b1723;
+      font-size: 30px;
+    }
+    .next-label { color: var(--blue); font-size: 10px; text-transform: uppercase; letter-spacing: .9px; font-weight: 780; }
+    .next-title { margin-top: 5px; font-size: 18px; font-weight: 790; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .next-artist { margin-top: 5px; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .next-meta { margin-top: 9px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .meta-pill { padding: 4px 7px; border-radius: 6px; background: rgba(255,255,255,.05); color: var(--muted); font-size: 9px; }
+    .next-count { min-width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+    .next-count strong { display: block; font-size: 23px; color: var(--blue); }
+    .next-count span { color: var(--muted); font-size: 9px; text-transform: uppercase; }
+
+    .quick-panel { flex: 1; display: flex; flex-direction: column; min-height: 190px; }
+    .tab-strip { display: flex; gap: 5px; padding: 7px 8px 0; background: rgba(5,14,22,.4); }
+    .tab-btn { height: 30px; border: 1px solid transparent; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); padding: 0 10px; cursor: pointer; font-size: 10px; font-weight: 700; }
+    .tab-btn.active { color: var(--cyan-2); border-color: var(--line); border-bottom-color: var(--panel); background: var(--panel); }
+    .tab-content { flex: 1; min-height: 0; display: none; padding: 9px; }
+    .tab-content.active { display: block; }
+    .hotkey-grid { height: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(58px, 1fr); gap: 7px; }
+    .hotkey {
+      position: relative;
+      min-width: 0;
+      border: 1px solid rgba(0,212,255,.18);
+      border-radius: 10px;
+      background: linear-gradient(150deg, rgba(0,212,255,.11), rgba(57,120,255,.035));
+      text-align: left;
+      padding: 9px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: .13s ease;
+    }
+    .hotkey:hover { border-color: rgba(0,212,255,.48); transform: translateY(-1px); }
+    .hotkey:active { transform: scale(.98); background: rgba(0,212,255,.22); }
+    .hotkey.amber { border-color: rgba(255,191,75,.2); background: rgba(255,191,75,.07); }
+    .hotkey.green { border-color: rgba(54,211,153,.2); background: rgba(54,211,153,.07); }
+    .hotkey.magenta { border-color: rgba(211,106,255,.2); background: rgba(211,106,255,.07); }
+    .hotkey-name { font-weight: 760; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hotkey-meta { margin-top: 4px; color: var(--muted); font-size: 9px; }
+    .hotkey-key { position: absolute; top: 6px; right: 7px; color: var(--muted-2); font-size: 8px; }
+
+    .voice-track-ui { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; height: 100%; }
+    .vt-card { padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: rgba(0,0,0,.13); }
+    .vt-title { font-weight: 760; }
+    .vt-wave { height: 42px; margin: 10px 0; border-radius: 7px; background: repeating-linear-gradient(90deg, rgba(54,211,153,.6) 0 2px, transparent 2px 5px); opacity: .7; }
+    .vt-controls { display: flex; gap: 6px; }
+
+    .mode-panel { flex: 0 0 auto; }
+    .mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; padding: 9px; }
+    .mode-btn {
+      height: 50px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.025);
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 760;
+      font-size: 10px;
+    }
+    .mode-btn.active { color: #031b12; background: var(--green); border-color: var(--green); box-shadow: 0 0 16px rgba(54,211,153,.18); }
+
+    .meter-panel { flex: 0 0 auto; }
+    .meters { padding: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .meter-row { display: grid; grid-template-columns: 15px 1fr 35px; gap: 6px; align-items: center; }
+    .meter-label { color: var(--muted); font-size: 9px; }
+    .meter-track { height: 10px; border-radius: 99px; background: #061018; overflow: hidden; border: 1px solid rgba(49,83,109,.5); }
+    .meter-fill { height: 100%; width: 60%; background: linear-gradient(90deg, var(--green) 0 68%, var(--amber) 68% 88%, var(--red) 88%); border-radius: inherit; transition: width .09s linear; }
+    .meter-db { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+    .meter-scale { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--muted-2); font-size: 8px; padding-left: 21px; }
+
+    .context-panel { flex: 1; min-height: 200px; display: flex; flex-direction: column; }
+    .context-list { flex: 1; min-height: 0; overflow: auto; padding: 7px; }
+    .context-item { display: grid; grid-template-columns: 33px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px; border-radius: 9px; border: 1px solid transparent; }
+    .context-item:hover { background: rgba(255,255,255,.025); border-color: rgba(255,255,255,.04); }
+    .context-icon { width: 31px; height: 31px; border-radius: 8px; display: grid; place-items: center; background: rgba(57,120,255,.1); color: #7ea4ff; }
+    .context-title { font-size: 11px; font-weight: 720; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .context-sub { margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .context-val { color: #c4d6e3; font-size: 10px; font-variant-numeric: tabular-nums; }
+
+    .alarm-panel { flex: 0 0 auto; }
+    .alarm-item { display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; align-items: center; padding: 8px 11px; border-top: 1px solid var(--line); }
+    .alarm-item:first-child { border-top: 0; }
+    .alarm-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+    .alarm-dot.warn { background: var(--amber); }
+    .alarm-text { font-size: 10px; }
+    .alarm-time { color: var(--muted); font-size: 9px; }
+
+    .production-layout {
+      grid-template-columns: minmax(440px, 1.4fr) minmax(360px, .9fr);
+      gap: 10px;
+    }
+    .production-left { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) 180px; gap: 10px; }
+    .production-right { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) 240px; gap: 10px; }
+    .library-panel { display: flex; flex-direction: column; }
+    .library-toolbar { display: grid; grid-template-columns: minmax(190px,1fr) 130px 130px auto; gap: 8px; padding: 10px; border-bottom: 1px solid var(--line); }
+    .library-table-wrap { flex: 1; min-height: 0; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { position: sticky; top: 0; z-index: 2; background: #0b1925; color: var(--muted); text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: .55px; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+    td { padding: 8px 10px; border-bottom: 1px solid rgba(32,56,76,.65); font-size: 11px; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: rgba(0,212,255,.035); }
+    tbody tr.selected { background: rgba(0,212,255,.09); box-shadow: inset 3px 0 0 var(--cyan); }
+    .asset-title { font-weight: 720; }
+    .asset-sub { color: var(--muted); font-size: 9px; margin-top: 3px; }
+    .status-ok { color: var(--green); }
+    .status-warn { color: var(--amber); }
+
+    .preview-panel { display: grid; grid-template-columns: 145px minmax(0,1fr) auto; align-items: center; gap: 15px; padding: 13px; }
+    .album-art { height: 145px; border-radius: 13px; display: grid; place-items: center; font-size: 39px; color: var(--cyan); border: 1px solid var(--line); background: radial-gradient(circle at 35% 30%, rgba(0,212,255,.22), transparent 33%), linear-gradient(150deg, #132b3c, #08131d); }
+    .preview-title { font-size: 21px; font-weight: 810; }
+    .preview-artist { margin-top: 5px; color: var(--muted); }
+    .preview-wave { height: 46px; margin-top: 13px; border-radius: 8px; border: 1px solid var(--line); background: repeating-linear-gradient(90deg, rgba(0,212,255,.45) 0 2px, transparent 2px 6px); }
+    .preview-actions { display: flex; flex-direction: column; gap: 7px; }
+
+    .playlist-builder { display: flex; flex-direction: column; }
+    .builder-list { flex: 1; min-height: 0; overflow: auto; padding: 7px; }
+    .builder-row { display: grid; grid-template-columns: 28px 4px 1fr auto; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; }
+    .builder-row:hover { background: rgba(255,255,255,.03); }
+    .builder-num { color: var(--muted); }
+    .builder-footer { display: flex; align-items: center; gap: 9px; padding: 9px; border-top: 1px solid var(--line); }
+    .builder-footer .spacer { flex: 1; }
+
+    .clock-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; padding: 10px; }
+    .clock-hour { min-height: 88px; border: 1px solid var(--line); border-radius: 10px; padding: 9px; background: rgba(0,0,0,.11); }
+    .clock-hour-title { font-size: 11px; font-weight: 760; }
+    .clock-hour-bar { height: 8px; border-radius: 9px; margin-top: 12px; background: linear-gradient(90deg, var(--cyan) 0 57%, var(--amber) 57% 74%, var(--magenta) 74% 83%, var(--green) 83%); }
+    .clock-hour-meta { margin-top: 8px; color: var(--muted); font-size: 9px; }
+
+    .engineering-layout {
+      grid-template-columns: minmax(0, 1.35fr) minmax(330px, .65fr);
+      gap: 10px;
+    }
+    .engineering-left { min-width: 0; min-height: 0; display: grid; grid-template-rows: 210px minmax(0,1fr); gap: 10px; }
+    .engineering-right { min-width: 0; min-height: 0; display: grid; grid-template-rows: 250px minmax(0,1fr); gap: 10px; }
+    .health-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 9px; padding: 10px; }
+    .health-card { border: 1px solid var(--line); border-radius: 11px; padding: 11px; background: rgba(0,0,0,.12); }
+    .health-card-top { display: flex; align-items: center; gap: 7px; }
+    .health-name { font-weight: 740; }
+    .health-value { margin-top: 13px; font-size: 24px; font-weight: 820; font-variant-numeric: tabular-nums; }
+    .health-sub { margin-top: 4px; color: var(--muted); font-size: 9px; }
+    .health-spark { height: 25px; margin-top: 10px; border-bottom: 1px solid var(--line); background: linear-gradient(135deg, transparent 0 12%, rgba(0,212,255,.45) 12% 14%, transparent 14% 24%, rgba(0,212,255,.35) 24% 27%, transparent 27% 41%, rgba(0,212,255,.6) 41% 44%, transparent 44% 55%, rgba(0,212,255,.3) 55% 58%, transparent 58% 72%, rgba(0,212,255,.52) 72% 75%, transparent 75%); }
+
+    .service-map { display: flex; flex-direction: column; }
+    .map-area { flex: 1; min-height: 0; position: relative; overflow: hidden; background-image: linear-gradient(rgba(32,56,76,.22) 1px, transparent 1px), linear-gradient(90deg, rgba(32,56,76,.22) 1px, transparent 1px); background-size: 28px 28px; }
+    .node {
+      position: absolute;
+      width: 150px;
+      min-height: 66px;
+      padding: 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: rgba(10,25,37,.96);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .node::after { content: ""; position: absolute; top: 31px; right: -65px; width: 64px; height: 1px; background: var(--line-strong); }
+    .node.last::after { display: none; }
+    .node-name { font-weight: 760; }
+    .node-meta { margin-top: 5px; color: var(--muted); font-size: 9px; }
+    .node-status { position: absolute; top: 9px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(54,211,153,.7); }
+    .node.player { left: 5%; top: 15%; }
+    .node.sequencer { left: 34%; top: 15%; }
+    .node.audio { left: 63%; top: 15%; }
+    .node.output { left: 63%; top: 57%; }
+    .node.storage { left: 34%; top: 57%; }
+    .node.storage::after { width: 170px; right: -171px; }
+    .node.output::after { display: none; }
+
+    .routing-list { padding: 8px; }
+    .route-row { display: grid; grid-template-columns: minmax(0,1fr) 25px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 8px; border-bottom: 1px solid var(--line); }
+    .route-box { padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .route-arrow { text-align: center; color: var(--cyan); }
+    .route-state { color: var(--green); font-size: 9px; }
+
+    .system-log { display: flex; flex-direction: column; }
+    .system-log-body { flex: 1; min-height: 0; overflow: auto; background: #061019; padding: 9px 11px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10px; line-height: 1.65; }
+    .log-line .ts { color: var(--muted-2); }
+    .log-line .info { color: var(--cyan-2); }
+    .log-line .ok { color: var(--green); }
+    .log-line .warn { color: var(--amber); }
+
+    .footer {
+      grid-area: footer;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 12px;
+      border-top: 1px solid var(--line);
+      background: #07121b;
+      color: var(--muted);
+      font-size: 9px;
+      z-index: 9;
+    }
+    .footer .spacer { flex: 1; }
+    .footer-status { display: flex; align-items: center; gap: 5px; }
+
+    .popover {
+      position: fixed;
+      top: 58px;
+      right: 52px;
+      width: 310px;
+      z-index: 100;
+      border: 1px solid var(--line-strong);
+      border-radius: 13px;
+      background: #0c1b28;
+      box-shadow: 0 25px 60px rgba(0,0,0,.45);
+      padding: 10px;
+      display: none;
+    }
+    .popover.open { display: block; }
+    .popover-title { font-weight: 780; margin: 3px 4px 10px; }
+    .screen-option { width: 100%; display: grid; grid-template-columns: 38px 1fr auto; gap: 9px; align-items: center; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--text); text-align: left; padding: 8px; cursor: pointer; }
+    .screen-option:hover { border-color: var(--line); background: rgba(255,255,255,.03); }
+    .screen-opt-icon { width: 36px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; color: var(--cyan); background: #08141e; }
+    .screen-opt-title { font-size: 11px; font-weight: 720; }
+    .screen-opt-sub { margin-top: 3px; font-size: 9px; color: var(--muted); }
+    .screen-key { color: var(--muted-2); font-size: 9px; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: none;
+      place-items: center;
+      background: rgba(1,7,12,.74);
+      backdrop-filter: blur(8px);
+    }
+    .modal-backdrop.open { display: grid; }
+    .modal { width: min(470px, calc(100vw - 30px)); border: 1px solid rgba(255,77,103,.38); border-radius: 16px; background: #101d29; box-shadow: 0 30px 90px rgba(0,0,0,.55); padding: 20px; }
+    .modal-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: rgba(255,77,103,.12); color: var(--red); font-size: 24px; }
+    .modal h2 { margin: 15px 0 8px; font-size: 20px; }
+    .modal p { color: var(--muted); line-height: 1.55; margin: 0; }
+    .modal-actions { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .modal-btn { height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-weight: 760; }
+    .modal-btn.danger { border-color: var(--red); background: var(--red); color: #210008; }
+
+    .toast-stack { position: fixed; right: 15px; bottom: 43px; z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { width: 320px; display: grid; grid-template-columns: 35px 1fr; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line-strong); border-radius: 11px; background: #102130; box-shadow: 0 18px 45px rgba(0,0,0,.35); animation: toastIn .22s ease both; }
+    .toast-icon { width: 33px; height: 33px; display: grid; place-items: center; border-radius: 8px; background: rgba(0,212,255,.1); color: var(--cyan); }
+    .toast-title { font-size: 11px; font-weight: 740; }
+    .toast-sub { margin-top: 3px; color: var(--muted); font-size: 9px; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(18px); } }
+
+    .hidden { display: none !important; }
+    .popout .rail { display: none; }
+    .popout .app { grid-template-columns: 1fr; grid-template-areas: "top" "main" "footer"; }
+    .popout .brand { min-width: 150px; }
+    .popout .topbar { padding-left: 12px; }
+
+    @media (max-width: 1450px) {
+      :root { --rail-w: 68px; }
+      .status-cluster .chip:nth-child(2) { display: none; }
+      .onair-layout { grid-template-columns: minmax(290px, 27%) minmax(430px, 1fr) minmax(260px, 23%); }
+      .hotkey-grid { grid-template-columns: repeat(3, 1fr); }
+      .health-grid { grid-template-columns: repeat(2,1fr); }
+    }
+
+    @media (max-width: 1150px) {
+      body { overflow: auto; }
+      .app { min-height: 100vh; height: auto; grid-template-rows: var(--topbar-h) auto 30px; }
+      .main { overflow: visible; }
+      .workspace { min-height: calc(100vh - 106px); height: auto; }
+      .onair-layout { grid-template-columns: minmax(290px, 34%) minmax(430px,1fr); }
+      .onair-layout > .column:last-child { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3,1fr); }
+      .context-panel { min-height: 250px; }
+      .clock-block { display: none; }
+    }
+
+    @media (max-width: 820px) {
+      :root { --rail-w: 60px; }
+      .brand-sub, .status-cluster { display: none; }
+      .brand { min-width: 145px; }
+      .station-select { min-width: 130px; }
+      .onair-layout, .production-layout, .engineering-layout { display: flex !important; flex-direction: column; }
+      .column, .production-left, .production-right, .engineering-left, .engineering-right { display: flex; flex-direction: column; }
+      .log-panel { min-height: 520px; }
+      .quick-panel { min-height: 330px; }
+      .hotkey-grid { grid-template-columns: repeat(2,1fr); }
+      .library-panel { min-height: 550px; }
+      .health-grid { grid-template-columns: 1fr; }
+      .service-map { min-height: 500px; }
+      .library-toolbar { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <div class="brand-title">Audion Playout</div>
+          <div class="brand-sub">Enterprise Broadcast Suite</div>
+        </div>
+      </div>
+
+      <select class="station-select" id="stationSelect" aria-label="Selecionar emissora">
+        <option>Rede Nova FM — São Paulo</option>
+        <option>Rede Nova FM — Brasília</option>
+        <option>Rede Nova News</option>
+        <option>Rede Nova Pop</option>
+      </select>
+
+      <div class="status-cluster">
+        <div class="chip"><span class="dot live"></span>NO AR</div>
+        <div class="chip"><span class="dot live"></span>Áudio íntegro</div>
+        <div class="chip"><span class="dot live"></span>Sync 12 ms</div>
+      </div>
+
+      <div class="top-spacer"></div>
+
+      <div class="chip" title="Condições do estúdio">☀ 23°C&nbsp;&nbsp;·&nbsp;&nbsp;48%</div>
+      <div class="clock-block">
+        <div class="clock-time" id="clockTime">--:--:--</div>
+        <div class="clock-date" id="clockDate">--</div>
+      </div>
+      <button class="top-icon-btn" id="screenBtn" title="Gerenciar múltiplas telas">▣</button>
+      <button class="top-icon-btn" id="alertBtn" title="Central de alertas">◉</button>
+      <button class="top-icon-btn" title="Perfil do operador">WN</button>
+    </header>
+
+    <nav class="rail" aria-label="Módulos principais">
+      <button class="rail-btn active" data-view="onair"><span class="ico">▶</span><span class="lbl">No ar</span></button>
+      <button class="rail-btn" data-view="production"><span class="ico">▦</span><span class="lbl">Produção</span></button>
+      <button class="rail-btn" data-view="engineering"><span class="ico">⌁</span><span class="lbl">Engenharia</span></button>
+      <div class="rail-divider"></div>
+      <button class="rail-btn" data-action="module" data-name="Programação"><span class="ico">◫</span><span class="lbl">Grade</span></button>
+      <button class="rail-btn" data-action="module" data-name="Comerciais e tráfego"><span class="ico">◈</span><span class="lbl">Tráfego</span></button>
+      <button class="rail-btn" data-action="module" data-name="Gravações e ingest"><span class="ico">●</span><span class="lbl">Gravar</span></button>
+      <button class="rail-btn" data-action="module" data-name="Relatórios e compliance"><span class="ico">▥</span><span class="lbl">Relatórios</span></button>
+      <button class="rail-btn rail-bottom" data-action="module" data-name="Configurações e permissões"><span class="ico">⚙</span><span class="lbl">Config</span></button>
+    </nav>
+
+    <main class="main">
+      <!-- TELA 1: OPERAÇÃO NO AR -->
+      <section class="workspace onair-layout active" id="view-onair">
+        <div class="column">
+          <section class="panel log-panel">
+            <div class="panel-header">
+              <div class="panel-title">Log operacional</div>
+              <div class="spacer"></div>
+              <div class="panel-actions">
+                <button class="tiny-btn active">Hoje</button>
+                <button class="tiny-btn">Amanhã</button>
+                <button class="tiny-btn" id="lockLogBtn">🔓 Livre</button>
+              </div>
+            </div>
+            <div class="log-toolbar">
+              <input class="search-input" id="logSearch" placeholder="Buscar no log..." />
+              <button class="tiny-btn" id="insertBtn">＋ Inserir</button>
+              <button class="tiny-btn" id="reconcileBtn">⟳</button>
+            </div>
+            <div class="log-list" id="logList"></div>
+          </section>
+
+          <section class="panel break-summary">
+            <div class="break-card">
+              <div class="break-icon">◫</div>
+              <div>
+                <div class="break-main">Próximo break: 16:30</div>
+                <div class="break-sub">5 peças · 03:42 · tolerância ±00:15</div>
+              </div>
+              <div class="break-count" id="breakCountdown">07:24</div>
+            </div>
+          </section>
+        </div>
+
+        <div class="column">
+          <section class="deck onair">
+            <div class="deck-top">
+              <div class="live-label"><span class="dot"></span>TOCANDO AGORA</div>
+              <div class="deck-source">Player A · Saída principal</div>
+              <div class="spacer"></div>
+              <div class="mode-pill" id="modePill">LIVE ASSIST</div>
+            </div>
+            <div class="deck-body">
+              <div class="track-kicker" id="currentType">Música · Rotação A</div>
+              <div class="track-title" id="currentTitle">Midnight City</div>
+              <div class="track-artist" id="currentArtist">M83</div>
+              <div class="deck-data-row">
+                <span>Início <strong id="startTime">16:19:08</strong></span>
+                <span>Cue <strong>00:00.320</strong></span>
+                <span>Outro <strong>00:12.000</strong></span>
+                <span>Gain <strong>-1.3 dB</strong></span>
+                <span>ISRC <strong>FR-UM7-11-00321</strong></span>
+              </div>
+              <div class="wave-wrap">
+                <canvas id="waveCanvas"></canvas>
+                <div class="wave-cursor" id="waveCursor"></div>
+                <div class="wave-cue in"></div>
+                <div class="wave-cue out"></div>
+              </div>
+              <div class="progress-area">
+                <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+                <div class="time-row">
+                  <div class="elapsed" id="elapsedTime">00:42</div>
+                  <div class="remaining" id="remainingTime">-02:55</div>
+                  <div class="duration" id="durationTime">03:37</div>
+                </div>
+              </div>
+            </div>
+            <div class="transport">
+              <button class="transport-btn" id="backBtn">↶ Voltar</button>
+              <button class="transport-btn" id="pauseBtn">Ⅱ Pausar</button>
+              <button class="transport-btn primary" id="playBtn">▶ CONTINUAR</button>
+              <button class="transport-btn" id="skipBtn">Próximo ↷</button>
+              <button class="transport-btn danger" id="panicBtn">⚠ Emergência</button>
+            </div>
+          </section>
+
+          <section class="panel next-deck">
+            <div class="next-cover">♫</div>
+            <div>
+              <div class="next-label">Próximo no ar</div>
+              <div class="next-title" id="nextTitle">Vinheta Nova FM</div>
+              <div class="next-artist" id="nextArtist">Imaging · ID 2026</div>
+              <div class="next-meta">
+                <span class="meta-pill">Segue automático</span>
+                <span class="meta-pill">Fade 0.8s</span>
+                <span class="meta-pill">Normalizado</span>
+              </div>
+            </div>
+            <div class="next-count"><strong id="nextDuration">00:08</strong><span>duração</span></div>
+          </section>
+
+          <section class="panel quick-panel">
+            <div class="tab-strip">
+              <button class="tab-btn active" data-tab="hotkeys">Hot Keys</button>
+              <button class="tab-btn" data-tab="voicetrack">Voice Track</button>
+              <button class="tab-btn" data-tab="routing">Routing rápido</button>
+              <button class="tab-btn" data-tab="notes">Notas</button>
+            </div>
+            <div class="tab-content active" id="tab-hotkeys">
+              <div class="hotkey-grid" id="hotkeyGrid"></div>
+            </div>
+            <div class="tab-content" id="tab-voicetrack">
+              <div class="voice-track-ui">
+                <div class="vt-card"><div class="vt-title">Saída anterior</div><div class="vt-wave"></div><div class="vt-controls"><button class="tiny-btn">▶</button><button class="tiny-btn">Cue</button></div></div>
+                <div class="vt-card"><div class="vt-title">Gravação do locutor</div><div class="vt-wave"></div><div class="vt-controls"><button class="tiny-btn" id="recordVtBtn">● Gravar</button><button class="tiny-btn">Refazer</button></div></div>
+                <div class="vt-card"><div class="vt-title">Entrada seguinte</div><div class="vt-wave"></div><div class="vt-controls"><button class="tiny-btn">▶</button><button class="tiny-btn">Mix</button></div></div>
+              </div>
+            </div>
+            <div class="tab-content" id="tab-routing">
+              <div class="routing-list">
+                <div class="route-row"><div class="route-box">Microfone 1</div><div class="route-arrow">→</div><div class="route-box">Program Bus</div><div class="route-state">ATIVO</div></div>
+                <div class="route-row"><div class="route-box">Telefone / Codec</div><div class="route-arrow">→</div><div class="route-box">Preview Bus</div><div class="route-state">PRONTO</div></div>
+                <div class="route-row"><div class="route-box">Estúdio B</div><div class="route-arrow">→</div><div class="route-box">Backup Input</div><div class="route-state">STANDBY</div></div>
+              </div>
+            </div>
+            <div class="tab-content" id="tab-notes">
+              <textarea style="width:100%;height:100%;resize:none;border:1px solid var(--line);border-radius:10px;background:#08141e;color:var(--text);padding:12px" aria-label="Notas do programa">16:25 — Chamar promoção no WhatsApp\n16:32 — Entrevista com Marina após o break\n16:48 — Confirmar trânsito com unidade móvel</textarea>
+            </div>
+          </section>
+        </div>
+
+        <div class="column">
+          <section class="panel mode-panel">
+            <div class="panel-header"><div class="panel-title">Modo operacional</div><div class="spacer"></div><span class="chip" style="height:24px">Studio A</span></div>
+            <div class="mode-grid">
+              <button class="mode-btn active" data-mode="LIVE ASSIST">Live Assist</button>
+              <button class="mode-btn" data-mode="AUTOMÁTICO">Automático</button>
+              <button class="mode-btn" data-mode="MANUAL">Manual</button>
+            </div>
+          </section>
+
+          <section class="panel meter-panel">
+            <div class="panel-header"><div class="panel-title">Programa / PFL</div><div class="spacer"></div><button class="tiny-btn">LUFS -14.2</button></div>
+            <div class="meters">
+              <div class="meter-row"><div class="meter-label">L</div><div class="meter-track"><div class="meter-fill" id="meterL"></div></div><div class="meter-db" id="meterLDb">-10.2</div></div>
+              <div class="meter-row"><div class="meter-label">R</div><div class="meter-track"><div class="meter-fill" id="meterR"></div></div><div class="meter-db" id="meterRDb">-11.0</div></div>
+              <div class="meter-row"><div class="meter-label">P</div><div class="meter-track"><div class="meter-fill" id="meterPfl"></div></div><div class="meter-db" id="meterPflDb">-18.5</div></div>
+              <div class="meter-row"><div class="meter-label">M</div><div class="meter-track"><div class="meter-fill" id="meterMic"></div></div><div class="meter-db" id="meterMicDb">-∞</div></div>
+              <div class="meter-scale"><span>-60</span><span>-30</span><span>-18</span><span>-9</span><span>-3</span><span>0</span></div>
+            </div>
+          </section>
+
+          <section class="panel context-panel">
+            <div class="panel-header"><div class="panel-title">Contexto da operação</div><div class="spacer"></div><button class="tiny-btn">Detalhes</button></div>
+            <div class="context-list">
+              <div class="context-item"><div class="context-icon">◫</div><div><div class="context-title">Break comercial 16:30</div><div class="context-sub">5 peças · Aquira sincronizado</div></div><div class="context-val">03:42</div></div>
+              <div class="context-item"><div class="context-icon">●</div><div><div class="context-title">Entrevista — Marina Costa</div><div class="context-sub">Codec 1 conectado · retorno OK</div></div><div class="context-val">16:33</div></div>
+              <div class="context-item"><div class="context-icon">⌖</div><div><div class="context-title">Unidade móvel — Trânsito</div><div class="context-sub">Comrex ACCESS · 48 ms</div></div><div class="context-val">16:48</div></div>
+              <div class="context-item"><div class="context-icon">◉</div><div><div class="context-title">Janela local</div><div class="context-sub">Afiliadas retornam à rede</div></div><div class="context-val">17:00</div></div>
+              <div class="context-item"><div class="context-icon">▦</div><div><div class="context-title">Próximo programa</div><div class="context-sub">Jornal Nova — log validado</div></div><div class="context-val">18:00</div></div>
+            </div>
+          </section>
+
+          <section class="panel alarm-panel" id="alarmPanel">
+            <div class="panel-header"><div class="panel-title">Saúde e alertas</div><div class="spacer"></div><span class="chip" style="height:24px"><span class="dot warn"></span>1 aviso</span></div>
+            <div class="alarm-item"><span class="alarm-dot"></span><span class="alarm-text">Hot Spare sincronizado</span><span class="alarm-time">agora</span></div>
+            <div class="alarm-item"><span class="alarm-dot warn"></span><span class="alarm-text">Spot 7432 expira em 3 dias</span><span class="alarm-time">15:57</span></div>
+            <div class="alarm-item"><span class="alarm-dot"></span><span class="alarm-text">Stream principal 192 kbps</span><span class="alarm-time">estável</span></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- TELA 2: PRODUÇÃO E BIBLIOTECA -->
+      <section class="workspace production-layout" id="view-production">
+        <div class="production-left">
+          <section class="panel library-panel">
+            <div class="panel-header"><div class="panel-title">Biblioteca corporativa</div><div class="spacer"></div><span class="chip"><span class="dot live"></span>184.320 ativos</span><button class="tiny-btn" id="newAssetBtn">＋ Novo asset</button></div>
+            <div class="library-toolbar">
+              <input class="search-input" id="librarySearch" placeholder="Título, artista, ISRC, tag ou texto..." />
+              <select class="filter-select"><option>Todos os tipos</option><option>Música</option><option>Spot</option><option>Vinheta</option><option>Voice Track</option></select>
+              <select class="filter-select"><option>Todas as emissoras</option><option>Nova FM</option><option>Nova News</option></select>
+              <button class="tiny-btn">Filtros avançados</button>
+            </div>
+            <div class="library-table-wrap">
+              <table>
+                <thead><tr><th>Asset</th><th>Tipo</th><th>Duração</th><th>Categoria</th><th>Última execução</th><th>Qualidade</th><th></th></tr></thead>
+                <tbody id="libraryBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel preview-panel">
+            <div class="album-art">♫</div>
+            <div>
+              <div class="preview-title" id="previewTitle">Midnight City</div>
+              <div class="preview-artist" id="previewArtist">M83 · Hurry Up, We're Dreaming</div>
+              <div class="preview-wave"></div>
+              <div class="deck-data-row"><span>Cue In <strong>00:00.320</strong></span><span>Segue <strong>03:24.840</strong></span><span>Outro <strong>12.0s</strong></span><span>LUFS <strong>-14.1</strong></span></div>
+            </div>
+            <div class="preview-actions">
+              <button class="transport-btn primary" id="previewPlayBtn">▶ Preview</button>
+              <button class="transport-btn" id="addToLogBtn">＋ Adicionar ao log</button>
+              <button class="transport-btn">Editar metadados</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="production-right">
+          <section class="panel playlist-builder">
+            <div class="panel-header"><div class="panel-title">Playlist Builder — Drive 16h</div><div class="spacer"></div><button class="tiny-btn">Validar</button><button class="tiny-btn active">Salvar</button></div>
+            <div class="builder-list" id="builderList"></div>
+            <div class="builder-footer"><span class="chip">18 itens</span><span class="chip">00:59:42</span><span class="chip"><span class="dot live"></span>Regras OK</span><div class="spacer"></div><button class="tiny-btn">Enviar ao Playout</button></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header"><div class="panel-title">Relógio de programação</div><div class="spacer"></div><button class="tiny-btn">Editar clocks</button></div>
+            <div class="clock-grid">
+              <div class="clock-hour"><div class="clock-hour-title">16:00 · Drive</div><div class="clock-hour-bar"></div><div class="clock-hour-meta">57% música · 17% comercial · 26% conteúdo</div></div>
+              <div class="clock-hour"><div class="clock-hour-title">17:00 · Drive</div><div class="clock-hour-bar"></div><div class="clock-hour-meta">54% música · 19% comercial · 27% conteúdo</div></div>
+              <div class="clock-hour"><div class="clock-hour-title">18:00 · Jornal</div><div class="clock-hour-bar" style="background:linear-gradient(90deg,var(--red) 0 48%,var(--amber) 48% 64%,var(--green) 64%)"></div><div class="clock-hour-meta">48% notícia · 16% comercial · 36% entrevistas</div></div>
+              <div class="clock-hour"><div class="clock-hour-title">19:00 · Noite</div><div class="clock-hour-bar"></div><div class="clock-hour-meta">62% música · 15% comercial · 23% conteúdo</div></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- TELA 3: ENGENHARIA -->
+      <section class="workspace engineering-layout" id="view-engineering">
+        <div class="engineering-left">
+          <section class="panel">
+            <div class="panel-header"><div class="panel-title">Visão corporativa — saúde do sistema</div><div class="spacer"></div><button class="tiny-btn active">Tempo real</button></div>
+            <div class="health-grid">
+              <div class="health-card"><div class="health-card-top"><span class="dot live"></span><span class="health-name">Áudio principal</span></div><div class="health-value">99,999%</div><div class="health-sub">Disponibilidade · 30 dias</div><div class="health-spark"></div></div>
+              <div class="health-card"><div class="health-card-top"><span class="dot live"></span><span class="health-name">Latência de comando</span></div><div class="health-value">12 ms</div><div class="health-sub">P95 · Studio A</div><div class="health-spark"></div></div>
+              <div class="health-card"><div class="health-card-top"><span class="dot live"></span><span class="health-name">Buffer de áudio</span></div><div class="health-value">74%</div><div class="health-sub">0 underruns nas últimas 24h</div><div class="health-spark"></div></div>
+              <div class="health-card"><div class="health-card-top"><span class="dot warn"></span><span class="health-name">Replicação</span></div><div class="health-value">99,8%</div><div class="health-sub">2 assets aguardando sync</div><div class="health-spark"></div></div>
+            </div>
+          </section>
+
+          <section class="panel service-map">
+            <div class="panel-header"><div class="panel-title">Topologia operacional e redundância</div><div class="spacer"></div><span class="chip"><span class="dot live"></span>Primary</span><span class="chip">Hot Spare pronto</span></div>
+            <div class="map-area">
+              <div class="node player"><span class="node-status"></span><div class="node-name">RadioFlow UI</div><div class="node-meta">Electron · Studio A · v6.4.2</div></div>
+              <div class="node sequencer"><span class="node-status"></span><div class="node-name">Sequencer / API</div><div class="node-meta">12 ms · 3 conexões</div></div>
+              <div class="node audio"><span class="node-status"></span><div class="node-name">Playout Engine</div><div class="node-meta">Go · Player A/B · 48 kHz</div></div>
+              <div class="node storage"><span class="node-status"></span><div class="node-name">Library Service</div><div class="node-meta">184.320 assets · sync OK</div></div>
+              <div class="node output last"><span class="node-status"></span><div class="node-name">AoIP / Streaming</div><div class="node-meta">Dante · Icecast · FM STL</div></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="engineering-right">
+          <section class="panel">
+            <div class="panel-header"><div class="panel-title">Rotas de áudio</div><div class="spacer"></div><button class="tiny-btn">Matriz completa</button></div>
+            <div class="routing-list">
+              <div class="route-row"><div class="route-box">Player A L/R</div><div class="route-arrow">→</div><div class="route-box">Dante TX 01/02</div><div class="route-state">-14.2 LUFS</div></div>
+              <div class="route-row"><div class="route-box">Player B L/R</div><div class="route-arrow">→</div><div class="route-box">Hot Spare Bus</div><div class="route-state">STANDBY</div></div>
+              <div class="route-row"><div class="route-box">Program Bus</div><div class="route-arrow">→</div><div class="route-box">STL Principal</div><div class="route-state">LOCKED</div></div>
+              <div class="route-row"><div class="route-box">Program Bus</div><div class="route-arrow">→</div><div class="route-box">Encoder Web</div><div class="route-state">192 kbps</div></div>
+              <div class="route-row"><div class="route-box">RDS Gateway</div><div class="route-arrow">→</div><div class="route-box">Encoder UECP</div><div class="route-state">CONNECTED</div></div>
+            </div>
+          </section>
+
+          <section class="panel system-log">
+            <div class="panel-header"><div class="panel-title">Eventos técnicos</div><div class="spacer"></div><button class="tiny-btn">Exportar</button></div>
+            <div class="system-log-body" id="systemLog">
+              <div class="log-line"><span class="ts">16:21:34.218</span> <span class="ok">INFO</span> Sequencer heartbeat received (12ms)</div>
+              <div class="log-line"><span class="ts">16:21:33.902</span> <span class="info">AUDIO</span> Player A buffer=74% peak=-3.1dBFS</div>
+              <div class="log-line"><span class="ts">16:21:31.017</span> <span class="ok">SYNC</span> Library delta applied: 4 assets</div>
+              <div class="log-line"><span class="ts">16:21:29.884</span> <span class="warn">WARN</span> Asset SPOT-7432 expires in 3 days</div>
+              <div class="log-line"><span class="ts">16:21:26.310</span> <span class="ok">GPIO</span> Console fader channel 03 opened</div>
+              <div class="log-line"><span class="ts">16:21:22.771</span> <span class="info">RDS</span> RT updated: M83 - Midnight City</div>
+              <div class="log-line"><span class="ts">16:21:18.005</span> <span class="ok">STREAM</span> Icecast primary connected 192kbps</div>
+              <div class="log-line"><span class="ts">16:21:12.601</span> <span class="ok">HA</span> Hot Spare state synchronized</div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Audion Playout v6.4.2</span>
+      <span>Operator: Waelson N.</span>
+      <span>Layout: Enterprise / Studio A</span>
+      <div class="spacer"></div>
+      <span class="footer-status"><span class="dot live"></span>API local</span>
+      <span class="footer-status"><span class="dot live"></span>Library</span>
+      <span class="footer-status"><span class="dot live"></span>Scheduler</span>
+      <span>CPU 8% · RAM 1.7 GB · Audio 48 kHz / 24-bit</span>
+    </footer>
+  </div>
+
+  <div class="popover" id="screenPopover">
+    <div class="popover-title">Distribuir espaços de trabalho</div>
+    <button class="screen-option" data-open-screen="onair"><span class="screen-opt-icon">▶</span><span><span class="screen-opt-title">Tela 1 — Operação no ar</span><span class="screen-opt-sub">Decks, log, carts, níveis e alertas</span></span><span class="screen-key">Abrir ↗</span></button>
+    <button class="screen-option" data-open-screen="production"><span class="screen-opt-icon">▦</span><span><span class="screen-opt-title">Tela 2 — Produção</span><span class="screen-opt-sub">Biblioteca, playlists, clocks e preview</span></span><span class="screen-key">Abrir ↗</span></button>
+    <button class="screen-option" data-open-screen="engineering"><span class="screen-opt-icon">⌁</span><span><span class="screen-opt-title">Tela 3 — Engenharia</span><span class="screen-opt-sub">Saúde, rotas, redundância e diagnóstico</span></span><span class="screen-key">Abrir ↗</span></button>
+  </div>
+
+  <div class="modal-backdrop" id="panicModal">
+    <div class="modal">
+      <div class="modal-icon">⚠</div>
+      <h2>Ação operacional crítica</h2>
+      <p>Use o fallback apenas quando a programação principal não puder continuar. O áudio de emergência será encaminhado ao Program Bus e o sequenciador ficará em modo protegido.</p>
+      <div class="modal-actions">
+        <button class="modal-btn" id="cancelPanic">Cancelar</button>
+        <button class="modal-btn danger" id="confirmPanic">Ativar fallback</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    const tracks = [
+      { time: '16:19:08', type: 'Música', cls: '', title: 'Midnight City', artist: 'M83', duration: 217, meta: 'Rotação A · Energy 84', status: 'PLAYING' },
+      { time: '16:22:45', type: 'Vinheta', cls: 'link', title: 'Nova FM — A cidade em movimento', artist: 'Imaging · ID 2026', duration: 8, meta: 'Segue automático', status: 'READY' },
+      { time: '16:22:53', type: 'Música', cls: '', title: 'Blinding Lights', artist: 'The Weeknd', duration: 200, meta: 'Rotação A · Energy 91', status: 'READY' },
+      { time: '16:26:13', type: 'Locução', cls: 'voice', title: 'Voice Track — chamada do break', artist: 'Waelson N.', duration: 28, meta: 'Gravado hoje · Mix -8 dB', status: 'READY' },
+      { time: '16:26:41', type: 'Música', cls: '', title: 'Adventure of a Lifetime', artist: 'Coldplay', duration: 263, meta: 'Rotação B · Energy 78', status: 'READY' },
+      { time: '16:30:00', type: 'Comercial', cls: 'spot', title: 'BREAK 16:30 — Bloco A', artist: '5 peças · Aquira', duration: 222, meta: 'Hard time · tolerância ±15s', status: 'HARD' },
+      { time: '16:33:42', type: 'Entrevista', cls: 'news', title: 'Marina Costa — Mobilidade urbana', artist: 'Codec 1 · Studio B', duration: 438, meta: 'Entrada ao vivo', status: 'LIVE' },
+      { time: '16:41:00', type: 'Música', cls: '', title: 'Electric Feel', artist: 'MGMT', duration: 230, meta: 'Rotação C · Energy 76', status: 'READY' },
+      { time: '16:44:50', type: 'Hora certa', cls: 'link', title: 'São 16 horas e 45 minutos', artist: 'Gerador de hora certa', duration: 5, meta: 'Dinâmico', status: 'AUTO' },
+      { time: '16:44:55', type: 'Música', cls: '', title: 'As It Was', artist: 'Harry Styles', duration: 167, meta: 'Rotação A · Energy 87', status: 'READY' }
+    ];
+
+    const library = [
+      ['Midnight City','M83','Música','03:37','A - Power','Hoje 16:19','OK'],
+      ['Blinding Lights','The Weeknd','Música','03:20','A - Power','Hoje 14:05','OK'],
+      ['Nova FM — A cidade em movimento','Imaging 2026','Vinheta','00:08','Station ID','Hoje 15:51','OK'],
+      ['Campanha Banco Solar Julho','Agência Orion','Spot','00:30','Comercial','Hoje 13:30','Expira 18/07'],
+      ['Adventure of a Lifetime','Coldplay','Música','04:23','B - Recurrent','Ontem 22:12','OK'],
+      ['Chamada Jornal Nova 18h','Produção Nova News','Promo','00:20','Promoção','Hoje 15:02','OK'],
+      ['Electric Feel','MGMT','Música','03:50','C - Gold','Hoje 09:42','OK'],
+      ['Boletim trânsito Centro','Unidade móvel','Notícia','01:10','Conteúdo','Hoje 16:02','OK'],
+      ['As It Was','Harry Styles','Música','02:47','A - Power','Hoje 12:31','OK'],
+      ['Promo WhatsApp Nova FM','Imaging 2026','Promo','00:15','Promoção','Ontem 18:11','OK'],
+      ['Voz do Brasil — Abertura','EBC','Programa','00:18','Obrigatório','04/07 19:00','OK'],
+      ['Hora certa — pacote feminino','Audion Generator','Hora certa','00:05','Serviço','Hoje 15:45','OK']
+    ];
+
+    const hotkeys = [
+      ['Abertura','Nova FM ID','1',''], ['Promo WhatsApp','00:15','2','magenta'], ['Trânsito','Bed 60s','3','green'], ['Notícia urgente','Stinger','4','amber'],
+      ['Aplausos','SFX 08s','5',''], ['Telefone','Abrir codec','6','green'], ['Hora certa','Dinâmico','7','magenta'], ['Break agora','Macro','8','amber'],
+      ['Cama entrevista','Loop','9','green'], ['Encerramento','Show closer','0',''], ['Mic externo','Routing','-','magenta'], ['Rede / Local','Macro','=','amber']
+    ];
+
+    let currentIndex = 0;
+    let elapsed = 42;
+    let playing = true;
+    let logLocked = false;
+    let selectedLibraryIndex = 0;
+
+    const $ = (s, root=document) => root.querySelector(s);
+    const $$ = (s, root=document) => [...root.querySelectorAll(s)];
+    const fmt = (seconds) => {
+      seconds = Math.max(0, Math.round(seconds));
+      const m = Math.floor(seconds / 60).toString().padStart(2,'0');
+      const s = (seconds % 60).toString().padStart(2,'0');
+      return `${m}:${s}`;
+    };
+
+    function updateClock() {
+      const now = new Date();
+      $('#clockTime').textContent = now.toLocaleTimeString('pt-BR', {hour12:false});
+      $('#clockDate').textContent = now.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+      const target = new Date(now); target.setHours(16,30,0,0);
+      if (target < now) target.setDate(target.getDate()+1);
+      $('#breakCountdown').textContent = fmt((target-now)/1000);
+    }
+
+    function renderLog(filter='') {
+      const list = $('#logList');
+      list.innerHTML = '';
+      tracks.forEach((t, idx) => {
+        if (filter && !`${t.title} ${t.artist} ${t.type}`.toLowerCase().includes(filter.toLowerCase())) return;
+        const row = document.createElement('div');
+        row.className = `log-row ${idx===currentIndex?'current':''} ${idx===currentIndex+1?'next':''}`;
+        row.draggable = !logLocked;
+        row.dataset.index = idx;
+        row.innerHTML = `
+          <div class="log-time ${t.status==='HARD'?'hard-time':''}">${t.time}</div>
+          <div class="type-bar ${t.cls}"></div>
+          <div><div class="log-title">${t.title}</div><div class="log-meta"><span>${t.artist}</span><span class="row-badge">${t.type}</span><span>${t.meta}</span></div></div>
+          <div class="log-dur">${fmt(t.duration)}</div>`;
+        row.addEventListener('dblclick', () => { currentIndex = idx; elapsed = 0; playing = true; updateDeck(); renderLog($('#logSearch').value); toast('Item carregado no Player A', t.title, '▶'); });
+        row.addEventListener('dragstart', e => { row.classList.add('dragging'); e.dataTransfer.setData('text/plain', idx); });
+        row.addEventListener('dragend', () => row.classList.remove('dragging'));
+        row.addEventListener('dragover', e => e.preventDefault());
+        row.addEventListener('drop', e => {
+          e.preventDefault();
+          if (logLocked) return;
+          const from = Number(e.dataTransfer.getData('text/plain'));
+          const to = idx;
+          if (from === to) return;
+          const [moved] = tracks.splice(from,1); tracks.splice(to,0,moved);
+          currentIndex = tracks.findIndex(x => x.status === 'PLAYING');
+          renderLog($('#logSearch').value);
+          toast('Log reordenado', `${moved.title} movido para ${to+1}ª posição`, '↕');
+        });
+        list.appendChild(row);
+      });
+    }
+
+    function updateDeck() {
+      const t = tracks[currentIndex] || tracks[0];
+      const n = tracks[currentIndex+1] || tracks[0];
+      const remaining = Math.max(0, t.duration - elapsed);
+      const pct = Math.min(100, (elapsed / t.duration) * 100);
+      $('#currentType').textContent = `${t.type} · ${t.meta.split('·')[0].trim()}`;
+      $('#currentTitle').textContent = t.title;
+      $('#currentArtist').textContent = t.artist;
+      $('#durationTime').textContent = fmt(t.duration);
+      $('#elapsedTime').textContent = fmt(elapsed);
+      $('#remainingTime').textContent = `-${fmt(remaining)}`;
+      $('#remainingTime').classList.toggle('warning', remaining <= 30 && remaining > 10);
+      $('#remainingTime').classList.toggle('critical', remaining <= 10);
+      $('#progressFill').style.width = `${pct}%`;
+      $('#waveCursor').style.left = `${Math.max(3, Math.min(91, pct))}%`;
+      $('#nextTitle').textContent = n.title;
+      $('#nextArtist').textContent = `${n.artist} · ${n.type}`;
+      $('#nextDuration').textContent = fmt(n.duration);
+      $('#pauseBtn').textContent = playing ? 'Ⅱ Pausar' : '▶ Retomar';
+      $('#playBtn').textContent = playing ? '▶ NO AR' : '▶ CONTINUAR';
+    }
+
+    function nextTrack(manual=false) {
+      tracks[currentIndex].status = 'PLAYED';
+      currentIndex = (currentIndex + 1) % tracks.length;
+      tracks[currentIndex].status = 'PLAYING';
+      elapsed = 0;
+      playing = true;
+      updateDeck(); renderLog($('#logSearch').value);
+      toast(manual ? 'Avanço manual executado' : 'Transição automática concluída', tracks[currentIndex].title, '▶');
+    }
+
+    function renderHotkeys() {
+      $('#hotkeyGrid').innerHTML = hotkeys.map((h,i)=>`<button class="hotkey ${h[3]}" data-hotkey="${i}"><span class="hotkey-key">${h[2]}</span><div class="hotkey-name">${h[0]}</div><div class="hotkey-meta">${h[1]}</div></button>`).join('');
+      $$('[data-hotkey]').forEach(btn => btn.addEventListener('click', () => triggerHotkey(Number(btn.dataset.hotkey))));
+    }
+
+    function triggerHotkey(index) {
+      const h = hotkeys[index]; if (!h) return;
+      toast(`Hot Key disparada: ${h[0]}`, h[1], '◉');
+      const log = $('#systemLog');
+      if (log) log.insertAdjacentHTML('afterbegin', `<div class="log-line"><span class="ts">${new Date().toLocaleTimeString('pt-BR')}.000</span> <span class="info">CART</span> Hot Key fired: ${h[0]}</div>`);
+    }
+
+    function renderLibrary(filter='') {
+      const body = $('#libraryBody'); body.innerHTML='';
+      library.forEach((a, idx) => {
+        if (filter && !a.join(' ').toLowerCase().includes(filter.toLowerCase())) return;
+        const tr = document.createElement('tr');
+        if (idx === selectedLibraryIndex) tr.classList.add('selected');
+        tr.innerHTML = `<td><div class="asset-title">${a[0]}</div><div class="asset-sub">${a[1]}</div></td><td>${a[2]}</td><td>${a[3]}</td><td>${a[4]}</td><td>${a[5]}</td><td class="${a[6]==='OK'?'status-ok':'status-warn'}">${a[6]}</td><td>⋮</td>`;
+        tr.addEventListener('click', () => { selectedLibraryIndex = idx; renderLibrary($('#librarySearch').value); $('#previewTitle').textContent=a[0]; $('#previewArtist').textContent=`${a[1]} · ${a[4]}`; });
+        tr.addEventListener('dblclick', () => addLibraryToLog(idx));
+        body.appendChild(tr);
+      });
+    }
+
+    function addLibraryToLog(idx=selectedLibraryIndex) {
+      const a = library[idx];
+      const parts = a[3].split(':').map(Number);
+      const duration = parts[0]*60+parts[1];
+      tracks.splice(currentIndex+1,0,{time:'--:--:--', type:a[2], cls:a[2]==='Spot'?'spot':a[2]==='Vinheta'?'link':'', title:a[0], artist:a[1], duration, meta:`${a[4]} · Inserido manualmente`, status:'READY'});
+      renderLog($('#logSearch').value);
+      toast('Asset adicionado após o item atual', a[0], '＋');
+    }
+
+    function renderBuilder() {
+      const sample = tracks.slice(1,8);
+      $('#builderList').innerHTML = sample.map((t,i)=>`<div class="builder-row"><span class="builder-num">${String(i+1).padStart(2,'0')}</span><span class="type-bar ${t.cls}" style="height:25px"></span><div><div class="log-title">${t.title}</div><div class="log-meta"><span>${t.artist}</span><span>${t.type}</span></div></div><span class="log-dur">${fmt(t.duration)}</span></div>`).join('');
+    }
+
+    function toast(title, sub='', icon='✓') {
+      const el = document.createElement('div');
+      el.className='toast';
+      el.innerHTML=`<div class="toast-icon">${icon}</div><div><div class="toast-title">${title}</div><div class="toast-sub">${sub}</div></div>`;
+      $('#toastStack').appendChild(el);
+      setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(15px)'; setTimeout(()=>el.remove(),220); },3200);
+    }
+
+    function setView(view, push=true) {
+      $$('.workspace').forEach(w => w.classList.remove('active'));
+      $(`#view-${view}`)?.classList.add('active');
+      $$('.rail-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view===view));
+      if (push) localStorage.setItem('audionView',view);
+      $('#screenPopover').classList.remove('open');
+    }
+
+    function openScreen(view) {
+      const url = new URL(location.href);
+      url.searchParams.set('view',view);
+      url.searchParams.set('popout','1');
+      const win = window.open(url.href,`audion-${view}`, 'width=1500,height=900,menubar=no,toolbar=no,location=no,status=no');
+      if (!win) toast('O navegador bloqueou a nova tela', 'Permita pop-ups para demonstrar o modo multi-monitor.', '▣');
+    }
+
+    function drawWaveform() {
+      const canvas = $('#waveCanvas');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width*dpr; canvas.height=rect.height*dpr;
+      const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+      const w=rect.width,h=rect.height, mid=h/2;
+      ctx.clearRect(0,0,w,h);
+      ctx.strokeStyle='rgba(0,212,255,.78)'; ctx.lineWidth=1;
+      ctx.beginPath();
+      for(let x=0;x<w;x+=3){
+        const envelope=.22+.62*Math.abs(Math.sin(x*.031))* (.6+.4*Math.sin(x*.009+1));
+        const amp=(Math.sin(x*.47)+Math.sin(x*.13)*.4+Math.random()*.5)*h*.16*envelope;
+        ctx.moveTo(x,mid-amp); ctx.lineTo(x,mid+amp);
+      }
+      ctx.stroke();
+      ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.beginPath(); ctx.moveTo(0,mid+.5);ctx.lineTo(w,mid+.5);ctx.stroke();
+    }
+
+    function updateMeters() {
+      const ids=['meterL','meterR','meterPfl','meterMic'];
+      ids.forEach((id,i)=>{
+        let val;
+        if (i===3) val = Math.random()>.83 ? 42+Math.random()*35 : 3;
+        else if (i===2) val=22+Math.random()*30;
+        else val = playing ? 54+Math.random()*37 : 2;
+        $(`#${id}`).style.width=`${val}%`;
+        const db = val<5?'-∞':(-60+(val/100)*60).toFixed(1);
+        $(`#${id}Db`).textContent=db;
+      });
+    }
+
+    function initEvents() {
+      $$('.rail-btn[data-view]').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));
+      $$('.rail-btn[data-action="module"]').forEach(btn=>btn.addEventListener('click',()=>toast(`${btn.dataset.name}`, 'Módulo corporativo representado nesta demonstração.', '▦')));
+      $('#logSearch').addEventListener('input',e=>renderLog(e.target.value));
+      $('#librarySearch').addEventListener('input',e=>renderLibrary(e.target.value));
+      $('#pauseBtn').addEventListener('click',()=>{playing=!playing;updateDeck();toast(playing?'Reprodução retomada':'Player pausado',tracks[currentIndex].title,playing?'▶':'Ⅱ');});
+      $('#playBtn').addEventListener('click',()=>{playing=true;updateDeck();toast('Player A em reprodução',tracks[currentIndex].title,'▶');});
+      $('#skipBtn').addEventListener('click',()=>nextTrack(true));
+      $('#backBtn').addEventListener('click',()=>{elapsed=Math.max(0,elapsed-10);updateDeck();});
+      $('#panicBtn').addEventListener('click',()=>$('#panicModal').classList.add('open'));
+      $('#cancelPanic').addEventListener('click',()=>$('#panicModal').classList.remove('open'));
+      $('#confirmPanic').addEventListener('click',()=>{ $('#panicModal').classList.remove('open'); playing=true; $('#modePill').textContent='FALLBACK PROTEGIDO'; $('#modePill').style.color='var(--red)'; $('#modePill').style.borderColor='rgba(255,77,103,.4)'; $('#modePill').style.background='rgba(255,77,103,.1)'; toast('Fallback de emergência ativado','Program Bus protegido · áudio reserva no ar','⚠'); });
+      $('#lockLogBtn').addEventListener('click',e=>{ logLocked=!logLocked; e.target.textContent=logLocked?'🔒 Bloqueado':'🔓 Livre'; e.target.classList.toggle('active',logLocked); renderLog($('#logSearch').value); toast(logLocked?'Log protegido':'Edição do log liberada',logLocked?'Reordenação desabilitada':'Arraste itens para reordenar','▦'); });
+      $('#insertBtn').addEventListener('click',()=>{setView('production');toast('Biblioteca aberta','Dê duplo clique em um asset para inseri-lo no log.','＋');});
+      $('#reconcileBtn').addEventListener('click',()=>toast('Log reconciliado','Nenhuma divergência com a programação central.','⟳'));
+      $('#addToLogBtn').addEventListener('click',()=>addLibraryToLog());
+      $('#previewPlayBtn').addEventListener('click',e=>{e.target.textContent=e.target.textContent.includes('Parar')?'▶ Preview':'■ Parar preview';toast('Preview/PFL','Áudio encaminhado apenas ao bus de monitoração.','♫');});
+      $('#newAssetBtn').addEventListener('click',()=>toast('Ingest iniciado','Área de upload, loudness, waveform e metadados.','＋'));
+      $('#recordVtBtn').addEventListener('click',e=>{e.target.classList.toggle('active');e.target.textContent=e.target.classList.contains('active')?'■ Parar':'● Gravar';toast(e.target.classList.contains('active')?'Gravação iniciada':'Voice Track salvo','Microfone do estúdio · 48 kHz / 24-bit','●');});
+      $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{ $$('.tab-btn').forEach(b=>b.classList.remove('active')); $$('.tab-content').forEach(c=>c.classList.remove('active')); btn.classList.add('active'); $(`#tab-${btn.dataset.tab}`).classList.add('active'); }));
+      $$('.mode-btn').forEach(btn=>btn.addEventListener('click',()=>{ $$('.mode-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); $('#modePill').textContent=btn.dataset.mode; toast(`Modo ${btn.dataset.mode}`, btn.dataset.mode==='AUTOMÁTICO'?'Sequenciador controla as transições.':btn.dataset.mode==='MANUAL'?'Somente comandos explícitos avançam o log.':'Operador controla intervenções; segues permanecem automáticos.','⌁'); }));
+      $('#screenBtn').addEventListener('click',e=>{e.stopPropagation();$('#screenPopover').classList.toggle('open');});
+      $$('[data-open-screen]').forEach(btn=>btn.addEventListener('click',()=>openScreen(btn.dataset.openScreen)));
+      document.addEventListener('click',e=>{if(!$('#screenPopover').contains(e.target) && e.target!==$('#screenBtn')) $('#screenPopover').classList.remove('open');});
+      $('#alertBtn').addEventListener('click',()=>{setView('onair');$('#alarmPanel').scrollIntoView({behavior:'smooth',block:'center'});toast('Central de alertas','1 aviso não crítico; áudio principal está íntegro.','◉');});
+      $('#stationSelect').addEventListener('change',e=>toast('Emissora selecionada',e.target.value,'⌁'));
+      window.addEventListener('resize',drawWaveform);
+      document.addEventListener('keydown',e=>{
+        if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+        if (e.code==='Space'){e.preventDefault();playing=!playing;updateDeck();}
+        if (e.key.toLowerCase()==='a') $$('.mode-btn')[1].click();
+        if (e.key.toLowerCase()==='l') $$('.mode-btn')[0].click();
+        const idx = hotkeys.findIndex(h=>h[2]===e.key); if(idx>=0) triggerHotkey(idx);
+        if(e.key==='ArrowRight' && e.shiftKey) nextTrack(true);
+      });
+    }
+
+    function init() {
+      const params = new URLSearchParams(location.search);
+      const view=params.get('view') || localStorage.getItem('audionView') || 'onair';
+      if(params.get('popout')==='1') document.body.classList.add('popout');
+      renderLog(); renderHotkeys(); renderLibrary(); renderBuilder(); updateDeck(); updateClock(); drawWaveform(); initEvents(); setView(view,false);
+      setInterval(updateClock,1000);
+      setInterval(()=>{ if(playing){ elapsed++; if(elapsed>=tracks[currentIndex].duration) nextTrack(false); else updateDeck(); } },1000);
+      setInterval(updateMeters,100);
+      setTimeout(()=>toast('Sistema pronto para operação','Player A no ar · Hot Spare sincronizado · Library online','✓'),500);
+    }
+
+    init();
+  </script>
+</body>
+</html>

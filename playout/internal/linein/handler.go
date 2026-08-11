@@ -274,9 +274,11 @@ func (h *Handler) forward(cfg LineInConfig, ch <-chan Event, recorder *output.Fi
 			return
 		}
 		stateCleared = true
-		// Remove the virtual LINE_IN item from the queue's current slot.
+		// Transition the virtual LINE_IN item to PLAYED so it remains
+		// visible in the queue list after the session ends.
+		// It will be replaced when the next item starts (SetCurrent/PopAsCurrent).
 		if h.queueMgr != nil {
-			h.queueMgr.ClearCurrent()
+			h.queueMgr.MarkCurrentPlayed()
 		}
 		// Drain the hardware ring buffer so buffered line-in audio stops immediately.
 		type flusher interface{ FlushAudio() error }

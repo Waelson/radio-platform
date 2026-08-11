@@ -51,6 +51,7 @@ public class MainWindow {
     private NextTrackBar    nextTrackBar;
     private TabsPanel       tabsPanel;
     private StackPane       rootStack;
+    private GridPane        contentGrid;
 
     // ── Mixer de software e cart player (Hot Keys) ────────────────────────
     private SoftwareMixer     mixer;
@@ -83,17 +84,40 @@ public class MainWindow {
 
         playoutCenter = buildPlayoutCenter();
 
-        // Área central comutável: Playout, Catálogo ou Rotação
-        StackPane contentArea = new StackPane(playoutCenter, catalogPanel, rotacaoPanel);
-        HBox.setHgrow(contentArea, Priority.ALWAYS);
+        // Coluna central da tela "No Ar"
+        StackPane contentArea = new StackPane(playoutCenter);
+
+        Sidebar sidebar = new Sidebar(this::handleNavigation);
+
+        // GridPane para "No Ar": 3 colunas exatamente iguais via percentWidth
+        contentGrid = new GridPane();
+        ColumnConstraints pc1 = new ColumnConstraints(); pc1.setPercentWidth(33.333); pc1.setFillWidth(true);
+        ColumnConstraints pc2 = new ColumnConstraints(); pc2.setPercentWidth(33.333); pc2.setFillWidth(true);
+        ColumnConstraints pc3 = new ColumnConstraints(); pc3.setPercentWidth(33.334); pc3.setFillWidth(true);
+        contentGrid.getColumnConstraints().addAll(pc1, pc2, pc3);
+        RowConstraints row = new RowConstraints();
+        row.setVgrow(Priority.ALWAYS);
+        row.setFillHeight(true);
+        contentGrid.getRowConstraints().add(row);
+        contentGrid.add(queuePanel,  0, 0);
+        contentGrid.add(contentArea, 1, 0);
+        contentGrid.add(rightPanel,  2, 0);
+        GridPane.setFillWidth(queuePanel,  true);
+        GridPane.setFillWidth(contentArea, true);
+        GridPane.setFillWidth(rightPanel,  true);
+        GridPane.setFillHeight(queuePanel,  true);
+        GridPane.setFillHeight(contentArea, true);
+        GridPane.setFillHeight(rightPanel,  true);
+
+        // Área pós-sidebar: alterna entre grid "No Ar" (3 colunas) e telas full-width
         catalogPanel.setVisible(false);
         catalogPanel.setManaged(false);
         rotacaoPanel.setVisible(false);
         rotacaoPanel.setManaged(false);
+        StackPane mainContent = new StackPane(contentGrid, catalogPanel, rotacaoPanel);
+        HBox.setHgrow(mainContent, Priority.ALWAYS);
 
-        Sidebar sidebar = new Sidebar(this::handleNavigation);
-
-        HBox body = new HBox(0, sidebar, queuePanel, contentArea, rightPanel);
+        HBox body = new HBox(0, sidebar, mainContent);
         body.setFillHeight(true);
         root.setCenter(body);
 
@@ -104,15 +128,13 @@ public class MainWindow {
     // ── Navegação entre telas ─────────────────────────────────────────────────
 
     private void handleNavigation(String section) {
-        boolean isPlayout  = section.equals("NO AR");
-        boolean isCatalog  = section.equals("CATÁLOGO");
-        boolean isRotacao  = section.equals("ROTAÇÃO");
+        boolean isPlayout = section.equals("NO AR");
+        boolean isCatalog = section.equals("CATÁLOGO");
+        boolean isRotacao = section.equals("ROTAÇÃO");
 
-        show(playoutCenter, isPlayout);
-        show(queuePanel,    isPlayout);
-        show(rightPanel,    isPlayout);
-        show(catalogPanel,  isCatalog);
-        show(rotacaoPanel,  isRotacao);
+        show(contentGrid,  isPlayout);
+        show(catalogPanel, isCatalog);
+        show(rotacaoPanel, isRotacao);
 
         if (isCatalog) catalogPanel.reload();
     }
