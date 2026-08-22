@@ -19,6 +19,7 @@ import javafx.scene.control.Button;
 import javafx.scene.layout.*;
 
 import com.audionplay.ui.components.Toast;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -82,44 +83,58 @@ public class MainWindow {
         root.setStyle("-fx-background-color:" + Theme.BG_MAIN + ";");
         root.setTop(new TopBar());
 
-        playoutCenter = buildPlayoutCenter();
-
-        // Coluna central da tela "No Ar"
-        StackPane contentArea = new StackPane(playoutCenter);
-
         Sidebar sidebar = new Sidebar(this::handleNavigation);
 
-        // GridPane para "No Ar": 3 colunas exatamente iguais via percentWidth
+        playoutCenter = buildPlayoutCenter();
+        playoutCenter.setMinWidth(0);
+        playoutCenter.setMinHeight(0);
+
+        StackPane contentArea = new StackPane(playoutCenter);
+        contentArea.setMinWidth(0);
+        contentArea.setMinHeight(0);
+        // Clip direto no contentArea — sem wrapper extra
+        addDynamicClip(contentArea);
+
+        queuePanel.setMinWidth(0);
+        queuePanel.setMinHeight(0);
+        addDynamicClip(queuePanel);
+
+        rightPanel.setMinWidth(0);
+        rightPanel.setMinHeight(0);
+        addDynamicClip(rightPanel);
+
         contentGrid = new GridPane();
-        ColumnConstraints pc1 = new ColumnConstraints(); pc1.setPercentWidth(33.333); pc1.setFillWidth(true);
-        ColumnConstraints pc2 = new ColumnConstraints(); pc2.setPercentWidth(33.333); pc2.setFillWidth(true);
-        ColumnConstraints pc3 = new ColumnConstraints(); pc3.setPercentWidth(33.334); pc3.setFillWidth(true);
+        contentGrid.setMinWidth(0);
+        contentGrid.setMinHeight(0);
+        ColumnConstraints pc1 = new ColumnConstraints(); pc1.setPercentWidth(33.33); pc1.setFillWidth(true);
+        ColumnConstraints pc2 = new ColumnConstraints(); pc2.setPercentWidth(33.33); pc2.setFillWidth(true);
+        ColumnConstraints pc3 = new ColumnConstraints(); pc3.setPercentWidth(33.34); pc3.setFillWidth(true);
         contentGrid.getColumnConstraints().addAll(pc1, pc2, pc3);
         RowConstraints row = new RowConstraints();
         row.setVgrow(Priority.ALWAYS);
         row.setFillHeight(true);
+        row.setMinHeight(0);
         contentGrid.getRowConstraints().add(row);
+
         contentGrid.add(queuePanel,  0, 0);
         contentGrid.add(contentArea, 1, 0);
         contentGrid.add(rightPanel,  2, 0);
-        GridPane.setFillWidth(queuePanel,  true);
-        GridPane.setFillWidth(contentArea, true);
-        GridPane.setFillWidth(rightPanel,  true);
-        GridPane.setFillHeight(queuePanel,  true);
-        GridPane.setFillHeight(contentArea, true);
-        GridPane.setFillHeight(rightPanel,  true);
+        GridPane.setFillWidth(queuePanel,   true); GridPane.setFillHeight(queuePanel,   true);
+        GridPane.setFillWidth(contentArea,  true); GridPane.setFillHeight(contentArea,  true);
+        GridPane.setFillWidth(rightPanel,   true); GridPane.setFillHeight(rightPanel,   true);
 
-        // Área pós-sidebar: alterna entre grid "No Ar" (3 colunas) e telas full-width
-        catalogPanel.setVisible(false);
-        catalogPanel.setManaged(false);
-        rotacaoPanel.setVisible(false);
-        rotacaoPanel.setManaged(false);
-        StackPane mainContent = new StackPane(contentGrid, catalogPanel, rotacaoPanel);
+        StackPane mainContent = new StackPane(contentGrid);
         HBox.setHgrow(mainContent, Priority.ALWAYS);
 
         HBox body = new HBox(0, sidebar, mainContent);
         body.setFillHeight(true);
         root.setCenter(body);
+
+        catalogPanel.setVisible(false);
+        catalogPanel.setManaged(false);
+        rotacaoPanel.setVisible(false);
+        rotacaoPanel.setManaged(false);
+        mainContent.getChildren().addAll(catalogPanel, rotacaoPanel);
 
         rootStack = new StackPane(root);
         return rootStack;
@@ -492,6 +507,14 @@ public class MainWindow {
     }
 
     // ── Utilitários ───────────────────────────────────────────────────────────
+
+    /** Adiciona clip dinâmico diretamente ao nó para evitar overflow visual. */
+    private static void addDynamicClip(Region node) {
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(node.widthProperty());
+        clip.heightProperty().bind(node.heightProperty());
+        node.setClip(clip);
+    }
 
     private double probeDuration(String filePath) {
         try {

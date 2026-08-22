@@ -6,10 +6,8 @@ import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -29,18 +27,16 @@ import static com.audionplay.ui.Theme.*;
  * Barra superior: logo, espaçador, card do usuário e relógio.
  * Estilo fiel ao design do player.html.
  */
-public class TopBar extends HBox {
+public class TopBar extends BorderPane {
 
     private final Label clockLabel;
     private final Label dateLabel;
     private Popup userMenu;
 
     public TopBar() {
-        super(0);
-        setAlignment(Pos.CENTER_LEFT);
         setMinHeight(66);
         setStyle(
-            "-fx-background-color:#000000;" +
+            "-fx-background-color:#0b1621;" +
             "-fx-border-color:#20384c;-fx-border-width:0 0 1 0;"
         );
         setPadding(new Insets(0, 20, 0, 20));
@@ -50,8 +46,7 @@ public class TopBar extends HBox {
             "-fx-font-family:'Courier New',monospace;" +
             "-fx-font-size:23px;" +
             "-fx-font-weight:bold;" +
-            "-fx-text-fill:#eef7ff;" +
-            "-fx-font-variant-numeric:tabular-nums;"
+            "-fx-text-fill:#eef7ff;"
         );
 
         dateLabel = new Label("...");
@@ -60,15 +55,19 @@ public class TopBar extends HBox {
             "-fx-text-fill:#88a0b5;"
         );
 
-        HBox.setHgrow(buildNavTabs(), Priority.ALWAYS);
+        // BorderPane: left fixo, center cresce, right fixo — layout determinístico.
+        HBox left   = buildLogo();
+        HBox center = buildNavTabs();
+        HBox right  = new HBox(16, buildUserCard(), buildClockBlock());
+        right.setAlignment(Pos.CENTER_RIGHT);
 
-        getChildren().addAll(
-            buildLogo(),
-            buildNavTabs(),
-            buildSpacer(),
-            buildUserCard(),
-            buildClockBlock()
-        );
+        setLeft(left);
+        setCenter(center);
+        setRight(right);
+
+        BorderPane.setAlignment(left,   Pos.CENTER_LEFT);
+        BorderPane.setAlignment(center, Pos.CENTER);
+        BorderPane.setAlignment(right,  Pos.CENTER_RIGHT);
 
         startClock();
     }
@@ -76,22 +75,12 @@ public class TopBar extends HBox {
     // ── Logo ──────────────────────────────────────────────────────────────────
 
     private HBox buildLogo() {
-        javafx.scene.Node icon;
-        var resource = getClass().getResourceAsStream("/audion-logo.png");
-        if (resource != null) {
-            ImageView iv = new ImageView(new Image(resource));
-            iv.setFitHeight(46);
-            iv.setPreserveRatio(true);
-            iv.setSmooth(true);
-            icon = iv;
-        } else {
-            // fallback se o arquivo não for encontrado
-            StackPane circle = new StackPane(
-                new Circle(20, Color.web(BLUE)),
-                Theme.lbl("A", "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:white;")
-            );
-            icon = circle;
-        }
+        // A imagem PNG tem fundo branco — não compatível com o tema escuro.
+        // Usamos ícone vetorial (círculo + letra) que integra com o design.
+        StackPane icon = new StackPane(
+            new Circle(20, Color.web(BLUE)),
+            Theme.lbl("A", "-fx-font-size:18px;-fx-font-weight:bold;-fx-text-fill:white;")
+        );
 
         VBox text = new VBox(1,
             Theme.lbl("Audion Play",     "-fx-font-size:16px;-fx-font-weight:bold;-fx-text-fill:#eef7ff;"),
@@ -110,16 +99,7 @@ public class TopBar extends HBox {
     private HBox buildNavTabs() {
         HBox nav = new HBox(4);
         nav.setAlignment(Pos.CENTER);
-        HBox.setHgrow(nav, Priority.ALWAYS);
         return nav;
-    }
-
-    // ── Spacer ────────────────────────────────────────────────────────────────
-
-    private javafx.scene.layout.Region buildSpacer() {
-        javafx.scene.layout.Region sp = new javafx.scene.layout.Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        return sp;
     }
 
     // ── User card ─────────────────────────────────────────────────────────────
@@ -247,7 +227,6 @@ public class TopBar extends HBox {
     private VBox buildClockBlock() {
         VBox block = new VBox(3, clockLabel, dateLabel);
         block.setAlignment(Pos.CENTER_RIGHT);
-        block.setPadding(new Insets(0, 0, 0, 0));
         return block;
     }
 
@@ -256,7 +235,7 @@ public class TopBar extends HBox {
     private void startClock() {
         Locale ptBR = new Locale("pt", "BR");
         DateTimeFormatter tf = DateTimeFormatter.ofPattern("HH:mm:ss");
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("EEEE, d 'De' MMMM 'De' yyyy", ptBR);
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("EEE, dd/MM/yyyy", ptBR);
 
         Timeline tl = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             LocalDateTime now = LocalDateTime.now();

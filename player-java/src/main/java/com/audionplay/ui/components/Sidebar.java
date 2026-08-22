@@ -21,8 +21,8 @@ import java.util.function.Consumer;
 public class Sidebar extends VBox {
 
     private static final String CYAN      = "#20e6ff";
-    private static final String COLOR_OFF = "#4a6478";
-    private static final String BG_RAIL   = "#000000";
+    private static final String COLOR_OFF = "#8aafc8";
+    private static final String BG_RAIL   = "#0a1520";
     private static final String BORDER    = "#20384c";
 
     private VBox activeBtn;

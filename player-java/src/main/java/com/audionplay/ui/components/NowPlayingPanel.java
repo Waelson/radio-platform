@@ -190,12 +190,10 @@ public class NowPlayingPanel extends VBox {
         // Botões
         pauseBtn = new Button("⏸  Pausar");
         pauseBtn.setStyle(BTN_SECONDARY);
-        pauseBtn.setMinWidth(160);
 
         stopBtn = new Button("▶  NO AR");
         stopBtn.setStyle(BTN_PRIMARY_PLAY);
         stopBtn.setDisable(true);
-        stopBtn.setMinWidth(220);
         HBox.setHgrow(stopBtn, Priority.ALWAYS);
         stopBtn.setMaxWidth(Double.MAX_VALUE);
         stopBtn.setOnAction(e -> {
@@ -206,7 +204,6 @@ public class NowPlayingPanel extends VBox {
         nextBtn = new Button("Próximo  ⏭");
         nextBtn.setStyle(BTN_SECONDARY);
         nextBtn.setDisable(true);
-        nextBtn.setMinWidth(160);
 
         // ── Monta layout ──────────────────────────────────────────────────────
         VBox.setMargin(waveformView, new Insets(9, 16, 0, 16));

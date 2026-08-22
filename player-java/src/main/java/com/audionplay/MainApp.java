@@ -3,7 +3,9 @@ package com.audionplay;
 import com.audionplay.db.Database;
 import com.audionplay.ui.MainWindow;
 import javafx.application.Application;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 import java.nio.file.Path;
@@ -22,7 +24,12 @@ public class MainApp extends Application {
 
         MainWindow window = new MainWindow();
         javafx.scene.layout.StackPane root = window.build(stage);
-        Scene scene = new Scene(root, 1440, 900);
+
+        Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+        double initW = Math.min(1440, screen.getWidth());
+        double initH = Math.min(900,  screen.getHeight());
+
+        Scene scene = new Scene(root, initW, initH);
         stage.setTitle("Audion Play — Broadcast Suite");
         stage.setScene(scene);
         stage.setMinWidth(1100);
