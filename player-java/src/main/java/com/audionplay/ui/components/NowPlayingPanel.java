@@ -29,7 +29,6 @@ public class NowPlayingPanel extends VBox {
 
     // ── Campos de estado ──────────────────────────────────────────────────────
     private final Label   categoryLabel;          // tipo do áudio (MÚSICA, VINHETA…)
-    private final Label[] metaValues = new Label[7]; // INÍCIO CUE INTRO OUTRO CUE-OUT GAIN ID
     private final Label  trackTitleLabel;
     private final Label  trackArtistLabel;
     private final Label  currentTimeLabel;
@@ -293,29 +292,10 @@ public class NowPlayingPanel extends VBox {
         categoryLabel.setText(typeText);
         categoryLabel.setStyle("-fx-font-size:10px;-fx-font-weight:bold;-fx-text-fill:" + typeColor + ";");
 
-        // ── INÍCIO: hora de início da reprodução ──────────────────────────────
-        metaValues[0].setText(java.time.LocalTime.now()
-            .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
-
-        // ── CUE, INTRO, OUTRO, CUE OUT ────────────────────────────────────────
-        metaValues[1].setText(fmtMs(entity.cueInMs()));
-        metaValues[2].setText(fmtMs(entity.introMs()));
-        metaValues[3].setText(fmtMs(entity.outroMs()));
-        metaValues[4].setText(fmtMs(entity.cueOutMs()));
-
         // Marcadores no waveform
         waveformView.setCueMarkers(entity.cueInMs(), entity.introMs(),
                                    entity.outroMs(), entity.cueOutMs(),
                                    entity.durationMs());
-
-        // ── GAIN (loudness LUFS se disponível) ────────────────────────────────
-        metaValues[5].setText(entity.loudnessLufs() != null
-            ? String.format(java.util.Locale.US, "%.1f dB", entity.loudnessLufs())
-            : "—");
-
-        // ── ID ────────────────────────────────────────────────────────────────
-        metaValues[6].setText(entity.id() != null && !entity.id().isBlank()
-            ? entity.id() : "—");
     }
 
     /** Limpa todos os dados exibidos após a fila esvaziar. */
@@ -333,15 +313,6 @@ public class NowPlayingPanel extends VBox {
 
     private void clearMeta() {
         categoryLabel.setText("");
-        for (Label l : metaValues) if (l != null) l.setText("—");
-    }
-
-    private static String fmtMs(Integer ms) {
-        if (ms == null) return "—";
-        int m     = ms / 60000;
-        int s     = (ms % 60000) / 1000;
-        int milli = ms % 1000;
-        return String.format("%d:%02d.%03d", m, s, milli);
     }
 
     public void resetProgress() {
@@ -428,40 +399,15 @@ public class NowPlayingPanel extends VBox {
         VBox.setMargin(trackArtistLabel, new Insets(6, 0, 0, 0));
         VBox.setMargin(statusLabel,      new Insets(4, 0, 0, 0));
 
-        HBox metaRow = buildMetaRow();
-        VBox.setMargin(metaRow, new Insets(13, 0, 0, 0));
-
         VBox content = new VBox(0,
             categoryLabel,
             trackTitleLabel,
             trackArtistLabel,
-            statusLabel,
-            metaRow
+            statusLabel
         );
         content.setPadding(new Insets(16, 16, 2, 16));
         content.setMinHeight(116);
         return content;
-    }
-
-    /** pn-meta-row: INÍCIO CUE INTRO OUTRO CUE OUT GAIN ID */
-    private HBox buildMetaRow() {
-        String[] labels = {"INÍCIO", "CUE", "INTRO", "OUTRO", "CUE OUT", "GAIN", "ID"};
-        HBox row = new HBox(20);
-        row.setAlignment(Pos.CENTER_LEFT);
-        for (int i = 0; i < labels.length; i++) {
-            Label name = new Label(labels[i]);
-            name.setStyle("-fx-font-size:9px;-fx-font-weight:700;-fx-text-fill:#4a6478;");
-            metaValues[i] = new Label("—");
-            metaValues[i].setStyle(
-                "-fx-font-size:12px;-fx-font-weight:700;-fx-text-fill:#d8e6ef;" +
-                "-fx-font-family:'Courier New',monospace;"
-            );
-            VBox cell = new VBox(3, name, metaValues[i]);
-            // coluna ID pode crescer
-            if (i == labels.length - 1) HBox.setHgrow(cell, Priority.ALWAYS);
-            row.getChildren().add(cell);
-        }
-        return row;
     }
 
     /** pn-progress-wrap: track + fill sobrepostos */

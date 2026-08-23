@@ -49,7 +49,6 @@ public class MainWindow {
     private VBox            playoutCenter;
     private CatalogPanel    catalogPanel;
     private RotacaoPanel    rotacaoPanel;
-    private NextTrackBar    nextTrackBar;
     private TabsPanel       tabsPanel;
     private StackPane       rootStack;
     private GridPane        contentGrid;
@@ -89,15 +88,23 @@ public class MainWindow {
         playoutCenter.setMinWidth(0);
         playoutCenter.setMinHeight(0);
 
+        // Coluna 1: nowPlaying no topo + queuePanel no center (recebe todo o espaço restante)
+        nowPlaying.setMinWidth(0);
+        nowPlaying.setMinHeight(0);
+        queuePanel.setMinWidth(0);
+        queuePanel.setMinHeight(0);
+        BorderPane col1 = new BorderPane();
+        col1.setTop(nowPlaying);
+        BorderPane.setMargin(nowPlaying, new Insets(10, 10, 0, 10));
+        col1.setCenter(queuePanel);
+        col1.setMinWidth(0);
+        col1.setMinHeight(0);
+        addDynamicClip(col1);
+
         StackPane contentArea = new StackPane(playoutCenter);
         contentArea.setMinWidth(0);
         contentArea.setMinHeight(0);
-        // Clip direto no contentArea — sem wrapper extra
         addDynamicClip(contentArea);
-
-        queuePanel.setMinWidth(0);
-        queuePanel.setMinHeight(0);
-        addDynamicClip(queuePanel);
 
         rightPanel.setMinWidth(0);
         rightPanel.setMinHeight(0);
@@ -116,10 +123,10 @@ public class MainWindow {
         row.setMinHeight(0);
         contentGrid.getRowConstraints().add(row);
 
-        contentGrid.add(queuePanel,  0, 0);
+        contentGrid.add(col1,        0, 0);
         contentGrid.add(contentArea, 1, 0);
         contentGrid.add(rightPanel,  2, 0);
-        GridPane.setFillWidth(queuePanel,   true); GridPane.setFillHeight(queuePanel,   true);
+        GridPane.setFillWidth(col1,         true); GridPane.setFillHeight(col1,         true);
         GridPane.setFillWidth(contentArea,  true); GridPane.setFillHeight(contentArea,  true);
         GridPane.setFillWidth(rightPanel,   true); GridPane.setFillHeight(rightPanel,   true);
 
@@ -164,9 +171,7 @@ public class MainWindow {
     private VBox buildPlayoutCenter() {
         VBox.setVgrow(tabsPanel, Priority.ALWAYS);
 
-        nextTrackBar = new NextTrackBar();
-
-        VBox center = new VBox(10, nowPlaying, nextTrackBar, tabsPanel);
+        VBox center = new VBox(10, tabsPanel);
         center.setStyle("-fx-background-color:" + Theme.BG_MAIN + ";");
         center.setPadding(new Insets(14));
         VBox.setVgrow(center, Priority.ALWAYS);
@@ -376,7 +381,6 @@ public class MainWindow {
 
         controller.loadAndPlay(track);
         queuePanel.setIsPlaying(true);
-        updateNextTrackBar();
     }
 
     /** Remove o item atual da fila e inicia o próximo. */
@@ -392,19 +396,6 @@ public class MainWindow {
         boolean playing = controller.getState() == PlaybackState.PLAYING;
         nowPlaying.setPlayEnabled(size > 0);
         nowPlaying.setNextEnabled(playing && size >= 2);
-        updateNextTrackBar();
-    }
-
-    private void updateNextTrackBar() {
-        if (nextTrackBar == null) return;
-        queuePanel.peekSecond().ifPresentOrElse(
-            e -> nextTrackBar.update(
-                e.title().isBlank() ? e.path() : e.title(),
-                e.artist(),
-                Theme.formatTime(e.durationMs() / 1000.0)
-            ),
-            () -> nextTrackBar.clear()
-        );
     }
 
     private void openCrossfade(Button nextBtn) {
