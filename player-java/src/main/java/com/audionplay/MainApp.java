@@ -39,14 +39,18 @@ public class MainApp extends Application {
     }
 
     private void initDatabase() throws SQLException {
-        // Procura library.db ao lado do jar, depois na raiz do projeto (dev)
-        Path jarDir = Paths.get(
-            getClass().getProtectionDomain().getCodeSource().getLocation().getPath()
-        ).getParent();
+        Path dbPath;
+        String codePath = getClass().getProtectionDomain()
+                .getCodeSource().getLocation().getPath();
 
-        Path dbPath = jarDir.resolve("library.db");
-        if (!dbPath.toFile().exists()) {
-            // Fallback para desenvolvimento via Maven
+        if (codePath.contains(".app/Contents/")) {
+            // Rodando como app nativo macOS — usa Application Support (local correto para dados)
+            Path appSupport = Paths.get(System.getProperty("user.home"),
+                    "Library", "Application Support", "AudionPlay Player");
+            appSupport.toFile().mkdirs();
+            dbPath = appSupport.resolve("library.db");
+        } else {
+            // Modo desenvolvimento (Maven) — usa o diretório do projeto
             dbPath = Paths.get(System.getProperty("user.dir"), "library.db");
         }
 
