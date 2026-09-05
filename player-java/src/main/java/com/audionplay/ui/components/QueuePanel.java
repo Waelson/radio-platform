@@ -47,6 +47,9 @@ public class QueuePanel extends VBox {
     private Runnable              onQueueChanged;
     private Runnable              onHoraCertaBtn;
     private TrackEntity           draggedEntity  = null;
+    private javafx.stage.Window   ownerWindow    = null;
+
+    public void setOwnerWindow(javafx.stage.Window w) { this.ownerWindow = w; }
 
     public QueuePanel() {
         super(10); // gap entre queue card e break card
@@ -70,10 +73,10 @@ public class QueuePanel extends VBox {
         VBox.setVgrow(queueCard, Priority.ALWAYS);
 
         ScrollPane scroll = buildScrollPane();
+        scroll.setPrefHeight(0); // impede inflação do prefHeight do queueCard no VBox pai
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         queueCard.getChildren().addAll(
-            buildHeader(),
             buildToolbar(),
             buildInfoBar(),
             scroll
@@ -459,7 +462,8 @@ public class QueuePanel extends VBox {
 
     private void clearQueue() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.initOwner(getScene() != null ? getScene().getWindow() : null);
+        alert.initOwner(ownerWindow != null ? ownerWindow
+            : getScene() != null ? getScene().getWindow() : null);
         alert.setTitle("Limpar fila");
         alert.setHeaderText(null);
         alert.setContentText("Limpar toda a fila pendente?");

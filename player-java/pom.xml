@@ -55,4 +55,118 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- ============================================================
+         Profile "dist": gera o .app nativo via jpackage
+         Uso: mvn -P dist verify
+         Saída: target/dist/AudionPlay Player.app
+         ============================================================ -->
+    <profiles>
+        <profile>
+            <id>dist</id>
+
+            <!-- JARs nativos mac-aarch64 do JavaFX (necessários para o module-path do jpackage) -->
+            <dependencies>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>mac-aarch64</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>mac-aarch64</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>mac-aarch64</classifier>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <plugins>
+
+                    <!-- 1. Copia dependências não-JavaFX (classpath) para target/libs -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-classpath-deps</id>
+                                <phase>prepare-package</phase>
+                                <goals><goal>copy-dependencies</goal></goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                                    <excludeGroupIds>org.openjfx</excludeGroupIds>
+                                    <includeScope>runtime</includeScope>
+                                </configuration>
+                            </execution>
+
+                            <!-- 2. Copia JARs nativos mac-aarch64 do JavaFX para target/javafx-mods -->
+                            <execution>
+                                <id>copy-fx-mods</id>
+                                <phase>prepare-package</phase>
+                                <goals><goal>copy-dependencies</goal></goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/javafx-mods</outputDirectory>
+                                    <includeGroupIds>org.openjfx</includeGroupIds>
+                                    <includeClassifiers>mac-aarch64</includeClassifiers>
+                                    <includeScope>runtime</includeScope>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- 3 + 4. Copia JAR, limpa dist anterior e executa jpackage -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>prepare-and-jpackage</id>
+                                <phase>verify</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <!-- copia app JAR para target/libs -->
+                                        <copy file="${project.build.directory}/${project.build.finalName}.jar"
+                                              todir="${project.build.directory}/libs"/>
+                                        <!-- remove dist anterior (jpackage não sobrescreve) -->
+                                        <delete dir="${project.build.directory}/dist" quiet="true"/>
+                                        <!-- gera o .app nativo -->
+                                        <exec executable="jpackage" failonerror="true">
+                                            <arg value="--type"/>
+                                            <arg value="app-image"/>
+                                            <arg value="--name"/>
+                                            <arg value="AudionPlay Player"/>
+                                            <arg value="--main-jar"/>
+                                            <arg value="${project.build.finalName}.jar"/>
+                                            <arg value="--main-class"/>
+                                            <arg value="com.audionplay.MainApp"/>
+                                            <arg value="--input"/>
+                                            <arg value="${project.build.directory}/libs"/>
+                                            <arg value="--module-path"/>
+                                            <arg value="${project.build.directory}/javafx-mods"/>
+                                            <arg value="--add-modules"/>
+                                            <arg value="javafx.controls,javafx.graphics,javafx.base,java.sql,java.net.http,java.desktop"/>
+                                            <arg value="--dest"/>
+                                            <arg value="${project.build.directory}/dist"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

@@ -70,11 +70,13 @@ public class TabsPanel extends VBox {
     private final HotkeyRepository             repo     = new HotkeyRepository();
     private final List<HotkeyProfileEntity>    profiles = new ArrayList<>();
     private String currentProfileId = null;
+    private int    colCount         = 4;
 
     // ── Componentes com estado ────────────────────────────────────────────────
     private Label     ppNameLabel;
     private GridPane  grid;
     private ContextMenu profileMenu;
+    private List<HotkeyButton> currentButtons = new ArrayList<>();
 
     // ── Callbacks ─────────────────────────────────────────────────────────────
     private Consumer<HotkeyButton> onCartPlay;
@@ -86,7 +88,7 @@ public class TabsPanel extends VBox {
         setStyle(
             "-fx-background-color:#000000;" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
-            "-fx-border-radius:12;-fx-background-radius:12;"
+            "-fx-border-radius:14;-fx-background-radius:14;"
         );
         VBox.setVgrow(this, Priority.ALWAYS);
 
@@ -97,16 +99,11 @@ public class TabsPanel extends VBox {
         grid = new GridPane();
         grid.setHgap(5);
         grid.setVgap(5);
-        for (int i = 0; i < 4; i++) {
-            ColumnConstraints cc = new ColumnConstraints();
-            cc.setPercentWidth(25);
-            cc.setHgrow(Priority.ALWAYS);
-            grid.getColumnConstraints().add(cc);
-        }
+        applyColumnConstraints();
 
         getChildren().addAll(
-            buildTabs(),
-            buildHeader(),
+            buildCardHeader(),
+            buildToolbar(),
             buildGridWrap()
         );
 
@@ -119,43 +116,33 @@ public class TabsPanel extends VBox {
         this.onCartPlay = cb;
     }
 
-    // ── hkp-tabs ──────────────────────────────────────────────────────────────
+    /** Adiciona o card "Próximo break" ao rodapé do painel. */
+    public void addBreakCard(javafx.scene.Node breakCard) {
+        VBox.setMargin(breakCard, new Insets(8, 8, 8, 8));
+        getChildren().add(breakCard);
+    }
 
-    private HBox buildTabs() {
-        HBox tabs = new HBox(5,
-            tabLbl("Hot Keys",       true),
-            tabLbl("Voice Track",    false),
-            tabLbl("Routing rápido", false),
-            tabLbl("Notas",          false)
+    // ── Card header ───────────────────────────────────────────────────────────
+
+    private HBox buildCardHeader() {
+        Label title = new Label("HOT KEYS");
+        title.setStyle("-fx-font-size:12px;-fx-font-weight:bold;-fx-text-fill:#20e6ff;");
+
+        HBox hdr = new HBox(title);
+        hdr.setAlignment(Pos.CENTER_LEFT);
+        hdr.setMinHeight(42);
+        hdr.setPadding(new Insets(0, 12, 0, 12));
+        hdr.setStyle(
+            "-fx-background-color:linear-gradient(from 0% 0% to 0% 100%, #6b6b6b 0%, #555555 22%, #3a3a3a 47%, #080808 49%, #040404 72%, #000000 100%);" +
+            "-fx-border-color:#333333;-fx-border-width:0 0 1 0;" +
+            "-fx-background-radius:14 14 0 0;"
         );
-        tabs.setPadding(new Insets(7, 8, 0, 8));
-        tabs.setStyle("-fx-background-color:#000000;");
-        return tabs;
+        return hdr;
     }
 
-    private Label tabLbl(String text, boolean active) {
-        Label l = new Label(text);
-        l.setPrefHeight(30);
-        l.setPadding(new Insets(0, 10, 0, 10));
-        if (active) {
-            l.setStyle(
-                "-fx-font-size:12px;-fx-font-weight:700;-fx-cursor:hand;-fx-text-fill:#00d4ff;" +
-                "-fx-background-color:#000000;" +
-                "-fx-border-color:#20384c #20384c #000000 #20384c;-fx-border-width:1;" +
-                "-fx-background-radius:8 8 0 0;-fx-border-radius:8 8 0 0;"
-            );
-        } else {
-            l.setStyle(
-                "-fx-font-size:12px;-fx-font-weight:700;-fx-text-fill:#2a3f52;" +
-                "-fx-background-color:transparent;"
-            );
-        }
-        return l;
-    }
+    // ── Toolbar: perfil + colunas + reload ────────────────────────────────────
 
-    // ── hkp-header ────────────────────────────────────────────────────────────
-
-    private HBox buildHeader() {
+    private HBox buildToolbar() {
         // profile pill
         Label ppLabel = new Label("PERFIL");
         ppLabel.setStyle("-fx-font-size:9px;-fx-font-weight:700;-fx-text-fill:#4a6478;");
@@ -168,7 +155,7 @@ public class TabsPanel extends VBox {
         HBox pill = new HBox(8, ppText, ppArrow);
         pill.setAlignment(Pos.CENTER_LEFT);
         pill.setPadding(new Insets(4, 10, 4, 10));
-        pill.setMinWidth(180);
+        pill.setMinWidth(160);
         pill.setStyle(
             "-fx-background-color:rgba(255,255,255,0.04);" +
             "-fx-border-color:#20384c;-fx-border-width:1;" +
@@ -193,33 +180,73 @@ public class TabsPanel extends VBox {
 
         // reload button
         Label reloadBtn = new Label("↺");
-        reloadBtn.setPrefWidth(40);
-        reloadBtn.setMinHeight(32);
+        reloadBtn.setPrefWidth(32); reloadBtn.setPrefHeight(32);
         reloadBtn.setAlignment(Pos.CENTER);
         reloadBtn.setStyle(
-            "-fx-font-size:20px;-fx-text-fill:#9cb5ba;" +
+            "-fx-font-size:18px;-fx-text-fill:#9cb5ba;" +
             "-fx-background-color:transparent;-fx-cursor:hand;"
         );
         reloadBtn.setOnMouseClicked(e -> loadProfiles());
 
-        // open button
-        Label openBtn = new Label("⧉");
-        openBtn.setPrefWidth(40);
-        openBtn.setMinHeight(32);
-        openBtn.setAlignment(Pos.CENTER);
-        openBtn.setStyle(
-            "-fx-font-size:17px;-fx-text-fill:#9cb5ba;" +
-            "-fx-background-color:transparent;-fx-cursor:hand;"
-        );
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox hdr = new HBox(8, pill, reloadBtn, spacer, openBtn);
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.setPadding(new Insets(6, 10, 6, 10));
-        hdr.setStyle("-fx-border-color:#20384c;-fx-border-width:0 0 1 0;");
-        return hdr;
+        // controles de colunas por linha
+        HBox colsBox = new HBox(4, colBtn(2), colBtn(3), colBtn(4), colBtn(5));
+        colsBox.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox toolbar = new HBox(8, pill, reloadBtn, spacer, colsBox);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.setPadding(new Insets(6, 10, 6, 10));
+        toolbar.setStyle("-fx-border-color:#20384c;-fx-border-width:0 0 1 0;");
+        return toolbar;
+    }
+
+    private Label colBtn(int n) {
+        Label lbl = new Label(String.valueOf(n));
+        lbl.setPrefWidth(26); lbl.setPrefHeight(26);
+        lbl.setAlignment(Pos.CENTER);
+        applyColBtnStyle(lbl, n == colCount);
+        lbl.setOnMouseClicked(e -> setColumns(n));
+        return lbl;
+    }
+
+    private static void applyColBtnStyle(Label lbl, boolean active) {
+        lbl.setStyle(
+            "-fx-font-size:11px;-fx-font-weight:700;" +
+            "-fx-text-fill:" + (active ? "#20e6ff" : "#4a6478") + ";" +
+            "-fx-background-color:" + (active ? "rgba(32,230,255,0.10)" : "transparent") + ";" +
+            "-fx-border-color:" + (active ? "rgba(32,230,255,0.35)" : "#20384c") + ";" +
+            "-fx-border-width:1;-fx-border-radius:5;-fx-background-radius:5;-fx-cursor:hand;"
+        );
+    }
+
+    private void setColumns(int n) {
+        colCount = n;
+        applyColumnConstraints();
+        renderGrid(currentButtons);
+        // atualiza estilo dos botões de coluna
+        if (getChildren().size() >= 2 && getChildren().get(1) instanceof HBox toolbar) {
+            toolbar.getChildren().stream()
+                .filter(c -> c instanceof HBox)
+                .findFirst()
+                .ifPresent(colsNode -> ((HBox) colsNode).getChildren().forEach(c -> {
+                    if (c instanceof Label lbl) {
+                        try { applyColBtnStyle(lbl, Integer.parseInt(lbl.getText()) == n); }
+                        catch (NumberFormatException ignored) {}
+                    }
+                }));
+        }
+    }
+
+    private void applyColumnConstraints() {
+        grid.getColumnConstraints().clear();
+        for (int i = 0; i < colCount; i++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(100.0 / colCount);
+            cc.setHgrow(Priority.ALWAYS);
+            grid.getColumnConstraints().add(cc);
+        }
     }
 
     // ── hkp-grid-wrap ─────────────────────────────────────────────────────────
@@ -302,17 +329,18 @@ public class TabsPanel extends VBox {
     // ── Renderização do grid ──────────────────────────────────────────────────
 
     private void renderGrid(List<HotkeyButton> buttons) {
+        currentButtons = buttons;
         grid.getChildren().clear();
         if (buttons.isEmpty()) {
             Label empty = new Label("Nenhum botão neste perfil");
             empty.setStyle("-fx-font-size:12px;-fx-text-fill:#4a6478;");
-            GridPane.setColumnSpan(empty, 4);
+            GridPane.setColumnSpan(empty, colCount);
             grid.add(empty, 0, 0);
             return;
         }
         for (int i = 0; i < buttons.size(); i++) {
             StackPane card = makeCard(buttons.get(i), i + 1);
-            grid.add(card, i % 4, i / 4);
+            grid.add(card, i % colCount, i / colCount);
         }
     }
 

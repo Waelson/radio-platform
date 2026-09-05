@@ -76,6 +76,7 @@ public class MainWindow {
         mixer.start();
         buildController();
         wireActions();
+        stage.setOnShown(e -> queuePanel.setOwnerWindow(stage));
         initHoraCerta();
 
         BorderPane root = new BorderPane();
@@ -88,18 +89,15 @@ public class MainWindow {
         playoutCenter.setMinWidth(0);
         playoutCenter.setMinHeight(0);
 
-        // Coluna 1: nowPlaying no topo + queuePanel no center (recebe todo o espaço restante)
+        // Coluna 1: queuePanel dentro do nowPlaying, abaixo dos botões
         nowPlaying.setMinWidth(0);
         nowPlaying.setMinHeight(0);
         queuePanel.setMinWidth(0);
         queuePanel.setMinHeight(0);
-        BorderPane col1 = new BorderPane();
-        col1.setTop(nowPlaying);
-        BorderPane.setMargin(nowPlaying, new Insets(10, 10, 0, 10));
-        col1.setCenter(queuePanel);
-        col1.setMinWidth(0);
-        col1.setMinHeight(0);
-        addDynamicClip(col1);
+        // Move queueCard para o nowPlaying e breakCard para o tabsPanel
+        var queueNodes = new java.util.ArrayList<>(queuePanel.getChildren());
+        nowPlaying.getChildren().add(queueNodes.get(0));         // queueCard
+        tabsPanel.addBreakCard(queueNodes.get(1));               // breakCard
 
         StackPane contentArea = new StackPane(playoutCenter);
         contentArea.setMinWidth(0);
@@ -123,10 +121,11 @@ public class MainWindow {
         row.setMinHeight(0);
         contentGrid.getRowConstraints().add(row);
 
-        contentGrid.add(col1,        0, 0);
+        contentGrid.add(nowPlaying,  0, 0);
         contentGrid.add(contentArea, 1, 0);
         contentGrid.add(rightPanel,  2, 0);
-        GridPane.setFillWidth(col1,         true); GridPane.setFillHeight(col1,         true);
+        GridPane.setFillWidth(nowPlaying,   true); GridPane.setFillHeight(nowPlaying,   true);
+        GridPane.setMargin(nowPlaying, new Insets(10, 10, 10, 10));
         GridPane.setFillWidth(contentArea,  true); GridPane.setFillHeight(contentArea,  true);
         GridPane.setFillWidth(rightPanel,   true); GridPane.setFillHeight(rightPanel,   true);
 
